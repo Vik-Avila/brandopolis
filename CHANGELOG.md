@@ -22,3 +22,8 @@ Depends on: —
 - Evidence/Recommendation/Evaluator y telemetría reconciliados con schemas y ejemplos.
 - ADR status, root-level local handoff, .env.example, .gitignore y QA script.
 - Final Contract Patch independiente ausente, registrado como blocker de signoff.
+
+## 2026-09-24 Sprint 01 — preflight
+- Corregido drift de Assumption in Use en Brand Context y reconciliation log según resolución humana. Bible y schemas sin cambios.
+- Registrada autorización M1 sin atribuir contenido al Patch ausente.
+- Foundation QA usa UTF-8 y excluye dependencias/artefactos locales; jsonschema instalado desde requirements-foundation.txt en .venv.

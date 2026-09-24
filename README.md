@@ -55,3 +55,7 @@ Drizzle/Prisma, auth, proveedor IA inicial, research y despliegue; precio/WTP pa
 ## Start Here — Claude Code
 
 [CLAUDE.md](CLAUDE.md) → [CLAUDE_START_HERE](handoff/CLAUDE_START_HERE.md).
+
+
+## Resolución humana · 2026-09-24 · Sprint 01
+El usuario autoriza implementar M1 sobre los contratos canónicos presentes y corregir drift documental inequívoco. ASSUMPTION_IN_USE es relación/flag de dependencia de una Decision vigente sobre una Hypothesis no validada, nunca status. Las referencias anteriores al Patch independiente describen la limitación histórica de cotejo, no un gate de entrada a M1. No se ha localizado ni se afirma haber cotejado ese archivo. Esta resolución sustituye instrucciones anteriores de esperar ese cotejo para iniciar M1; no cambia Bible, invariantes ni alcance.
