@@ -36,6 +36,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string;t
         if(path==='/api/logout') {res.setHeader('Set-Cookie','brandopolis_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');return send(res,200,{authenticated:false});}
         if(path==='/api/brands') return send(res,201,await engine.createBrand(token,string(input.name)));
         if(path==='/api/questions/transition') return send(res,200,await engine.transitionQuestion(token,string(input.brandId),string(input.questionId),string(input.status)));
+        if(path==='/api/questions/prepare') return send(res,200,await engine.prepareQuestion(token,string(input.brandId),string(input.questionId),input.expectedActiveVersion===null?null:string(input.expectedActiveVersion)));
         if(path==='/api/decisions/commit') return send(res,200,await engine.commitDecision(token,input.command as CommitCommand,input.reviewToken===undefined?undefined:string(input.reviewToken)));
         if(path==='/api/reviews/start') return send(res,200,await engine.beginReview(token,string(input.brandId),string(input.decisionId)));
         if(path==='/api/impacts/retry') return send(res,200,await engine.retryImpact(token,string(input.brandId)));

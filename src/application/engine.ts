@@ -82,12 +82,35 @@ export class Engine {
       return {...q,status:next};
     });
   }
+  async prepareQuestion(token:string,brandId:string,questionId:string,expectedActiveVersion:string|null) {
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId);
+      const [q]=await tx.select().from(t.questions).where(and(inScope(t.questions,s),eq(t.questions.id,questionId)));
+      if(!q) throw new AppError('NOT_FOUND','Question not available');
+      const [d]=await tx.select().from(t.decisions).where(and(inScope(t.decisions,s),eq(t.decisions.questionId,questionId)));
+      if((d?.activeVersionId??null)!==expectedActiveVersion) throw new AppError('CONFLICT','Stale active version');
+      let current=q.status;
+      const path=current==='DECIDED'?['REOPENED','IN_ANALYSIS','READY_FOR_DECISION']:current==='OPEN'||current==='REOPENED'?['IN_ANALYSIS','READY_FOR_DECISION']:current==='IN_ANALYSIS'?['READY_FOR_DECISION']:[];
+      for(const next of path) {
+        transition(current,next);
+        await tx.update(t.questions).set({status:next}).where(and(inScope(t.questions,s),eq(t.questions.id,q.id)));
+        await this.audit(tx,s,{operation:`QUESTION_${next}`,idempotencyKey:id()});
+        if(next==='IN_ANALYSIS') await this.event(tx,s,'strategic_question_started');
+        current=next;
+      }
+      return {questionId,status:current};
+    });
+  }
   private async syncDependencies(tx:Transaction,s:Scope) {
     const ds=await tx.select({decision:t.decisions,question:t.questions}).from(t.decisions).innerJoin(t.questions,and(eq(t.decisions.questionId,t.questions.id),eq(t.decisions.workspaceId,t.questions.workspaceId),eq(t.decisions.brandId,t.questions.brandId))).where(inScope(t.decisions,s));
     for(const rule of rules.rules) {
       const up=ds.find(d=>d.question.module===rule.upstream), down=ds.find(d=>d.question.module===rule.downstream);
       if(up&&down) await tx.insert(t.dependencies).values({id:id(),workspaceId:s.workspaceId,brandId:s.brandId,upstreamDecisionId:up.decision.id,downstreamDecisionId:down.decision.id,kind:rule.kind,reason:rule.reason,ruleVersion:rules.version}).onConflictDoNothing();
     }
+  }
+  private async contextVersion(tx:Transaction,s:Scope) {
+    const decisions=await tx.select().from(t.decisions).where(inScope(t.decisions,s));
+    return hash(JSON.stringify(decisions.map(d=>[d.id,d.activeVersionId]).sort()));
   }
   private async openReviews(tx:Transaction,s:Scope,decisionId:string) {
     return tx.select().from(t.reviews).where(and(inScope(t.reviews,s),eq(t.reviews.downstreamDecisionId,decisionId),ne(t.reviews.status,'COMPLETED')));
@@ -113,7 +136,7 @@ export class Engine {
   }
   async commitDecision(token:string,command:CommitCommand,reviewToken?:string) {
     validate('decision-commit',command);
-    if(command.selectedOption.length>12000||command.rationale.length>12000||command.idempotencyKey.length>200) throw new AppError('INVALID','Command too large');
+    if(!command.selectedOption.trim()||!command.rationale.trim()||command.selectedOption.length>12000||command.rationale.length>12000||command.idempotencyKey.length>200) throw new AppError('INVALID','Invalid command content or size');
     const fingerprint=hash(JSON.stringify([command.questionId,command.sourceRecommendationId,command.selectedOption,command.rationale,command.expectedActiveVersion,command.actorUserId,reviewToken??null]));
     const result=await this.db.transaction(async tx=>{
       const s=await this.scope(tx,token,command.brandId);
@@ -137,9 +160,11 @@ export class Engine {
       }
       if(command.sourceRecommendationId) {
         const [rec]=await tx.select().from(t.recommendations).where(and(inScope(t.recommendations,s),eq(t.recommendations.id,command.sourceRecommendationId),eq(t.recommendations.questionId,command.questionId)));
-        if(!rec||rec.resolution!=='GENERATED') throw new AppError('CONFLICT','Recommendation unavailable or stale');
+        if(!rec||rec.resolution!=='GENERATED'||rec.contextVersion!==await this.contextVersion(tx,s)) throw new AppError('CONFLICT','Recommendation unavailable or stale');
         validate('recommendation',rec.payload);
-        await tx.update(t.recommendations).set({resolution:'ACCEPTED'}).where(and(inScope(t.recommendations,s),eq(t.recommendations.id,rec.id)));
+        const proposal=rec.payload as {recommendedOptionId:string|null;options:{id:string;label:string}[]};
+        const resolution=proposal.options.find(o=>o.id===proposal.recommendedOptionId)?.label===command.selectedOption?'ACCEPTED':'MODIFIED';
+        await tx.update(t.recommendations).set({resolution}).where(and(inScope(t.recommendations,s),eq(t.recommendations.id,rec.id)));
       }
       if(!decision) {
         [decision]=await tx.insert(t.decisions).values({id:id(),workspaceId:s.workspaceId,brandId:s.brandId,questionId:question.id,activeVersionId:null,reviewStatus:'APPROVED'}).returning();
@@ -222,7 +247,7 @@ export class Engine {
       const rs=await tx.select().from(t.reviews).where(inScope(t.reviews,s));
       const impact=await tx.select().from(t.impacts).where(inScope(t.impacts,s));
       const audit=await tx.select().from(t.audits).where(inScope(t.audits,s));
-      const output={questions:qs.map(({workspaceId:_w,...q})=>q),decisions:ds.map(({workspaceId:_w,...d})=>d),versions:vs.map(versionOutput),dependencies:deps.map(({workspaceId:_w,...d})=>d),reviews:rs.map(reviewOutput),impacts:impact.map(({status,result,triggerVersionId})=>({status,result,triggerVersionId})),audit};
+      const output={contextVersion:await this.contextVersion(tx,s),questions:qs.sort((a,b)=>(a.module==='Primary Customer'?0:1)-(b.module==='Primary Customer'?0:1)).map(({workspaceId:_w,...q})=>q),decisions:ds.map(({workspaceId:_w,...d})=>d),versions:vs.map(versionOutput),dependencies:deps.map(({workspaceId:_w,...d})=>d),reviews:rs.map(reviewOutput),impacts:impact.map(({status,result,triggerVersionId})=>({status,result,triggerVersionId})),audit};
       for(const [name,rows] of [['strategic-question',output.questions],['decision',output.decisions],['decision-version',output.versions],['dependency',output.dependencies],['review-item',output.reviews]] as const) for(const row of rows) validate(name,row);
       return output;
     });

@@ -163,8 +163,25 @@ describe('PostgreSQL M1',()=>{
     const ctx=await s.context();expect(ctx.versions).toHaveLength(3);expect(ctx.reviews[0].status).toBe('OPEN');
   });
   it('M1 migrations have applied exactly once',async()=>{
-    const result=await connection.pool.query('select count(*)::int as n from drizzle.__drizzle_migrations');expect(result.rows[0].n).toBe(2);
+    const result=await connection.pool.query('select count(*)::int as n from drizzle.__drizzle_migrations');expect(result.rows[0].n).toBe(3);
     const server=await connection.pool.query('show server_version');expect(server.rows[0].server_version).toMatch(/^17\./);
+  });
+  it('superseding without a new current version is rejected by PostgreSQL',async()=>{
+    const s=await setup(),c=await s.commit(s.customer.id,'A',null);
+    await expect(connection.db.update(t.versions).set({versionStatus:'SUPERSEDED'}).where(eq(t.versions.id,c.versionId))).rejects.toBeDefined();
+    expect((await s.context()).versions[0].versionStatus).toBe('APPROVED');
+  });
+  it('a recommendation is context-bound; human divergence is recorded as MODIFIED',async()=>{
+    const s=await setup();await s.ready(s.customer.id);const contextVersion=(await s.context()).contextVersion;
+    const rec={...schema('recommendation').examples[0],id:randomUUID(),brandId:s.brand.id,questionId:s.customer.id,contextVersion,hypothesesUsed:[]};
+    await connection.db.insert(t.recommendations).values({id:rec.id,workspaceId:s.who.workspaceId,brandId:s.brand.id,questionId:s.customer.id,contextVersion,payload:rec});
+    const result=await engine.commitDecision(s.who.token,{...s.command(s.customer.id,'A different human choice',null),sourceRecommendationId:rec.id});
+    const [stored]=await connection.db.select().from(t.recommendations).where(eq(t.recommendations.id,rec.id));expect(stored.resolution).toBe('MODIFIED');
+    expect((await s.context()).audit.find(a=>a.newVersion===result.versionId)?.sourceRecommendationId).toBe(rec.id);
+    const next=await setup();await next.ready(next.customer.id);
+    const stale={...rec,id:randomUUID(),brandId:next.brand.id,questionId:next.customer.id,contextVersion:'stale-context'};
+    await connection.db.insert(t.recommendations).values({id:stale.id,workspaceId:next.who.workspaceId,brandId:next.brand.id,questionId:next.customer.id,contextVersion:stale.contextVersion,payload:stale});
+    await expect(engine.commitDecision(next.who.token,{...next.command(next.customer.id,'Agencies',null),sourceRecommendationId:stale.id})).rejects.toMatchObject({code:'CONFLICT'});
   });
   it('audit failure rolls back version, supersede, question state and idempotency together',async()=>{
     const s=await setup(),c=await s.commit(s.customer.id,'A',null);await s.ready(s.customer.id);const before=await s.context();

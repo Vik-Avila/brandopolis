@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+if(existsSync('.env')) process.loadEnvFile('.env');
 export async function startLocalDb(test=false) {
   const directory=resolve('.local',test?'test-postgres':'postgres');
   mkdirSync(directory,{recursive:true});
