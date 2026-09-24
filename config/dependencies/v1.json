@@ -1,0 +1,48 @@
+{
+  "version": "v1",
+  "status": "engineering-proposal",
+  "allowCycles": false,
+  "rules": [
+    {
+      "upstream": "Primary Customer",
+      "downstream": "Positioning",
+      "kind": "HARD",
+      "reason": "Positioning targets a defined customer"
+    },
+    {
+      "upstream": "Primary Customer",
+      "downstream": "Core Message",
+      "kind": "SOFT",
+      "reason": "Message may shift with audience"
+    },
+    {
+      "upstream": "Value Mechanism",
+      "downstream": "Positioning",
+      "kind": "HARD",
+      "reason": "Positioning expresses value"
+    },
+    {
+      "upstream": "Positioning",
+      "downstream": "Brand Promise",
+      "kind": "HARD",
+      "reason": "Promise expresses positioning"
+    },
+    {
+      "upstream": "Positioning",
+      "downstream": "Core Message",
+      "kind": "HARD",
+      "reason": "Core Message must align with positioning"
+    },
+    {
+      "upstream": "Positioning",
+      "downstream": "GTM Priority",
+      "kind": "SOFT",
+      "reason": "Channel priority may change with positioning"
+    }
+  ],
+  "dependencyTypes": [
+    "HARD",
+    "SOFT",
+    "INFORMATIVE"
+  ]
+}

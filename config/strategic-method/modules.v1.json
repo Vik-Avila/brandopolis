@@ -1,0 +1,60 @@
+{
+  "version": "v1",
+  "source": "Master Context §15",
+  "modules": [
+    {
+      "id": "Understand",
+      "primaryQuestion": "¿Qué estamos intentando construir o cambiar?",
+      "primaryDecision": "Strategic Objective",
+      "priorityDepth": false
+    },
+    {
+      "id": "Market",
+      "primaryQuestion": "¿En qué arena debemos competir inicialmente?",
+      "primaryDecision": "Market Arena",
+      "priorityDepth": false
+    },
+    {
+      "id": "Customer",
+      "primaryQuestion": "¿Quién debe ser nuestro cliente prioritario?",
+      "primaryDecision": "Primary Customer",
+      "priorityDepth": true
+    },
+    {
+      "id": "Business",
+      "primaryQuestion": "¿Cómo creamos y capturamos valor para ese cliente?",
+      "primaryDecision": "Value Mechanism",
+      "priorityDepth": true
+    },
+    {
+      "id": "Position",
+      "primaryQuestion": "¿Qué posición estratégica queremos ocupar frente a las alternativas?",
+      "primaryDecision": "Positioning",
+      "priorityDepth": true
+    },
+    {
+      "id": "Brand",
+      "primaryQuestion": "¿Qué debe significar nuestra marca para ese cliente?",
+      "primaryDecision": "Brand Promise",
+      "priorityDepth": false
+    },
+    {
+      "id": "Message",
+      "primaryQuestion": "¿Qué idea principal queremos que comprenda y recuerde el cliente?",
+      "primaryDecision": "Core Message",
+      "priorityDepth": true
+    },
+    {
+      "id": "GTM",
+      "primaryQuestion": "¿Dónde y cómo debemos concentrar inicialmente nuestros recursos?",
+      "primaryDecision": "GTM Priority",
+      "priorityDepth": false
+    },
+    {
+      "id": "Experiment & Learn",
+      "primaryQuestion": "¿Qué supuesto crítico debemos validar primero?",
+      "primaryDecision": "Priority Experiment",
+      "priorityDepth": false
+    }
+  ]
+}

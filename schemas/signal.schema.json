@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/signal.v1",
+  "title": "signal",
+  "x-version": "v1",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "brandId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "experimentId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observation": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "id",
+    "brandId",
+    "experimentId",
+    "observation",
+    "source",
+    "observedAt"
+  ],
+  "examples": [
+    {
+      "id": "sig-1",
+      "brandId": "b-1",
+      "experimentId": "exp-1",
+      "observation": "regresó el usuario",
+      "source": "evento producto",
+      "observedAt": "2026-09-24T12:00:00Z"
+    }
+  ]
+}

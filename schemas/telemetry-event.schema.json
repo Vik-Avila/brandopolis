@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/telemetry-event.v1",
+  "title": "telemetry-event",
+  "x-version": "v1",
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "occurredAtUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "schemaVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workspaceId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "brandId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "userId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "dataClass": {
+      "enum": [
+        "DEMO",
+        "PILOT",
+        "PRODUCTION"
+      ]
+    },
+    "cohort": {
+      "enum": [
+        "A",
+        "B",
+        "NONE"
+      ]
+    },
+    "intervention": {
+      "enum": [
+        "PRODUCT_ONLY",
+        "ASSISTED",
+        "CONCIERGE",
+        "NONE"
+      ]
+    },
+    "actor": {
+      "enum": [
+        "USER",
+        "SYSTEM",
+        "AI"
+      ]
+    }
+  },
+  "required": [
+    "eventId",
+    "name",
+    "occurredAtUtc",
+    "schemaVersion",
+    "workspaceId",
+    "brandId",
+    "userId",
+    "dataClass",
+    "cohort",
+    "intervention",
+    "actor"
+  ],
+  "examples": [
+    {
+      "eventId": "evt-1",
+      "name": "account_created",
+      "occurredAtUtc": "2026-09-24T12:00:00Z",
+      "schemaVersion": "v1",
+      "workspaceId": null,
+      "brandId": null,
+      "userId": "u-1",
+      "dataClass": "DEMO",
+      "cohort": "NONE",
+      "intervention": "NONE",
+      "actor": "USER"
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/open-question.v1",
+  "title": "open-question",
+  "x-version": "v1",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "brandId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "OPEN",
+        "ANSWERED"
+      ]
+    },
+    "relatedHypothesisId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "brandId",
+    "text",
+    "status",
+    "relatedHypothesisId"
+  ],
+  "examples": [
+    {
+      "id": "oq-1",
+      "brandId": "b-1",
+      "text": "¿Cuántas agencias lo necesitan?",
+      "status": "OPEN",
+      "relatedHypothesisId": "h-1"
+    }
+  ]
+}

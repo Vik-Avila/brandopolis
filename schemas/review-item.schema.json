@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/review-item.v1",
+  "title": "review-item",
+  "x-version": "v1",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "brandId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "triggerVersionId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "downstreamDecisionId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dependencyType": {
+      "enum": [
+        "HARD",
+        "SOFT",
+        "INFORMATIVE"
+      ]
+    },
+    "status": {
+      "enum": [
+        "OPEN",
+        "REVIEW_SUGGESTED",
+        "COMPLETED"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reviewedBy": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "brandId",
+    "triggerVersionId",
+    "downstreamDecisionId",
+    "dependencyType",
+    "status",
+    "reason",
+    "reviewedBy"
+  ],
+  "examples": [
+    {
+      "id": "ri-1",
+      "brandId": "b-1",
+      "triggerVersionId": "v-2",
+      "downstreamDecisionId": "d-positioning",
+      "dependencyType": "HARD",
+      "status": "OPEN",
+      "reason": "Cliente cambió",
+      "reviewedBy": null
+    }
+  ]
+}

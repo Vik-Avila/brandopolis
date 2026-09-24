@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/decision-commit.v1",
+  "title": "decision-commit",
+  "x-version": "v1",
+  "properties": {
+    "brandId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "questionId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceRecommendationId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "selectedOption": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expectedActiveVersion": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "idempotencyKey": {
+      "type": "string",
+      "minLength": 1
+    },
+    "actorUserId": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "brandId",
+    "questionId",
+    "sourceRecommendationId",
+    "selectedOption",
+    "rationale",
+    "expectedActiveVersion",
+    "idempotencyKey",
+    "actorUserId"
+  ],
+  "examples": [
+    {
+      "brandId": "b-1",
+      "questionId": "q-1",
+      "sourceRecommendationId": null,
+      "selectedOption": "Agencias",
+      "rationale": "método reutilizable",
+      "expectedActiveVersion": "v-1",
+      "idempotencyKey": "ik-1",
+      "actorUserId": "u-1"
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/user-input.v1",
+  "title": "user-input",
+  "x-version": "v1",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "brandId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "statement": {
+      "type": "string",
+      "minLength": 1
+    },
+    "createdBy": {
+      "type": "string",
+      "minLength": 1
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "id",
+    "brandId",
+    "statement",
+    "createdBy",
+    "createdAt"
+  ],
+  "examples": [
+    {
+      "id": "ui-1",
+      "brandId": "b-1",
+      "statement": "Vendemos consultoría",
+      "createdBy": "u-1",
+      "createdAt": "2026-09-24T12:00:00Z"
+    }
+  ]
+}

@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/recommendation.v1",
+  "title": "recommendation",
+  "x-version": "v1",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "brandId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "questionId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "contextVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "options": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tradeoffs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "rationale",
+          "tradeoffs"
+        ]
+      }
+    },
+    "recommendedOptionId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidenceReferences": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "hypothesesUsed": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "tradeoffs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "openQuestions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "supportLevel": {
+      "enum": [
+        "STRONG_SUPPORT",
+        "MODERATE_SUPPORT",
+        "LIMITED_SUPPORT",
+        "UNVALIDATED"
+      ]
+    },
+    "affectedDomains": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "failureConditions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "required": [
+    "id",
+    "brandId",
+    "questionId",
+    "contextVersion",
+    "options",
+    "recommendedOptionId",
+    "rationale",
+    "evidenceReferences",
+    "hypothesesUsed",
+    "tradeoffs",
+    "openQuestions",
+    "supportLevel",
+    "affectedDomains",
+    "failureConditions"
+  ],
+  "examples": [
+    {
+      "id": "rec-1",
+      "brandId": "b-1",
+      "questionId": "q-1",
+      "contextVersion": "c-1",
+      "options": [
+        {
+          "id": "o-1",
+          "label": "Agencias",
+          "rationale": "repetición",
+          "tradeoffs": [
+            "nicho"
+          ]
+        },
+        {
+          "id": "o-2",
+          "label": "Equipos internos",
+          "rationale": "presupuesto",
+          "tradeoffs": [
+            "ciclo largo"
+          ]
+        }
+      ],
+      "recommendedOptionId": "o-1",
+      "rationale": "Comparación resumida",
+      "evidenceReferences": [],
+      "hypothesesUsed": [
+        "h-1"
+      ],
+      "tradeoffs": [
+        "nicho frente a escala"
+      ],
+      "openQuestions": [],
+      "supportLevel": "UNVALIDATED",
+      "affectedDomains": [
+        "Position"
+      ],
+      "failureConditions": []
+    }
+  ]
+}

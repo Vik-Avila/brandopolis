@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/strategic-question.v1",
+  "title": "strategic-question",
+  "x-version": "v1",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "brandId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "module": {
+      "type": "string",
+      "minLength": 1
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "OPEN",
+        "IN_ANALYSIS",
+        "READY_FOR_DECISION",
+        "DECIDED",
+        "REOPENED"
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "brandId",
+    "module",
+    "text",
+    "status"
+  ],
+  "examples": [
+    {
+      "id": "q-1",
+      "brandId": "b-1",
+      "module": "Customer",
+      "text": "¿Quién debe ser nuestro cliente prioritario?",
+      "status": "READY_FOR_DECISION"
+    }
+  ]
+}

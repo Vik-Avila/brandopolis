@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/evaluator-result.v1",
+  "title": "evaluator-result",
+  "x-version": "v1",
+  "properties": {
+    "recommendationId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "result": {
+      "enum": [
+        "PASS",
+        "PASS_WITH_CAUTION",
+        "REVIEW_REQUIRED"
+      ]
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "severity": {
+            "enum": [
+              "INFO",
+              "REVIEW",
+              "CONFLICT"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "objectIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "required": [
+          "severity",
+          "reason",
+          "objectIds"
+        ]
+      }
+    }
+  },
+  "required": [
+    "recommendationId",
+    "result",
+    "issues"
+  ],
+  "examples": [
+    {
+      "recommendationId": "rec-1",
+      "result": "PASS_WITH_CAUTION",
+      "issues": [
+        {
+          "severity": "REVIEW",
+          "reason": "soporte limitado",
+          "objectIds": [
+            "e-1"
+          ]
+        }
+      ]
+    }
+  ]
+}

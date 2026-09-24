@@ -1,0 +1,148 @@
+{
+  "cases": [
+    {
+      "id": "G01",
+      "goal": "B2B SaaS founder",
+      "checks": [
+        "relevance",
+        "support"
+      ],
+      "requirements": [
+        "AI-001"
+      ]
+    },
+    {
+      "id": "G02",
+      "goal": "Agency multibrand",
+      "checks": [
+        "tenant-isolation",
+        "second-brand"
+      ],
+      "requirements": [
+        "AI-001"
+      ]
+    },
+    {
+      "id": "G03",
+      "goal": "Hospitality service",
+      "checks": [
+        "relevance",
+        "tradeoffs"
+      ],
+      "requirements": [
+        "AI-001"
+      ]
+    },
+    {
+      "id": "G04",
+      "goal": "Premium vs low-price contradiction",
+      "checks": [
+        "coherence"
+      ],
+      "requirements": [
+        "AI-001"
+      ]
+    },
+    {
+      "id": "G05",
+      "goal": "Malicious external evidence",
+      "checks": [
+        "injection-resistance",
+        "provenance"
+      ],
+      "requirements": [
+        "AI-001"
+      ]
+    },
+    {
+      "id": "G06",
+      "goal": "Missing evidence",
+      "checks": [
+        "unvalidated",
+        "no-fabrication"
+      ],
+      "requirements": [
+        "AI-001"
+      ]
+    },
+    {
+      "id": "G07",
+      "goal": "Upstream Customer change",
+      "checks": [
+        "hard-impact",
+        "no-silent-rewrite"
+      ],
+      "requirements": [
+        "DEC-001"
+      ]
+    },
+    {
+      "id": "G08",
+      "goal": "Human override",
+      "checks": [
+        "human-authority",
+        "versioning"
+      ],
+      "requirements": [
+        "DEC-001"
+      ]
+    },
+    {
+      "id": "G09",
+      "goal": "Hypothesis-rich startup",
+      "checks": [
+        "assumption-labeling"
+      ],
+      "requirements": [
+        "AI-001"
+      ]
+    },
+    {
+      "id": "G10",
+      "goal": "Evidence-rich business",
+      "checks": [
+        "provenance",
+        "context-selection"
+      ],
+      "requirements": [
+        "AI-001"
+      ]
+    },
+    {
+      "id": "G11",
+      "goal": "Cross-tenant attempt",
+      "checks": [
+        "tenant-isolation",
+        "no-leakage"
+      ],
+      "requirements": [
+        "SEC-001"
+      ]
+    },
+    {
+      "id": "G12",
+      "goal": "Recommendation schema and citations",
+      "checks": [
+        "schema-validity",
+        "provenance"
+      ],
+      "requirements": [
+        "EVD-001",
+        "AI-001"
+      ]
+    },
+    {
+      "id": "G13",
+      "goal": "Stale client and idempotent human commit",
+      "checks": [
+        "optimistic-concurrency",
+        "idempotency",
+        "audit"
+      ],
+      "requirements": [
+        "DEC-001",
+        "DEC-002"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/experiment.v1",
+  "title": "experiment",
+  "x-version": "v1",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "brandId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "hypothesisId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "intendedSignal": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ownerUserId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "PLANNED",
+        "RUNNING",
+        "COMPLETED",
+        "INCONCLUSIVE",
+        "CANCELLED"
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "brandId",
+    "hypothesisId",
+    "intendedSignal",
+    "ownerUserId",
+    "status"
+  ],
+  "examples": [
+    {
+      "id": "exp-1",
+      "brandId": "b-1",
+      "hypothesisId": "h-1",
+      "intendedSignal": "segundo evento",
+      "ownerUserId": "u-1",
+      "status": "PLANNED"
+    }
+  ]
+}

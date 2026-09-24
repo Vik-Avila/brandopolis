@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/inference.v1",
+  "title": "inference",
+  "x-version": "v1",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "brandId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "statement": {
+      "type": "string",
+      "minLength": 1
+    },
+    "basisRefs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "required": [
+    "id",
+    "brandId",
+    "statement",
+    "basisRefs",
+    "limitations"
+  ],
+  "examples": [
+    {
+      "id": "inf-1",
+      "brandId": "b-1",
+      "statement": "Hay potencial de recurrencia",
+      "basisRefs": [
+        "ui-1"
+      ],
+      "limitations": [
+        "sin prueba piloto"
+      ]
+    }
+  ]
+}

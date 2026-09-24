@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/evidence.v1",
+  "title": "evidence",
+  "x-version": "v1",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "brandId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "claim": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "provenance": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceQuality": {
+      "enum": [
+        "HIGH",
+        "MEDIUM",
+        "LOW"
+      ]
+    },
+    "relevance": {
+      "enum": [
+        "DIRECT",
+        "INDIRECT"
+      ]
+    },
+    "freshness": {
+      "enum": [
+        "CURRENT",
+        "AGING",
+        "HISTORICAL"
+      ]
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "external": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id",
+    "brandId",
+    "claim",
+    "source",
+    "sourceDate",
+    "provenance",
+    "sourceQuality",
+    "relevance",
+    "freshness",
+    "limitations",
+    "external"
+  ],
+  "examples": [
+    {
+      "id": "e-1",
+      "brandId": "b-1",
+      "claim": "Entrevistas favorecen agencias",
+      "source": "Entrevistas propias",
+      "sourceDate": "2026-09-24",
+      "provenance": "registro de entrevista consentida",
+      "sourceQuality": "MEDIUM",
+      "relevance": "DIRECT",
+      "freshness": "CURRENT",
+      "limitations": [
+        "muestra pequeña"
+      ],
+      "external": false
+    }
+  ]
+}

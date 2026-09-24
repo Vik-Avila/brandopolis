@@ -1,0 +1,57 @@
+# Brandopolis
+
+## What It Is
+
+SaaS B2B AI-native de decisiones estratégicas conectadas para marcas. **AI proposes. Humans decide. Brandopolis remembers. People learn by building.** Producto conceptualmente congelado, pre-MVP, Engineering Foundation.
+
+## Why It Exists
+
+El porqué de decisiones de marca se dispersa entre chats, herramientas y personas. Brandopolis conserva contexto, decisiones, versiones y dependencias; cuando cambia una decisión, guía revisión humana.
+
+## Core Product Loop
+
+Context → Strategic Question → Evidence/Hypotheses → Options/Recommendation → Human Decision → Brand Context/Dependencies → Change Impact → Experiment/Signal/Learning → Updated Context. North Star: Connected Strategic Decision Made and Remembered.
+
+## Non-Negotiable Principles
+
+Autoridad humana, estructura, evidencia, continuidad, conexión, incertidumbre explícita, aprendizaje, reglas primero, IA semántica, profundidad y claridad de experiencia. [Principios canónicos](docs/01-product/product-principles.md).
+
+## Core Architecture
+
+TypeScript modular monolith + PostgreSQL; estado relacional, Gateway IA, Context Assembler y Research opcional. Sin Graph/Vector DB para MVP. [Dominio](docs/04-domain-model/README.md), [seguridad](docs/12-security/authorization.md).
+
+## M1
+
+User/Workspace/Brand; Customer + Positioning HARD; cambiar Customer con optimistic concurrency e idempotencia; preservar vieja versión; Needs Review/ReviewItem y explicación; revisión humana persistente; audit, tenant y tests. [Handoff Codex](handoff/CODEX_START_HERE.md).
+
+## Repository Map
+
+`docs/00..15` producto y arquitectura; `domain/` contratos conceptuales; `schemas/` JSON Schemas v1; `config/` reglas; `prompts/` funciones; `evals/` fixtures; `telemetry/` eventos; `handoff/` tareas; `scripts/` QA documental.
+
+## Canonical Sources
+
+[Source of Truth](docs/00-index/source-of-truth.md), [Product Bible operativa](docs/01-product/product-bible-v1.md), [Master Context](docs/00-index/BRANDOPOLIS_MASTER_CONTEXT_FOR_WORK.md). **Final Contract Patch independiente no disponible**; los cambios explícitos del hardening brief sí están aplicados. Su comparación es el único bloqueo de verificación final.
+
+## Current Status
+
+Foundation reforzada; **READY WITH BLOCKER** para declaración final de contrato. Fase siguiente M1 tras recibir/comparar Patch o confirmar su texto. No hay aplicación ni clientes/ingresos validados.
+
+## Open Technical Decisions
+
+Drizzle/Prisma, auth, proveedor IA inicial, research y despliegue; precio/WTP para piloto. [Open Questions](docs/15-handoff/open-questions.md).
+
+## Local Setup
+
+[LOCAL_HANDOFF.md](LOCAL_HANDOFF.md). Foundation sólo requiere Python 3.10+ para QA; Node LTS + pnpm vía Corepack y Docker se instalan para M1 según ADR. `.env.example` son ejemplos, sin credenciales. No existen comandos de aplicación antes de M1.
+
+## Validation Commands
+
+`python3 scripts/foundation_check.py` (Windows: `py -3 scripts/foundation_check.py`). Valida schemas con `jsonschema` si instalado; la distribución de Foundation incluye `requirements-foundation.txt` para instalarlo. Recomendado: `python3 -m pip install -r requirements-foundation.txt` antes de QA.
+
+## Start Here — Codex
+
+[AGENTS.md](AGENTS.md) → [SESSION_STATE.md](SESSION_STATE.md) → [CODEX_START_HERE](handoff/CODEX_START_HERE.md).
+
+## Start Here — Claude Code
+
+[CLAUDE.md](CLAUDE.md) → [CLAUDE_START_HERE](handoff/CLAUDE_START_HERE.md).

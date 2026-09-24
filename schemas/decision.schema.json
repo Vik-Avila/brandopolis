@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/decision.v1",
+  "title": "decision",
+  "x-version": "v1",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "brandId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "questionId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "activeVersionId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reviewStatus": {
+      "enum": [
+        "APPROVED",
+        "NEEDS_REVIEW",
+        "INVALIDATED"
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "brandId",
+    "questionId",
+    "activeVersionId",
+    "reviewStatus"
+  ],
+  "examples": [
+    {
+      "id": "d-1",
+      "brandId": "b-1",
+      "questionId": "q-1",
+      "activeVersionId": "v-2",
+      "reviewStatus": "APPROVED"
+    }
+  ]
+}

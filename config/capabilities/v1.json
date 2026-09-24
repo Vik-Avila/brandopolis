@@ -1,0 +1,22 @@
+{
+  "version": "v1",
+  "capabilities": [
+    "Problem Framing",
+    "Market Reasoning",
+    "Customer Understanding",
+    "Business Model Thinking",
+    "Strategic Differentiation",
+    "Brand Thinking",
+    "Message Prioritization",
+    "GTM Prioritization",
+    "Experimentation & Learning",
+    "Strategic AI Collaboration"
+  ],
+  "metacapabilities": [
+    "critical thinking",
+    "evidence-based reasoning",
+    "trade-off thinking",
+    "decision-making under uncertainty",
+    "adaptability"
+  ]
+}

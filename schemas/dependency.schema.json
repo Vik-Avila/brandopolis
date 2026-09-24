@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/dependency.v1",
+  "title": "dependency",
+  "x-version": "v1",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "brandId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "upstreamDecisionId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "downstreamDecisionId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "enum": [
+        "HARD",
+        "SOFT",
+        "INFORMATIVE"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ruleVersion": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "id",
+    "brandId",
+    "upstreamDecisionId",
+    "downstreamDecisionId",
+    "kind",
+    "reason",
+    "ruleVersion"
+  ],
+  "examples": [
+    {
+      "id": "dep-1",
+      "brandId": "b-1",
+      "upstreamDecisionId": "d-customer",
+      "downstreamDecisionId": "d-positioning",
+      "kind": "HARD",
+      "reason": "Positioning depende del cliente",
+      "ruleVersion": "v1"
+    }
+  ]
+}

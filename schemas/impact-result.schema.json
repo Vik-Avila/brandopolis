@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/impact-result.v1",
+  "title": "impact-result",
+  "x-version": "v1",
+  "properties": {
+    "triggerVersionId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "affectedDecisionIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "affected": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "downstreamDecisionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "dependencyType": {
+            "enum": [
+              "HARD",
+              "SOFT",
+              "INFORMATIVE"
+            ]
+          },
+          "impactStatus": {
+            "enum": [
+              "NEEDS_REVIEW",
+              "REVIEW_SUGGESTED",
+              "INFORMATION_ONLY"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "downstreamDecisionId",
+          "dependencyType",
+          "impactStatus",
+          "reason"
+        ]
+      }
+    },
+    "reviewOrder": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "required": [
+    "triggerVersionId",
+    "affectedDecisionIds",
+    "affected",
+    "reviewOrder"
+  ],
+  "examples": [
+    {
+      "triggerVersionId": "v-2",
+      "affectedDecisionIds": [
+        "d-positioning"
+      ],
+      "affected": [
+        {
+          "downstreamDecisionId": "d-positioning",
+          "dependencyType": "HARD",
+          "impactStatus": "NEEDS_REVIEW",
+          "reason": "cliente cambió"
+        }
+      ],
+      "reviewOrder": [
+        "d-positioning"
+      ]
+    }
+  ]
+}

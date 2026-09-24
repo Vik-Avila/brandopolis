@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/decision-version.v1",
+  "title": "decision-version",
+  "x-version": "v1",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "decisionId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "selectedOption": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1
+    },
+    "actorUserId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "approvedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "previousVersionId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "versionStatus": {
+      "enum": [
+        "APPROVED",
+        "SUPERSEDED"
+      ]
+    },
+    "hypothesisUsages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "hypothesisId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "assumptionInUse": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "hypothesisId",
+          "assumptionInUse"
+        ]
+      }
+    }
+  },
+  "required": [
+    "id",
+    "decisionId",
+    "sequence",
+    "selectedOption",
+    "rationale",
+    "actorUserId",
+    "approvedAt",
+    "previousVersionId",
+    "versionStatus",
+    "hypothesisUsages"
+  ],
+  "examples": [
+    {
+      "id": "v-2",
+      "decisionId": "d-1",
+      "sequence": 2,
+      "selectedOption": "Agencias pequeñas",
+      "rationale": "Mayor frecuencia multibrand",
+      "actorUserId": "u-1",
+      "approvedAt": "2026-09-24T12:00:00Z",
+      "previousVersionId": "v-1",
+      "versionStatus": "APPROVED",
+      "hypothesisUsages": []
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/assessment.v1",
+  "title": "assessment",
+  "x-version": "v1",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "userId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "phase": {
+      "enum": [
+        "PRE",
+        "POST"
+      ]
+    },
+    "instrumentVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "experienceLevel": {
+      "type": "string",
+      "minLength": 1
+    },
+    "selfAssessment": {
+      "type": "object"
+    },
+    "knowledgeCheck": {
+      "type": "object"
+    },
+    "completedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "id",
+    "userId",
+    "phase",
+    "instrumentVersion",
+    "experienceLevel",
+    "selfAssessment",
+    "knowledgeCheck",
+    "completedAt"
+  ],
+  "examples": [
+    {
+      "id": "a-1",
+      "userId": "u-1",
+      "phase": "PRE",
+      "instrumentVersion": "v1",
+      "experienceLevel": "beginner",
+      "selfAssessment": {},
+      "knowledgeCheck": {},
+      "completedAt": "2026-09-24T12:00:00Z"
+    }
+  ]
+}

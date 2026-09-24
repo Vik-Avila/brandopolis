@@ -1,0 +1,9 @@
+{
+  "research": false,
+  "capability_layer": true,
+  "experimental_evaluator": false,
+  "pilot_instrumentation": false,
+  "demo_mode": false,
+  "challenge_mode": false,
+  "second_provider": false
+}
