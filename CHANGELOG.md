@@ -27,3 +27,9 @@ Depends on: —
 - Corregido drift de Assumption in Use en Brand Context y reconciliation log según resolución humana. Bible y schemas sin cambios.
 - Registrada autorización M1 sin atribuir contenido al Patch ausente.
 - Foundation QA usa UTF-8 y excluye dependencias/artefactos locales; jsonschema instalado desde requirements-foundation.txt en .venv.
+
+## 2026-09-24 Sprint 01 — núcleo M1
+- Motor relacional real con versiones, human commit, concurrencia optimista, idempotencia, audit e impacto posterior recuperable.
+- Migraciones PostgreSQL, sesiones DEMO, tenant/Brand, reviews ligados a impacto visto y contratos validados.
+- 18 pruebas PostgreSQL/HTTP, typecheck y lint en verde; Foundation 0 errores.
+- ADR-0011 decide Drizzle y boundary de sesión M1; auth final pendiente.

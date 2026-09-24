@@ -53,9 +53,9 @@ for name in sorted(expected_schemas-set(schemas)):errors.append('Missing schema 
 if 'ASSUMPTION_IN_USE' in json.dumps(schemas.get('hypothesis',{}).get('properties',{}).get('status',{})):errors.append('Assumption incorrectly modeled as Hypothesis status')
 if 'INFORMATIVE' not in json.dumps(schemas.get('dependency',{})):errors.append('Dependency INFORMATIVE missing')
 if 'INCONCLUSIVE' not in json.dumps(schemas.get('experiment',{})):errors.append('Experiment INCONCLUSIVE missing')
-for n in ('0001','0002','0005','0006','0007','0008','0009','0010'):
+for n in ('0001','0002','0003','0005','0006','0007','0008','0009','0010'):
  if not (ROOT/f'docs/14-decisions/ADR-{n}.md').read_text(encoding='utf-8').startswith('Status: accepted'):errors.append('ADR accepted drift '+n)
-for n in ('0003','0004'):
+for n in ('0004',):
  if not (ROOT/f'docs/14-decisions/ADR-{n}.md').read_text(encoding='utf-8').startswith('Status: open'):errors.append('ADR open drift '+n)
 print('Markdown',len(list(files('.md'))),'JSON',len(list(files('.json'))),'schemas',len(schemas),'requirements',len(reqs),'golden cases',len(cases),'errors',len(errors))
 for e in errors:print('ERROR:',e)

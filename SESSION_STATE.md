@@ -1,15 +1,12 @@
 # Session State
 
-Current Phase: Engineering Foundation hardening completed from available materials.
-Current Milestone: M1 — Connected Decision Proof.
-Foundation Status: READY WITH BLOCKER for final contract signoff; independent Final Contract Patch not supplied.
-Conceptual Blockers: verify/apply `BRANDOPOLIS_FINAL_CONTRACT_PATCH_BEFORE_CODEX.md` when provided; explicit corrections in hardening brief applied.
-Open Technical Decisions: Drizzle/Prisma, auth implementation, initial AI/research provider, deployment; pricing/WTP pilot.
-Last Completed: state/schema/evidence/dependency/telemetry/ADR/local handoff hardening and QA script.
-Next Task: receive/compare Patch; then Codex implements M1, Claude reviews compliance.
-Do Not Start: P1, broad UI, chat, billing, integrations, full MVP in this Foundation.
-Tests Status: document/schema QA in `docs/15-handoff/qa-report.md`; no product code/tests yet.
-
-
-## Resolución humana · 2026-09-24 · Sprint 01
-El usuario autoriza implementar M1 sobre los contratos canónicos presentes y corregir drift documental inequívoco. ASSUMPTION_IN_USE es relación/flag de dependencia de una Decision vigente sobre una Hypothesis no validada, nunca status. Las referencias anteriores al Patch independiente describen la limitación histórica de cotejo, no un gate de entrada a M1. No se ha localizado ni se afirma haber cotejado ese archivo. Esta resolución sustituye instrucciones anteriores de esperar ese cotejo para iniciar M1; no cambia Bible, invariantes ni alcance.
+Current Phase: Engineering
+Current Milestone: M1 — Connected Decision Proof; núcleo aprobado por checks locales; comienza shell P0.
+Completed: motor TypeScript/Drizzle, PostgreSQL real, 17 tablas, 2 migraciones, human commit, historial, impacto determinista, reviews con receipt, sesiones/tenant/Brand, audit y telemetry separados, transporte HTTP.
+Tests: pnpm typecheck PASS; pnpm lint PASS; pnpm test 18/18 PASS (PostgreSQL 17 + HTTP E2E).
+Foundation Check: PASS, 0 errores.
+Technical Decisions: ADR-0011; Drizzle resuelve ADR-0003; auth final ADR-0004 permanece abierto, sesión opaca DEMO implementada.
+Known Debt: auth/provisioning producción pendiente; servidor M1 sólo loopback; no UI verificada todavía; wrapper PostgreSQL dev beta fijado; no IA/research requerido.
+Blockers: ninguno para M1/P0 contiguo. Patch independiente no localizado/cotejado; limitación histórica de signoff, no gate M1 según resolución humana 2026-09-24.
+Next Recommended Task: shell mínimo Customer/Positioning/Impact/Context y QA de navegador.
+Claude Review Ready: NO (iteración en curso).
