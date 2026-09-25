@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import type { Engine } from '../application/engine.js';
 import { AppError, type CommitCommand } from '../domain/contracts.js';
 import type { PilotBoundary } from './pilot-auth.js';
-import { randomUUID } from 'node:crypto';
+import { randomUUID,createHash } from 'node:crypto';
 
 async function body(req:IncomingMessage):Promise<Record<string,unknown>> {
   if(!req.headers['content-type']?.startsWith('application/json')) throw new AppError('INVALID','JSON required');
@@ -13,10 +13,27 @@ async function body(req:IncomingMessage):Promise<Record<string,unknown>> {
 function string(value:unknown):string {if(typeof value!=='string'||!value) throw new AppError('INVALID','String required');return value;}
 export function cookieMaxAge(expiresAt:Date,now=Date.now()) {return Math.max(0,Math.floor((expiresAt.getTime()-now)/1000));}
 function send(res:ServerResponse,status:number,data:unknown) {res.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(data));}
+// Single-node, in-memory fixed-window limiter for the PILOT process. Counters reset on restart and are
+// not shared across replicas; a multi-instance deployment needs a shared limiter at the proxy or store.
+export interface Limiter {allow(key:string,limit:number,windowMs:number):boolean}
+export class RateLimiter implements Limiter {
+  private hits=new Map<string,{start:number;count:number}>();
+  constructor(private now=()=>Date.now()) {}
+  allow(key:string,limit:number,windowMs:number) {
+    const t=this.now(),entry=this.hits.get(key);
+    if(this.hits.size>50000)for(const [k,v] of this.hits)if(t-v.start>3600000)this.hits.delete(k);
+    if(!entry||t-entry.start>=windowMs){this.hits.set(key,{start:t,count:1});return true;}
+    return ++entry.count<=limit;
+  }
+}
+export const pilotLimits={all:[600,60000],auth:[20,60000],ai:[20,600000],feedback:[20,600000]} as const;
 export function createApp(engine:Engine,assets?:(path:string)=>{content:string|Buffer;type:string}|undefined,health?:()=>Promise<string>,pilot?:PilotBoundary) {
-  let windowStart=Date.now(),requests=0,logins=0;
+  const limiter=pilot?.limiter??new RateLimiter();
   return createServer(async(req,res)=>{
-    if(pilot){const requestId=randomUUID();res.setHeader('X-Request-Id',requestId);res.once('finish',()=>console.log(JSON.stringify({event:'http_request',requestId,status:res.statusCode,method:req.method})));}
+    const requestId=randomUUID();
+    const limited=(key:string,[limit,windowMs]:readonly [number,number])=>{if(limiter.allow(key,limit,windowMs))return false;res.setHeader('Retry-After',String(Math.ceil(windowMs/1000)));send(res,429,{code:'RATE_LIMITED',message:'Demasiadas solicitudes. Espera un momento e inténtalo de nuevo.'});return true;};
+    // Structured access log without paths, query strings, cookies or bodies (they may carry identifiers or strategy text).
+    if(pilot){res.setHeader('X-Request-Id',requestId);res.once('finish',()=>console.log(JSON.stringify({event:'http_request',requestId,status:res.statusCode,method:req.method})));}
     res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
     res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
     try {
@@ -24,14 +41,15 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
       if(pilot){
         if(req.headers.host!==new URL(pilot.origin).host)throw new AppError('FORBIDDEN','Host not allowed');
         res.setHeader('Strict-Transport-Security','max-age=31536000');
-        if(Date.now()-windowStart>60000){windowStart=Date.now();requests=0;logins=0;}
-        if(++requests>600){res.setHeader('Retry-After','60');return send(res,429,{code:'UNAVAILABLE'});}
-        if(req.url?.startsWith('/auth/login')&&++logins>30){res.setHeader('Retry-After','60');return send(res,429,{code:'UNAVAILABLE'});}
+        const forwarded=pilot.trustProxy?String(req.headers['x-forwarded-for']??'').split(',').map(v=>v.trim()).filter(Boolean).at(-1):undefined;
+        const client=forwarded??req.socket.remoteAddress??'unknown';
+        if(limited('all:'+client,pilotLimits.all))return;
+        if(req.url?.startsWith('/auth/')&&limited('auth:'+client,pilotLimits.auth))return;
       }else if(!/^127\.0\.0\.1:\d+$/.test(req.headers.host??'')) throw new AppError('FORBIDDEN','Loopback host required');
       const url=new URL(req.url??'/',pilot?.origin??`http://${req.headers.host}`),path=url.pathname;
       if(pilot&&url.origin!==pilot.origin)throw new AppError('FORBIDDEN','Origin not allowed');
       if(pilot&&await pilot.handle(req,res,url))return;
-      if(req.method==='GET'&&path==='/api/mode')return send(res,200,{mode:pilot?'PILOT':'DEMO'});
+      if(req.method==='GET'&&path==='/api/mode')return send(res,200,{mode:pilot?'PILOT':'DEMO',requestAccessUrl:pilot?.requestAccessUrl??null});
       if(req.method==='GET'&&path==='/health') {
         const ready=health?await health():'UNAVAILABLE';return send(res,ready==='READY'?200:503,{application:pilot?'brandopolis-pilot':'brandopolis-competition',protocol:pilot?'pilot-v1':'rc1',status:ready==='READY'?'ready':'unavailable'});
       }
@@ -45,7 +63,12 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
       const token=(pilot?cookie:bearer??cookie)??'';
       if(pilot){
         if(req.method==='POST'&&req.headers.origin!==pilot.origin)throw new AppError('FORBIDDEN','Same-origin action required');
+        // Logout always clears the browser cookie, even for an already expired or revoked session.
+        if(req.method==='POST'&&path==='/api/logout'){if(token)await pilot.logout(token);res.setHeader('Set-Cookie',`${cookieName}=; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`);return send(res,200,{authenticated:false});}
         await pilot.authorize(token);
+        const subject=createHash('sha256').update(token).digest('hex');
+        if(req.method==='POST'&&path==='/api/recommendations/generate'&&limited('ai:'+subject,pilotLimits.ai))return;
+        if(req.method==='POST'&&path==='/api/feedback'&&limited('feedback:'+subject,pilotLimits.feedback))return;
       }
       if(req.method==='POST') {
         if(!pilot&&!bearer&&req.headers.origin!==`http://${req.headers.host}`) throw new AppError('FORBIDDEN','Same-origin human action required');
@@ -83,7 +106,10 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
       send(res,404,{code:'NOT_FOUND'});
     } catch(error) {
       if(error instanceof AppError) {const status={UNAUTHORIZED:401,FORBIDDEN:403,CONFLICT:409,INVALID:400,NOT_FOUND:404,UNAVAILABLE:503}[error.code];send(res,status,{code:error.code,message:error.message});}
-      else send(res,503,{code:'UNAVAILABLE',message:'Operation unavailable; retry with the same idempotency key.'});
+      else {
+        if(pilot)console.error(JSON.stringify({event:'http_error',requestId,kind:error instanceof Error?error.name:'unknown'}));
+        send(res,503,{code:'UNAVAILABLE',message:'Operation unavailable; retry with the same idempotency key.'});
+      }
     }
   });
 }

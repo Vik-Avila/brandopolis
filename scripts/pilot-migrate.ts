@@ -1,3 +1,4 @@
+import { ConfigError } from '../src/transport/pilot-auth.js';
 import { existsSync,statSync } from 'node:fs';
 import { connect } from '../src/persistence/database.js';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
@@ -8,9 +9,9 @@ let connection:ReturnType<typeof connect>|undefined;
 try{
  const config=pilotConfig();connection=connect(config.databaseUrl);
  const tables=await connection.pool.query("select count(*)::int as n from pg_tables where schemaname='public'");
- if(tables.rows[0].n>0){const backup=process.env.PILOT_BACKUP_FILE;if(!backup||!existsSync(backup)||statSync(backup).size===0||process.env.PILOT_RECOVERY_VERIFIED!=='yes')throw new Error('Recovery prerequisite missing');}
+ if(tables.rows[0].n>0){const backup=process.env.PILOT_BACKUP_FILE;if(!backup||!existsSync(backup)||statSync(backup).size===0||process.env.PILOT_RECOVERY_VERIFIED!=='yes')throw new ConfigError('Existing data found: set PILOT_BACKUP_FILE to a non-empty verified backup and PILOT_RECOVERY_VERIFIED=yes before migrating.');}
  const client=await connection.pool.connect();
  try{await client.query('select pg_advisory_lock(9262501)');try{await migrate(drizzle(client),{migrationsFolder:resolve('drizzle')});}finally{await client.query('select pg_advisory_unlock(9262501)');}}finally{client.release();}
  console.log('Forward migrations applied; no seed/reset performed.');
-}catch{console.error('Migration gate refused. Verify PILOT config and a tested recovery backup before upgrading existing data.');process.exitCode=1;}
+}catch(error){console.error(error instanceof ConfigError?error.message:'Migration gate refused. Verify PILOT config and a tested recovery backup before upgrading existing data.');process.exitCode=1;}
 finally{await connection?.pool.end();}

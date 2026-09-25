@@ -1,5 +1,5 @@
 import { randomBytes,randomUUID } from 'node:crypto';
-import { and,eq } from 'drizzle-orm';
+import { and,asc,eq,gt } from 'drizzle-orm';
 import type { Database } from '../persistence/database.js';
 import * as t from '../persistence/schema.js';
 import { AppError } from '../domain/contracts.js';
@@ -37,6 +37,35 @@ export class PilotAccess {
       await tx.update(t.pilotIdentities).set({active:false}).where(eq(t.pilotIdentities.userId,userId));
       await tx.update(t.memberships).set({active:false}).where(and(eq(t.memberships.userId,userId),eq(t.memberships.workspaceId,who.workspaceId)));
       await tx.delete(t.sessions).where(eq(t.sessions.userId,userId));
+    });
+  }
+  async inspect(ref:{userId?:string;subject?:string}) {
+    const [who]=await this.db.select().from(t.pilotIdentities).where(ref.userId?eq(t.pilotIdentities.userId,ref.userId):and(eq(t.pilotIdentities.issuer,this.issuer),eq(t.pilotIdentities.subject,String(ref.subject??''))));
+    if(!who)throw new AppError('NOT_FOUND','Tester unavailable');
+    const [member]=await this.db.select().from(t.memberships).where(and(eq(t.memberships.workspaceId,who.workspaceId),eq(t.memberships.userId,who.userId)));
+    const [workspace]=await this.db.select().from(t.pilotWorkspaces).where(eq(t.pilotWorkspaces.workspaceId,who.workspaceId));
+    const brands=await this.db.select({id:t.brands.id,name:t.brands.name}).from(t.assignments).innerJoin(t.brands,and(eq(t.brands.id,t.assignments.brandId),eq(t.brands.workspaceId,t.assignments.workspaceId))).where(and(eq(t.assignments.userId,who.userId),eq(t.assignments.workspaceId,who.workspaceId)));
+    const sessions=await this.db.select().from(t.sessions).where(and(eq(t.sessions.userId,who.userId),gt(t.sessions.expiresAt,new Date())));
+    // Subject is shown for operator correlation only; session tokens are never exposed.
+    return {userId:who.userId,issuer:who.issuer,subject:who.subject,workspaceId:who.workspaceId,cohort:workspace?.cohort??null,identityActive:who.active,membershipActive:member?.active??false,role:member?.role??null,brands,activeSessions:sessions.length};
+  }
+  async revokeSessions(userId:string) {
+    const [who]=await this.db.select().from(t.pilotIdentities).where(eq(t.pilotIdentities.userId,userId));
+    if(!who)throw new AppError('NOT_FOUND','Tester unavailable');
+    return {revoked:(await this.db.delete(t.sessions).where(eq(t.sessions.userId,userId)).returning()).length};
+  }
+  // Activation = first strategic Decision approved. Durations in seconds from the tester's first session.
+  async metrics() {
+    const rows=await this.db.select().from(t.pilotEvents).orderBy(asc(t.pilotEvents.occurredAt));
+    const users=new Map<string,typeof rows>();for(const r of rows)users.set(r.userId,[...(users.get(r.userId)??[]),r]);
+    const first=(events:typeof rows,name:string)=>events.find(e=>e.name===name)?.occurredAt;
+    const since=(a?:Date,b?:Date)=>a&&b?Math.round((b.getTime()-a.getTime())/1000):null;
+    return [...users].map(([userId,events])=>{
+      const start=first(events,'session_started'),decisions=events.filter(e=>e.name==='decision_created');
+      return {userId,cohort:events[0].cohort,sessions:events.filter(e=>e.name==='session_started').length,brands:new Set(events.filter(e=>e.name==='brand_created').map(e=>e.brandId)).size,
+        recommendationsRequested:events.filter(e=>e.name==='recommendation_requested').length,recommendationsFailed:events.filter(e=>e.name==='analysis_failed').length,
+        decisionsApproved:decisions.length,activated:decisions.length>0,reviewsCompleted:events.filter(e=>e.name==='change_impact_review_completed').length,
+        secondStrategicEvent:decisions.length>1,timeToFirstInsightSeconds:since(start,first(events,'recommendation_generated')),timeToFirstDecisionSeconds:since(start,decisions[0]?.occurredAt)};
     });
   }
   async issueSession(subject:string) {

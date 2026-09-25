@@ -7,6 +7,18 @@ Depends on: —
 
 # Registro
 
+## MVP / PILOT · continuación de Claude · 2026-09-25
+
+- Se conserva el checkpoint de Codex (acceso OIDC, sesiones, CLI, migración 0008, feedback, telemetría, adaptador IA).
+- Corregida la carrera de apagado de PostgreSQL: `stopLocalDb` usa `pg_ctl stop -w` sobre su propio clúster y espera el cierre real antes de copiar.
+- OIDC neutral: cliente público PKCE opcional, redirect configurable, fallos redirigen con motivo y nunca emiten sesión.
+- Límite de solicitudes por cliente y por sesión (antes global); logout siempre limpia la cookie; errores de configuración legibles sin secretos.
+- Adaptador Anthropic sobre el SDK oficial con errores tipados; telemetría `recommendation_requested`.
+- CLI: `inspect`, `revoke-sessions`, `metrics` (activación, tiempo a primera propuesta y decisión). Onboarding breve y enlace de solicitud de acceso.
+- DEMO y PILOT rechazan bases con datos de la otra clase.
+- Pruebas: 42 de motor/contrato, 10 de navegador PILOT por HTTPS con login OIDC real, preservación de datos RC1 creada por el motor RC1 congelado y respaldo → cambio → restauración.
+- Documentación: PILOT_RUNBOOK, PILOT_DEPLOYMENT_CONTRACT, TESTER_GUIDE, COMPETITION_DEMO_GUIDE y revisión de seguridad PILOT.
+
 ## RC1 · cierre de revisión independiente de Claude · 2026-09-24
 
 - `competition:check` deriva el número de migraciones del journal (F-1).

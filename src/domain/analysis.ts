@@ -5,6 +5,7 @@ export type ContextPacket=ReturnType<typeof assemble>;
 export interface Recommendation {id:string;brandId:string;questionId:string;contextVersion:string;options:{id:string;label:string;rationale:string;tradeoffs:string[]}[];recommendedOptionId:string|null;rationale:string;evidenceReferences:string[];hypothesesUsed:string[];tradeoffs:string[];openQuestions:string[];supportLevel:string;affectedDomains:string[];failureConditions:string[]}
 export interface GatewayRequest {task:'STRATEGIC_ANALYSIS';module:string;promptVersion:string;contextVersion:string;input:ContextPacket;outputSchema:'recommendation';budget:{maxCharacters:number;timeoutMs:number};tenantScope:{workspaceId:string;brandId:string};questionId:string}
 export type GatewayError='UNAVAILABLE'|'TIMEOUT'|'INVALID_OUTPUT'|'RATE_LIMIT'|'BUDGET_EXCEEDED'|'PROVIDER_ERROR';
+export class ProviderFailure extends Error {constructor(readonly code:GatewayError){super(code);}}
 export interface ModelProvider {name:string;model:string;generate(request:GatewayRequest):Promise<unknown>;generateMeasured?(request:GatewayRequest):Promise<{output:unknown;tokenIn:number|null;tokenOut:number|null}>}
 export class ModelGateway {
   constructor(private provider:ModelProvider,readonly promptVersion='competition-demo-v1',readonly timeoutMs=5000) {}
@@ -18,7 +19,7 @@ export class ModelGateway {
       const result=await Promise.race([generated,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('TIMEOUT')),request.budget.timeoutMs);})]);
       try {validate(request.outputSchema,result);} catch {return {error:'INVALID_OUTPUT' as GatewayError,result:null,...meta()};}
       return {error:null,result:result as Recommendation,...meta()};
-    } catch(error) {return {error:(error instanceof Error&&error.message==='TIMEOUT'?'TIMEOUT':'PROVIDER_ERROR') as GatewayError,result:null,...meta()};}
+    } catch(error) {return {error:(error instanceof ProviderFailure?error.code:error instanceof Error&&error.message==='TIMEOUT'?'TIMEOUT':'PROVIDER_ERROR') as GatewayError,result:null,...meta()};}
     finally {if(timer)clearTimeout(timer);}
   }
 }

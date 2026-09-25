@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync, mkdirSync, writeFileSync, copyFileSync } from 'node:fs';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { eq } from 'drizzle-orm';
-import { startLocalDb } from '../scripts/local-db.js';
+import { startLocalDb,stopLocalDb } from '../scripts/local-db.js';
 import { migrateDatabase } from '../scripts/migrate.js';
 import { seedIdentity } from '../scripts/seed.js';
 import { connect } from '../src/persistence/database.js';
@@ -28,7 +28,7 @@ beforeAll(async()=>{
   await migrateDatabase(connection.db); // replay must be harmless
   engine=new Engine(connection.db);
 });
-afterAll(async()=>{await connection?.pool.end();await local?.db.stop();});
+afterAll(async()=>{await connection?.pool.end();if(local)await stopLocalDb(local);});
 async function setup(target=engine) {
   const who=await seedIdentity(connection.db),brand=await target.createBrand(who.token,'M1 DEMO');
   const ctx=await target.context(who.token,brand.id);

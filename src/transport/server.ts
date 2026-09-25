@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { connect } from '../persistence/database.js';
-import { readiness } from '../persistence/readiness.js';
+import { readiness,dataClassViolation } from '../persistence/readiness.js';
 import { Engine } from '../application/engine.js';
 import { createApp } from './http.js';
 import { databaseUrl } from '../../scripts/local-db.js';
@@ -20,6 +20,7 @@ export async function startServer(url=databaseUrl(),port=3000) {
   for(const [file] of Object.values(runtimeAssets))readFileSync(file);
   const {db,pool}=connect(url),state=await readiness(pool);
   if(state!=='READY'){await pool.end();throw new Error(state==='MIGRATIONS_REQUIRED'?'Faltan migraciones o no coinciden. Ejecuta pnpm competition:start.':'PostgreSQL local no está disponible. Ejecuta pnpm competition:start o pnpm db:start.');}
+  const violation=await dataClassViolation(pool,'DEMO');if(violation){await pool.end();throw new Error('Esta base contiene datos PILOT; la demo sólo usa su base DEMO local.');}
   const server=createApp(new Engine(db),path=>{
     const file=runtimeAssets[(path==='/login'||path==='/workspace'?'/':path) as keyof typeof runtimeAssets];
     return file?{content:readFileSync(file[0]),type:file[1]}:undefined;

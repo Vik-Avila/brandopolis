@@ -179,6 +179,7 @@ export class Engine {
       if(await this.contextVersion(tx,s)!==packet.contextVersion) throw new AppError('CONFLICT','Context changed during analysis');
       const evaluation=result?evaluate(result,packet):null;
       const invalid=!result||result.brandId!==brandId||result.questionId!==questionId||result.contextVersion!==packet.contextVersion||evaluation?.issues.some(i=>i.severity==='CONFLICT');
+      await this.event(tx,s,'recommendation_requested');
       if(invalid) {
         await this.event(tx,s,'analysis_failed','SYSTEM');
         await tx.insert(t.analyses).values({id:id(),workspaceId:s.workspaceId,brandId,contextVersion:packet.contextVersion,evaluation,trace:{...trace,error:trace.error??'INVALID_OUTPUT'},createdAt:new Date()});

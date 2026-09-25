@@ -2,7 +2,7 @@ import { CompetitionError } from './competition-error.js';
 import { existsSync,readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { checkRuntime,competitionProfile,localCompetitionUrl,ensureDemoSession } from './competition-environment.js';
-import { startLocalDb } from './local-db.js';
+import { startLocalDb,stopLocalDb } from './local-db.js';
 import { connect } from '../src/persistence/database.js';
 import { Engine } from '../src/application/engine.js';
 import { migrateDatabase } from './migrate.js';
@@ -13,7 +13,7 @@ import { readiness } from '../src/persistence/readiness.js';
 const profile=competitionProfile(process.argv.includes('--isolated'));
 let ownedDb:Awaited<ReturnType<typeof startLocalDb>>|undefined,app:Awaited<ReturnType<typeof startServer>>|undefined,connection:ReturnType<typeof connect>|undefined;
 let closing=false;
-async function stop(){if(closing)return;closing=true;await app?.stop();await connection?.pool.end();connection=undefined;await ownedDb?.db.stop();}
+async function stop(){if(closing)return;closing=true;await app?.stop();await connection?.pool.end();connection=undefined;if(ownedDb)await stopLocalDb(ownedDb);}
 async function portAvailable(port:number){const probe=createServer();try{await new Promise<void>((resolve,reject)=>{probe.once('error',reject);probe.listen(port,'127.0.0.1',resolve);});return true;}catch{return false;}finally{if(probe.listening)await new Promise<void>(resolve=>probe.close(()=>resolve()));}}
 try {
   checkRuntime();

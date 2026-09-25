@@ -10,11 +10,11 @@ async function api(path,input) {
     response=await fetch(path,{method:input===undefined?'GET':'POST',headers:{'Content-Type':'application/json'},body:input===undefined?undefined:JSON.stringify(input),signal:AbortSignal.timeout(15000)});
     data=await response.json();
   } catch {
-    preserveDraft();throw new Error(input===undefined?'No pudimos conectar con la demo local. Comprueba que la terminal siga abierta y vuelve a intentar.':'No recibimos confirmación. Tu borrador se conserva. Revisa el estado antes de repetir la acción para evitar duplicados.');
+    preserveDraft();throw new Error(input===undefined?(pilotMode?'No pudimos conectar con Brandopolis. Revisa tu conexión y vuelve a intentar.':'No pudimos conectar con la demo local. Comprueba que la terminal siga abierta y vuelve a intentar.'):'No recibimos confirmación. Tu borrador se conserva. Revisa el estado antes de repetir la acción para evitar duplicados.');
   }
   if(!response.ok) {
     const conflict=path.includes('/learning/')?'Este registro cambió o no permite esa acción. Vuelve a abrir Experimentos y aprendizajes para revisar su estado.':path.includes('/recommendations/')?'La propuesta ya no corresponde al contexto actual. Vuelve a abrir la decisión y compara opciones de nuevo.':'Esta decisión cambió mientras la estabas editando. Revisa la versión más reciente antes de aprobar. Si usaste una recomendación, genera otra con el contexto actual.';
-    const messages={CONFLICT:conflict,UNAUTHORIZED:pilotMode?'Tu sesión venció. Vuelve a entrar al piloto.':'Tu sesión DEMO venció o no está disponible. Vuelve a entrar con la sesión local vigente.',FORBIDDEN:'No tienes permiso para esta acción. Revisa que hayas entrado con la sesión DEMO correcta.',UNAVAILABLE:'La demo local no está disponible. Conserva tu borrador y comprueba que la terminal siga abierta.',INVALID:'Revisa los campos requeridos y el contexto disponible antes de continuar.',NOT_FOUND:'La marca o el registro ya no está disponible para esta sesión. Selecciona una marca accesible.'};
+    const messages={CONFLICT:conflict,UNAUTHORIZED:pilotMode?'Tu sesión venció. Vuelve a entrar al piloto.':'Tu sesión DEMO venció o no está disponible. Vuelve a entrar con la sesión local vigente.',FORBIDDEN:pilotMode?'No tienes permiso para esta acción o esta marca.':'No tienes permiso para esta acción. Revisa que hayas entrado con la sesión DEMO correcta.',UNAVAILABLE:pilotMode?'El servicio no está disponible por el momento. Tu borrador se conserva; vuelve a intentar en unos minutos.':'La demo local no está disponible. Conserva tu borrador y comprueba que la terminal siga abierta.',RATE_LIMITED:'Demasiadas solicitudes seguidas. Espera un momento y vuelve a intentar.',INVALID:'Revisa los campos requeridos y el contexto disponible antes de continuar.',NOT_FOUND:'La marca o el registro ya no está disponible para esta sesión. Selecciona una marca accesible.'};
     if(data.code==='UNAUTHORIZED'){preserveDraft();$('#login').hidden=false;$('#workspace').hidden=true;$('#logout').hidden=true;$('#menu').hidden=true;}
     throw Object.assign(new Error(messages[data.code]??'No se pudo completar la operación. Conserva tus datos y revisa el estado antes de reintentar.'),{code:data.code});
   }
@@ -42,7 +42,7 @@ async function refresh(){if(brandId)context=await api(`/api/context?brandId=${en
 function render() {
   setNavActive();
   document.querySelectorAll('[data-module]').forEach(b=>{if(b.dataset.module===selected)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});
-  if(!context){$('#decision').innerHTML='<p class="empty">Crea una marca para comenzar con tu cliente principal.</p>';$('#context').innerHTML='';return;}
+  if(!context){$('#decision').innerHTML=pilotMode?'<section class="analysis-item" aria-labelledby="onboarding-title"><p class="eyebrow">Bienvenida al piloto</p><h2 id="onboarding-title">Construye tu primera decisión estratégica.</h2><p>Brandopolis conecta las decisiones de tu marca: primero a quién sirves, después cómo quieres ser elegido. Cuando algo cambia, te muestra qué revisar.</p><ol><li>Crea tu marca con el campo «Nueva marca».</li><li>Responde la primera pregunta: tu cliente principal.</li><li>Pide una propuesta, compárala y decide con tu criterio.</li></ol><p><strong>La IA propone. Tú decides. Brandopolis recuerda.</strong></p></section>':'<p class="empty">Crea una marca para comenzar con tu cliente principal.</p>';$('#context').innerHTML='';return;}
   history.replaceState(null,'',`/?brand=${encodeURIComponent(brandId)}&module=${encodeURIComponent(selected)}`);
   const q=context.questions.find(q=>q.module===selected),d=context.decisions.find(d=>d.questionId===q.id),v=context.versions.find(v=>v.id===d?.activeVersionId),reviews=context.reviews.filter(r=>r.downstreamDecisionId===d?.id&&r.status!=='COMPLETED');
   const pending=context.impacts.some(i=>i.status==='IMPACT_PENDING');
@@ -99,7 +99,10 @@ api('/api/mode').then(async mode=>{
  pilotMode=mode.mode==='PILOT';
  if(pilotMode){
   $('#login-form').hidden=true;
-  const entry=document.createElement('section');entry.innerHTML='<p class="eyebrow">PILOT · acceso por invitación</p><p>The Brand Operating System</p><p>Construye tu primera decisión estratégica. La IA propone; tú decides. Tus marcas conservan contexto e historial dentro de tu espacio autorizado.</p><p><a href="/auth/login">Entrar al piloto</a></p><p>Para solicitar acceso, contacta a la persona que organiza el piloto.</p>';$('#login').append(entry);
+  const entry=document.createElement('section');entry.innerHTML='<p class="eyebrow">PILOT · acceso por invitación</p><p>Construye tu primera decisión estratégica. La IA propone; tú decides. Tus marcas conservan contexto e historial dentro de tu espacio autorizado.</p><p><a href="/auth/login">Entrar al piloto</a></p><p id="request-access">Para solicitar acceso, contacta a la persona que organiza el piloto.</p>';$('#login').append(entry);
+  if(mode.requestAccessUrl&&/^(https:|mailto:)/.test(mode.requestAccessUrl)){const link=document.createElement('a');link.href=mode.requestAccessUrl;link.textContent='Solicitar acceso';link.rel='noopener';$('#request-access').replaceChildren('¿Aún no tienes acceso? ',link);}
+  const login=new URL(location.href).searchParams.get('login'),reasons={denied:'Tu identidad no tiene acceso a este piloto. Solicita acceso a quien lo organiza.',expired:'El inicio de sesión tardó demasiado. Vuelve a intentarlo.',failed:'No se pudo completar el inicio de sesión. Vuelve a intentarlo.'};
+  if(reasons[login]){notice(reasons[login],true);history.replaceState(null,'','/');}
   const feedback=document.createElement('button');feedback.id='pilot-feedback';feedback.className='secondary';feedback.textContent='Compartir feedback';feedback.addEventListener('click',()=>run(showFeedback));$('#journey').append(feedback);
  }
  await api('/api/me');await authenticated();

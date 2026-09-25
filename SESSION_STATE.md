@@ -1,5 +1,27 @@
 # Session State
 
+Current Phase: MVP / PILOT RELEASE — Claude continuation of the Codex Pilot handoff.
+
+Current Status: PILOT READY FOR CONFIGURATION AND FIRST TESTERS once external decisions are supplied (hosting, OIDC provider, domain, Anthropic account). Local DEMO remains ready. Production: NOT claimed.
+
+Frozen RC1 SHA: f4946683c8767aedc6c2fc7403d03beb3ab61e04 (tag brandopolis-rc1-demo-ready-2026-09-24, branch release/rc1-frozen-2026-09-24; untouched).
+Codex Pilot handoff: tag pilot-codex-handoff-2026-09-25 → 3ad7cff30be8bab567ff25f71be7f9d91fdd7484 (kept in history, not amended).
+Claude Pilot final SHA: commit that adds docs/15-handoff/pilot-security-review.md, resolvable with `git log -1 --format=%H -- docs/15-handoff/pilot-security-review.md`; the full SHA is in the continuation report. Branch: pilot/mvp-release-2026-09-25.
+
+Pilot scope delivered: provider-neutral OIDC login (confidential or public PKCE client, configurable redirect), explicit issuer+subject tester mapping, 8 h revocable sessions, operator CLI (create, assign, inspect, revoke-sessions, disable, classify-session, metrics), per-tester workspaces, multi-brand, DEMO/PILOT database separation enforced at startup, Anthropic adapter on the official SDK behind ModelGateway with safe failure, Pilot telemetry (activation = first approved Decision; Time to First Insight / First Decision via metrics), feedback and issue report, concise onboarding, request-access link, per-client in-memory rate limiting, clean PostgreSQL shutdown for backups, backup/restore and migration-preservation tests. Docs: PILOT_RUNBOOK, PILOT_DEPLOYMENT_CONTRACT, TESTER_GUIDE, COMPETITION_DEMO_GUIDE, pilot-security-review; ADR-0013/0014 updated.
+
+Final gate (2026-09-25): typecheck/lint PASS; pnpm test 42/42 (27 RC1 contract + 3 RC1 review + 12 Pilot); test:integration 42/42 (same suite); test:e2e 25/25 (5 viewports); test:pilot:e2e 10/10 over HTTPS (2 tests × 5 viewports, including real browser OIDC login); competition:start/check --isolated PASS (9 migrations); competition:test-boot 1/1; Foundation PASS (errors 0); UI validator --integrated PASS; pnpm audit --prod: No known vulnerabilities found; git diff --check clean. The developer's local DEMO DB (55432) was forward-migrated to 0008 with pnpm db:migrate (additive).
+
+Known deferred risks: in-memory rate limiting (single instance); pg_dump/pg_restore path not executed locally (no client tools) — rehearse on the chosen host; real OIDC provider and real Anthropic API not exercised (signed fixtures and simulated responses); non-strategic create operations are not universally idempotent (strategic Decision commits are); tester consent for sending Brand context to the AI provider must be collected; no full WCAG audit; Chrome only.
+
+External human decisions required: hosting provider; OIDC provider and its issuer/client credentials; PILOT_ORIGIN domain; Anthropic account, model and budget (suggested model claude-opus-5); request-access destination; tester list (OIDC subjects) and cohorts; data-processing consent text.
+
+Next engineering phase: do not begin automatically. Claude Code: CLOSED after this continuation pass.
+
+---
+
+## Previous phase (RC1)
+
 Current Phase: RC1 Engineering Review Complete — engineering phase CLOSED.
 
 Current Status: READY FOR LOCAL DEMO / TECHNICAL DELIVERY. Production: NOT claimed.

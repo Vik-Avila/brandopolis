@@ -2,7 +2,7 @@ import { test,expect,type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 async function navigate(page:Page,name:string){if(await page.getByRole('button',{name:'Abrir navegación',exact:true}).isVisible())await page.getByRole('button',{name:'Abrir navegación',exact:true}).click();await page.getByRole('button',{name,exact:true}).click();}
 test('PILOT HTTPS: entry, first decision, provider outage, brand isolation, feedback and logout',async({page,browser},info)=>{
- const sessions=JSON.parse(readFileSync('.local/pilot-browser/sessions.json','utf8')),errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ const sessions=JSON.parse(readFileSync('.local/pilot-browser/sessions.json','utf8'))[info.project.name],errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('/');await expect(page.getByRole('link',{name:'Entrar al piloto',exact:true})).toBeVisible();await expect(page.getByLabel('Token de sesión local')).toBeHidden();
  await page.context().addCookies([{name:'__Host-brandopolis_session',value:sessions.a.token,url:'https://127.0.0.1:3002',httpOnly:true,secure:true,sameSite:'Strict'}]);await page.reload();
  await page.getByLabel('Nueva marca',{exact:true}).fill(`Pilot A ${info.project.name} ${Date.now()}`);
@@ -14,4 +14,28 @@ test('PILOT HTTPS: entry, first decision, provider outage, brand isolation, feed
  const other=await browser.newContext({ignoreHTTPSErrors:true});await other.addCookies([{name:'__Host-brandopolis_session',value:sessions.b.token,url:'https://127.0.0.1:3002',httpOnly:true,secure:true,sameSite:'Strict'}]);const denial=await other.request.get(`https://127.0.0.1:3002/api/context?brandId=${a}`);expect(denial.status()).toBe(404);await other.close();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(errors).toEqual([]);await page.screenshot({path:`test-results/pilot-${info.project.name}.png`,fullPage:true});
  await page.getByRole('button',{name:'Salir',exact:true}).click();await expect(page.getByRole('link',{name:'Entrar al piloto',exact:true})).toBeVisible();
+});
+test('PILOT OIDC: denied identity, real login, onboarding by keyboard, revocation',async({page},info)=>{
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ const subject=(value:string)=>page.context().addCookies([{name:'fixture_subject',value,url:'https://127.0.0.1:3002'}]);
+ await subject('never-provisioned');await page.goto('/auth/login');
+ await expect(page).toHaveURL('https://127.0.0.1:3002/');await expect(page.getByRole('status')).toContainText('no tiene acceso');
+ await subject('fresh-'+info.project.name);await page.goto('/');
+ const entry=page.getByRole('link',{name:'Entrar al piloto',exact:true});
+ for(let i=0;i<30&&!(await entry.evaluate(e=>e===document.activeElement));i++)await page.keyboard.press('Tab');
+ await expect(entry).toBeFocused();await page.keyboard.press('Enter');
+ await expect(page.getByRole('heading',{name:'Construye tu primera decisión estratégica.'})).toBeVisible();
+ const cookies=await page.context().cookies('https://127.0.0.1:3002');const session=cookies.find(c=>c.name==='__Host-brandopolis_session');
+ expect(session).toMatchObject({secure:true,httpOnly:true,sameSite:'Strict'});expect(cookies.some(c=>c.name==='__Host-brandopolis_flow')).toBe(false);
+ const name=page.getByLabel('Nueva marca',{exact:true});
+ for(let i=0;i<40&&!(await name.evaluate(e=>e===document.activeElement));i++)await page.keyboard.press('Tab');
+ await expect(name).toBeFocused();await page.keyboard.type(`Keyboard ${info.project.name}`);
+ const create=page.getByRole('button',{name:'Crear marca',exact:true});
+ for(let i=0;i<10&&!(await create.evaluate(e=>e===document.activeElement));i++)await page.keyboard.press('Tab');
+ await expect(create).toBeFocused();expect(await create.evaluate(e=>getComputedStyle(e).outlineStyle)).not.toBe('none');await page.keyboard.press('Enter');
+ await expect(page.getByRole('status')).toContainText('Marca creada');
+ expect((await page.request.get('/fixture-admin/revoke?subject=fresh-'+info.project.name)).ok()).toBe(true);
+ await page.reload();await expect(page.getByRole('link',{name:'Entrar al piloto',exact:true})).toBeVisible();
+ expect((await page.request.get('/api/brands')).status()).toBe(401);
+ expect(errors).toEqual([]);
 });
