@@ -30,19 +30,19 @@ User/Workspace/Brand; Customer + Positioning HARD; cambiar Customer con optimist
 
 ## Canonical Sources
 
-[Source of Truth](docs/00-index/source-of-truth.md), [Product Bible operativa](docs/01-product/product-bible-v1.md), [Master Context](docs/00-index/BRANDOPOLIS_MASTER_CONTEXT_FOR_WORK.md). **Final Contract Patch independiente no disponible**; los cambios explícitos del hardening brief sí están aplicados. Su comparación es el único bloqueo de verificación final.
+[Source of Truth](docs/00-index/source-of-truth.md), [Product Bible operativa](docs/01-product/product-bible-v1.md), [Master Context](docs/00-index/BRANDOPOLIS_MASTER_CONTEXT_FOR_WORK.md). **Final Contract Patch independiente no disponible**; los cambios explícitos del hardening brief sí están aplicados. Su cotejo sigue sin poder afirmarse; no bloquea M1 por resolución humana del 2026-09-24.
 
 ## Current Status
 
-Foundation reforzada; **READY WITH BLOCKER** para declaración final de contrato. Fase siguiente M1 tras recibir/comparar Patch o confirmar su texto. No hay aplicación ni clientes/ingresos validados.
+M1 implementado con persistencia PostgreSQL, motor de decisiones e interfaz local DEMO. Foundation validada. Ver [estado de sesión](SESSION_STATE.md) y [evidencia M1](docs/15-handoff/m1-implementation.md). No hay clientes/ingresos validados; auth y despliegue de producción quedan pendientes.
 
 ## Open Technical Decisions
 
-Drizzle/Prisma, auth, proveedor IA inicial, research y despliegue; precio/WTP para piloto. [Open Questions](docs/15-handoff/open-questions.md).
+Drizzle elegido en ADR-0011. Auth final, proveedor IA inicial, research y despliegue siguen abiertos; precio/WTP para piloto. [Open Questions](docs/15-handoff/open-questions.md).
 
 ## Local Setup
 
-[LOCAL_HANDOFF.md](LOCAL_HANDOFF.md). Foundation sólo requiere Python 3.10+ para QA; Node LTS + pnpm vía Corepack y Docker se instalan para M1 según ADR. `.env.example` son ejemplos, sin credenciales. No existen comandos de aplicación antes de M1.
+[LOCAL_HANDOFF.md](LOCAL_HANDOFF.md). Node 24, pnpm 12.4.2 y Python 3.10+; PostgreSQL nativo local vía pnpm db:start (sin Docker) o DATABASE_URL externo. `.env.example` son ejemplos, sin credenciales. Comandos: pnpm install, pnpm db:start, pnpm db:migrate, pnpm db:seed, pnpm dev, pnpm test y pnpm test:e2e; instrucciones completas en el handoff local.
 
 ## Validation Commands
 

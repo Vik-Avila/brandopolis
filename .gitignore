@@ -11,3 +11,5 @@ coverage/
 .venv/
 .local/
 test-results/
+.pnpm-store/
+playwright-report/

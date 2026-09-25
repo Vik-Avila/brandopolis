@@ -1,16 +1,64 @@
-# Entrega local
+# Brandopolis M1 · ejecución local
 
-1. Descomprime el ZIP: debe resultar una sola carpeta `brandopolis/`; ubícala donde quieras en tu computadora.
-2. Abre una terminal **dentro de `brandopolis/`**. Ejecuta `python3 scripts/foundation_check.py`; comprueba que termine sin errores. En Windows usa `py -3 scripts/foundation_check.py` si corresponde.
-3. Inicializa Git si aún no existe: `git init`; luego `git add .` y `git commit -m "chore: import Brandopolis engineering foundation v1"`. `.env` queda ignorado; nunca subas secrets.
-4. Revisa `docs/15-handoff/qa-report.md`: el Final Contract Patch independiente no se incluyó en los materiales disponibles; si lo tienes, intégralo y reconcilia antes de tratar esta entrega como aprobación definitiva.
-5. Abre la misma carpeta raíz en Codex y pide: «Lee `handoff/CODEX_START_HERE.md`, ejecuta Foundation check y comienza únicamente M1».
-6. Abre esa carpeta en Claude Code para lectura/revisión y pide: «Lee `handoff/CLAUDE_START_HERE.md` y revisa M1 contra contrato». Evita que ambos editen la misma rama simultáneamente.
-7. Flujo recomendado: `main` → rama `codex/m1`; revisión humana del diff; rama `claude/m1-review` o turno secuencial; Codex corrige hallazgos verificados. Commit de M1 sugerido: `feat: implement M1 connected decision proof`.
-8. Sólo al iniciar implementación: instalar Node LTS activo y pnpm vía Corepack, Docker y PostgreSQL según ADR; copiar `.env.example` a `.env` y poner credenciales reales localmente. No hay `pnpm install`, `pnpm test` ni build hasta crear la aplicación: Codex definirá y documentará esos comandos en M1.
+Requisitos: Node **24.x**, pnpm **12.4.2**, Python **3.10+** para Foundation. Chrome para E2E. No se requiere Docker ni proveedor IA. PostgreSQL 17 se ejecuta como proceso local mediante una dependencia de desarrollo fijada; no se instala un servicio del sistema.
 
-Rollback local: `git restore` de cambios no committeados o volver al commit Foundation; no borrar el ZIP de respaldo hasta verificar extracción.
+## Instalación
 
+```sh
+pnpm install --frozen-lockfile
+python -m venv .venv
+```
 
-## Resolución humana · 2026-09-24 · Sprint 01
-El usuario autoriza implementar M1 sobre los contratos canónicos presentes y corregir drift documental inequívoco. ASSUMPTION_IN_USE es relación/flag de dependencia de una Decision vigente sobre una Hypothesis no validada, nunca status. Las referencias anteriores al Patch independiente describen la limitación histórica de cotejo, no un gate de entrada a M1. No se ha localizado ni se afirma haber cotejado ese archivo. Esta resolución sustituye instrucciones anteriores de esperar ese cotejo para iniciar M1; no cambia Bible, invariantes ni alcance.
+En Windows: `.venv/Scripts/python.exe -m pip install -r requirements-foundation.txt`, seguido de `.venv/Scripts/python.exe scripts/foundation_check.py`. En macOS/Linux usar `.venv/bin/python`. Puede usarse `python3` o `py -3` para crear el entorno, según instalación. El chequeo lee UTF-8 y excluye dependencias locales.
+
+## DB, migraciones y sesión
+
+Terminal 1, mantener abierta:
+
+```sh
+pnpm db:start
+```
+
+PostgreSQL escucha sólo en 127.0.0.1:55432. Datos y contraseña aleatoria en `.local/postgres/`, ignorado por Git. Ctrl+C detiene el proceso y conserva datos. Tests usan otro cluster en 55433 y una base nueva por ejecución, conservada para diagnóstico. No usar datos reales de clientes.
+
+Terminal 2:
+
+```sh
+pnpm db:migrate
+pnpm db:seed
+pnpm dev
+```
+
+Abrir [workspace local](http://127.0.0.1:3000). Copiar **sólo el valor token** de `.local/demo-session.json` al campo de sesión. El seed genera usuario/workspace/token nuevos de DEMO; no borra datos existentes. Token expira en 24h. No pegarlo en issues ni commits.
+
+Opcional: configurar DATABASE_URL en `.env` para PostgreSQL externo; el runtime carga ese archivo. Vacío usa DB local. `.env.example` contiene sólo opciones implementadas. No apuntar la demo a producción: auth final pendiente y el servidor rechaza NODE_ENV=production.
+
+## Demostración M1
+
+```sh
+pnpm demo
+```
+
+Crea otra Brand DEMO y ejecuta Agencies → Strategic OS for Agencies → Internal Marketing Teams → Customer v1 SUPERSEDED/v2 vigente → Positioning NEEDS_REVIEW sin cambio de texto → ReviewItem → revisión humana → Positioning v2. Imprime versiones y resultado, nunca token ni URL privada de DB.
+
+En UI: crear Brand, preparar/aprobar Customer, preparar/aprobar Positioning, preparar nueva versión de Customer, abrir Positioning, ver impacto, iniciar revisión humana y aprobar nueva versión. Recargar conserva estado e historial; Brand/módulo viajan en URL sin secretos. Ante conflicto, revisar borrador y recargar contexto antes de editar otra vez. Reintentos sin cambios usan la misma idempotency key.
+
+## Verificación
+
+```sh
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm test:integration
+pnpm test:e2e
+```
+
+`pnpm test` incluye dominio, contratos, PostgreSQL real y HTTP E2E. `test:integration` ejecuta la misma suite explícitamente; no suma cobertura. `test:e2e` necesita DB local iniciada, migraciones y sesión creada; Playwright arranca servidor si falta. Chrome a 1440×1000 y 390×844: recarga, historial, dos pestañas y conflicto. Capturas en `test-results/`, ignoradas por Git.
+
+Sin build frontend: shell HTML/CSS/JS nativo y servidor TypeScript mediante tsx. Aplicación local M1, no artefacto de producción.
+
+## Migraciones y revisión
+
+`pnpm db:generate` genera SQL desde Drizzle. Constraints/triggers especializados en migraciones custom versionadas. `pnpm db:migrate` aplica todo en orden de forma repetible. No usar drizzle-kit push ni editar DB manualmente para demostrar comportamiento.
+
+Trabajar en codex/m1-connected-decision-proof. Ver [evidencia M1](docs/15-handoff/m1-implementation.md) y [SESSION_STATE](SESSION_STATE.md). Sin merge ni deploy autorizado. Patch independiente no cotejado; por resolución humana 2026-09-24 esa limitación histórica no bloquea M1 ni autoriza inventar su contenido.

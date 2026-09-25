@@ -33,3 +33,10 @@ Depends on: —
 - Migraciones PostgreSQL, sesiones DEMO, tenant/Brand, reviews ligados a impacto visto y contratos validados.
 - 18 pruebas PostgreSQL/HTTP, typecheck y lint en verde; Foundation 0 errores.
 - ADR-0011 decide Drizzle y boundary de sesión M1; auth final pendiente.
+
+## 2026-09-24 Sprint 01 — cierre M1 + P0 contiguo
+- Shell local con Customer, Positioning, impacto, revisión humana, contexto vigente e historial; NEXT-A–NEXT-F completados.
+- Integridad referencial adicional y guards DB de autoridad humana/pointer vigente; Recommendation valida contexto y registra divergencia.
+- Corregida preparación concurrente de preguntas detectada por prueba de dos pestañas, sin cambiar máquina de estados.
+- 20 pruebas dominio/PostgreSQL/HTTP y 4 E2E Chrome en escritorio/móvil; typecheck/lint verdes; demo real ejecutada.
+- Documentados setup, comandos, límites DEMO y handoff de revisión. No IA live, P1/P2, merge ni despliegue.

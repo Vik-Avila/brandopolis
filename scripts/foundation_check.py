@@ -9,7 +9,7 @@ except ImportError:
 ROOT=Path(__file__).resolve().parents[1];errors=[]
 def files(suffix):
  for directory, dirs, names in os.walk(ROOT):
-  dirs[:] = [d for d in dirs if d not in {'.git','.venv','node_modules','.next','dist','coverage','.local','test-results'}]
+  dirs[:] = [d for d in dirs if d not in {'.git','.venv','node_modules','.pnpm-store','.next','dist','coverage','.local','test-results','playwright-report'}]
   for name in names:
    if name.endswith(suffix): yield Path(directory)/name
 required=['README.md','AGENTS.md','CLAUDE.md','CONTRIBUTING.md','SESSION_STATE.md','CHANGELOG.md','.gitignore','.env.example','LOCAL_HANDOFF.md','docs/01-product/product-bible-v1.md','docs/00-index/source-of-truth.md','docs/04-domain-model/state-machines.md']
