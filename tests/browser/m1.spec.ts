@@ -82,3 +82,12 @@ test('two human tabs cannot silently overwrite a newer version',async({page,cont
   await second.getByText('Historial · 2 versiones',{exact:true}).focus();await second.keyboard.press('Enter');await expect(second.locator('.history-item')).toHaveCount(2);await expect(second.locator('.history-item').first()).toBeVisible();
   await second.close();
 });
+test('DEMO recommendation can be rejected and then explicitly approved',async({page},info)=>{
+ const session=JSON.parse(readFileSync('.local/demo-session.json','utf8'));
+ await page.goto('/');await page.getByLabel('Token de sesión local').fill(session.token);await page.getByRole('button',{name:'Entrar al espacio estratégico'}).click();
+ await page.getByLabel('Nueva marca',{exact:true}).fill(`Analysis DEMO ${info.project.name} ${Date.now()}`);await page.getByRole('button',{name:'Crear marca',exact:true}).click();await expect(page.locator('#decision')).toContainText('Por decidir');
+ await page.getByRole('button',{name:'Comparar opciones DEMO',exact:true}).click();await expect(page.getByRole('heading',{name:'Compara antes de decidir'})).toBeVisible();
+ await page.getByLabel('Motivo para rechazar').fill('Necesito otro enfoque');await page.getByRole('button',{name:'Rechazar recomendación',exact:true}).click();await expect(page.getByRole('status')).toContainText('Recomendación rechazada');await expect(page.locator('#decision')).toContainText('Por decidir');
+ await page.getByRole('button',{name:'Comparar opciones DEMO',exact:true}).click();await page.getByRole('button',{name:'Usar recomendación',exact:true}).click();await page.getByLabel('¿Por qué eliges esta opción?').fill('Elección humana para probar la demostración');await page.getByRole('button',{name:'Aprobar decisión',exact:true}).click();
+ await expect(page.locator('#decision .current')).toHaveText('Agencias con varias marcas');await page.reload();await expect(page.locator('#decision .current')).toHaveText('Agencias con varias marcas');expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});

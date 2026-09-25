@@ -6,6 +6,7 @@ import type { Database, Transaction } from '../persistence/database.js';
 import * as t from '../persistence/schema.js';
 import { vertical } from '../domain/modules.js';
 import { assemble } from '../domain/context-assembler.js';
+import { ModelGateway, DemoProvider, evaluate, type Recommendation } from '../domain/analysis.js';
 
 const id=()=>randomUUID();
 export const hash=(value:string)=>createHash('sha256').update(value).digest('hex');
@@ -13,7 +14,7 @@ type Scope={workspaceId:string;brandId:string;userId:string};
 const inScope=(table:{workspaceId:AnyPgColumn;brandId:AnyPgColumn},s:Scope)=>and(eq(table.workspaceId,s.workspaceId),eq(table.brandId,s.brandId));
 // All application entry points authenticate from an opaque credential; callers never supply a trusted actor.
 export class Engine {
-  constructor(private db:Database, private impactHook?:()=>void) {}
+  constructor(private db:Database, private impactHook?:()=>void,private gateway=new ModelGateway(new DemoProvider())) {}
   private async identity(tx:Transaction,token:string) {
     if (!token || token.length>256) throw new AppError('UNAUTHORIZED','Human session required');
     const [session]=await tx.select().from(t.sessions).where(eq(t.sessions.tokenHash,hash(token)));
@@ -150,6 +151,39 @@ export class Engine {
       ...ctx.openQuestions.filter(e=>e.status==='OPEN').map(e=>({id:String(e.id),type:'OpenQuestion',critical:false,data:e,trust:'OPEN'}))
     ],budget);
   }
+  async analyze(token:string,brandId:string,questionId:string) {
+    const actor=await this.me(token),packet=await this.assembleContext(token,brandId,questionId),question=packet.question as {module:string};
+    const response=await this.gateway.invoke({task:'STRATEGIC_ANALYSIS',module:question.module,promptVersion:'competition-demo-v1',contextVersion:packet.contextVersion,input:packet,outputSchema:'recommendation',budget:{maxCharacters:20000,timeoutMs:5000},tenantScope:{workspaceId:actor.workspaceId,brandId},questionId});
+    const {result,...trace}=response;
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId);
+      if(await this.contextVersion(tx,s)!==packet.contextVersion) throw new AppError('CONFLICT','Context changed during analysis');
+      const evaluation=result?evaluate(result,packet):null;
+      const invalid=!result||result.brandId!==brandId||result.questionId!==questionId||result.contextVersion!==packet.contextVersion||evaluation?.issues.some(i=>i.severity==='CONFLICT');
+      if(invalid) {
+        await tx.insert(t.analyses).values({id:id(),workspaceId:s.workspaceId,brandId,contextVersion:packet.contextVersion,evaluation,trace:{...trace,error:trace.error??'INVALID_OUTPUT'},createdAt:new Date()});
+        return {recommendation:null,evaluation,error:trace.error??'INVALID_OUTPUT',provider:trace.provider};
+      }
+      await tx.update(t.recommendations).set({resolution:'STALE'}).where(and(inScope(t.recommendations,s),eq(t.recommendations.questionId,questionId),eq(t.recommendations.resolution,'GENERATED')));
+      await tx.insert(t.recommendations).values({id:result.id,workspaceId:s.workspaceId,brandId,questionId,payload:result,contextVersion:packet.contextVersion});
+      await tx.insert(t.analyses).values({id:id(),workspaceId:s.workspaceId,brandId,recommendationId:result.id,contextVersion:packet.contextVersion,evaluation,trace,createdAt:new Date()});
+      await this.event(tx,s,'recommendation_generated','AI');
+      await this.audit(tx,s,{operation:'RECOMMENDATION_GENERATED',idempotencyKey:result.id,sourceRecommendationId:result.id});
+      return {recommendation:result,evaluation,error:null,provider:trace.provider};
+    });
+  }
+  async rejectRecommendation(token:string,brandId:string,recommendationId:string,rationale:string) {
+    if(typeof rationale!=='string'||!rationale.trim()||rationale.length>12000)throw new AppError('INVALID','Human rationale required');
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId);
+      const [rec]=await tx.select().from(t.recommendations).where(and(inScope(t.recommendations,s),eq(t.recommendations.id,recommendationId)));
+      if(!rec||!['GENERATED','REJECTED'].includes(rec.resolution))throw new AppError('CONFLICT','Recommendation unavailable');
+      if(rec.resolution==='REJECTED')return {resolution:'REJECTED'};
+      await tx.update(t.recommendations).set({resolution:'REJECTED'}).where(and(inScope(t.recommendations,s),eq(t.recommendations.id,recommendationId)));
+      await this.audit(tx,s,{operation:'RECOMMENDATION_REJECTED',idempotencyKey:recommendationId,sourceRecommendationId:recommendationId,rationale});
+      await this.event(tx,s,'recommendation_rejected');return {resolution:'REJECTED'};
+    });
+  }
   private reviewFingerprint(rows:{triggerVersionId:string;ruleVersion:string}[]) {return hash(JSON.stringify(rows.map(r=>[r.triggerVersionId,r.ruleVersion]).sort()));}
   async beginReview(token:string,brandId:string,decisionId:string) {
     await this.retryImpact(token,brandId);
@@ -193,13 +227,20 @@ export class Engine {
         const upstream=await tx.select().from(t.decisions).innerJoin(t.questions,eq(t.questions.id,t.decisions.questionId)).where(and(inScope(t.decisions,s),eq(t.questions.module,'Primary Customer')));
         if(!upstream[0]?.decisions.activeVersionId) throw new AppError('CONFLICT','Approve Primary Customer first');
       }
+      const hypothesisUsages:{hypothesisId:string;assumptionInUse:boolean}[]=[];
       if(command.sourceRecommendationId) {
         const [rec]=await tx.select().from(t.recommendations).where(and(inScope(t.recommendations,s),eq(t.recommendations.id,command.sourceRecommendationId),eq(t.recommendations.questionId,command.questionId)));
         if(!rec||rec.resolution!=='GENERATED'||rec.contextVersion!==await this.contextVersion(tx,s)) throw new AppError('CONFLICT','Recommendation unavailable or stale');
         validate('recommendation',rec.payload);
-        const proposal=rec.payload as {recommendedOptionId:string|null;options:{id:string;label:string}[]};
+        const proposal=rec.payload as Recommendation;
+        for(const hypothesisId of proposal.hypothesesUsed) {
+          const [hypothesis]=await tx.select().from(t.hypotheses).where(and(inScope(t.hypotheses,s),eq(t.hypotheses.id,hypothesisId)));
+          if(!hypothesis||hypothesis.payload.status==='REJECTED')throw new AppError('CONFLICT','Hypothesis unavailable');
+          hypothesisUsages.push({hypothesisId,assumptionInUse:hypothesis.payload.status!=='SUPPORTED'});
+        }
         const resolution=proposal.options.find(o=>o.id===proposal.recommendedOptionId)?.label===command.selectedOption?'ACCEPTED':'MODIFIED';
         await tx.update(t.recommendations).set({resolution}).where(and(inScope(t.recommendations,s),eq(t.recommendations.id,rec.id)));
+        await this.event(tx,s,resolution==='ACCEPTED'?'recommendation_accepted':'recommendation_modified');
       }
       if(!decision) {
         [decision]=await tx.insert(t.decisions).values({id:id(),workspaceId:s.workspaceId,brandId:s.brandId,questionId:question.id,activeVersionId:null,reviewStatus:'APPROVED'}).returning();
@@ -211,7 +252,7 @@ export class Engine {
       }
       const [previous]=decision.activeVersionId?await tx.select().from(t.versions).where(and(inScope(t.versions,s),eq(t.versions.id,decision.activeVersionId))):[];
       if(previous) await tx.update(t.versions).set({versionStatus:'SUPERSEDED'}).where(and(inScope(t.versions,s),eq(t.versions.id,previous.id)));
-      const version={id:id(),workspaceId:s.workspaceId,brandId:s.brandId,decisionId:decision.id,sequence:(previous?.sequence??0)+1,selectedOption:command.selectedOption,rationale:command.rationale,actorUserId:s.userId,approvedAt:new Date(),previousVersionId:previous?.id??null,versionStatus:'APPROVED',hypothesisUsages:[]};
+      const version={id:id(),workspaceId:s.workspaceId,brandId:s.brandId,decisionId:decision.id,sequence:(previous?.sequence??0)+1,selectedOption:command.selectedOption,rationale:command.rationale,actorUserId:s.userId,approvedAt:new Date(),previousVersionId:previous?.id??null,versionStatus:'APPROVED',hypothesisUsages};
       validate('decision-version',versionOutput(version));
       await tx.insert(t.versions).values(version);
       await tx.update(t.decisions).set({activeVersionId:version.id,reviewStatus:'APPROVED'}).where(and(inScope(t.decisions,s),eq(t.decisions.id,decision.id)));
@@ -282,7 +323,9 @@ export class Engine {
       const rs=await tx.select().from(t.reviews).where(inScope(t.reviews,s));
       const impact=await tx.select().from(t.impacts).where(inScope(t.impacts,s));
       const audit=await tx.select().from(t.audits).where(inScope(t.audits,s));
-      const output={...await this.contextEntities(tx,s),contextVersion:await this.contextVersion(tx,s),questions:qs.sort((a,b)=>vertical.findIndex(m=>m.primaryDecision===a.module)-vertical.findIndex(m=>m.primaryDecision===b.module)).map(({workspaceId:_w,...q})=>q),decisions:ds.map(({workspaceId:_w,...d})=>d),versions:vs.map(versionOutput),dependencies:deps.map(({workspaceId:_w,...d})=>d),reviews:rs.map(reviewOutput),impacts:impact.map(({status,result,triggerVersionId})=>({status,result,triggerVersionId})),audit};
+      const recommendations=await tx.select().from(t.recommendations).where(inScope(t.recommendations,s));
+      const analyses=await tx.select().from(t.analyses).where(inScope(t.analyses,s));
+      const output={recommendations,analyses,...await this.contextEntities(tx,s),contextVersion:await this.contextVersion(tx,s),questions:qs.sort((a,b)=>vertical.findIndex(m=>m.primaryDecision===a.module)-vertical.findIndex(m=>m.primaryDecision===b.module)).map(({workspaceId:_w,...q})=>q),decisions:ds.map(({workspaceId:_w,...d})=>d),versions:vs.map(versionOutput),dependencies:deps.map(({workspaceId:_w,...d})=>d),reviews:rs.map(reviewOutput),impacts:impact.map(({status,result,triggerVersionId})=>({status,result,triggerVersionId})),audit};
       for(const [name,rows] of [['strategic-question',output.questions],['decision',output.decisions],['decision-version',output.versions],['dependency',output.dependencies],['review-item',output.reviews]] as const) for(const row of rows) validate(name,row);
       return output;
     });

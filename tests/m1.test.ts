@@ -11,6 +11,7 @@ import { schema,validate,transition,reviewOrder, type CommitCommand } from '../s
 import { createApp } from '../src/transport/http.js';
 import type { AddressInfo } from 'node:net';
 import * as t from '../src/persistence/schema.js';
+import { ModelGateway, DemoProvider } from '../src/domain/analysis.js';
 let local:Awaited<ReturnType<typeof startLocalDb>>,connection:ReturnType<typeof connect>,engine:Engine;
 beforeAll(async()=>{
   local=await startLocalDb(true);
@@ -37,6 +38,20 @@ async function setup(target=engine) {
   return {who,brand,customer,position,ready,command,commit,context:()=>target.context(who.token,brand.id)};
 }
 describe('PostgreSQL M1',()=>{
+  it('DEMO recommendation preserves human authority, rejection, modification and stale context',async()=>{
+    const s=await setup();
+    const first=await engine.analyze(s.who.token,s.brand.id,s.customer.id);expect(first.provider).toBe('DEMO_FIXTURE');expect(first.recommendation?.supportLevel).toBe('UNVALIDATED');expect((await s.context()).decisions).toHaveLength(0);
+    await engine.rejectRecommendation(s.who.token,s.brand.id,first.recommendation!.id,'No corresponde a mi marca');expect((await s.context()).decisions).toHaveLength(0);
+    const next=await engine.analyze(s.who.token,s.brand.id,s.customer.id);await s.ready(s.customer.id);
+    const command={...s.command(s.customer.id,'Mi opción adaptada',null),sourceRecommendationId:next.recommendation!.id};await engine.commitDecision(s.who.token,command);
+    expect((await s.context()).recommendations.find(r=>r.id===next.recommendation!.id)?.resolution).toBe('MODIFIED');
+    const stale=await engine.analyze(s.who.token,s.brand.id,s.position.id);await engine.captureContext(s.who.token,s.brand.id,'user-input',{statement:'Nuevo contexto'});await s.ready(s.position.id);
+    await expect(engine.commitDecision(s.who.token,{...s.command(s.position.id,'Propuesta',null),sourceRecommendationId:stale.recommendation!.id})).rejects.toMatchObject({code:'CONFLICT'});
+    const failing=new Engine(connection.db,undefined,new ModelGateway({name:'FAILURE_TEST',model:'none',async generate(){return {invalid:true};}}));
+    expect((await failing.analyze(s.who.token,s.brand.id,s.position.id)).error).toBe('INVALID_OUTPUT');expect((await s.context()).decisions).toHaveLength(1);
+    const spoofed=new Engine(connection.db,undefined,new ModelGateway({name:'SPOOF_TEST',model:'none',async generate(r){return {...await new DemoProvider().generate(r),evidenceReferences:['foreign-evidence'],supportLevel:'STRONG_SUPPORT'};}}));
+    expect((await spoofed.analyze(s.who.token,s.brand.id,s.position.id)).error).toBe('INVALID_OUTPUT');
+  });
   it('Brand Context isolates facts, invalidates stale context and preserves critical decisions',async()=>{
     const s=await setup(),other=await setup(),before=(await s.context()).contextVersion;
     const input=await engine.captureContext(s.who.token,s.brand.id,'user-input',{statement:'Vendemos servicios a agencias'});
@@ -192,7 +207,7 @@ describe('PostgreSQL M1',()=>{
     const ctx=await s.context();expect(ctx.versions).toHaveLength(3);expect(ctx.reviews[0].status).toBe('OPEN');
   });
   it('M1 migrations have applied exactly once',async()=>{
-    const result=await connection.pool.query('select count(*)::int as n from drizzle.__drizzle_migrations');expect(result.rows[0].n).toBe(5);
+    const result=await connection.pool.query('select count(*)::int as n from drizzle.__drizzle_migrations');expect(result.rows[0].n).toBe(6);
     const server=await connection.pool.query('show server_version');expect(server.rows[0].server_version).toMatch(/^17\./);
   });
   it('superseding without a new current version is rejected by PostgreSQL',async()=>{

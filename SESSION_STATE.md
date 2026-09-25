@@ -52,5 +52,8 @@ Visual System integrado sobre M1: assets canónicos, tokens, glass legible, draw
 ## Phase C y Blueprint
 Customer → Business → Position → Message implementado sobre los mismos commits/versiones. Migración 0003 añade preguntas faltantes sin tocar decisiones existentes. Dependencias sólo de config v1. Blueprint es proyección de current state. Tests motor 21/21; browser ampliado conserva regresión.
 
-## Phase D · Contexto explícito
-UserInput, Evidence, Hypothesis y OpenQuestion persistentes por Brand; captura humana con schemas v1, fecha/actor y auditoría. Context Assembler conserva decisiones/dependencias críticas, marca fuentes externas y declara omisiones por presupuesto de caracteres. Cambios de contexto invalidan recomendaciones previas. Tests 22/22; typecheck/lint PASS. Aún pendiente Learning aceptado e historia relevante en packet.
+## Phase D · Contexto explícito
+UserInput, Evidence, Hypothesis y OpenQuestion persistentes por Brand; captura humana con schemas v1, fecha/actor y auditoría. Context Assembler conserva decisiones/dependencias críticas, marca fuentes externas y declara omisiones por presupuesto de caracteres. Cambios de contexto invalidan recomendaciones previas. Tests 22/22; typecheck/lint PASS. Aún pendiente Learning aceptado e historia relevante en packet.
+
+## Phases E/F · asistencia DEMO y autoridad humana
+ModelGateway, adaptador DEMO_FIXTURE explícito, validación estructurada, guard de referencias, evaluación conservadora y trazas persistentes. Decision Card permite usar/modificar y aprobar con rationale humano o rechazar sin crear DecisionVersion. Contexto obsoleto bloquea la propuesta. Proveedor real OPEN; no hay inferencia en vivo. ADR-0012 documenta límites. Tests motor 23/23; no regresión M1.

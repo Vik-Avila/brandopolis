@@ -52,6 +52,11 @@ Depends on: —
 - Blueprint de decisiones vigentes y estados de revisión; pruebas dominio y navegador ampliadas.
 - Validador UI soporta --integrated: evita exigir archivos excluidos deliberadamente al copiar el kit; conserva hashes y guards visuales.
 
-### Contexto estratégico persistente
+### Contexto estratégico persistente
 - Añade entidades explícitas, captura humana y Context Assembler acotado, con aislamiento de Brand y trazabilidad de procedencia.
-- Migra de forma aditiva sin modificar decisiones históricas; prueba límites de contexto y autorización.
+- Migra de forma aditiva sin modificar decisiones históricas; prueba límites de contexto y autorización.
+
+### Recomendaciones DEMO trazables
+- Conecta ModelGateway, evaluación y Evidence Guard con Decision Cards persistentes.
+- Conserva aprobación/modificación humana y rechazo auditado; bloquea contexto obsoleto y referencias inventadas.
+- Declara explícitamente alternativas fijas, soporte UNVALIDATED y proveedor real pendiente.
