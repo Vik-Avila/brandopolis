@@ -60,3 +60,8 @@ Depends on: —
 - Conecta ModelGateway, evaluación y Evidence Guard con Decision Cards persistentes.
 - Conserva aprobación/modificación humana y rechazo auditado; bloquea contexto obsoleto y referencias inventadas.
 - Declara explícitamente alternativas fijas, soporte UNVALIDATED y proveedor real pendiente.
+
+### Recuperación de checkpoints · aprendizaje y práctica
+- Preserva dd0afdc/8e1b621 y valida instalación limpia, upgrade desde 0005 y replay sin pérdida de historial.
+- Completa cancelación planeada, aceptación idempotente, presupuesto reservado y plan/fechas de Experiment mediante migración 0007 aditiva.
+- Conserva Signal separado de Learning, revisión humana, práctica personal y Blueprint derivado.

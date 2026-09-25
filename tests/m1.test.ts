@@ -1,6 +1,7 @@
 import { beforeAll, afterAll, describe, it, expect } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdirSync, writeFileSync, copyFileSync } from 'node:fs';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { eq } from 'drizzle-orm';
 import { startLocalDb } from '../scripts/local-db.js';
 import { migrateDatabase } from '../scripts/migrate.js';
@@ -12,6 +13,7 @@ import { createApp } from '../src/transport/http.js';
 import type { AddressInfo } from 'node:net';
 import * as t from '../src/persistence/schema.js';
 import { ModelGateway, DemoProvider } from '../src/domain/analysis.js';
+import { assemble } from '../src/domain/context-assembler.js';
 let local:Awaited<ReturnType<typeof startLocalDb>>,connection:ReturnType<typeof connect>,engine:Engine;
 beforeAll(async()=>{
   local=await startLocalDb(true);
@@ -38,6 +40,36 @@ async function setup(target=engine) {
   return {who,brand,customer,position,ready,command,commit,context:()=>target.context(who.token,brand.id)};
 }
 describe('PostgreSQL M1',()=>{
+  it('context budgets reserve accepted learning before optional facts',()=>{
+    const required={id:'accepted',type:'Learning',critical:true,data:{interpretation:'Human accepted'},trust:'HUMAN_ACCEPTED'};
+    const optional={id:'optional',type:'Evidence',critical:false,data:'x'.repeat(300),trust:'UNTRUSTED_EXTERNAL'};
+    const packet=assemble('v1',{},[],[],[optional,required],300);
+    expect(packet.includedIds).toEqual(['accepted']);expect(packet.omitted).toEqual([{id:'optional',reason:'CHARACTER_BUDGET'}]);
+    expect(()=>assemble('v1',{},[],[],[{...required,data:'x'.repeat(500)}],300)).toThrow();
+  });
+  it('0006 upgrades a real 0005 database, preserves Decision history and replays once',async()=>{
+    const name=`upgrade_${randomUUID().replaceAll('-','')}`,folder=`.local/migration-fixtures/${name}`;
+    await local.db.createDatabase(name);const previous=connect(local.url.replace(/\/postgres$/,`/${name}`));
+    const journal=JSON.parse(readFileSync('drizzle/meta/_journal.json','utf8'));journal.entries=journal.entries.filter((e:{idx:number})=>e.idx<=5);
+    mkdirSync(`${folder}/meta`,{recursive:true});writeFileSync(`${folder}/meta/_journal.json`,JSON.stringify(journal));
+    for(const e of journal.entries)copyFileSync(`drizzle/${e.tag}.sql`,`${folder}/${e.tag}.sql`);
+    try {
+      await migrate(previous.db,{migrationsFolder:folder});const who=await seedIdentity(previous.db),brandId=randomUUID(),questionId=randomUUID(),decisionId=randomUUID(),versionId=randomUUID();
+      await previous.db.transaction(async tx=>{
+        await tx.insert(t.brands).values({id:brandId,workspaceId:who.workspaceId,name:'Upgrade DEMO'});
+        await tx.insert(t.questions).values({id:questionId,workspaceId:who.workspaceId,brandId,module:'Primary Customer',text:'Cliente',status:'DECIDED'});
+        await tx.insert(t.decisions).values({id:decisionId,workspaceId:who.workspaceId,brandId,questionId,activeVersionId:versionId,reviewStatus:'APPROVED'});
+        await tx.insert(t.versions).values({id:versionId,workspaceId:who.workspaceId,brandId,decisionId,sequence:1,selectedOption:'Historial previo',rationale:'No debe cambiar durante upgrade',actorUserId:who.userId,approvedAt:new Date(),versionStatus:'APPROVED'});
+      });
+      const before=(await previous.pool.query('select * from decision_versions')).rows;
+      expect((await previous.pool.query('select count(*)::int n from drizzle.__drizzle_migrations')).rows[0].n).toBe(6);
+      await migrateDatabase(previous.db);await migrateDatabase(previous.db);
+      expect((await previous.pool.query('select * from decision_versions')).rows).toEqual(before);
+      expect((await previous.pool.query('select count(*)::int n from drizzle.__drizzle_migrations')).rows[0].n).toBe(JSON.parse(readFileSync('drizzle/meta/_journal.json','utf8')).entries.length);
+      for(const table of ['experiments','signals','learnings','learning_signals','capability_events'])expect((await previous.pool.query('select to_regclass($1) as name',[table])).rows[0].name).toBe(table);
+      expect((await new Engine(previous.db).blueprint(who.token,brandId)).decisions[0].activeVersionId).toBe(versionId);
+    } finally {await previous.pool.end();}
+  });
   it('Experiment -> Signal -> Learning requires human transitions and personal practice remains isolated',async()=>{
     const s=await setup(),other=await setup(),decision=await s.commit(s.customer.id,'Agencias',null);
     const hypothesis=await engine.captureContext(s.who.token,s.brand.id,'hypothesis',{statement:'Volverán a revisar su estrategia'});
@@ -46,12 +78,20 @@ describe('PostgreSQL M1',()=>{
     await engine.transitionLearningObject(s.who.token,s.brand.id,'experiment',String(experiment.id),'PLANNED','RUNNING');
     await expect(engine.transitionLearningObject(s.who.token,s.brand.id,'experiment',String(experiment.id),'RUNNING','COMPLETED')).rejects.toMatchObject({code:'CONFLICT'});
     const signal=await engine.createLearningObject(s.who.token,s.brand.id,'signal',{experimentId:experiment.id,observation:'Regresó una persona',source:'Entrevista consentida',observedAt:new Date().toISOString()});
+    expect((await s.context()).learnings).toEqual([]);
     await engine.transitionLearningObject(s.who.token,s.brand.id,'experiment',String(experiment.id),'RUNNING','COMPLETED');
+    const plan=(await s.context()).experimentPlans[0];expect(plan.startedAt).not.toBeNull();expect(plan.completedAt).not.toBeNull();expect(plan.objective).toBe('Volverán a revisar su estrategia');
+    const cancelled=await engine.createLearningObject(s.who.token,s.brand.id,'experiment',{hypothesisId:hypothesis.id,intendedSignal:'Otra prueba'},decision.decisionId);
+    expect((await engine.transitionLearningObject(s.who.token,s.brand.id,'experiment',String(cancelled.id),'PLANNED','CANCELLED')).status).toBe('CANCELLED');
     const learning=await engine.createLearningObject(s.who.token,s.brand.id,'learning',{signalIds:[signal.id],interpretation:'Posible interés recurrente',limitations:['Un solo caso'],status:'ACCEPTED',reviewedBy:other.who.userId});expect(learning.status).toBe('CANDIDATE');expect(learning.reviewedBy).toBeNull();
     await expect(engine.transitionLearningObject(s.who.token,s.brand.id,'learning',String(learning.id),'CANDIDATE','ACCEPTED')).rejects.toMatchObject({code:'CONFLICT'});
     await expect(engine.createLearningObject(other.who.token,other.brand.id,'learning',{signalIds:[signal.id],interpretation:'Cruce',limitations:[]})).rejects.toMatchObject({code:'NOT_FOUND'});
     expect((await engine.assembleContext(s.who.token,s.brand.id,s.customer.id)).items.some(i=>i.type==='Learning')).toBe(false);
     await engine.transitionLearningObject(s.who.token,s.brand.id,'learning',String(learning.id),'CANDIDATE','REVIEWED');await engine.transitionLearningObject(s.who.token,s.brand.id,'learning',String(learning.id),'REVIEWED','ACCEPTED');
+    const auditCount=(await s.context()).audit.length;
+    await engine.transitionLearningObject(s.who.token,s.brand.id,'learning',String(learning.id),'REVIEWED','ACCEPTED');expect((await s.context()).audit).toHaveLength(auditCount);
+    await expect(engine.blueprint(other.who.token,s.brand.id)).rejects.toMatchObject({code:'NOT_FOUND'});
+    expect((await engine.blueprint(s.who.token,s.brand.id)).learnings).toMatchObject([{status:'ACCEPTED',reviewedBy:s.who.userId}]);
     expect((await engine.assembleContext(s.who.token,s.brand.id,s.customer.id)).items.find(i=>i.type==='Learning')?.trust).toBe('HUMAN_ACCEPTED');
     expect((await s.context()).versions).toHaveLength(1);expect((await s.context()).decisions[0].activeVersionId).toBe(decision.versionId);
     expect(await engine.practice(s.who.token)).toHaveLength(1);expect(await engine.practice(other.who.token)).toEqual([]);expect(await s.context()).not.toHaveProperty('capabilityEvents');
@@ -225,7 +265,7 @@ describe('PostgreSQL M1',()=>{
     const ctx=await s.context();expect(ctx.versions).toHaveLength(3);expect(ctx.reviews[0].status).toBe('OPEN');
   });
   it('M1 migrations have applied exactly once',async()=>{
-    const result=await connection.pool.query('select count(*)::int as n from drizzle.__drizzle_migrations');expect(result.rows[0].n).toBe(7);
+    const result=await connection.pool.query('select count(*)::int as n from drizzle.__drizzle_migrations');expect(result.rows[0].n).toBe(8);
     const server=await connection.pool.query('show server_version');expect(server.rows[0].server_version).toMatch(/^17\./);
   });
   it('superseding without a new current version is rejected by PostgreSQL',async()=>{

@@ -1,5 +1,7 @@
 # M1 · implementación y evidencia Sprint 01
 
+Este documento conserva la evidencia histórica del Sprint 01. El alcance actual posterior a M1 se describe en [Competition MVP](competition-mvp-implementation.md) y [SESSION_STATE](../../SESSION_STATE.md); las limitaciones de generación, tablas y viewports indicadas abajo corresponden a aquel cierre.
+
 Motor M1 y shell P0 local implementados. Monolito modular TypeScript, PostgreSQL 17 real, Drizzle, Ajv sobre schemas v1, HTTP nativo, HTML/CSS/JS. Sin llamadas IA, research, chat, billing, PDF ni módulos extra. [Ejecución local](../../LOCAL_HANDOFF.md), [ADR-0011](../14-decisions/ADR-0011.md).
 
 ## Persistencia y autoridad

@@ -50,6 +50,13 @@
       "when": 1790303579218,
       "tag": "0006_mute_warbound",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790305146868,
+      "tag": "0007_petite_lenny_balinger",
+      "breakpoints": true
     }
   ]
 }

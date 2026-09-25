@@ -149,10 +149,11 @@ export class Engine {
   async assembleContext(token:string,brandId:string,questionId:string,budget=12000) {
     const ctx=await this.context(token,brandId),question=ctx.questions.find(q=>q.id===questionId);
     if(!question) throw new AppError('NOT_FOUND','Question not available');
+    const requiredEvidence=new Set(ctx.hypotheses.flatMap(h=>h.evidenceReferences as string[]));
     return assemble(ctx.contextVersion,question,ctx.dependencies,ctx.reviews,[
       ...ctx.decisions.map(d=>({id:d.id,type:'Decision',critical:true,data:{...d,version:ctx.versions.find(v=>v.id===d.activeVersionId)},trust:'HUMAN_APPROVED'})),
-      ...ctx.evidence.map(e=>({id:String(e.id),type:'Evidence',critical:false,data:e,trust:e.external?'UNTRUSTED_EXTERNAL':'HUMAN_RECORDED'})),
-      ...ctx.learnings.filter(e=>e.status==='ACCEPTED').map(e=>({id:String(e.id),type:'Learning',critical:false,data:e,trust:'HUMAN_ACCEPTED'})),
+      ...ctx.evidence.map(e=>({id:String(e.id),type:'Evidence',critical:requiredEvidence.has(String(e.id)),data:e,trust:e.external?'UNTRUSTED_EXTERNAL':'HUMAN_RECORDED'})),
+      ...ctx.learnings.filter(e=>e.status==='ACCEPTED').map(e=>({id:String(e.id),type:'Learning',critical:true,data:e,trust:'HUMAN_ACCEPTED'})),
       ...ctx.userInputs.map(e=>({id:String(e.id),type:'UserInput',critical:false,data:e,trust:'USER_STATEMENT'})),
       ...ctx.hypotheses.filter(e=>e.status!=='REJECTED').map(e=>({id:String(e.id),type:'Hypothesis',critical:false,data:e,trust:e.status==='SUPPORTED'?'HUMAN_REVIEWED':'UNVALIDATED'})),
       ...ctx.openQuestions.filter(e=>e.status==='OPEN').map(e=>({id:String(e.id),type:'OpenQuestion',critical:false,data:e,trust:'OPEN'})),
@@ -192,8 +193,9 @@ export class Engine {
       await this.event(tx,s,'recommendation_rejected');return {resolution:'REJECTED'};
     });
   }
-  async createLearningObject(token:string,brandId:string,kind:string,input:Record<string,unknown>,decisionId?:string) {
+  async createLearningObject(token:string,brandId:string,kind:string,input:Record<string,unknown>,decisionId?:string,plan?:{objective:string;successCriteria:string}) {
     if(!['experiment','signal','learning'].includes(kind)||!input||Array.isArray(input)||JSON.stringify(input).length>16000)throw new AppError('INVALID','Invalid learning object');
+    if(plan&&[plan.objective,plan.successCriteria].some(v=>typeof v!=='string'||!v.trim()||v.length>4000))throw new AppError('INVALID','Experiment plan required');
     return this.db.transaction(async tx=>{
       const s=await this.scope(tx,token,brandId),now=new Date(),objectId=id();
       const payload:Record<string,unknown>={...input,id:objectId,brandId,...(kind==='experiment'?{ownerUserId:s.userId,status:'PLANNED'}:kind==='learning'?{status:'CANDIDATE',reviewedBy:null}:{})};validate(kind,payload);
@@ -203,7 +205,7 @@ export class Engine {
         const [hypothesis]=await tx.select().from(t.hypotheses).where(and(inScope(t.hypotheses,s),eq(t.hypotheses.id,String(payload.hypothesisId))));
         const [decision]=await tx.select().from(t.decisions).where(and(inScope(t.decisions,s),eq(t.decisions.id,decisionId??'')));
         if(!hypothesis||!decision?.activeVersionId)throw new AppError('NOT_FOUND','Hypothesis or decision unavailable');
-        await tx.insert(t.experiments).values({...base,hypothesisId:hypothesis.id,decisionId:decision.id});
+        await tx.insert(t.experiments).values({...base,hypothesisId:hypothesis.id,decisionId:decision.id,objective:plan?.objective.trim()??String(hypothesis.payload.statement),successCriteria:plan?.successCriteria.trim()??String(payload.intendedSignal)});
       } else if(kind==='signal') {
         const [experiment]=await tx.select().from(t.experiments).where(and(inScope(t.experiments,s),eq(t.experiments.id,String(payload.experimentId))));
         if(!experiment)throw new AppError('NOT_FOUND','Experiment unavailable');
@@ -228,12 +230,15 @@ export class Engine {
       const s=await this.scope(tx,token,brandId),table=kind==='experiment'?t.experiments:t.learnings;
       const [row]=await tx.select().from(table).where(and(inScope(table,s),eq(table.id,objectId)));
       if(!row)throw new AppError('NOT_FOUND','Object unavailable');
+      // Exact replay of the same actor's acceptance is harmless; never duplicate audit/events.
+      if(kind==='learning'&&status==='ACCEPTED'&&expectedStatus==='REVIEWED'&&row.payload.status==='ACCEPTED'&&row.payload.reviewedBy===s.userId)return row.payload;
       if(row.payload.status!==expectedStatus)throw new AppError('CONFLICT','State changed; reload');
-      const paths:Record<string,string[]>=kind==='experiment'?{PLANNED:['RUNNING'],RUNNING:['COMPLETED','INCONCLUSIVE','CANCELLED']}:{CANDIDATE:['REVIEWED'],REVIEWED:['ACCEPTED','REJECTED']};
+      const paths:Record<string,string[]>=kind==='experiment'?{PLANNED:['RUNNING','CANCELLED'],RUNNING:['COMPLETED','INCONCLUSIVE','CANCELLED']}:{CANDIDATE:['REVIEWED'],REVIEWED:['ACCEPTED','REJECTED']};
       if(!paths[expectedStatus]?.includes(status))throw new AppError('CONFLICT','Invalid human transition');
       if(kind==='experiment'&&status==='COMPLETED') {const signals=await tx.select().from(t.signals).where(and(inScope(t.signals,s),eq(t.signals.experimentId,objectId)));if(!signals.length)throw new AppError('CONFLICT','No signal; choose inconclusive');}
       const payload={...row.payload,status,...(kind==='learning'?{reviewedBy:s.userId}:{})};validate(kind,payload);
-      await tx.update(table).set({payload}).where(and(inScope(table,s),eq(table.id,objectId)));
+      if(kind==='experiment')await tx.update(t.experiments).set({payload,...(status==='RUNNING'?{startedAt:new Date()}:{completedAt:new Date()})}).where(and(inScope(t.experiments,s),eq(t.experiments.id,objectId)));
+      else await tx.update(t.learnings).set({payload}).where(and(inScope(t.learnings,s),eq(t.learnings.id,objectId)));
       await tx.update(t.recommendations).set({resolution:'STALE'}).where(and(inScope(t.recommendations,s),eq(t.recommendations.resolution,'GENERATED')));
       await this.audit(tx,s,{operation:`${kind.toUpperCase()}_${status}`,idempotencyKey:id(),rationale:`${objectId}: ${expectedStatus} -> ${status}`});return payload;
     });
@@ -390,7 +395,8 @@ export class Engine {
       const audit=await tx.select().from(t.audits).where(inScope(t.audits,s));
       const recommendations=await tx.select().from(t.recommendations).where(inScope(t.recommendations,s));
       const analyses=await tx.select().from(t.analyses).where(inScope(t.analyses,s));
-      const output={recommendations,analyses,...await this.contextEntities(tx,s),contextVersion:await this.contextVersion(tx,s),questions:qs.sort((a,b)=>vertical.findIndex(m=>m.primaryDecision===a.module)-vertical.findIndex(m=>m.primaryDecision===b.module)).map(({workspaceId:_w,...q})=>q),decisions:ds.map(({workspaceId:_w,...d})=>d),versions:vs.map(versionOutput),dependencies:deps.map(({workspaceId:_w,...d})=>d),reviews:rs.map(reviewOutput),impacts:impact.map(({status,result,triggerVersionId})=>({status,result,triggerVersionId})),audit};
+      const experimentPlans=(await tx.select().from(t.experiments).where(inScope(t.experiments,s))).map(e=>({experimentId:e.id,decisionId:e.decisionId,objective:e.objective,successCriteria:e.successCriteria,createdAt:e.createdAt.toISOString(),createdBy:e.createdBy,startedAt:e.startedAt?.toISOString()??null,completedAt:e.completedAt?.toISOString()??null}));
+      const output={experimentPlans,recommendations,analyses,...await this.contextEntities(tx,s),contextVersion:await this.contextVersion(tx,s),questions:qs.sort((a,b)=>vertical.findIndex(m=>m.primaryDecision===a.module)-vertical.findIndex(m=>m.primaryDecision===b.module)).map(({workspaceId:_w,...q})=>q),decisions:ds.map(({workspaceId:_w,...d})=>d),versions:vs.map(versionOutput),dependencies:deps.map(({workspaceId:_w,...d})=>d),reviews:rs.map(reviewOutput),impacts:impact.map(({status,result,triggerVersionId})=>({status,result,triggerVersionId})),audit};
       for(const [name,rows] of [['strategic-question',output.questions],['decision',output.decisions],['decision-version',output.versions],['dependency',output.dependencies],['review-item',output.reviews]] as const) for(const row of rows) validate(name,row);
       return output;
     });
