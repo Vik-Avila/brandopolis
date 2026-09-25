@@ -27,7 +27,7 @@ export class RateLimiter implements Limiter {
   }
 }
 export const pilotLimits={all:[600,60000],auth:[20,60000],ai:[20,600000],feedback:[20,600000]} as const;
-export function createApp(engine:Engine,assets?:(path:string)=>{content:string|Buffer;type:string}|undefined,health?:()=>Promise<string>,pilot?:PilotBoundary) {
+export function createApp(engine:Engine,assets?:(path:string)=>{content:string|Buffer;type:string;etag?:string}|undefined,health?:()=>Promise<string>,pilot?:PilotBoundary) {
   const limiter=pilot?.limiter??new RateLimiter();
   return createServer(async(req,res)=>{
     const requestId=randomUUID();
@@ -56,8 +56,11 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
       }
       if(req.method==='GET'&&!path.startsWith('/api/')) {
         const asset=assets?.(path);if(!asset) return send(res,404,{code:'NOT_FOUND'});
-        // Brand media is immutable per release and safe to cache; documents and scripts stay no-store.
-        res.writeHead(200,{'Content-Type':asset.type,...(path.startsWith('/brand/')?{'Cache-Control':'public, max-age=86400'}:{})});res.end(asset.content);return;
+        // Brand media and icons are cacheable for a day; the document stays no-store; scripts and styles revalidate (ETag/304).
+        const media=path.startsWith('/brand/')||path==='/favicon.ico'||path==='/site.webmanifest',document=asset.type.startsWith('text/html');
+        const cache=media?'public, max-age=86400':document?'no-store':'no-cache';
+        if(asset.etag&&!document&&req.headers['if-none-match']===asset.etag){res.writeHead(304,{'Cache-Control':cache,ETag:asset.etag});res.end();return;}
+        res.writeHead(200,{'Content-Type':asset.type,'Cache-Control':cache,...(asset.etag&&!document?{ETag:asset.etag}:{})});res.end(asset.content);return;
       }
       const bearer=req.headers.authorization?.startsWith('Bearer ')?req.headers.authorization.slice(7):undefined;
       const cookieName=pilot?'__Host-brandopolis_session':'brandopolis_session';

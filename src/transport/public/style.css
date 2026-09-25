@@ -1,7 +1,7 @@
 /* Brandopolis runtime UI. Colors come from tokens.css; Strategic Glassmorphism is CSS-only:
    expressive on the public gateway, subtle in the product shell, mostly solid for dense decision content. */
 *{box-sizing:border-box}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;scroll-padding-top:100px}
 body{margin:0;font:15px/1.6 Inter,ui-sans-serif,system-ui,sans-serif;color:var(--text-primary);background:var(--surface-page)}
 body:before{content:'';position:fixed;inset:0;z-index:-2;background:radial-gradient(ellipse at 12% 8%,var(--bp-emerald-wash),transparent 40%),radial-gradient(ellipse at 88% 12%,var(--bp-gold-wash),transparent 35%)}
 /* Product atmosphere only after sign-in; public pages carry their own art. */
@@ -13,7 +13,9 @@ button:hover,.button:hover{background:var(--action-primary-hover)}
 button:disabled{opacity:.55;cursor:not-allowed}
 button.secondary,.button.secondary{color:var(--text-primary);background:var(--surface-glass-elevated);border-color:var(--border-strong);box-shadow:none}
 button.secondary:hover,.button.secondary:hover{background:var(--surface-card)}
-input,textarea,select{width:100%;min-height:48px;padding:12px 14px;border:1px solid var(--border-strong);border-radius:var(--bp-radius-md);background:var(--surface-card);color:var(--text-primary)}
+button.tertiary{background:none;border-color:transparent;box-shadow:none;color:var(--text-secondary);text-decoration:underline;text-underline-offset:3px;padding:10px 8px}
+button.tertiary:hover{background:none;color:var(--bp-brand-emerald)}
+input,textarea,select{width:100%;min-height:48px;padding:12px 14px;border:1px solid var(--bp-neutral-500);border-radius:var(--bp-radius-md);background:var(--surface-card);color:var(--text-primary)}
 textarea{min-height:110px;resize:vertical}
 label{display:block;font-size:13px;font-weight:650}
 form label{margin:18px 0 8px}
@@ -22,7 +24,8 @@ a{color:var(--bp-brand-emerald)}
 /* Header / shell glass */
 header{display:flex;align-items:center;gap:16px;min-height:76px;padding:14px 28px;position:sticky;top:0;z-index:30;background:var(--surface-glass-shell);border-bottom:1px solid var(--border-glass);backdrop-filter:blur(var(--blur-glass));box-shadow:inset 0 -1px 0 var(--highlight-glass)}
 .brand{margin-right:auto;display:flex}
-.brand img{max-width:100%;height:46px;width:auto}
+.brand{align-items:center}
+.brand img{max-width:100%;height:58px;width:auto;display:block}
 .public-nav{display:flex;align-items:center;gap:22px;font-size:14px}
 .public-nav a{color:var(--text-secondary);text-decoration:none;min-height:44px;display:inline-flex;align-items:center}
 .public-nav a:hover{color:var(--bp-brand-emerald)}
@@ -49,7 +52,7 @@ p{overflow-wrap:anywhere}
 .hero-copy h1 em{font-style:italic;color:var(--bp-divider-gold)}
 .lead{font-size:clamp(16px,1.3vw,19px);color:var(--text-secondary);max-width:520px}
 .hero-actions{display:flex;gap:14px;flex-wrap:wrap;margin-top:28px}
-.pillars{list-style:none;margin:0 7vw 40px;padding:18px 24px;display:grid;grid-template-columns:repeat(4,1fr);gap:18px;background:var(--surface-glass-hero);border:1px solid var(--border-glass-strong);border-radius:var(--bp-radius-xl);backdrop-filter:blur(var(--blur-glass));box-shadow:var(--shadow-glass),inset 0 1px 0 var(--highlight-glass)}
+.pillars{list-style:none;margin:0 7vw 40px;padding:18px 24px;display:grid;grid-template-columns:repeat(4,1fr);gap:18px;background:var(--surface-glass-elevated);border:1px solid var(--border-glass-strong);border-radius:var(--bp-radius-xl);backdrop-filter:blur(var(--blur-glass));box-shadow:var(--shadow-glass),inset 0 1px 0 var(--highlight-glass)}
 .pillars li{display:flex;flex-direction:column;font-size:14px;padding-left:14px;border-left:1px solid var(--bp-divider-gold)}
 .pillars li:first-child{border-left:0;padding-left:0}
 .pillars span{color:var(--text-secondary)}
@@ -59,6 +62,8 @@ p{overflow-wrap:anywhere}
 .principle{font-family:'Iowan Old Style','Palatino Linotype',Georgia,serif;font-size:22px;color:var(--bp-brand-emerald);margin-top:24px}
 .how-art{border-radius:var(--bp-radius-2xl);overflow:hidden;border:1px solid var(--border-glass-strong);box-shadow:var(--shadow-glass-elevated);aspect-ratio:16/9;background:var(--surface-muted) url('/brand/web/flow-loop-poster.webp') center/cover}
 .flow-video{width:100%;height:100%;object-fit:cover;display:block}
+.how-media{display:grid;gap:8px;justify-items:end}
+.how-media .how-art{width:100%}
 /* Access (login / request access) */
 .welcome{max-width:1160px;margin:6vh auto;padding:0;border:1px solid var(--border-glass-strong);border-radius:var(--bp-radius-2xl);background:var(--surface-glass-hero);box-shadow:var(--shadow-glass-elevated);display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1fr) minmax(0,1fr);overflow:hidden;backdrop-filter:blur(var(--blur-glass))}
 .access-art{background:var(--surface-muted) url('/brand/web/access-panel.webp') center/cover;min-height:520px}
@@ -89,6 +94,7 @@ p{overflow-wrap:anywhere}
 #context{min-width:0;font-size:14px;padding:24px;background:var(--surface-glass-context);border:1px solid var(--border-glass);border-radius:var(--bp-radius-xl);align-self:start;backdrop-filter:blur(var(--blur-glass));box-shadow:inset 0 1px 0 var(--highlight-glass)}
 #context>section{border-bottom:1px solid var(--border-default);padding-bottom:16px;margin-bottom:20px}
 .decision-meta{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;color:var(--text-muted);font-size:13px;margin:10px 0 4px}
+/* The committed decision: solid emerald rule. Proposals never use it. */
 .current{font-family:'Iowan Old Style','Palatino Linotype',Georgia,serif;font-size:26px;font-weight:500;line-height:1.35;margin:22px 0 8px;padding:20px 22px;background:var(--surface-page);border:1px solid var(--border-default);border-left:4px solid var(--bp-brand-emerald);border-radius:var(--bp-radius-lg)}
 .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
 .review{background:var(--status-review-bg);border:1px solid var(--bp-review-border);border-left:4px solid var(--bp-brand-champagne);border-radius:var(--bp-radius-lg);padding:24px;margin:24px 0}
@@ -121,8 +127,9 @@ summary{cursor:pointer;font-weight:650;min-height:44px;display:flex;align-items:
 .blueprint-grid .analysis-item{padding:18px;border:1px solid var(--border-default);border-radius:var(--bp-radius-lg);background:var(--surface-page)}
 .blueprint-grid .current{font-size:19px;padding:12px 14px;margin:12px 0 6px}
 .empty{color:var(--text-muted);padding:24px 0}
-#notice:empty{display:none}
-#notice{padding:14px 32px;background:var(--status-approved-bg);color:var(--status-approved-text);position:sticky;top:76px;z-index:25}
+#notice{position:fixed;right:24px;bottom:24px;z-index:60;max-width:440px;padding:14px 18px;border:1px solid var(--border-default);border-radius:var(--bp-radius-lg);background:var(--status-approved-bg);color:var(--status-approved-text);box-shadow:var(--bp-shadow-md);pointer-events:none}
+/* Kept rendered (not display:none) so the live region is announced on first use. */
+#notice:empty{padding:0;border:0;box-shadow:none}
 #notice.error{background:var(--status-rejected-bg);color:var(--status-rejected-text)}
 footer{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:24px 32px;font-size:13px;color:var(--text-muted);border-top:1px solid var(--border-glass)}
 body.app footer{padding-left:268px}
@@ -131,7 +138,7 @@ body.app footer{padding-left:268px}
 [hidden]{display:none!important}
 /* Until the session check resolves, avoid flashing the public gateway to a signed-in user. */
 body.booting main{visibility:hidden}
-#menu,#close-menu{display:none}
+#menu,#journey #close-menu{display:none}
 #nav-backdrop{position:fixed;inset:0;background:var(--bp-glass-backdrop-dark);z-index:40}
 #journey.open{z-index:50}
 .dependency-path{display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:var(--text-secondary);font-weight:650}
@@ -140,7 +147,8 @@ body.booting main{visibility:hidden}
 @media(max-width:1400px){.layout{grid-template-columns:minmax(0,1fr)}
 #context{display:grid;grid-template-columns:1fr 1fr;gap:24px}
 #context>p{grid-column:1/-1}}
-@media(max-width:1279px){#menu,#close-menu{display:inline-flex}
+@media(max-width:1279px){#menu,#journey #close-menu{display:inline-flex}
+#menu{order:-1;background:none;color:var(--text-primary);border:1px solid var(--border-glass-strong);box-shadow:none;min-width:44px;padding:8px 12px}
 #workspace{padding:28px}
 body.app footer{padding-left:32px}
 #journey{transform:translateX(-100%);top:0;transition:transform var(--bp-motion-normal);width:280px;background:var(--surface-glass-modal)}
@@ -148,14 +156,18 @@ body.app footer{padding-left:32px}
 .welcome{margin:32px;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .access-art{display:none}
 .how{grid-template-columns:1fr;gap:32px}
+/* At tablet widths the copy covers more of the photograph: widen the ivory veil to keep text ≥ 4.5:1. */
+.hero:before{background:linear-gradient(90deg,color-mix(in srgb,var(--bp-brand-ivory) 95%,transparent) 0%,color-mix(in srgb,var(--bp-brand-ivory) 90%,transparent) 50%,color-mix(in srgb,var(--bp-brand-ivory) 55%,transparent) 72%,transparent 90%)}
 .pillars{grid-template-columns:repeat(2,1fr)}
 .pillars li:nth-child(3){border-left:0;padding-left:0}}
+@media(max-width:1023px){.hero:before{background:linear-gradient(180deg,color-mix(in srgb,var(--bp-brand-ivory) 94%,transparent) 0%,color-mix(in srgb,var(--bp-brand-ivory) 88%,transparent) 58%,transparent 88%)}}
 @media(max-width:767px){header{padding:10px 16px;gap:8px;min-height:64px}
-.brand img{height:34px;width:auto}
+.brand img{height:40px;width:auto}
 .demo{font-size:10px;padding:4px 8px}
 .public-nav a:not(.cta){display:none}
 .public-nav a.cta{padding:0 14px;font-size:13px}
-#notice{top:64px}
+#notice{left:16px;right:16px;bottom:16px;max-width:none}
+#logout{color:var(--text-primary);background:var(--surface-glass-elevated);border-color:var(--border-strong);box-shadow:none}
 .hero{min-height:auto}
 .hero:before{background:linear-gradient(180deg,color-mix(in srgb,var(--bp-brand-ivory) 92%,transparent) 0%,color-mix(in srgb,var(--bp-brand-ivory) 78%,transparent) 55%,transparent 100%)}
 .hero-art img{object-position:60% 100%}
@@ -179,3 +191,40 @@ body.app footer{padding-left:32px}
 .actions button{width:100%}
 body.app:after{background:linear-gradient(180deg,color-mix(in srgb,var(--bp-brand-ivory) 60%,transparent),color-mix(in srgb,var(--bp-brand-ivory) 85%,transparent)),url('/brand/web/workspace-atmosphere-mobile.webp') center/cover no-repeat}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
+/* Decision hierarchy */
+.why{margin:12px 0 4px;color:var(--text-secondary)}
+.label{font-weight:700;color:var(--text-primary)}
+.rationale{color:var(--text-secondary)}
+.review{background:var(--surface-card);border:1px solid var(--bp-review-border);border-left:4px solid var(--bp-brand-champagne);padding:0 24px 20px;overflow:hidden}
+.review>h3{margin:0 -24px 16px;padding:16px 24px;background:var(--status-review-bg);font-family:'Iowan Old Style','Palatino Linotype',Georgia,serif;font-weight:500;font-size:22px;border-bottom:1px solid var(--bp-review-border)}
+.impact-steps{list-style:none;display:flex;flex-wrap:wrap;gap:6px 8px;padding:0;margin:12px 0;font-size:13px;font-weight:600;color:var(--text-secondary)}
+.impact-steps li{padding:4px 10px;border:1px solid var(--border-default);border-radius:var(--bp-radius-pill);background:var(--surface-page)}
+.impact-steps li+li:before{content:'→';margin-right:8px;color:var(--text-secondary)}
+.impact-link{align-self:center;justify-self:center;font-size:12px;font-weight:700;padding:5px 10px;border-radius:var(--bp-radius-pill);background:var(--status-review-bg);color:var(--status-review-text);border:1px solid var(--bp-review-border);white-space:nowrap}
+.impact-reason{color:var(--text-secondary)}
+.review-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:8px 0 12px}
+.option-card{display:grid;gap:4px;justify-items:start;justify-content:stretch;align-content:start;width:100%;text-align:left;background:var(--surface-card);color:var(--text-primary);border:1px solid var(--border-strong);box-shadow:none;padding:14px 16px;font-weight:400}
+.option-card:hover{background:var(--surface-page)}
+.option-card strong{font-weight:700}
+.option-card span{font-size:13px;color:var(--text-secondary)}
+.option-card[aria-pressed=true]{border-color:var(--bp-brand-emerald);box-shadow:inset 0 0 0 1px var(--bp-brand-emerald);background:var(--status-approved-bg)}
+.form-footer{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-top:16px}
+.form-footer .hint{flex:1 1 280px;margin:0}
+.form-footer .actions{margin:0}
+/* AI proposal: dashed, secondary surface — visibly a proposal, not a decision. */
+.recommendation{margin-top:28px;padding:20px 22px;border:1px dashed var(--border-strong);border-radius:var(--bp-radius-lg);background:var(--surface-glass-secondary)}
+.recommendation .option{padding:14px 16px;margin:12px 0;border:1px solid var(--border-default);border-radius:var(--bp-radius-md);background:var(--surface-card)}
+.recommendation .option.is-proposed{border-left:3px dashed var(--bp-brand-champagne)}
+.history .timeline{list-style:none;margin:8px 0 0;padding:0}
+.history-meta{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:13px;color:var(--text-muted)}
+.history-item:last-child:before{bottom:auto;height:24px}
+.row-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;padding:16px 18px;margin:10px 0;border:1px solid var(--border-default);border-radius:var(--bp-radius-lg);background:var(--surface-page)}
+.row-card h3{margin:0 0 4px}.row-card p{margin:0;color:var(--text-secondary)}
+.summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0}
+.summary-grid>div{padding:14px 16px;border:1px solid var(--border-default);border-radius:var(--bp-radius-lg);background:var(--surface-page)}
+.summary-grid h3{font-size:15px;margin:0 0 6px}
+.learning-steps{counter-reset:step}
+.learning-steps>details>summary:before{counter-increment:step;content:counter(step);display:inline-grid;place-items:center;width:26px;height:26px;margin-right:10px;border-radius:50%;background:var(--status-approved-bg);color:var(--status-approved-text);font-size:13px}
+#motion-toggle{font-size:13px}
+@media(max-width:767px){.review-options,.summary-grid{grid-template-columns:1fr}.row-card{grid-template-columns:1fr}.impact-link{justify-self:center}.form-footer .actions{width:100%}}

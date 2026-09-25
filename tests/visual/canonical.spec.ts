@@ -35,7 +35,7 @@ async function sound(page:Page,label:string) {
   const broken=await page.evaluate(()=>[...document.images].filter(i=>i.checkVisibility()&&(!i.complete||i.naturalWidth===0)).map(i=>i.currentSrc));
   expect(broken,`${label} broken images`).toEqual([]);
 }
-async function shot(page:Page,name:string){await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:`${shots}/${name}.png`,fullPage:true});}
+async function shot(page:Page,name:string){await page.evaluate(async()=>{await document.fonts.ready;scrollTo(0,0);});await page.screenshot({path:`${shots}/${name}.png`,fullPage:true});}
 const viewports={wide:{width:1600,height:1000},desktop:{width:1440,height:900},compact:{width:1280,height:800},tablet:{width:768,height:1024},mobile:{width:390,height:844}};
 test.describe.configure({mode:'serial'});
 let seeded:{brand:{id:string};token:string};
@@ -105,7 +105,7 @@ test('text contrast ≥ 4.5:1 (≥ 3:1 large) on public and product surfaces',as
   for(const path of ['/','/login','/request-access']){await page.goto(path);const r=await scan();expect(r.fails,path).toEqual([]);expect(r.checked).toBeGreaterThan(3);}
   // Text over photography: measure against the real rendered pixels behind each text box (text hidden),
   // taking the 5th-percentile (worst) pixel contrast, at desktop and mobile.
-  for(const viewport of [viewports.desktop,viewports.mobile]){
+  for(const viewport of [viewports.desktop,{width:1024,height:768},viewports.tablet,viewports.mobile]){
     await page.setViewportSize(viewport);await page.goto('/');await page.waitForLoadState('networkidle');
     // CSSOM changes are allowed by the strict CSP (inline <style> is not): hide the text, keep the backdrop.
     await page.evaluate(()=>document.querySelectorAll<HTMLElement>('.hero-copy > *').forEach(el=>{el.style.opacity='0';}));
