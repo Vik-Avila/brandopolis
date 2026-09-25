@@ -1,5 +1,19 @@
 # Session State
 
+Current phase: **MVP PHASES 1–9 — FINAL CANONICAL CLOSURE COMPLETE** (frozen as `brandopolis-mvp-phases-1-9-final-2026-09-25` / `release/mvp-phases-1-9-final-2026-09-25`).
+
+Brand Master: CANONICAL / APPROVED. Visual assets: CANONICAL. Frontend: CANONICAL MVP ([closure](docs/15-handoff/FINAL_FRONTEND_CANONICAL_CLOSURE.md)). Phases 1–9: CLOSED FOR MVP ([record](docs/15-handoff/MVP_PHASES_1_TO_9_CLOSURE.md)). AI: EXTERNAL CONFIG REQUIRED FOR REAL PROVIDER. Deployment: EXTERNAL CONFIG REQUIRED FOR REAL INTERNET PILOT. Production: NOT CLAIMED.
+
+Final gate (2026-09-25): typecheck/lint PASS; pnpm test 58/58 (incl. 4 brand-runtime tests); test:e2e 25/25 in 3 consecutive full runs; test:pilot:e2e 10/10; test:visual 8/8 (5 viewports, 0 console errors, reduced motion, contrast incl. hero at 1440/1024/768/390); competition:check --isolated PASS and competition:test-boot 1/1; pilot:validate-config VALID (pilot.brandopolis.ai); Foundation PASS; UI validator PASS; Brand Master validator PASS (working tree and clean worktree); pnpm audit --prod: No known vulnerabilities found; git diff --check clean.
+
+Historical RC browser flake: not reproduced (3/3 clean after final changes); recorded as unreproduced. Local DEMO PostgreSQL observation: start → use → clean stop (pg_ctl) → restart → data preserved, repeated this pass; no recurrence; recorded as a non-reproduced environment event. The DB now runs standalone (`pnpm db:start`) so server restarts never stop PostgreSQL uncleanly.
+
+Next: Phase 10 — real testers / Founder Pilot (branch pilot/phase10-real-testers-2026-09-25). No feature development until real pilot evidence exists.
+
+---
+
+## Previous closure (MVP phases 1–9)
+
 Current phase: **MVP PHASES 1–9 CLOSURE COMPLETE** — verdict: PHASES 1–9 CLOSED WITH EXTERNAL CONFIGURATION PENDING ([closure](docs/15-handoff/MVP_PHASES_1_TO_9_CLOSURE.md)).
 
 Next phase: **PHASE 10 — REAL TESTERS / FOUNDER PILOT** (do not begin automatically; testers are not live).

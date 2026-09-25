@@ -34,7 +34,7 @@ User/Workspace/Brand; Customer + Positioning HARD; cambiar Customer con optimist
 
 ## Current Status
 
-Fases 1–9 cerradas para MVP ([cierre](docs/15-handoff/MVP_PHASES_1_TO_9_CLOSURE.md)). DEMO local determinista para el concurso ([guía](docs/15-handoff/COMPETITION_DEMO_GUIDE.md)); PILOT con OIDC, espacio por tester, IA opcional con aviso y topes, telemetría y feedback, listo para configuración externa ([checklist](docs/15-handoff/LIVE_PILOT_LAUNCH_CHECKLIST.md)); frontend canónico integrado ([auditoría visual](design/brandopolis-ui/FINAL_VISUAL_GAP_AUDIT.md)). Pendiente externo: hosting, proveedor OIDC y credencial de IA. No hay clientes ni ingresos validados; no es producción. Ver [estado de sesión](SESSION_STATE.md) y [alcance diferido](docs/15-handoff/POST_MVP_DEFERRED_SCOPE.md).
+Fases 1–9 cerradas para MVP ([cierre](docs/15-handoff/MVP_PHASES_1_TO_9_CLOSURE.md)). DEMO local determinista para el concurso ([guía](docs/15-handoff/COMPETITION_DEMO_GUIDE.md)); PILOT con OIDC, espacio por tester, IA opcional con aviso y topes, telemetría y feedback, listo para configuración externa ([checklist](docs/15-handoff/LIVE_PILOT_LAUNCH_CHECKLIST.md)); frontend canónico MVP con Brand Master aprobado ([cierre frontend](docs/15-handoff/FINAL_FRONTEND_CANONICAL_CLOSURE.md)). Siguiente: Fase 10 (testers reales). Pendiente externo: hosting, proveedor OIDC y credencial de IA. No hay clientes ni ingresos validados; no es producción. Ver [estado de sesión](SESSION_STATE.md) y [alcance diferido](docs/15-handoff/POST_MVP_DEFERRED_SCOPE.md).
 
 ## Open Technical Decisions
 

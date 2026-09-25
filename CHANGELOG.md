@@ -7,6 +7,13 @@ Depends on: —
 
 # Registro
 
+## MVP FASES 1–9 · cierre canónico de frontend · 2026-09-25
+
+- Identidad de runtime = Brand Master aprobado, byte a byte (logo, Ribbon B, favicon, apple-touch, PWA, manifest); B poligonal retirada; `.gitattributes` acotado; validación desde checkout limpio.
+- Tarjeta de decisión con jerarquía canónica; flujo de impacto con «Dependencia estricta»; revisión guiada con tarjetas de opción; historial como evolución estratégica; Blueprint y aprendizaje con lenguaje visual Brandopolis.
+- Accesibilidad (foco, títulos, h1 único, bordes 3:1, pausa de animación), rendimiento (preloads por breakpoint, ETag) y contraste del hero medido en 4 anchos.
+- Pruebas: 58 motor/contrato, 25 RC ×3 ejecuciones limpias, 10 PILOT, 8 visuales, boot 1.
+
 ## MVP FASES 1–9 · cierre final · 2026-09-25
 
 - Frontend canónico integrado: gateway público (hero, pilares, «Cómo funciona» con Flow), acceso y solicitud de acceso, workspace con KPIs reales, tarjeta de decisión, impacto, revisión guiada, historial en línea de tiempo y Blueprint; Strategic Glassmorphism por tokens.
