@@ -1,0 +1,4 @@
+# Canonical Brand Master and its byte-identical runtime copies are validated by SHA-256.
+# Keep them exactly as committed: no line-ending conversion (core.autocrlf would otherwise rewrite SVG/JSON/manifest bytes).
+design/brandopolis-ui/brand-master/final-canonical-2026-09-25/** -text
+public/brand/** -text
