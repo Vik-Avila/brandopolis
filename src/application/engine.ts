@@ -44,7 +44,7 @@ export class Engine {
     await tx.insert(t.audits).values({id:id(),workspaceId:s.workspaceId,brandId:s.brandId,actorUserId:s.userId,occurredAt:new Date(),...values});
   }
   async me(token:string) {
-    return this.db.transaction(async tx=>{const who=await this.identity(tx,token);return {userId:who.userId,workspaceId:who.workspaceId,learningMoments};});
+    return this.db.transaction(async tx=>{const who=await this.identity(tx,token);return {userId:who.userId,workspaceId:who.workspaceId,expiresAt:who.expiresAt,learningMoments};});
   }
   async listBrands(token:string) {
     return this.db.transaction(async tx=>{

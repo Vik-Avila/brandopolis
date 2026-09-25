@@ -7,6 +7,13 @@ Depends on: —
 
 # Registro
 
+## RC1 · cierre de revisión independiente de Claude · 2026-09-24
+
+- `competition:check` deriva el número de migraciones del journal (F-1).
+- La cookie de sesión expira con la sesión real; nunca la extiende (F-2).
+- Pruebas nuevas: mensaje de migraciones, Max-Age de cookie y reintento de commit de revisión tras respuesta perdida (F-4). Motor 30/30.
+- Idempotencia de creaciones no estratégicas diferida y documentada (F-3). Sin cambios de dominio, migraciones, dependencias ni marca.
+
 ## Competition MVP RC1 · 2026-09-24
 
 - Arranque de concurso en un comando, perfil aislado, readiness de DB/migraciones y recuperación local de sesión DEMO sin elevar permisos.

@@ -2,7 +2,7 @@ import { CompetitionError } from './competition-error.js';
 import { existsSync,readFileSync } from 'node:fs';
 import { checkRuntime,competitionProfile,localCompetitionUrl } from './competition-environment.js';
 import { connect } from '../src/persistence/database.js';
-import { readiness } from '../src/persistence/readiness.js';
+import { readiness,migrationsReadyMessage } from '../src/persistence/readiness.js';
 import { Engine } from '../src/application/engine.js';
 let connection:ReturnType<typeof connect>|undefined;
 try {
@@ -11,7 +11,7 @@ try {
   if(!url)throw new CompetitionError('PostgreSQL local aún no está preparado. Ejecuta pnpm competition:start.');
   connection=connect(url);const state=await readiness(connection.pool);
   if(state!=='READY')throw new CompetitionError(state==='DATABASE_UNAVAILABLE'?'PostgreSQL local no está disponible. Ejecuta pnpm competition:start.':'Migraciones ausentes o incompatibles. Ejecuta pnpm competition:start; no alteres el journal.');
-  console.log('PASS PostgreSQL reachable y ocho migraciones coincidentes.');
+  console.log(migrationsReadyMessage());
   if(!existsSync(profile.sessionFile))throw new CompetitionError('Falta sesión DEMO. Ejecuta pnpm competition:start.');
   const {token}=JSON.parse(readFileSync(profile.sessionFile,'utf8'));
   try{await new Engine(connection.db).me(token);}catch{throw new CompetitionError('Sesión DEMO vencida o no disponible. Ejecuta pnpm competition:start para recuperarla.');}

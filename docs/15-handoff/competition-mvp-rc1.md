@@ -31,6 +31,12 @@ Resultados finales y hora de cierre se registran en SESSION_STATE junto con este
 
 Fresh boot: perfil `.local/rc1-smoke` preparado desde DB separada, migrado, demo creada, readiness 200 y acceso Chrome móvil. Reinicio conservó la misma marca, seguido de smoke de persistencia; Ctrl+C liberó 3001/55434 y eliminó postmaster.pid. En Windows el wrapper pnpm/cmd pide confirmar fin del trabajo por lotes y puede devolver 255 tras Ctrl+C: se verificó el cierre real de procesos, no se interpretó ese código de interrupción como un test fallido. La DB normal no se borró ni se detuvo desde el perfil aislado.
 
+## Cierre de revisión independiente de Claude
+
+Base Codex revisada: `538e8af1e84e6145477d4efb7fd2fadfcb856b48`. Veredicto: ACCEPT WITH NON-BLOCKING FINDINGS (0 P0, 0 P1, 4 P2). Registro: [claude-rc1-independent-review.md](claude-rc1-independent-review.md). F-1 y F-2 corregidos, F-4 cubierto por test sin cambio de implementación, F-3 diferido como riesgo conocido. El commit de cierre de Claude se identifica con `git log -1 --format=%H -- docs/15-handoff/claude-rc1-independent-review.md`; el SHA completo figura en el informe final.
+
+Gate final 2026-09-24: typecheck/lint PASS; motor 30/30; integración 30/30 (misma suite); navegador 25/25 en los cinco viewports; `competition:start` + `competition:check` PASS en perfil normal (reutilizando la DB local existente) y aislado; boot aislado 1/1; Foundation y validador UI PASS; `pnpm audit --prod`: No known vulnerabilities found; `git diff --check` limpio. Accesibilidad medida en Chrome 1440×900 y 390×844: contraste de texto mínimo 4.68:1 (objetivo 4.5:1) en acceso, workspace, Needs Review, explicación de impacto, revisión guiada, pills, botones, texto atenuado y superficies glass; anillo de foco 6.15:1 sobre marfil; recorrido M1 completo sólo con teclado (skip link primero, foco visible en cada acción, sin trampa de foco); con reduced motion no queda ningún elemento animado. No es certificación WCAG.
+
 ## Seguridad y deuda
 
 [Revisión acotada](competition-rc1-security-review.md): controles, evidencia y riesgos residuales. No hallazgo HIGH pendiente identificado; no certificación ni promesa de cero vulnerabilidades. No dependencias nuevas.

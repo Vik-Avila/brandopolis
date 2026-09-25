@@ -9,12 +9,12 @@ import { seedIdentity } from '../scripts/seed.js';
 import { connect } from '../src/persistence/database.js';
 import { Engine, hash } from '../src/application/engine.js';
 import { schema,validate,transition,reviewOrder, type CommitCommand } from '../src/domain/contracts.js';
-import { createApp } from '../src/transport/http.js';
+import { createApp,cookieMaxAge } from '../src/transport/http.js';
 import type { AddressInfo } from 'node:net';
 import * as t from '../src/persistence/schema.js';
 import { ModelGateway, DemoProvider } from '../src/domain/analysis.js';
 import { assemble } from '../src/domain/context-assembler.js';
-import { readiness } from '../src/persistence/readiness.js';
+import { readiness,migrationsReadyMessage } from '../src/persistence/readiness.js';
 import { competitionProfile,ensureDemoSession } from '../scripts/competition-environment.js';
 let local:Awaited<ReturnType<typeof startLocalDb>>,connection:ReturnType<typeof connect>,engine:Engine;
 beforeAll(async()=>{
@@ -42,6 +42,53 @@ async function setup(target=engine) {
   return {who,brand,customer,position,ready,command,commit,context:()=>target.context(who.token,brand.id)};
 }
 describe('PostgreSQL M1',()=>{
+  it('F-1: readiness PASS message derives the migration count from the journal',()=>{
+    const journal=JSON.parse(readFileSync('drizzle/meta/_journal.json','utf8')).entries.length;
+    expect(journal).toBeGreaterThan(0);
+    expect(migrationsReadyMessage()).toBe(`PASS PostgreSQL reachable y ${journal} migraciones coincidentes.`);
+  });
+  it('F-2: session cookie Max-Age follows the remaining server-side session and never outlives it',async()=>{
+    const now=Date.now();
+    expect(cookieMaxAge(new Date(now+86400000),now)).toBe(86400);
+    expect(cookieMaxAge(new Date(now+90500),now)).toBe(90);
+    expect(cookieMaxAge(new Date(now+400),now)).toBe(0);
+    expect(cookieMaxAge(new Date(now-5000),now)).toBe(0);
+    const active=await seedIdentity(connection.db),short=await seedIdentity(connection.db),expired=await seedIdentity(connection.db);
+    await connection.db.update(t.sessions).set({expiresAt:new Date(Date.now()+120000)}).where(eq(t.sessions.tokenHash,hash(short.token)));
+    await connection.db.update(t.sessions).set({expiresAt:new Date(Date.now()-1000)}).where(eq(t.sessions.tokenHash,hash(expired.token)));
+    const server=createApp(engine);await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));
+    const base=`http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const login=(token:string)=>fetch(base+'/api/session',{method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify({token})});
+    const maxAge=(r:Response)=>Number(/Max-Age=(\d+)/.exec(r.headers.get('set-cookie')??'')?.[1]);
+    try {
+      const a=await login(active.token);expect(a.status).toBe(200);
+      expect(a.headers.get('set-cookie')).toMatch(/^brandopolis_session=[^;]+; HttpOnly; SameSite=Strict; Path=\/; Max-Age=\d+$/);
+      expect(maxAge(a)).toBeGreaterThan(86000);expect(maxAge(a)).toBeLessThanOrEqual(86400);
+      const b=await login(short.token);expect(b.status).toBe(200);expect(maxAge(b)).toBeGreaterThan(100);expect(maxAge(b)).toBeLessThanOrEqual(120);
+      const c=await login(expired.token);expect(c.status).toBe(401);expect(c.headers.get('set-cookie')).toBeNull();
+      const foreign=await fetch(base+'/api/session',{method:'POST',headers:{Origin:'https://untrusted.example','Content-Type':'application/json'},body:JSON.stringify({token:active.token})});
+      expect(foreign.status).toBe(403);expect(foreign.headers.get('set-cookie')).toBeNull();
+    } finally {await new Promise<void>((resolve,reject)=>server.close(e=>e?reject(e):resolve()));}
+  });
+  it('F-4: lost response on a review commit replays the same result without new side effects',async()=>{
+    const s=await setup(),c1=await s.commit(s.customer.id,'Agencies',null),p1=await s.commit(s.position.id,'Strategic OS for Agencies',null);
+    const c2=await s.commit(s.customer.id,'Internal Marketing Teams',c1.versionId);
+    const receipt=await engine.beginReview(s.who.token,s.brand.id,p1.decisionId);await s.ready(s.position.id);
+    const command=s.command(s.position.id,'Strategic OS for Internal Marketing Teams',p1.versionId);
+    const first=await engine.commitDecision(s.who.token,command,receipt.reviewToken);
+    const before=await s.context(),telemetryBefore=(await connection.db.select().from(t.telemetry).where(eq(t.telemetry.brandId,s.brand.id))).length;
+    const retry=await engine.commitDecision(s.who.token,command,receipt.reviewToken);
+    expect(retry).toEqual(first);
+    const after=await s.context();
+    expect(after.versions).toEqual(before.versions);expect(after.versions).toHaveLength(4);
+    expect(after.versions.filter(v=>v.decisionId===p1.decisionId).map(v=>[v.id,v.versionStatus])).toEqual([[p1.versionId,'SUPERSEDED'],[first.versionId,'APPROVED']]);
+    expect(after.decisions.find(d=>d.id===p1.decisionId)).toMatchObject({activeVersionId:first.versionId,reviewStatus:'APPROVED'});
+    expect(after.audit.filter(a=>a.idempotencyKey===command.idempotencyKey)).toHaveLength(1);
+    expect(after.audit).toHaveLength(before.audit.length);
+    expect(after.reviews).toEqual(before.reviews);expect(after.reviews).toMatchObject([{triggerVersionId:c2.versionId,status:'COMPLETED',reviewedBy:s.who.userId}]);
+    expect(after.impacts).toEqual(before.impacts);
+    expect((await connection.db.select().from(t.telemetry).where(eq(t.telemetry.brandId,s.brand.id))).length).toBe(telemetryBefore);
+  });
   it('RC readiness is minimal and expired local demo sessions retain their identity without escalation',async()=>{
     expect(await readiness(connection.pool)).toBe('READY');
     const server=createApp(engine,undefined,()=>readiness(connection.pool));await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));

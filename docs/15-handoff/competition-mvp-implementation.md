@@ -47,6 +47,10 @@ Multi-Brand: crear/listar/seleccionar según membership y asignación, etiqueta 
 
 `pnpm demo:competition` verifica con assertions el recorrido de cuatro decisiones y siete versiones; un aprendizaje aceptado aparece en contexto y Blueprint, con todas las revisiones completadas. Crea únicamente datos ficticios y utiliza los mismos casos de uso que la interfaz.
 
+## Cierre de revisión independiente
+
+Claude Code revisó `538e8af` y cerró los hallazgos P2 sin cambios de dominio: mensaje de migraciones derivado del journal, cookie limitada al vencimiento real de la sesión y prueba de reintento de revisión. Idempotencia de creaciones no estratégicas diferida. Ver [registro](claude-rc1-independent-review.md).
+
 ## Guía de revisión independiente
 
 Revisar autoridad en Engine, scope de referencias, FKs de 0006, backfill aditivo de 0007, exact replay de aceptación, contextVersion y reservas de presupuesto. Comprobar que ninguna ruta de Blueprint, Learning, Gateway o Evaluator modifica DecisionVersion. Los tests de upgrade siembran una versión en una base sólo hasta 0005 y comparan exactamente su contenido tras migrar y repetir.

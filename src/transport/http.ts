@@ -9,6 +9,7 @@ async function body(req:IncomingMessage):Promise<Record<string,unknown>> {
   try {const value=JSON.parse(content);if(!value||Array.isArray(value)||typeof value!=='object') throw new Error();return value;} catch {throw new AppError('INVALID','Invalid JSON');}
 }
 function string(value:unknown):string {if(typeof value!=='string'||!value) throw new AppError('INVALID','String required');return value;}
+export function cookieMaxAge(expiresAt:Date,now=Date.now()) {return Math.max(0,Math.floor((expiresAt.getTime()-now)/1000));}
 function send(res:ServerResponse,status:number,data:unknown) {res.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(data));}
 export function createApp(engine:Engine,assets?:(path:string)=>{content:string|Buffer;type:string}|undefined,health?:()=>Promise<string>) {
   return createServer(async(req,res)=>{
@@ -32,8 +33,9 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(!bearer&&req.headers.origin!==`http://${req.headers.host}`) throw new AppError('FORBIDDEN','Same-origin human action required');
         const input=await body(req);
         if(path==='/api/session') {
-          const sessionToken=string(input.token);await engine.me(sessionToken);
-          res.setHeader('Set-Cookie',`brandopolis_session=${sessionToken}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400`);
+          const sessionToken=string(input.token),{expiresAt}=await engine.me(sessionToken);
+          // Cookie never outlives the server-side session; the server check remains authoritative.
+          res.setHeader('Set-Cookie',`brandopolis_session=${sessionToken}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${cookieMaxAge(expiresAt)}`);
           return send(res,200,{authenticated:true});
         }
         if(path==='/api/logout') {res.setHeader('Set-Cookie','brandopolis_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');return send(res,200,{authenticated:false});}

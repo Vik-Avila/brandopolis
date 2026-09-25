@@ -26,7 +26,7 @@ En otra terminal:
 pnpm competition:check
 ```
 
-Esperado: PASS runtime/assets, PostgreSQL/ocho migraciones, sesión y servidor listo. GET [health local](http://127.0.0.1:3000/health) devuelve 200 y `{"application":"brandopolis-competition","protocol":"rc1","status":"ready"}`. No es una prueba funcional completa. Si aparece INFO servidor sin respuesta, sólo pasaron prerrequisitos; no iniciar presentación hasta comprobar HTTP.
+Esperado: PASS runtime/assets, PostgreSQL con el número de migraciones del journal (hoy 8: 0000–0007), sesión y servidor listo. GET [health local](http://127.0.0.1:3000/health) devuelve 200 y `{"application":"brandopolis-competition","protocol":"rc1","status":"ready"}`. No es una prueba funcional completa. Si aparece INFO servidor sin respuesta, sólo pasaron prerrequisitos; no iniciar presentación hasta comprobar HTTP.
 
 Alternativa de desarrollo existente: `pnpm db:start` en una terminal; `pnpm db:migrate`, `pnpm db:seed` y `pnpm dev` en otra. El seed crea otra identidad: para una presentación repetible preferir competition:start, que conserva la identidad autorizada.
 
