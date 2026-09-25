@@ -13,6 +13,8 @@ En Windows: `.venv/Scripts/python.exe -m pip install -r requirements-foundation.
 
 ## DB, migraciones y sesión
 
+Para concurso usar **`pnpm competition:start`**: automatiza DB local, migraciones, sesión DEMO y servidor. Después `pnpm competition:check`; abrir la URL impresa y copiar el token del archivo privado indicado. No requiere variables secretas; rechaza DATABASE_URL externo y NODE_ENV=production. Repetir conserva datos y marca; renueva sesión autorizada si está por vencer. [Runbook RC1](docs/15-handoff/competition-demo-runbook.md) incluye rutas rápida/completa, recuperación, perfil aislado y respaldo. El procedimiento manual siguiente se conserva para desarrollo.
+
 Terminal 1, mantener abierta:
 
 ```sh
@@ -55,7 +57,7 @@ pnpm test:e2e
 
 `pnpm test` incluye dominio, contratos, PostgreSQL real, migración limpia/upgrade/replay y HTTP E2E. `test:integration` ejecuta la misma suite explícitamente; no suma cobertura. `test:e2e` necesita DB local iniciada, migraciones y sesión creada; Playwright arranca servidor si falta. Chrome a 1600×1000, 1440×900, 1280×800, 768×1024 y 390×844: recarga, historial, dos pestañas, conflicto, contexto, recomendaciones, aprendizaje, intake y cambio de marca. Capturas en `test-results/`, ignoradas por Git.
 
-Sin build frontend: shell HTML/CSS/JS nativo y servidor TypeScript mediante tsx. Aplicación local M1, no artefacto de producción.
+Sin build frontend: shell HTML/CSS/JS nativo y servidor TypeScript mediante tsx. Competition MVP local DEMO, no artefacto de producción.
 
 ## Migraciones y revisión
 

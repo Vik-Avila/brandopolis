@@ -7,6 +7,8 @@ Depends on: Competition MVP continuation authorized 2026-09-24
 
 # Competition MVP · continuidad de implementación
 
+El cierre de confiabilidad y evidencia de entrega se registra en [Competition MVP RC1](competition-mvp-rc1.md); ejecución en [runbook](competition-demo-runbook.md). Este documento conserva las decisiones de implementación previas al hardening; RC1 no altera contratos ni migraciones.
+
 M1 es la base conservada. Los checkpoints dd0afdc y 8e1b621 se inspeccionaron directamente; no se reescribieron ni se trataron como evidencia de validación. La rama de trabajo y publicación es codex/ui-kit-integration. No hay merge ni despliegue.
 
 ## Persistencia y migraciones

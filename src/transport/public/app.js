@@ -4,15 +4,31 @@ const labels={'Primary Customer':'Cliente principal','Value Mechanism':'Modelo d
 let user,brandId,context,selected=Object.hasOwn(labels,new URL(location.href).searchParams.get('module'))?new URL(location.href).searchParams.get('module'):'Primary Customer',draft=null,impactVisible=false;
 const notice=(text,error=false)=>{const n=$('#notice');n.textContent=text;n.className=error?'error':'';};
 async function api(path,input) {
-  const response=await fetch(path,{method:input===undefined?'GET':'POST',headers:{'Content-Type':'application/json'},body:input===undefined?undefined:JSON.stringify(input)});
-  const data=await response.json();
+  let response,data;
+  try {
+    response=await fetch(path,{method:input===undefined?'GET':'POST',headers:{'Content-Type':'application/json'},body:input===undefined?undefined:JSON.stringify(input),signal:AbortSignal.timeout(15000)});
+    data=await response.json();
+  } catch {
+    preserveDraft();throw new Error(input===undefined?'No pudimos conectar con la demo local. Comprueba que la terminal siga abierta y vuelve a intentar.':'No recibimos confirmación. Tu borrador se conserva. Revisa el estado antes de repetir la acción para evitar duplicados.');
+  }
   if(!response.ok) {
-    const messages={CONFLICT:'Esta decisión cambió mientras la estabas editando. Revisa la versión más reciente antes de aprobar.',UNAUTHORIZED:'Tu sesión no está disponible. Vuelve a entrar.',FORBIDDEN:'No tienes permiso para esta acción.',UNAVAILABLE:'La operación no está disponible. Conserva tu borrador y reintenta.',INVALID:'Revisa los campos de la decisión.'};
-    throw new Error(messages[data.code]??data.message??'No se pudo completar la operación.');
+    const conflict=path.includes('/learning/')?'Este registro cambió o no permite esa acción. Vuelve a abrir Experimentos y aprendizajes para revisar su estado.':path.includes('/recommendations/')?'La propuesta ya no corresponde al contexto actual. Vuelve a abrir la decisión y compara opciones de nuevo.':'Esta decisión cambió mientras la estabas editando. Revisa la versión más reciente antes de aprobar. Si usaste una recomendación, genera otra con el contexto actual.';
+    const messages={CONFLICT:conflict,UNAUTHORIZED:'Tu sesión DEMO venció o no está disponible. Vuelve a entrar con la sesión local vigente.',FORBIDDEN:'No tienes permiso para esta acción. Revisa que hayas entrado con la sesión DEMO correcta.',UNAVAILABLE:'La demo local no está disponible. Conserva tu borrador y comprueba que la terminal siga abierta.',INVALID:'Revisa los campos requeridos y el contexto disponible antes de continuar.',NOT_FOUND:'La marca o el registro ya no está disponible para esta sesión. Selecciona una marca accesible.'};
+    if(data.code==='UNAUTHORIZED'){preserveDraft();$('#login').hidden=false;$('#workspace').hidden=true;$('#logout').hidden=true;$('#menu').hidden=true;}
+    throw Object.assign(new Error(messages[data.code]??'No se pudo completar la operación. Conserva tus datos y revisa el estado antes de reintentar.'),{code:data.code});
   }
   return data;
 }
-async function run(action,button) {if(button)button.disabled=true;try{await action();}catch(error){notice(error.message,true);}finally{if(button)button.disabled=false;}}
+let operationPending=false;
+async function run(action,button) {
+  if(operationPending)return;operationPending=true;
+  const controls=[...document.querySelectorAll('button,select')].map(element=>({element,disabled:element.disabled}));
+  controls.forEach(({element})=>{element.disabled=true;});if(button)button.setAttribute('aria-busy','true');$('#main').setAttribute('aria-busy','true');
+  notice('Procesando tu acción…');
+  try{await action();if($('#notice').textContent==='Procesando tu acción…')notice('Listo.');}
+  catch(error){notice(error instanceof Error?error.message:'No se pudo completar la acción. Conserva tus datos e inténtalo de nuevo.',true);}
+  finally{operationPending=false;controls.forEach(({element,disabled})=>{if(element.isConnected)element.disabled=disabled;});button?.removeAttribute('aria-busy');$('#main').removeAttribute('aria-busy');}
+}
 async function loadBrands(preferred) {
   const brands=await api('/api/brands');
   $('#brands').innerHTML=brands.map(b=>`<option value="${escape(b.id)}">${escape(b.name)}${b.dataClass==='DEMO'?' · DEMO':''}</option>`).join('');
@@ -78,7 +94,7 @@ $('#close-menu').addEventListener('click',closeMenu);$('#nav-backdrop').addEvent
 document.addEventListener('keydown',e=>{if(!$('#journey').classList.contains('open'))return;if(e.key==='Escape')closeMenu();if(e.key==='Tab'){const controls=[...$('#journey').querySelectorAll('button')].filter(x=>!x.disabled),first=controls[0],last=controls.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
 $('#blueprint').addEventListener('click',()=>run(showBlueprint));
 $('#home').addEventListener('click',()=>run(showHome));
-api('/api/me').then(authenticated).catch(()=>{});
+api('/api/me').then(authenticated).catch(error=>{if(error.code!=='UNAUTHORIZED')notice(error.message,true);});
 $('#brand-context').addEventListener('click',()=>run(showBrandContext));
 async function showBrandContext(){
  setNavActive('#brand-context');

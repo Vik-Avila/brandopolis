@@ -5,7 +5,13 @@ Last reviewed: 2026-09-23
 Related: —
 Depends on: —
 
-# Registro
+# Registro
+
+## Competition MVP RC1 · 2026-09-24
+
+- Arranque de concurso en un comando, perfil aislado, readiness de DB/migraciones y recuperación local de sesión DEMO sin elevar permisos.
+- Feedback de acciones, bloqueo de doble envío y mensajes seguros ante desconexión, conflicto o sesión vencida; borrador de Decision preservado.
+- Pruebas de resiliencia y smoke de boot; runbook, manifiesto RC y revisión acotada de seguridad. Sin cambios de dominio, Bible, migraciones ni dependencias.
 
 ## 2026-09-23
 - Fundación documental provisional, contratos de dominio, IA, seguridad, validación y handoff.

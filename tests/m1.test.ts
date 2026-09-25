@@ -14,6 +14,8 @@ import type { AddressInfo } from 'node:net';
 import * as t from '../src/persistence/schema.js';
 import { ModelGateway, DemoProvider } from '../src/domain/analysis.js';
 import { assemble } from '../src/domain/context-assembler.js';
+import { readiness } from '../src/persistence/readiness.js';
+import { competitionProfile,ensureDemoSession } from '../scripts/competition-environment.js';
 let local:Awaited<ReturnType<typeof startLocalDb>>,connection:ReturnType<typeof connect>,engine:Engine;
 beforeAll(async()=>{
   local=await startLocalDb(true);
@@ -40,6 +42,17 @@ async function setup(target=engine) {
   return {who,brand,customer,position,ready,command,commit,context:()=>target.context(who.token,brand.id)};
 }
 describe('PostgreSQL M1',()=>{
+  it('RC readiness is minimal and expired local demo sessions retain their identity without escalation',async()=>{
+    expect(await readiness(connection.pool)).toBe('READY');
+    const server=createApp(engine,undefined,()=>readiness(connection.pool));await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));
+    try {const response=await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/health`);expect(response.status).toBe(200);expect(await response.json()).toEqual({application:'brandopolis-competition',protocol:'rc1',status:'ready'});}finally{await new Promise<void>(r=>server.close(()=>r()));}
+    const folder=`.local/session-fixtures/${randomUUID()}`,profile={...competitionProfile(),root:folder,sessionFile:`${folder}/session.json`};
+    const first=await ensureDemoSession(connection.db,profile);await connection.db.update(t.sessions).set({expiresAt:new Date(0)}).where(eq(t.sessions.tokenHash,hash(first.token)));
+    const renewed=await ensureDemoSession(connection.db,profile);expect(renewed.userId).toBe(first.userId);expect(renewed.workspaceId).toBe(first.workspaceId);expect(renewed.token).not.toBe(first.token);expect((await engine.me(renewed.token)).userId).toBe(first.userId);
+    await connection.db.update(t.memberships).set({active:false}).where(eq(t.memberships.userId,first.userId));await expect(ensureDemoSession(connection.db,profile)).rejects.toThrow('No se elevarán privilegios');
+    const unavailable=createApp(engine,undefined,async()=>{return 'DATABASE_UNAVAILABLE';});await new Promise<void>(r=>unavailable.listen(0,'127.0.0.1',r));
+    try {const response=await fetch(`http://127.0.0.1:${(unavailable.address() as AddressInfo).port}/health`);expect(response.status).toBe(503);expect(await response.json()).toEqual({application:'brandopolis-competition',protocol:'rc1',status:'unavailable'});}finally{await new Promise<void>(r=>unavailable.close(()=>r()));}
+  });
   it('context budgets reserve accepted learning before optional facts',()=>{
     const required={id:'accepted',type:'Learning',critical:true,data:{interpretation:'Human accepted'},trust:'HUMAN_ACCEPTED'};
     const optional={id:'optional',type:'Evidence',critical:false,data:'x'.repeat(300),trust:'UNTRUSTED_EXTERNAL'};
@@ -55,6 +68,7 @@ describe('PostgreSQL M1',()=>{
     for(const e of journal.entries)copyFileSync(`drizzle/${e.tag}.sql`,`${folder}/${e.tag}.sql`);
     try {
       await migrate(previous.db,{migrationsFolder:folder});const who=await seedIdentity(previous.db),brandId=randomUUID(),questionId=randomUUID(),decisionId=randomUUID(),versionId=randomUUID();
+      expect(await readiness(previous.pool)).toBe('MIGRATIONS_REQUIRED');
       await previous.db.transaction(async tx=>{
         await tx.insert(t.brands).values({id:brandId,workspaceId:who.workspaceId,name:'Upgrade DEMO'});
         await tx.insert(t.questions).values({id:questionId,workspaceId:who.workspaceId,brandId,module:'Primary Customer',text:'Cliente',status:'DECIDED'});

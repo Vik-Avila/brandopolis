@@ -10,7 +10,7 @@ async function body(req:IncomingMessage):Promise<Record<string,unknown>> {
 }
 function string(value:unknown):string {if(typeof value!=='string'||!value) throw new AppError('INVALID','String required');return value;}
 function send(res:ServerResponse,status:number,data:unknown) {res.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(data));}
-export function createApp(engine:Engine,assets?:(path:string)=>{content:string|Buffer;type:string}|undefined) {
+export function createApp(engine:Engine,assets?:(path:string)=>{content:string|Buffer;type:string}|undefined,health?:()=>Promise<string>) {
   return createServer(async(req,res)=>{
     res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
     res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
@@ -18,6 +18,9 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
       // Loopback Host allowlist also prevents DNS rebinding against the local demo.
       if(!/^127\.0\.0\.1:\d+$/.test(req.headers.host??'')) throw new AppError('FORBIDDEN','Loopback host required');
       const url=new URL(req.url??'/',`http://${req.headers.host}`),path=url.pathname;
+      if(req.method==='GET'&&path==='/health') {
+        const ready=health?await health():'UNAVAILABLE';return send(res,ready==='READY'?200:503,{application:'brandopolis-competition',protocol:'rc1',status:ready==='READY'?'ready':'unavailable'});
+      }
       if(req.method==='GET'&&!path.startsWith('/api/')) {
         const asset=assets?.(path);if(!asset) return send(res,404,{code:'NOT_FOUND'});
         res.writeHead(200,{'Content-Type':asset.type});res.end(asset.content);return;

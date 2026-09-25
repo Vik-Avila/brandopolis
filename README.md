@@ -2,7 +2,7 @@
 
 ## What It Is
 
-SaaS B2B AI-native de decisiones estratégicas conectadas para marcas. **AI proposes. Humans decide. Brandopolis remembers. People learn by building.** Producto conceptualmente congelado, pre-MVP, Engineering Foundation.
+SaaS B2B AI-native de decisiones estratégicas conectadas para marcas. **AI proposes. Humans decide. Brandopolis remembers. People learn by building.** Competition MVP local DEMO; alcance congelado para RC1.
 
 ## Why It Exists
 
@@ -42,7 +42,7 @@ Drizzle elegido en ADR-0011. Auth final, proveedor IA inicial, research y despli
 
 ## Local Setup
 
-[LOCAL_HANDOFF.md](LOCAL_HANDOFF.md). Node 24, pnpm 12.4.2 y Python 3.10+; PostgreSQL nativo local vía pnpm db:start (sin Docker) o DATABASE_URL externo. `.env.example` son ejemplos, sin credenciales. Comandos: pnpm install, pnpm db:start, pnpm db:migrate, pnpm db:seed, pnpm dev, pnpm test y pnpm test:e2e; instrucciones completas en el handoff local.
+[LOCAL_HANDOFF.md](LOCAL_HANDOFF.md). Node 24 y pnpm 12.4.2: `pnpm install --frozen-lockfile`, después `pnpm competition:start`. Prepara PostgreSQL, migraciones, sesión y demo local; imprime URL sin credenciales. `pnpm competition:check` verifica prerrequisitos/readiness sin sustituir tests. DATABASE_URL debe estar vacía para tooling de concurso. Ver [runbook](docs/15-handoff/competition-demo-runbook.md) y [manifiesto RC1](docs/15-handoff/competition-mvp-rc1.md).
 
 ## Validation Commands
 

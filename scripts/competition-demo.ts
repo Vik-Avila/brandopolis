@@ -1,15 +1,17 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import assert from 'node:assert/strict';
-import { connect } from '../src/persistence/database.js';
+import { connect, type Database } from '../src/persistence/database.js';
 import { Engine } from '../src/application/engine.js';
-import { databaseUrl } from './local-db.js';
+import { checkRuntime,competitionProfile,localCompetitionUrl,ensureDemoSession } from './competition-environment.js';
+import { migrateDatabase } from './migrate.js';
 
 // Explicitly invoked demonstration of human actions; no background strategic automation.
-const {db,pool}=connect(databaseUrl());
-try {
-  const {token,userId}=JSON.parse(readFileSync('.local/demo-session.json','utf8'));
-  const engine=new Engine(db),brand=await engine.createBrand(token,'Competition MVP · DEMO','Sistema de decisiones conectadas para equipos que gestionan marcas.');
+export async function createCompetitionDemo(db:Database,profile=competitionProfile()) {
+  const {token,userId}=await ensureDemoSession(db,profile);
+  const engine=new Engine(db),brand=await engine.createBrand(token,`Competition MVP DEMO ${new Date().toISOString().slice(0,19)} ${randomUUID().slice(0,4)}`,'Sistema de decisiones conectadas para equipos que gestionan marcas.');
   const initial=await engine.context(token,brand.id),question=(module:string)=>initial.questions.find(q=>q.module===module)!.id;
   async function commit(module:string,choice:string,expected:string|null,reviewToken?:string,sourceRecommendationId:string|null=null) {
     const questionId=question(module);await engine.prepareQuestion(token,brand.id,questionId,expected);
@@ -38,6 +40,12 @@ try {
   await engine.transitionLearningObject(token,brand.id,'learning',String(learning.id),'REVIEWED','ACCEPTED');
   const final=await engine.blueprint(token,brand.id),packet=await engine.assembleContext(token,brand.id,question('Primary Customer'));
   assert.equal(final.decisions.length,4);assert.equal(final.versions.length,7);assert.equal(final.learnings[0].status,'ACCEPTED');assert(packet.items.some(i=>i.type==='Learning'));assert(final.reviews.every(r=>r.status==='COMPLETED'));
-  const result={dataClass:'DEMO',brandId:brand.id,decisions:4,versions:7,acceptedLearnings:1,reviewStatus:'COMPLETED',url:`http://127.0.0.1:3000/?brand=${brand.id}&module=Primary%20Customer`};
-  writeFileSync('.local/competition-demo.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result,null,2));
-} finally {await pool.end();}
+  const result={dataClass:'DEMO',brandId:brand.id,decisions:4,versions:7,acceptedLearnings:1,reviewStatus:'COMPLETED',url:`http://127.0.0.1:${profile.port}/?brand=${brand.id}&module=Primary%20Customer`};
+  writeFileSync(profile.demoFile,JSON.stringify(result,null,2));return result;
+}
+if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href) {
+  let connection:ReturnType<typeof connect>|undefined;
+  try {checkRuntime();const profile=competitionProfile(process.argv.includes('--isolated')),url=localCompetitionUrl(profile);if(!url)throw new Error('Local database missing');connection=connect(url);await migrateDatabase(connection.db);console.log(JSON.stringify(await createCompetitionDemo(connection.db,profile),null,2));}
+  catch {console.error('No se pudo preparar la demo. Ejecuta pnpm competition:start para comprobar base y sesi\u00f3n; usa --isolated si corresponde.');process.exitCode=1;}
+  finally {await connection?.pool.end();}
+}

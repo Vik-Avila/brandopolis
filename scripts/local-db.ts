@@ -4,11 +4,11 @@ import { randomBytes } from 'node:crypto';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 if(existsSync('.env')) process.loadEnvFile('.env');
-export async function startLocalDb(test=false) {
-  const directory=resolve('.local',test?'test-postgres':'postgres');
+export async function startLocalDb(test=false,profile?:{directory:string;port:number}) {
+  const directory=profile?.directory??resolve('.local',test?'test-postgres':'postgres');
   mkdirSync(directory,{recursive:true});
   const secret=resolve(directory,'connection.json');
-  const settings=existsSync(secret)?JSON.parse(readFileSync(secret,'utf8')):{password:randomBytes(32).toString('hex'),port:test?55433:55432};
+  const settings=existsSync(secret)?JSON.parse(readFileSync(secret,'utf8')):{password:randomBytes(32).toString('hex'),port:profile?.port??(test?55433:55432)};
   if(!existsSync(secret)) writeFileSync(secret,JSON.stringify(settings),{mode:0o600});
   const db=new EmbeddedPostgres({databaseDir:resolve(directory,'data'),user:'postgres',password:settings.password,port:settings.port,persistent:true,authMethod:'scram-sha-256',postgresFlags:['-h','127.0.0.1'],initdbFlags:['--encoding=UTF8','--locale=C'],onLog:()=>{},onError:()=>{}});
   if(!existsSync(resolve(directory,'data','PG_VERSION'))) await db.initialise();
