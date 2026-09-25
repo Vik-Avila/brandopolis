@@ -1,5 +1,11 @@
 # Session State
 
+Current phase: **PHASE 10 — REAL TESTERS / FOUNDER PILOT** — STARTED, EXTERNAL CONFIGURATION PENDING ([start](docs/15-handoff/PHASE10_FOUNDER_PILOT_START.md)). Branch: pilot/phase10-real-testers-2026-09-25 from tag brandopolis-mvp-phases-1-9-final-2026-09-25 (d22e3c6).
+
+Not live: testers, hosting, OIDC provider, Anthropic provider, production. No feature development until real pilot evidence exists or a deployment blocker requires code.
+
+---
+
 Current phase: **MVP PHASES 1–9 — FINAL CANONICAL CLOSURE COMPLETE** (frozen as `brandopolis-mvp-phases-1-9-final-2026-09-25` / `release/mvp-phases-1-9-final-2026-09-25`).
 
 Brand Master: CANONICAL / APPROVED. Visual assets: CANONICAL. Frontend: CANONICAL MVP ([closure](docs/15-handoff/FINAL_FRONTEND_CANONICAL_CLOSURE.md)). Phases 1–9: CLOSED FOR MVP ([record](docs/15-handoff/MVP_PHASES_1_TO_9_CLOSURE.md)). AI: EXTERNAL CONFIG REQUIRED FOR REAL PROVIDER. Deployment: EXTERNAL CONFIG REQUIRED FOR REAL INTERNET PILOT. Production: NOT CLAIMED.
