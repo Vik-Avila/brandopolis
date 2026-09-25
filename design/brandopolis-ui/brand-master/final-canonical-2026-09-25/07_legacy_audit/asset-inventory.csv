@@ -1,0 +1,25 @@
+oldAsset,format,dimensions,status,reason,replacement
+design/brandopolis-ui/assets/logo/README.md,.md,vector/manifest,UNKNOWN / REQUIRES REVIEW,Unsupported identity source.,
+design/brandopolis-ui/assets/logo/brandopolis-logo-horizontal-flat-outlined.svg,.svg,vector/manifest,UNKNOWN / REQUIRES REVIEW,Unsupported identity source.,
+design/brandopolis-ui/assets/logo/brandopolis-logo-horizontal-premium.png,.png,2085x478,REFERENCE ONLY,"Approved material reference, superseded as runtime master by the canonical vector-masked exports.",03_premium/brandopolis-logo-horizontal-premium.png
+design/brandopolis-ui/assets/logo/brandopolis-symbol-premium.png,.png,1334x1315,REFERENCE ONLY,"Approved material reference, superseded as runtime master by the canonical vector-masked exports.",03_premium/brandopolis-symbol-premium-2048.png
+design/brandopolis-ui/assets/logo/brandopolis-logo-vertical-premium.png,.png,1600x1700,REFERENCE ONLY,"Approved material reference, superseded as runtime master by the canonical vector-masked exports.",03_premium/brandopolis-logo-horizontal-premium.png
+public/brand/symbols/brandopolis-symbol-black.png,.png,1334x1315,DEPRECATED,Flat raster based on prior polygonal master.,02_runtime/symbol/brandopolis-symbol-flat-color.svg
+public/brand/symbols/brandopolis-symbol-emerald.png,.png,1334x1315,DEPRECATED,Flat raster based on prior polygonal master.,02_runtime/symbol/brandopolis-symbol-flat-color.svg
+public/brand/symbols/brandopolis-symbol.svg,.svg,vector/manifest,DEPRECATED,Polygonal B geometry is not the approved premium silhouette at quality.,02_runtime/symbol/brandopolis-symbol-flat-color.svg
+public/brand/symbols/brandopolis-symbol-gold.png,.png,1334x1315,DEPRECATED,Flat raster based on prior polygonal master.,02_runtime/symbol/brandopolis-symbol-flat-color.svg
+public/brand/symbols/brandopolis-symbol-white.png,.png,1334x1315,DEPRECATED,Flat raster based on prior polygonal master.,02_runtime/symbol/brandopolis-symbol-flat-color.svg
+public/brand/symbols/brandopolis-symbol-flat.png,.png,1334x1315,DEPRECATED,Flat raster based on prior polygonal master.,02_runtime/symbol/brandopolis-symbol-flat-color.svg
+public/brand/logo/brandopolis-logo-horizontal.svg,.svg,vector/manifest,DEPRECATED,"Outlined wordmark preserved, but legacy B is polygonal.",02_runtime/logo/brandopolis-logo-horizontal-color.svg
+public/brand/ui/app-icon-512.png,.png,512x512,DEPRECATED,Derived from older and inconsistent micro/app symbol assets.,02_runtime/app-icons/app-icon-512.png
+public/brand/ui/icon-128.png,.png,128x128,DEPRECATED,Derived from older and inconsistent micro/app symbol assets.,02_runtime/app-icons/app-icon-128.png
+public/brand/ui/favicon.ico,.ico,256x256,DEPRECATED,Derived from older and inconsistent micro/app symbol assets.,02_runtime/favicon/favicon.ico
+public/brand/ui/icon-16.png,.png,16x16,DEPRECATED,Derived from older and inconsistent micro/app symbol assets.,02_runtime/favicon/favicon-16.png
+public/brand/ui/icon-256.png,.png,256x256,DEPRECATED,Derived from older and inconsistent micro/app symbol assets.,02_runtime/app-icons/app-icon-256.png
+public/brand/ui/icon-32.png,.png,32x32,DEPRECATED,Derived from older and inconsistent micro/app symbol assets.,02_runtime/favicon/favicon-32.png
+public/brand/ui/app-icon-192.png,.png,192x192,DEPRECATED,Derived from older and inconsistent micro/app symbol assets.,02_runtime/app-icons/app-icon-192.png
+public/brand/ui/icon-48.png,.png,48x48,DEPRECATED,Derived from older and inconsistent micro/app symbol assets.,02_runtime/favicon/favicon-48.png
+public/brand/ui/icon-64.png,.png,64x64,DEPRECATED,Derived from older and inconsistent micro/app symbol assets.,02_runtime/favicon/favicon-64.png
+public/brand/ui/site.webmanifest,.webmanifest,vector/manifest,DEPRECATED,References prior icon generation.,02_runtime/manifest/site.webmanifest
+public/brand/ui/icon-512.png,.png,512x512,DEPRECATED,Derived from older and inconsistent micro/app symbol assets.,02_runtime/app-icons/app-icon-512.png
+public/brand/ui/apple-touch-icon.png,.png,180x180,DEPRECATED,Derived from older and inconsistent micro/app symbol assets.,02_runtime/app-icons/app-icon-180.png
