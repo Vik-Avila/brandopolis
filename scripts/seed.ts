@@ -20,5 +20,5 @@ export async function seedIdentity(db:Database,role='ADMIN',workspaceId=randomUU
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href) {
   if(process.env.NODE_ENV==='production') throw new Error('DEMO seed disabled in production');
   const {db,pool}=connect(databaseUrl());
-  try {if(await containsPilotData(pool))throw new Error('DEMO seed refused: this database contains PILOT data.');const identity=await seedIdentity(db);mkdirSync('.local',{recursive:true});writeFileSync('.local/demo-session.json',JSON.stringify(identity),{mode:0o600});console.log('Sesión DEMO creada en .local/demo-session.json (privado, expira en 24h).');} finally {await pool.end();}
+  try {if(await containsPilotData(pool)){console.error('DEMO seed refused: this database contains PILOT data.');process.exitCode=1;}else{const identity=await seedIdentity(db);mkdirSync('.local',{recursive:true});writeFileSync('.local/demo-session.json',JSON.stringify(identity),{mode:0o600});console.log('Sesión DEMO creada en .local/demo-session.json (privado, expira en 24h).');}} finally {await pool.end();}
 }

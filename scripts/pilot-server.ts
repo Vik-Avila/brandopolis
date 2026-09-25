@@ -21,7 +21,7 @@ try {
   if(!(await lock.query('select pg_try_advisory_lock($1) as ok',[SINGLE_INSTANCE_LOCK])).rows[0].ok)throw new ConfigError('Another PILOT instance holds the single-instance lock. PILOT runs as one instance; stop the other process first.');
   const provider=settings.ai.enabled?new AnthropicProvider(process.env.ANTHROPIC_API_KEY!.trim(),settings.ai.model!):new UnavailableProvider();
   const ai={notice:settings.ai.enabled?loadAiNotice(settings.ai.noticeFile):null,capPerTester:settings.ai.dailyCapPerTester,capTotal:settings.ai.dailyCapTotal};
-  const auth=await pilotAuth(connection.db,settings.origin,{trustProxy:settings.trustProxy,requestAccessUrl:settings.requestAccessUrl,ai});
+  const auth=await pilotAuth(connection.db,settings.origin,{trustProxy:settings.trustProxy,requestAccessUrl:settings.requestAccessUrl,ai}).catch(error=>{throw error instanceof ConfigError?error:new ConfigError('OIDC discovery failed: check OIDC_ISSUER, network egress and provider status (pnpm pilot:preflight).');});
   const engine=new Engine(connection.db,undefined,new ModelGateway(provider,PILOT_PROMPT_VERSION,settings.ai.timeoutMs));
   const server=createApp(engine,path=>{const file=runtimeAssets[path as keyof typeof runtimeAssets];return file?{content:readFileSync(file[0]),type:file[1]}:undefined;},()=>readiness(connection!.pool),auth);
   await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(settings.port,settings.bindHost,resolve);});

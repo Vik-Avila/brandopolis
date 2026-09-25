@@ -22,7 +22,10 @@ import { readiness } from '../src/persistence/readiness.js';
 if(process.env.DATABASE_URL)throw new Error('Browser fixtures require the local development DB.');
 const folder='.local/pilot-browser';mkdirSync(folder,{recursive:true});
 execFileSync(process.env.OPENSSL_BIN??(process.platform==='win32'?'C:/Program Files/Git/usr/bin/openssl.exe':'openssl'),['req','-x509','-newkey','rsa:2048','-nodes','-keyout',folder+'/key.pem','-out',folder+'/cert.pem','-days','1','-subj','/CN=127.0.0.1','-addext','subjectAltName=IP:127.0.0.1'],{stdio:'ignore'});
-const admin=connect(databaseUrl()),name=`pilot_browser_${randomUUID().replaceAll('-','')}`;await admin.pool.query(`CREATE DATABASE "${name}"`);await admin.pool.end();
+const admin=connect(databaseUrl()),name=`pilot_browser_${randomUUID().replaceAll('-','')}`;
+// Remove fixture databases left by earlier runs (only this fixture's exact naming pattern; never other databases).
+for(const row of (await admin.pool.query(`select datname from pg_database where datname ~ '^pilot_browser_[0-9a-f]{32}$'`)).rows)await admin.pool.query(`DROP DATABASE IF EXISTS "${row.datname as string}" WITH (FORCE)`);
+await admin.pool.query(`CREATE DATABASE "${name}"`);await admin.pool.end();
 const db=connect(databaseUrl().replace(/\/postgres$/,`/${name}`));await migrateDatabase(db.db);
 const origin='https://127.0.0.1:3002',issuer='https://browser-idp.example',clientId='fixture-client',access=new PilotAccess(db.db,issuer);
 for(const project of ['wide','desktop','compact','tablet','mobile'])await access.provision('fresh-'+project,'A');
