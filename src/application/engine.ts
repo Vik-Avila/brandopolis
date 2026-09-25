@@ -4,7 +4,7 @@ import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { AppError, validate, rules, transition, reviewOrder, type CommitCommand } from '../domain/contracts.js';
 import type { Database, Transaction } from '../persistence/database.js';
 import * as t from '../persistence/schema.js';
-import { vertical } from '../domain/modules.js';
+import { vertical, learningMoments } from '../domain/modules.js';
 import { assemble } from '../domain/context-assembler.js';
 import { ModelGateway, DemoProvider, evaluate, type Recommendation } from '../domain/analysis.js';
 
@@ -44,7 +44,7 @@ export class Engine {
     await tx.insert(t.audits).values({id:id(),workspaceId:s.workspaceId,brandId:s.brandId,actorUserId:s.userId,occurredAt:new Date(),...values});
   }
   async me(token:string) {
-    return this.db.transaction(async tx=>{const who=await this.identity(tx,token);return {userId:who.userId,workspaceId:who.workspaceId};});
+    return this.db.transaction(async tx=>{const who=await this.identity(tx,token);return {userId:who.userId,workspaceId:who.workspaceId,learningMoments};});
   }
   async listBrands(token:string) {
     return this.db.transaction(async tx=>{
@@ -55,8 +55,9 @@ export class Engine {
       return rows.filter(b=>grants.some(g=>g.brandId===b.id));
     });
   }
-  async createBrand(token:string,name:string) {
+  async createBrand(token:string,name:string,initialContext?:string) {
     if(typeof name!=='string'||!name.trim()||name.length>160) throw new AppError('INVALID','Brand name required');
+    if(initialContext!==undefined&&(typeof initialContext!=='string'||initialContext.length>6000))throw new AppError('INVALID','Invalid initial context');
     return this.db.transaction(async tx=>{
       const who=await this.identity(tx,token);
       if(who.member.role!=='ADMIN'&&!who.member.canCreateBrand) throw new AppError('FORBIDDEN','Cannot create Brand');
@@ -67,6 +68,11 @@ export class Engine {
         await tx.insert(t.questions).values({id:id(),workspaceId:who.workspaceId,brandId:brand.id,module,text,status:'OPEN'});
       }
       const s={workspaceId:who.workspaceId,brandId:brand.id,userId:who.userId};
+      if(initialContext?.trim()) {
+        const now=new Date(),payload={id:id(),brandId:brand.id,statement:initialContext.trim(),createdBy:who.userId,createdAt:now.toISOString()};validate('user-input',payload);
+        await tx.insert(t.userInputs).values({id:payload.id,workspaceId:who.workspaceId,brandId:brand.id,payload,createdBy:who.userId,createdAt:now});
+        await this.audit(tx,s,{operation:'CONTEXT_USER-INPUT_CAPTURED',idempotencyKey:payload.id});
+      }
       await this.audit(tx,s,{operation:'BRAND_CREATED',idempotencyKey:brand.id});
       await this.event(tx,s,'brand_created');
       return brand;
@@ -116,8 +122,8 @@ export class Engine {
     return hash(JSON.stringify([decisions.map(d=>[d.id,d.activeVersionId,d.reviewStatus]).sort(),await this.contextEntities(tx,s)]));
   }
   private async contextEntities(tx:Transaction,s:Scope) {
-    const read=async(table:typeof t.userInputs|typeof t.evidence|typeof t.hypotheses|typeof t.openQuestions)=> (await tx.select().from(table).where(inScope(table,s)).orderBy(asc(table.id))).map(r=>r.payload);
-    return {userInputs:await read(t.userInputs),evidence:await read(t.evidence),hypotheses:await read(t.hypotheses),openQuestions:await read(t.openQuestions)};
+    const read=async(table:typeof t.userInputs|typeof t.evidence|typeof t.hypotheses|typeof t.openQuestions|typeof t.experiments|typeof t.signals|typeof t.learnings)=> (await tx.select().from(table).where(inScope(table,s)).orderBy(asc(table.id))).map(r=>r.payload);
+    return {experiments:await read(t.experiments),signals:await read(t.signals),learnings:await read(t.learnings),userInputs:await read(t.userInputs),evidence:await read(t.evidence),hypotheses:await read(t.hypotheses),openQuestions:await read(t.openQuestions)};
   }
   async captureContext(token:string,brandId:string,kind:string,input:Record<string,unknown>) {
     const tables={'user-input':t.userInputs,evidence:t.evidence,hypothesis:t.hypotheses,'open-question':t.openQuestions};
@@ -146,9 +152,11 @@ export class Engine {
     return assemble(ctx.contextVersion,question,ctx.dependencies,ctx.reviews,[
       ...ctx.decisions.map(d=>({id:d.id,type:'Decision',critical:true,data:{...d,version:ctx.versions.find(v=>v.id===d.activeVersionId)},trust:'HUMAN_APPROVED'})),
       ...ctx.evidence.map(e=>({id:String(e.id),type:'Evidence',critical:false,data:e,trust:e.external?'UNTRUSTED_EXTERNAL':'HUMAN_RECORDED'})),
+      ...ctx.learnings.filter(e=>e.status==='ACCEPTED').map(e=>({id:String(e.id),type:'Learning',critical:false,data:e,trust:'HUMAN_ACCEPTED'})),
       ...ctx.userInputs.map(e=>({id:String(e.id),type:'UserInput',critical:false,data:e,trust:'USER_STATEMENT'})),
       ...ctx.hypotheses.filter(e=>e.status!=='REJECTED').map(e=>({id:String(e.id),type:'Hypothesis',critical:false,data:e,trust:e.status==='SUPPORTED'?'HUMAN_REVIEWED':'UNVALIDATED'})),
-      ...ctx.openQuestions.filter(e=>e.status==='OPEN').map(e=>({id:String(e.id),type:'OpenQuestion',critical:false,data:e,trust:'OPEN'}))
+      ...ctx.openQuestions.filter(e=>e.status==='OPEN').map(e=>({id:String(e.id),type:'OpenQuestion',critical:false,data:e,trust:'OPEN'})),
+      ...ctx.versions.filter(v=>v.versionStatus==='SUPERSEDED'&&ctx.decisions.some(d=>d.id===v.decisionId&&d.questionId===questionId)).map(v=>({id:v.id,type:'DecisionHistory',critical:false,data:v,trust:'HISTORICAL_NOT_CURRENT'}))
     ],budget);
   }
   async analyze(token:string,brandId:string,questionId:string) {
@@ -183,6 +191,60 @@ export class Engine {
       await this.audit(tx,s,{operation:'RECOMMENDATION_REJECTED',idempotencyKey:recommendationId,sourceRecommendationId:recommendationId,rationale});
       await this.event(tx,s,'recommendation_rejected');return {resolution:'REJECTED'};
     });
+  }
+  async createLearningObject(token:string,brandId:string,kind:string,input:Record<string,unknown>,decisionId?:string) {
+    if(!['experiment','signal','learning'].includes(kind)||!input||Array.isArray(input)||JSON.stringify(input).length>16000)throw new AppError('INVALID','Invalid learning object');
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId),now=new Date(),objectId=id();
+      const payload:Record<string,unknown>={...input,id:objectId,brandId,...(kind==='experiment'?{ownerUserId:s.userId,status:'PLANNED'}:kind==='learning'?{status:'CANDIDATE',reviewedBy:null}:{})};validate(kind,payload);
+      if(Object.values(payload).some(v=>typeof v==='string'&&!v.trim()))throw new AppError('INVALID','Empty content');
+      const base={id:objectId,workspaceId:s.workspaceId,brandId,payload,createdBy:s.userId,createdAt:now};
+      if(kind==='experiment') {
+        const [hypothesis]=await tx.select().from(t.hypotheses).where(and(inScope(t.hypotheses,s),eq(t.hypotheses.id,String(payload.hypothesisId))));
+        const [decision]=await tx.select().from(t.decisions).where(and(inScope(t.decisions,s),eq(t.decisions.id,decisionId??'')));
+        if(!hypothesis||!decision?.activeVersionId)throw new AppError('NOT_FOUND','Hypothesis or decision unavailable');
+        await tx.insert(t.experiments).values({...base,hypothesisId:hypothesis.id,decisionId:decision.id});
+      } else if(kind==='signal') {
+        const [experiment]=await tx.select().from(t.experiments).where(and(inScope(t.experiments,s),eq(t.experiments.id,String(payload.experimentId))));
+        if(!experiment)throw new AppError('NOT_FOUND','Experiment unavailable');
+        if(experiment.payload.status!=='RUNNING')throw new AppError('CONFLICT','Start the experiment before recording signals');
+        if(new Date(String(payload.observedAt))>now)throw new AppError('INVALID','Observation cannot be in the future');
+        await tx.insert(t.signals).values({...base,experimentId:experiment.id});
+      } else {
+        const signalIds=payload.signalIds as string[];
+        if(new Set(signalIds).size!==signalIds.length)throw new AppError('INVALID','Duplicate signals');
+        for(const signalId of signalIds) {const [signal]=await tx.select().from(t.signals).where(and(inScope(t.signals,s),eq(t.signals.id,signalId)));if(!signal)throw new AppError('NOT_FOUND','Signal unavailable');}
+        await tx.insert(t.learnings).values(base);
+        await tx.insert(t.learningSignals).values(signalIds.map(signalId=>({workspaceId:s.workspaceId,brandId,learningId:objectId,signalId})));
+      }
+      await tx.update(t.recommendations).set({resolution:'STALE'}).where(and(inScope(t.recommendations,s),eq(t.recommendations.resolution,'GENERATED')));
+      await this.audit(tx,s,{operation:`${kind.toUpperCase()}_CREATED`,idempotencyKey:objectId,decisionId:kind==='experiment'?decisionId:undefined});
+      await this.event(tx,s,kind==='signal'?'signal_recorded':`${kind}_created`);return payload;
+    });
+  }
+  async transitionLearningObject(token:string,brandId:string,kind:string,objectId:string,expectedStatus:string,status:string) {
+    if(!['experiment','learning'].includes(kind))throw new AppError('INVALID','Invalid transition type');
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId),table=kind==='experiment'?t.experiments:t.learnings;
+      const [row]=await tx.select().from(table).where(and(inScope(table,s),eq(table.id,objectId)));
+      if(!row)throw new AppError('NOT_FOUND','Object unavailable');
+      if(row.payload.status!==expectedStatus)throw new AppError('CONFLICT','State changed; reload');
+      const paths:Record<string,string[]>=kind==='experiment'?{PLANNED:['RUNNING'],RUNNING:['COMPLETED','INCONCLUSIVE','CANCELLED']}:{CANDIDATE:['REVIEWED'],REVIEWED:['ACCEPTED','REJECTED']};
+      if(!paths[expectedStatus]?.includes(status))throw new AppError('CONFLICT','Invalid human transition');
+      if(kind==='experiment'&&status==='COMPLETED') {const signals=await tx.select().from(t.signals).where(and(inScope(t.signals,s),eq(t.signals.experimentId,objectId)));if(!signals.length)throw new AppError('CONFLICT','No signal; choose inconclusive');}
+      const payload={...row.payload,status,...(kind==='learning'?{reviewedBy:s.userId}:{})};validate(kind,payload);
+      await tx.update(table).set({payload}).where(and(inScope(table,s),eq(table.id,objectId)));
+      await tx.update(t.recommendations).set({resolution:'STALE'}).where(and(inScope(t.recommendations,s),eq(t.recommendations.resolution,'GENERATED')));
+      await this.audit(tx,s,{operation:`${kind.toUpperCase()}_${status}`,idempotencyKey:id(),rationale:`${objectId}: ${expectedStatus} -> ${status}`});return payload;
+    });
+  }
+  async practice(token:string) {
+    return this.db.transaction(async tx=>{const who=await this.identity(tx,token);return (await tx.select().from(t.capabilityEvents).where(eq(t.capabilityEvents.userId,who.userId))).map(e=>e.payload);});
+  }
+  async blueprint(token:string,brandId:string) {
+    const projection=await this.context(token,brandId);
+    await this.db.transaction(async tx=>{const s=await this.scope(tx,token,brandId);await this.event(tx,s,'blueprint_viewed');});
+    return projection;
   }
   private reviewFingerprint(rows:{triggerVersionId:string;ruleVersion:string}[]) {return hash(JSON.stringify(rows.map(r=>[r.triggerVersionId,r.ruleVersion]).sort()));}
   async beginReview(token:string,brandId:string,decisionId:string) {
@@ -264,6 +326,9 @@ export class Engine {
       await this.syncDependencies(tx,s);
       await this.audit(tx,s,{operation:'COMMIT_DECISION',idempotencyKey:command.idempotencyKey,decisionId:decision.id,previousVersion:previous?.id??null,newVersion:version.id,rationale:command.rationale,sourceRecommendationId:command.sourceRecommendationId});
       await this.event(tx,s,'decision_created');
+      const capability={id:id(),userId:s.userId,capability:learningMoments[question.module]?.capability??'Problem Framing',behavior:'Explicitó una elección y su criterio en una decisión humana.',decisionId:decision.id,occurredAt:version.approvedAt.toISOString()};
+      validate('capability-event',capability);
+      await tx.insert(t.capabilityEvents).values({id:capability.id,userId:s.userId,payload:capability});
       if(previous) {
         await this.event(tx,s,'decision_superseded');
         await tx.insert(t.impacts).values({workspaceId:s.workspaceId,brandId:s.brandId,triggerVersionId:version.id,status:'IMPACT_PENDING'});

@@ -38,6 +38,24 @@ async function setup(target=engine) {
   return {who,brand,customer,position,ready,command,commit,context:()=>target.context(who.token,brand.id)};
 }
 describe('PostgreSQL M1',()=>{
+  it('Experiment -> Signal -> Learning requires human transitions and personal practice remains isolated',async()=>{
+    const s=await setup(),other=await setup(),decision=await s.commit(s.customer.id,'Agencias',null);
+    const hypothesis=await engine.captureContext(s.who.token,s.brand.id,'hypothesis',{statement:'Volverán a revisar su estrategia'});
+    const experiment=await engine.createLearningObject(s.who.token,s.brand.id,'experiment',{hypothesisId:hypothesis.id,intendedSignal:'Una segunda sesión voluntaria'},decision.decisionId);
+    await expect(engine.transitionLearningObject(s.who.token,s.brand.id,'experiment',String(experiment.id),'PLANNED','COMPLETED')).rejects.toMatchObject({code:'CONFLICT'});
+    await engine.transitionLearningObject(s.who.token,s.brand.id,'experiment',String(experiment.id),'PLANNED','RUNNING');
+    await expect(engine.transitionLearningObject(s.who.token,s.brand.id,'experiment',String(experiment.id),'RUNNING','COMPLETED')).rejects.toMatchObject({code:'CONFLICT'});
+    const signal=await engine.createLearningObject(s.who.token,s.brand.id,'signal',{experimentId:experiment.id,observation:'Regresó una persona',source:'Entrevista consentida',observedAt:new Date().toISOString()});
+    await engine.transitionLearningObject(s.who.token,s.brand.id,'experiment',String(experiment.id),'RUNNING','COMPLETED');
+    const learning=await engine.createLearningObject(s.who.token,s.brand.id,'learning',{signalIds:[signal.id],interpretation:'Posible interés recurrente',limitations:['Un solo caso'],status:'ACCEPTED',reviewedBy:other.who.userId});expect(learning.status).toBe('CANDIDATE');expect(learning.reviewedBy).toBeNull();
+    await expect(engine.transitionLearningObject(s.who.token,s.brand.id,'learning',String(learning.id),'CANDIDATE','ACCEPTED')).rejects.toMatchObject({code:'CONFLICT'});
+    await expect(engine.createLearningObject(other.who.token,other.brand.id,'learning',{signalIds:[signal.id],interpretation:'Cruce',limitations:[]})).rejects.toMatchObject({code:'NOT_FOUND'});
+    expect((await engine.assembleContext(s.who.token,s.brand.id,s.customer.id)).items.some(i=>i.type==='Learning')).toBe(false);
+    await engine.transitionLearningObject(s.who.token,s.brand.id,'learning',String(learning.id),'CANDIDATE','REVIEWED');await engine.transitionLearningObject(s.who.token,s.brand.id,'learning',String(learning.id),'REVIEWED','ACCEPTED');
+    expect((await engine.assembleContext(s.who.token,s.brand.id,s.customer.id)).items.find(i=>i.type==='Learning')?.trust).toBe('HUMAN_ACCEPTED');
+    expect((await s.context()).versions).toHaveLength(1);expect((await s.context()).decisions[0].activeVersionId).toBe(decision.versionId);
+    expect(await engine.practice(s.who.token)).toHaveLength(1);expect(await engine.practice(other.who.token)).toEqual([]);expect(await s.context()).not.toHaveProperty('capabilityEvents');
+  });
   it('DEMO recommendation preserves human authority, rejection, modification and stale context',async()=>{
     const s=await setup();
     const first=await engine.analyze(s.who.token,s.brand.id,s.customer.id);expect(first.provider).toBe('DEMO_FIXTURE');expect(first.recommendation?.supportLevel).toBe('UNVALIDATED');expect((await s.context()).decisions).toHaveLength(0);
@@ -207,7 +225,7 @@ describe('PostgreSQL M1',()=>{
     const ctx=await s.context();expect(ctx.versions).toHaveLength(3);expect(ctx.reviews[0].status).toBe('OPEN');
   });
   it('M1 migrations have applied exactly once',async()=>{
-    const result=await connection.pool.query('select count(*)::int as n from drizzle.__drizzle_migrations');expect(result.rows[0].n).toBe(6);
+    const result=await connection.pool.query('select count(*)::int as n from drizzle.__drizzle_migrations');expect(result.rows[0].n).toBe(7);
     const server=await connection.pool.query('show server_version');expect(server.rows[0].server_version).toMatch(/^17\./);
   });
   it('superseding without a new current version is rejected by PostgreSQL',async()=>{

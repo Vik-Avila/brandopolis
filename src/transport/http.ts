@@ -34,11 +34,13 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           return send(res,200,{authenticated:true});
         }
         if(path==='/api/logout') {res.setHeader('Set-Cookie','brandopolis_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');return send(res,200,{authenticated:false});}
-        if(path==='/api/brands') return send(res,201,await engine.createBrand(token,string(input.name)));
+        if(path==='/api/brands') return send(res,201,await engine.createBrand(token,string(input.name),input.initialContext===undefined?undefined:string(input.initialContext)));
         if(path==='/api/context/capture') return send(res,201,await engine.captureContext(token,string(input.brandId),string(input.kind),input.entity as Record<string,unknown>));
         if(path==='/api/context/assemble') return send(res,200,await engine.assembleContext(token,string(input.brandId),string(input.questionId),input.budget===undefined?undefined:Number(input.budget)));
         if(path==='/api/recommendations/generate') return send(res,200,await engine.analyze(token,string(input.brandId),string(input.questionId)));
         if(path==='/api/recommendations/reject') return send(res,200,await engine.rejectRecommendation(token,string(input.brandId),string(input.recommendationId),string(input.rationale)));
+        if(path==='/api/learning/create') return send(res,201,await engine.createLearningObject(token,string(input.brandId),string(input.kind),input.entity as Record<string,unknown>,input.decisionId===undefined?undefined:string(input.decisionId)));
+        if(path==='/api/learning/transition') return send(res,200,await engine.transitionLearningObject(token,string(input.brandId),string(input.kind),string(input.objectId),string(input.expectedStatus),string(input.status)));
         if(path==='/api/questions/transition') return send(res,200,await engine.transitionQuestion(token,string(input.brandId),string(input.questionId),string(input.status)));
         if(path==='/api/questions/prepare') return send(res,200,await engine.prepareQuestion(token,string(input.brandId),string(input.questionId),input.expectedActiveVersion===null?null:string(input.expectedActiveVersion)));
         if(path==='/api/decisions/commit') return send(res,200,await engine.commitDecision(token,input.command as CommitCommand,input.reviewToken===undefined?undefined:string(input.reviewToken)));
@@ -48,6 +50,8 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
       }
       if(req.method==='GET') {
         if(path==='/api/me') return send(res,200,await engine.me(token));
+        if(path==='/api/practice') return send(res,200,await engine.practice(token));
+        if(path==='/api/blueprint') return send(res,200,await engine.blueprint(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/brands') return send(res,200,await engine.listBrands(token));
         if(path==='/api/context') return send(res,200,await engine.context(token,string(url.searchParams.get('brandId'))));
       }
