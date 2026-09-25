@@ -10,7 +10,7 @@ import { ModelGateway, DemoProvider, evaluate, type Recommendation } from '../do
 
 const id=()=>randomUUID();
 export const hash=(value:string)=>createHash('sha256').update(value).digest('hex');
-type Scope={workspaceId:string;brandId:string;userId:string};
+type Scope={workspaceId:string;brandId:string;userId:string;sessionId?:string};
 const inScope=(table:{workspaceId:AnyPgColumn;brandId:AnyPgColumn},s:Scope)=>and(eq(table.workspaceId,s.workspaceId),eq(table.brandId,s.brandId));
 // All application entry points authenticate from an opaque credential; callers never supply a trusted actor.
 export class Engine {
@@ -21,7 +21,8 @@ export class Engine {
     if (!session || session.expiresAt<=new Date()) throw new AppError('UNAUTHORIZED','Session expired or invalid');
     const [member]=await tx.select().from(t.memberships).where(and(eq(t.memberships.workspaceId,session.workspaceId),eq(t.memberships.userId,session.userId))).for('share');
     if (!member?.active || !['ADMIN','MEMBER'].includes(member.role)) throw new AppError('FORBIDDEN','Active human membership required');
-    return {...session,member};
+    const [pilotSession]=await tx.select().from(t.pilotSessions).where(eq(t.pilotSessions.tokenHash,session.tokenHash));
+    return {...session,member,sessionId:pilotSession?.sessionId};
   }
   private async scope(tx:Transaction,token:string,brandId:string,lock=true):Promise<Scope> {
     const who=await this.identity(tx,token);
@@ -32,13 +33,18 @@ export class Engine {
       const [assignment]=await tx.select().from(t.assignments).where(and(eq(t.assignments.workspaceId,who.workspaceId),eq(t.assignments.brandId,brandId),eq(t.assignments.userId,who.userId)));
       if (!assignment) throw new AppError('FORBIDDEN','Brand not assigned');
     }
-    return {workspaceId:who.workspaceId,brandId,userId:who.userId};
+    return {workspaceId:who.workspaceId,brandId,userId:who.userId,sessionId:who.sessionId};
   }
   private async event(tx:Transaction,s:Scope,name:string,actor='USER',eventId:string=id()) {
     const [brand]=await tx.select().from(t.brands).where(and(eq(t.brands.workspaceId,s.workspaceId),eq(t.brands.id,s.brandId)));
-    const payload={eventId,name,occurredAtUtc:new Date().toISOString(),schemaVersion:'v1',workspaceId:s.workspaceId,brandId:s.brandId,userId:s.userId,dataClass:brand.dataClass,cohort:'NONE',intervention:'NONE',actor};
+    const [workspace]=brand.dataClass==='PILOT'?await tx.select().from(t.pilotWorkspaces).where(eq(t.pilotWorkspaces.workspaceId,s.workspaceId)):[];
+    const [session]=s.sessionId?await tx.select().from(t.pilotSessions).where(eq(t.pilotSessions.sessionId,s.sessionId)):[];
+    const payload={eventId,name,occurredAtUtc:new Date().toISOString(),schemaVersion:'v1',workspaceId:s.workspaceId,brandId:s.brandId,userId:s.userId,dataClass:brand.dataClass,cohort:workspace?.cohort??'NONE',intervention:session?.intervention??'NONE',actor};
     validate('telemetry-event',payload);
     await tx.insert(t.telemetry).values({eventId,workspaceId:s.workspaceId,brandId:s.brandId,payload}).onConflictDoNothing();
+    if(brand.dataClass==='PILOT'){
+      await tx.insert(t.pilotEvents).values({id:eventId,userId:s.userId,workspaceId:s.workspaceId,brandId:s.brandId,sessionId:s.sessionId,name,cohort:workspace.cohort,intervention:session?.intervention??'NONE',occurredAt:new Date()}).onConflictDoNothing();
+    }
   }
   private async audit(tx:Transaction,s:Scope,values:{operation:string;idempotencyKey:string;decisionId?:string;previousVersion?:string|null;newVersion?:string|null;rationale?:string;sourceRecommendationId?:string|null}) {
     await tx.insert(t.audits).values({id:id(),workspaceId:s.workspaceId,brandId:s.brandId,actorUserId:s.userId,occurredAt:new Date(),...values});
@@ -61,13 +67,14 @@ export class Engine {
     return this.db.transaction(async tx=>{
       const who=await this.identity(tx,token);
       if(who.member.role!=='ADMIN'&&!who.member.canCreateBrand) throw new AppError('FORBIDDEN','Cannot create Brand');
-      const brand={id:id(),workspaceId:who.workspaceId,name:name.trim(),dataClass:'DEMO'};
+      const [pilotWorkspace]=await tx.select().from(t.pilotWorkspaces).where(eq(t.pilotWorkspaces.workspaceId,who.workspaceId));
+      const brand={id:id(),workspaceId:who.workspaceId,name:name.trim(),dataClass:pilotWorkspace?'PILOT':'DEMO'};
       await tx.insert(t.brands).values(brand);
       await tx.insert(t.assignments).values({workspaceId:who.workspaceId,brandId:brand.id,userId:who.userId});
       for(const {primaryDecision:module,primaryQuestion:text} of vertical) {
         await tx.insert(t.questions).values({id:id(),workspaceId:who.workspaceId,brandId:brand.id,module,text,status:'OPEN'});
       }
-      const s={workspaceId:who.workspaceId,brandId:brand.id,userId:who.userId};
+      const s={workspaceId:who.workspaceId,brandId:brand.id,userId:who.userId,sessionId:who.sessionId};
       if(initialContext?.trim()) {
         const now=new Date(),payload={id:id(),brandId:brand.id,statement:initialContext.trim(),createdBy:who.userId,createdAt:now.toISOString()};validate('user-input',payload);
         await tx.insert(t.userInputs).values({id:payload.id,workspaceId:who.workspaceId,brandId:brand.id,payload,createdBy:who.userId,createdAt:now});
@@ -75,6 +82,7 @@ export class Engine {
       }
       await this.audit(tx,s,{operation:'BRAND_CREATED',idempotencyKey:brand.id});
       await this.event(tx,s,'brand_created');
+      if(initialContext?.trim()&&pilotWorkspace)await this.event(tx,s,'meaningful_context_supplied');
       return brand;
     });
   }
@@ -141,6 +149,7 @@ export class Engine {
       await tx.update(t.recommendations).set({resolution:'STALE'}).where(and(inScope(t.recommendations,s),eq(t.recommendations.resolution,'GENERATED')));
       await this.audit(tx,s,{operation:`CONTEXT_${kind.toUpperCase()}_CAPTURED`,idempotencyKey:payload.id,rationale:kind==='evidence'?'Human source assessment recorded; not independent verification':undefined});
       if(kind==='evidence')await this.event(tx,s,'evidence_added');
+      if(kind==='user-input')await this.event(tx,s,'meaningful_context_supplied');
       return payload;
     });
   }
@@ -163,7 +172,7 @@ export class Engine {
   }
   async analyze(token:string,brandId:string,questionId:string) {
     const actor=await this.me(token),packet=await this.assembleContext(token,brandId,questionId),question=packet.question as {module:string};
-    const response=await this.gateway.invoke({task:'STRATEGIC_ANALYSIS',module:question.module,promptVersion:'competition-demo-v1',contextVersion:packet.contextVersion,input:packet,outputSchema:'recommendation',budget:{maxCharacters:20000,timeoutMs:5000},tenantScope:{workspaceId:actor.workspaceId,brandId},questionId});
+    const response=await this.gateway.invoke({task:'STRATEGIC_ANALYSIS',module:question.module,promptVersion:this.gateway.promptVersion,contextVersion:packet.contextVersion,input:packet,outputSchema:'recommendation',budget:{maxCharacters:20000,timeoutMs:this.gateway.timeoutMs},tenantScope:{workspaceId:actor.workspaceId,brandId},questionId});
     const {result,...trace}=response;
     return this.db.transaction(async tx=>{
       const s=await this.scope(tx,token,brandId);
@@ -171,6 +180,7 @@ export class Engine {
       const evaluation=result?evaluate(result,packet):null;
       const invalid=!result||result.brandId!==brandId||result.questionId!==questionId||result.contextVersion!==packet.contextVersion||evaluation?.issues.some(i=>i.severity==='CONFLICT');
       if(invalid) {
+        await this.event(tx,s,'analysis_failed','SYSTEM');
         await tx.insert(t.analyses).values({id:id(),workspaceId:s.workspaceId,brandId,contextVersion:packet.contextVersion,evaluation,trace:{...trace,error:trace.error??'INVALID_OUTPUT'},createdAt:new Date()});
         return {recommendation:null,evaluation,error:trace.error??'INVALID_OUTPUT',provider:trace.provider};
       }

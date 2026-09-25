@@ -1,0 +1,17 @@
+import { test,expect,type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+async function navigate(page:Page,name:string){if(await page.getByRole('button',{name:'Abrir navegación',exact:true}).isVisible())await page.getByRole('button',{name:'Abrir navegación',exact:true}).click();await page.getByRole('button',{name,exact:true}).click();}
+test('PILOT HTTPS: entry, first decision, provider outage, brand isolation, feedback and logout',async({page,browser},info)=>{
+ const sessions=JSON.parse(readFileSync('.local/pilot-browser/sessions.json','utf8')),errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('/');await expect(page.getByRole('link',{name:'Entrar al piloto',exact:true})).toBeVisible();await expect(page.getByLabel('Token de sesión local')).toBeHidden();
+ await page.context().addCookies([{name:'__Host-brandopolis_session',value:sessions.a.token,url:'https://127.0.0.1:3002',httpOnly:true,secure:true,sameSite:'Strict'}]);await page.reload();
+ await page.getByLabel('Nueva marca',{exact:true}).fill(`Pilot A ${info.project.name} ${Date.now()}`);
+ await page.getByRole('button',{name:'Crear marca',exact:true}).click();await expect(page.getByRole('status')).toContainText('Marca creada');const a=await page.getByLabel('Marca activa').inputValue();
+ await page.getByRole('button',{name:'Solicitar propuesta IA',exact:true}).click();await expect(page.getByRole('status')).toContainText('Puedes continuar con tu decisión humana');
+ await page.getByRole('button',{name:'Preparar decisión',exact:true}).click();await page.getByLabel('Decisión propuesta').fill('Decisión exclusiva tester A');await page.getByLabel('¿Por qué eliges esta opción?').fill('Criterio humano del piloto');await page.getByRole('button',{name:'Aprobar decisión',exact:true}).click();await expect(page.locator('#decision .current')).toHaveText('Decisión exclusiva tester A');
+ await page.getByLabel('Nueva marca',{exact:true}).fill(`Pilot second ${info.project.name} ${Date.now()}`);await page.getByRole('button',{name:'Crear marca',exact:true}).click();await expect(page.getByRole('status')).toContainText('Marca creada');await expect(page.locator('#decision')).not.toContainText('Decisión exclusiva tester A');await page.getByLabel('Marca activa').selectOption(a);await expect(page.locator('#decision .current')).toHaveText('Decisión exclusiva tester A');
+ await navigate(page,'Compartir feedback');for(const id of ['usefulness','clarity','confidence'])await page.locator('#feedback-'+id).selectOption('4');await page.getByLabel('Comentario opcional').fill('Fixture de prueba, sin usuarios reales.');await page.getByRole('button',{name:'Enviar feedback',exact:true}).click();await expect(page.getByRole('status')).toContainText('feedback quedó registrado');
+ const other=await browser.newContext({ignoreHTTPSErrors:true});await other.addCookies([{name:'__Host-brandopolis_session',value:sessions.b.token,url:'https://127.0.0.1:3002',httpOnly:true,secure:true,sameSite:'Strict'}]);const denial=await other.request.get(`https://127.0.0.1:3002/api/context?brandId=${a}`);expect(denial.status()).toBe(404);await other.close();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(errors).toEqual([]);await page.screenshot({path:`test-results/pilot-${info.project.name}.png`,fullPage:true});
+ await page.getByRole('button',{name:'Salir',exact:true}).click();await expect(page.getByRole('link',{name:'Entrar al piloto',exact:true})).toBeVisible();
+});

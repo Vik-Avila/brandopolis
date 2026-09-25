@@ -5,15 +5,17 @@ export type ContextPacket=ReturnType<typeof assemble>;
 export interface Recommendation {id:string;brandId:string;questionId:string;contextVersion:string;options:{id:string;label:string;rationale:string;tradeoffs:string[]}[];recommendedOptionId:string|null;rationale:string;evidenceReferences:string[];hypothesesUsed:string[];tradeoffs:string[];openQuestions:string[];supportLevel:string;affectedDomains:string[];failureConditions:string[]}
 export interface GatewayRequest {task:'STRATEGIC_ANALYSIS';module:string;promptVersion:string;contextVersion:string;input:ContextPacket;outputSchema:'recommendation';budget:{maxCharacters:number;timeoutMs:number};tenantScope:{workspaceId:string;brandId:string};questionId:string}
 export type GatewayError='UNAVAILABLE'|'TIMEOUT'|'INVALID_OUTPUT'|'RATE_LIMIT'|'BUDGET_EXCEEDED'|'PROVIDER_ERROR';
-export interface ModelProvider {name:string;model:string;generate(request:GatewayRequest):Promise<unknown>}
+export interface ModelProvider {name:string;model:string;generate(request:GatewayRequest):Promise<unknown>;generateMeasured?(request:GatewayRequest):Promise<{output:unknown;tokenIn:number|null;tokenOut:number|null}>}
 export class ModelGateway {
-  constructor(private provider:ModelProvider) {}
+  constructor(private provider:ModelProvider,readonly promptVersion='competition-demo-v1',readonly timeoutMs=5000) {}
   async invoke(request:GatewayRequest) {
     const started=Date.now(),traceId=randomUUID();let timer:ReturnType<typeof setTimeout>|undefined;
-    const meta=()=>({traceId,provider:this.provider.name,model:this.provider.model,latencyMs:Date.now()-started,tokenIn:null,tokenOut:null,cost:null,promptVersion:request.promptVersion,contextVersion:request.contextVersion});
+    let tokenIn:number|null=null,tokenOut:number|null=null;
+    const meta=()=>({traceId,provider:this.provider.name,model:this.provider.model,latencyMs:Date.now()-started,tokenIn,tokenOut,cost:null,promptVersion:request.promptVersion,contextVersion:request.contextVersion});
     try {
       if(JSON.stringify(request.input).length>request.budget.maxCharacters) return {error:'BUDGET_EXCEEDED' as GatewayError,result:null,...meta()};
-      const result=await Promise.race([this.provider.generate(request),new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('TIMEOUT')),request.budget.timeoutMs);})]);
+      const generated=this.provider.generateMeasured?this.provider.generateMeasured(request).then(r=>{tokenIn=r.tokenIn;tokenOut=r.tokenOut;return r.output;}):this.provider.generate(request);
+      const result=await Promise.race([generated,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('TIMEOUT')),request.budget.timeoutMs);})]);
       try {validate(request.outputSchema,result);} catch {return {error:'INVALID_OUTPUT' as GatewayError,result:null,...meta()};}
       return {error:null,result:result as Recommendation,...meta()};
     } catch(error) {return {error:(error instanceof Error&&error.message==='TIMEOUT'?'TIMEOUT':'PROVIDER_ERROR') as GatewayError,result:null,...meta()};}

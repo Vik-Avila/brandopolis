@@ -22,12 +22,18 @@
     "db:start": "tsx scripts/local-db.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
-    "db:seed": "tsx scripts/seed.ts"
+    "db:seed": "tsx scripts/seed.ts",
+    "pilot:start": "tsx scripts/pilot-server.ts",
+    "pilot:operator": "tsx scripts/pilot-operator.ts",
+    "pilot:migrate": "tsx scripts/pilot-migrate.ts",
+    "pilot:backup": "tsx scripts/pilot-backup.ts",
+    "test:pilot:e2e": "playwright test --config playwright.pilot.config.ts"
   },
   "dependencies": {
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "drizzle-orm": "0.45.3",
+    "openid-client": "^6.8.8",
     "pg": "^8.16.3"
   },
   "devDependencies": {
@@ -37,6 +43,7 @@
     "drizzle-kit": "^0.31.0",
     "embedded-postgres": "17.10.0-beta.17",
     "eslint": "^9.39.0",
+    "jose": "^6.2.12",
     "tsx": "^4.20.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.0",
