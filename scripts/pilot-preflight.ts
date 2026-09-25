@@ -7,6 +7,7 @@ import { connect } from '../src/persistence/database.js';
 import { readiness,dataClassViolation,SINGLE_INSTANCE_LOCK,migrationPlan } from '../src/persistence/readiness.js';
 import { discoverIssuer,loadAiNotice } from '../src/transport/pilot-auth.js';
 import { validatePilotEnv } from './pilot-config.js';
+import { runtimeAssets } from '../src/transport/assets.js';
 export type Check={name:string;status:'PASS'|'WARN'|'FAIL';detail:string};
 // Read-only launch pre-flight. Never migrates, seeds, writes data or calls the AI provider.
 export async function preflight(env:NodeJS.ProcessEnv=process.env,options:{discover?:()=>Promise<string>}={}):Promise<Check[]> {
@@ -16,7 +17,7 @@ export async function preflight(env:NodeJS.ProcessEnv=process.env,options:{disco
   if(!settings)return checks;
   add('config','PASS',`origin ${settings.origin}; callback ${settings.oidc.redirectUri}; OIDC ${settings.oidc.confidential?'confidential':'public PKCE'} client; AI ${settings.ai.enabled?`enabled (${settings.ai.model}, caps ${settings.ai.dailyCapPerTester}/tester, ${settings.ai.dailyCapTotal}/day)`:'disabled'}`);
   if(settings.ai.enabled){try{add('ai-notice','PASS',`version ${loadAiNotice(settings.ai.noticeFile).version} from ${settings.ai.noticeFile}`);}catch{add('ai-notice','FAIL',`AI notice file ${settings.ai.noticeFile} missing or empty.`);}}
-  for(const file of ['drizzle/meta/_journal.json','prompts/pilot-strategic-v1.md','src/transport/public/index.html'])if(!existsSync(file))add('files','FAIL',`${file} missing: run from the repository root of a complete checkout.`);
+  for(const file of ['drizzle/meta/_journal.json','prompts/pilot-strategic-v1.md',...Object.values(runtimeAssets).map(([f])=>f)])if(!existsSync(file))add('files','FAIL',`${file} missing: run from the repository root of a complete checkout.`);
   const db=connect(settings.databaseUrl);
   try {
     const state=await readiness(db.pool);

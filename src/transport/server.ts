@@ -6,7 +6,7 @@ import { readiness,dataClassViolation } from '../persistence/readiness.js';
 import { Engine } from '../application/engine.js';
 import { createApp } from './http.js';
 import { databaseUrl } from '../../scripts/local-db.js';
-import { runtimeAssets } from './assets.js';
+import { runtimeAssets,loadAsset } from './assets.js';
 export { runtimeAssets };
 export async function startServer(url=databaseUrl(),port=3000) {
   if(process.env.NODE_ENV==='production')throw new Error('RC1 es una demo local; autenticación de producción no habilitada.');
@@ -14,10 +14,7 @@ export async function startServer(url=databaseUrl(),port=3000) {
   const {db,pool}=connect(url),state=await readiness(pool);
   if(state!=='READY'){await pool.end();throw new Error(state==='MIGRATIONS_REQUIRED'?'Faltan migraciones o no coinciden. Ejecuta pnpm competition:start.':'PostgreSQL local no está disponible. Ejecuta pnpm competition:start o pnpm db:start.');}
   const violation=await dataClassViolation(pool,'DEMO');if(violation){await pool.end();throw new Error('Esta base contiene datos PILOT; la demo sólo usa su base DEMO local.');}
-  const server=createApp(new Engine(db),path=>{
-    const file=runtimeAssets[(path==='/login'||path==='/workspace'?'/':path) as keyof typeof runtimeAssets];
-    return file?{content:readFileSync(file[0]),type:file[1]}:undefined;
-  },()=>readiness(pool));
+  const server=createApp(new Engine(db),loadAsset,()=>readiness(pool));
   try {await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(port,'127.0.0.1',()=>{server.removeListener('error',reject);resolve();});});}
   catch {await pool.end();throw new Error(`El puerto ${port} está ocupado. Cierra la instancia anterior o usa pnpm competition:start --isolated.`);}
   console.log(`Brandopolis Competition MVP DEMO: http://127.0.0.1:${port}`);

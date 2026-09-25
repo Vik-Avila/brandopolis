@@ -1,6 +1,7 @@
 import { test,expect,type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-async function navigate(page:Page,name:string){if(await page.getByRole('button',{name:'Abrir navegación',exact:true}).isVisible())await page.getByRole('button',{name:'Abrir navegación',exact:true}).click();await page.getByRole('button',{name,exact:true}).click();}
+// Waits for the signed-in shell (the menu appears with it) before deciding whether the drawer is needed.
+async function navigate(page:Page,name:string){await page.locator('#workspace').waitFor();if(await page.getByRole('button',{name:'Abrir navegación',exact:true}).isVisible())await page.getByRole('button',{name:'Abrir navegación',exact:true}).click();await page.getByRole('button',{name,exact:true}).click();}
 test('PILOT HTTPS: entry, first decision, provider outage, brand isolation, feedback and logout',async({page,browser},info)=>{
  const sessions=JSON.parse(readFileSync('.local/pilot-browser/sessions.json','utf8'))[info.project.name],errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('/');await expect(page.getByRole('link',{name:'Entrar al piloto',exact:true})).toBeVisible();await expect(page.getByLabel('Token de sesión local')).toBeHidden();

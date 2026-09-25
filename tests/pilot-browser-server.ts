@@ -15,7 +15,7 @@ import { ModelGateway } from '../src/domain/analysis.js';
 import { UnavailableProvider } from '../src/transport/anthropic-provider.js';
 import { PilotAuth,loadAiNotice } from '../src/transport/pilot-auth.js';
 import { createApp } from '../src/transport/http.js';
-import { runtimeAssets } from '../src/transport/assets.js';
+import { loadAsset } from '../src/transport/assets.js';
 import { readiness } from '../src/persistence/readiness.js';
 // Test-only fixtures: a throwaway PILOT database, a fixture OIDC provider and an operator revoke hook.
 // Never imported by pilot:start; the production server has no HTTP provisioning or bypass.
@@ -45,7 +45,7 @@ config[oidc.customFetch]=async(url,options)=>{
 // Five viewports share one loopback client; production limits are covered by the engine-level test.
 // AI configured but unavailable: exercises the data notice and the outage path without a real provider.
 const auth=new PilotAuth(db.db,config,origin,{limiter:{allow:()=>true},ai:{notice:loadAiNotice('config/pilot/ai-notice.v1.md'),capPerTester:30,capTotal:300}});
-const app=createApp(new Engine(db.db,undefined,new ModelGateway(new UnavailableProvider(),'pilot-strategic-v1')),path=>{const entry=runtimeAssets[path as keyof typeof runtimeAssets];return entry?{content:readFileSync(entry[0]),type:entry[1]}:undefined;},()=>readiness(db.pool),auth);
+const app=createApp(new Engine(db.db,undefined,new ModelGateway(new UnavailableProvider(),'pilot-strategic-v1')),loadAsset,()=>readiness(db.pool),auth);
 await new Promise<void>(r=>app.listen(0,'127.0.0.1',r));
 const cookie=(header:string|undefined,key:string)=>header?.split(';').map(c=>c.trim()).find(c=>c.startsWith(key+'='))?.slice(key.length+1);
 const server=httpsServer({key:readFileSync(folder+'/key.pem'),cert:readFileSync(folder+'/cert.pem')},(req,res)=>{

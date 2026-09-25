@@ -1,7 +1,7 @@
 {
   "meta": {
     "status": "CANONICAL",
-    "version": "2026-09-24-final-micro-patch",
+    "version": "2026-09-25-final-visual-integration",
     "note": "Operative asset inventory only. reference-only/ archive intentionally excluded."
   },
   "assets": [
@@ -87,72 +87,72 @@
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/login-desktop.png",
-      "bytes": 394848,
-      "sha256": "aa2cb5a0dd5775f42561e7e9180aae11d0af7e01eb8d338178ff09ed7bee1854",
+      "bytes": 329471,
+      "sha256": "dbe37d6aeb36037fa272a3508cd8dfb7005924302feb8483dc2c755262fd1496",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/request-access-desktop.png",
-      "bytes": 385381,
-      "sha256": "80628c6a5011aef68256c761af69d7f76dc2cc814e63eef3851db825e6714330",
+      "bytes": 329104,
+      "sha256": "1dc99b53e41e9d86432709de0e832a11a52774a478d620cf13900a286b9d1efe",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/m1-guided-review-desktop.png",
-      "bytes": 341229,
-      "sha256": "cb3bf2120a66306e4b56a48ef5125e2f323000402fac6e2c04ea402de755db52",
+      "bytes": 410609,
+      "sha256": "87a2581b2e93874b9cbbe6b89932e7a2061c3568eb89b3e501a8fe0791238693",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/m1-guided-review-mobile.png",
-      "bytes": 98717,
-      "sha256": "58a3aa8731cc474677b6d4f0715acf33d6da5f187659746d6de7b82c8775a47e",
+      "bytes": 215054,
+      "sha256": "86bbdccc514cb86343f08481feb015b22d63e0ba012125af9615463f8583d45b",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/m1-needs-review-desktop.png",
-      "bytes": 318469,
-      "sha256": "451d26e2976326f1207c049887744523d42a5299aaca27498b5bf18eca72bb30",
+      "bytes": 407099,
+      "sha256": "3df838c8e2312bda1939bdeeb3e5305e8f41430e298b5a4d2d41bed97f89a7c9",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/m1-needs-review-mobile.png",
-      "bytes": 99885,
-      "sha256": "9a1e96e214f2ef21cdbc8e5ebad428e1a391f04ecf396ae037ba97a5ab7ca80f",
+      "bytes": 204675,
+      "sha256": "ad30bdcc0f2a58b9d7e792ed8163baed5cc88121e7585b083ddc332a624ee50d",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/m1-workspace-desktop.png",
-      "bytes": 324997,
-      "sha256": "5b021e2a3cd4390ec338d4c5ba89095eea9a10d5170fc1e18abb513ca8211369",
+      "bytes": 402039,
+      "sha256": "5503313be8871c1176b4703bb24f5f10957d9192391563d47fb9aa07d82766c5",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/m1-workspace-mobile.png",
-      "bytes": 93824,
-      "sha256": "b751adcca9e0ed6d61b3936d36d8cc9cb143498e94e8dc78f5a3a342d2292932",
+      "bytes": 198377,
+      "sha256": "35f0a1a47865f2b4309d83596944459d560579ec3f70534b74fcde2d7acdbfe4",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/public-gateway-desktop.png",
-      "bytes": 790402,
-      "sha256": "1d5a85bc74e74bb23a932b59d6fbf90fc8c86d61d38bf58f6a3fc17caf9c57ae",
+      "bytes": 1873335,
+      "sha256": "f074d2a84cd046673669f961cba771f639d2efa49eda118d3ad9202bc1d35d38",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
@@ -327,10 +327,154 @@
     },
     {
       "path": "public/brand/ui/site.webmanifest",
-      "bytes": 393,
-      "sha256": "e019b5f4a96ba2dfbbf4ba8bbd1fd64428ee3158f36677881719f99c7e752f39",
+      "bytes": 447,
+      "sha256": "3d1a38cfc060d69f70ffc073ac0b604df24adc6b96f1aaad015ccf717f8f205c",
       "type": "webmanifest",
       "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/web/access-panel.webp",
+      "bytes": 44914,
+      "sha256": "105781f8f1030986a2846711a79970853a3219cd6d9533b3aada266c85d55bb3",
+      "type": "webp",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/web/flow-loop-poster.webp",
+      "bytes": 40598,
+      "sha256": "6a0179605239487c08c2d5131e2a03e21ed38dbb756cc1bfb59143ca1274ec19",
+      "type": "webp",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/web/flow-loop.mp4",
+      "bytes": 74112,
+      "sha256": "768195bdad1c2282a1d4f6a4b5b9c80fcaac187a5c78374417b0a6573e1f2489",
+      "type": "mp4",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/web/flow-loop.webm",
+      "bytes": 48814,
+      "sha256": "1efd2ff4780a3b3c6b7dcd6a74a70066aad6fde82669526784aadf268f9f9f88",
+      "type": "webm",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/web/hero-signature-desktop.webp",
+      "bytes": 187718,
+      "sha256": "b4d432826005383883dfe4f1684924c36a36ac813ce015beb26a39448b3e6763",
+      "type": "webp",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/web/hero-signature-mobile.webp",
+      "bytes": 199784,
+      "sha256": "f61a69cd61d825b32c360d6ab66c0ad9c49fd4c72bc4dde03f5da4b6cd6e3021",
+      "type": "webp",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/web/hero-signature-tablet.webp",
+      "bytes": 163946,
+      "sha256": "f42136103d3382014db521134ece2b8ddaa721be865ff273e89d2c9f51250d8b",
+      "type": "webp",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/web/og.webp",
+      "bytes": 53310,
+      "sha256": "e842f654c45c92d8166eeb903614063d2cfb5ae2b8fc6ab2441f36248554e99a",
+      "type": "webp",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/web/workspace-atmosphere-desktop.webp",
+      "bytes": 26958,
+      "sha256": "852bcd1c1c128c60516cf287cb1e5ae9edfa7e361429039cd9ffa59ad90c74c3",
+      "type": "webp",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/web/workspace-atmosphere-mobile.webp",
+      "bytes": 27506,
+      "sha256": "d8b814df862bc746ca556694d08d4c913fdcc253426a43489c499dc6231fd468",
+      "type": "webp",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/reference/screenshots/blueprint-desktop.png",
+      "bytes": 452324,
+      "sha256": "f90e7140d4086e3b5f9266a677abd842b059a2343365efe66c349a5872c88feb",
+      "type": "png",
+      "purpose": "canonical-screen-reference",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/reference/screenshots/blueprint-mobile.png",
+      "bytes": 182621,
+      "sha256": "430fb0f78f41194d90a145176867a3a449934d92facf5e5180443446af86c769",
+      "type": "png",
+      "purpose": "canonical-screen-reference",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/reference/screenshots/decision-card-desktop.png",
+      "bytes": 384358,
+      "sha256": "311741c1dac69b0e177ce3587531ee8b670d6cf20cd8480084ad918ae4d5723e",
+      "type": "png",
+      "purpose": "canonical-screen-reference",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/reference/screenshots/history-desktop.png",
+      "bytes": 328883,
+      "sha256": "7b5d725a0694c13768f10f333b5297b65a4be3f07a08438912d5068cf03620fc",
+      "type": "png",
+      "purpose": "canonical-screen-reference",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/reference/screenshots/history-mobile.png",
+      "bytes": 188744,
+      "sha256": "bbed5aa6a3872048b2c3c2834643695a77bdda44614fa5c4e3158d590e0f54d2",
+      "type": "png",
+      "purpose": "canonical-screen-reference",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/reference/screenshots/login-mobile.png",
+      "bytes": 71342,
+      "sha256": "9272b9f852700ecfe99d4797ca2b92684d9e0aa46fa05984e4e869b63d22fc8a",
+      "type": "png",
+      "purpose": "canonical-screen-reference",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/reference/screenshots/public-gateway-mobile.png",
+      "bytes": 485182,
+      "sha256": "c0c5cbddac48fcca3371001bf7f54b963110085534e824f8ab89e91ec5d24c95",
+      "type": "png",
+      "purpose": "canonical-screen-reference",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/reference/screenshots/request-access-mobile.png",
+      "bytes": 69187,
+      "sha256": "92214c5f27e385c78915b696e3931b82c2acaf93a901854d50dd8b7c1bf304f3",
+      "type": "png",
+      "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     }
   ]

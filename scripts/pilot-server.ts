@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import type { PoolClient } from 'pg';
 import { connect } from '../src/persistence/database.js';
 import { readiness,dataClassViolation,SINGLE_INSTANCE_LOCK } from '../src/persistence/readiness.js';
@@ -6,7 +5,7 @@ import { Engine } from '../src/application/engine.js';
 import { ModelGateway } from '../src/domain/analysis.js';
 import { AnthropicProvider,UnavailableProvider,PILOT_PROMPT_VERSION } from '../src/transport/anthropic-provider.js';
 import { createApp } from '../src/transport/http.js';
-import { runtimeAssets } from '../src/transport/assets.js';
+import { loadAsset } from '../src/transport/assets.js';
 import { pilotAuth,ConfigError,loadAiNotice } from '../src/transport/pilot-auth.js';
 import { pilotConfig } from './pilot-config.js';
 // PILOT runs as exactly one application instance: rate limits are in memory. A session-level advisory
@@ -23,7 +22,7 @@ try {
   const ai={notice:settings.ai.enabled?loadAiNotice(settings.ai.noticeFile):null,capPerTester:settings.ai.dailyCapPerTester,capTotal:settings.ai.dailyCapTotal};
   const auth=await pilotAuth(connection.db,settings.origin,{trustProxy:settings.trustProxy,requestAccessUrl:settings.requestAccessUrl,ai}).catch(error=>{throw error instanceof ConfigError?error:new ConfigError('OIDC discovery failed: check OIDC_ISSUER, network egress and provider status (pnpm pilot:preflight).');});
   const engine=new Engine(connection.db,undefined,new ModelGateway(provider,PILOT_PROMPT_VERSION,settings.ai.timeoutMs));
-  const server=createApp(engine,path=>{const file=runtimeAssets[path as keyof typeof runtimeAssets];return file?{content:readFileSync(file[0]),type:file[1]}:undefined;},()=>readiness(connection!.pool),auth);
+  const server=createApp(engine,loadAsset,()=>readiness(connection!.pool),auth);
   await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(settings.port,settings.bindHost,resolve);});
   console.log(JSON.stringify({event:'pilot_started',port:settings.port,ai:provider.name,model:provider.model,aiNotice:ai.notice?.version??null,trustProxy:settings.trustProxy}));
   let closing=false;

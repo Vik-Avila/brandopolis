@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
-async function navigate(page:Page,name:string){if(await page.getByRole('button',{name:'Abrir navegación',exact:true}).isVisible())await page.getByRole('button',{name:'Abrir navegación',exact:true}).click();await page.getByRole('button',{name,exact:true}).click();}
+// Waits for the signed-in shell (the menu appears with it) before deciding whether the drawer is needed.
+async function navigate(page:Page,name:string){await page.locator('#workspace').waitFor();if(await page.getByRole('button',{name:'Abrir navegación',exact:true}).isVisible())await page.getByRole('button',{name:'Abrir navegación',exact:true}).click();await page.getByRole('button',{name,exact:true}).click();}
 import { test,expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 test('human connected proof survives reload without console errors or overflow',async({page},testInfo)=>{

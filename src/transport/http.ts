@@ -56,12 +56,19 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
       }
       if(req.method==='GET'&&!path.startsWith('/api/')) {
         const asset=assets?.(path);if(!asset) return send(res,404,{code:'NOT_FOUND'});
-        res.writeHead(200,{'Content-Type':asset.type});res.end(asset.content);return;
+        // Brand media is immutable per release and safe to cache; documents and scripts stay no-store.
+        res.writeHead(200,{'Content-Type':asset.type,...(path.startsWith('/brand/')?{'Cache-Control':'public, max-age=86400'}:{})});res.end(asset.content);return;
       }
       const bearer=req.headers.authorization?.startsWith('Bearer ')?req.headers.authorization.slice(7):undefined;
       const cookieName=pilot?'__Host-brandopolis_session':'brandopolis_session';
       const cookie=req.headers.cookie?.split(';').map(v=>v.trim()).find(v=>v.startsWith(cookieName+'='))?.slice(cookieName.length+1);
       const token=(pilot?cookie:bearer??cookie)??'';
+      // Session probe for public pages: answers without an error status so anonymous visits stay clean.
+      // Full checks still apply (expiry, membership, PILOT identity); it never reveals why a session is invalid.
+      if(req.method==='GET'&&path==='/api/session-state'){
+        try{if(pilot)await pilot.authorize(token);else await engine.me(token);return send(res,200,{authenticated:true});}
+        catch(error){if(error instanceof AppError)return send(res,200,{authenticated:false});throw error;}
+      }
       if(pilot){
         if(req.method==='POST'&&req.headers.origin!==pilot.origin)throw new AppError('FORBIDDEN','Same-origin action required');
         // Logout always clears the browser cookie, even for an already expired or revoked session.

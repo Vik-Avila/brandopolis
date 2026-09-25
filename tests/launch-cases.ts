@@ -1,7 +1,7 @@
 import { describe,it,expect } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { mkdirSync,writeFileSync,readFileSync } from 'node:fs';
-import { runtimeAssets } from '../src/transport/assets.js';
+import { mkdirSync,writeFileSync } from 'node:fs';
+import { loadAsset } from '../src/transport/assets.js';
 import { resolve,dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
@@ -32,7 +32,7 @@ export function launchCases(connection:()=>ReturnType<typeof connect>){
  // A PILOT app on a random port whose configured origin is https://127.0.0.1:<port> (TLS is the proxy's job).
  async function pilotApp(db:ReturnType<typeof connect>['db'],options:{ai?:PilotAiPolicy;provider?:ConstructorParameters<typeof ModelGateway>[0]}={}) {
   const fixture=await oidcFixture(),holder:{auth?:PilotAuth}={};
-  const app=createApp(new Engine(db,undefined,new ModelGateway(options.provider??new UnavailableProvider(),'pilot-strategic-v1')),path=>{const entry=runtimeAssets[path as keyof typeof runtimeAssets];return entry?{content:readFileSync(entry[0]),type:entry[1]}:undefined;},async()=>'READY',{get origin(){return holder.auth!.origin;},get ai(){return holder.auth!.ai;},limiter:new RateLimiter(),handle:(q,r,u)=>holder.auth!.handle(q,r,u),authorize:x=>holder.auth!.authorize(x),logout:x=>holder.auth!.logout(x),feedback:(x,i)=>holder.auth!.feedback(x,i),aiGate:x=>holder.auth!.aiGate(x),acceptAiNotice:(x,v)=>holder.auth!.acceptAiNotice(x,v)});
+  const app=createApp(new Engine(db,undefined,new ModelGateway(options.provider??new UnavailableProvider(),'pilot-strategic-v1')),loadAsset,async()=>'READY',{get origin(){return holder.auth!.origin;},get ai(){return holder.auth!.ai;},limiter:new RateLimiter(),handle:(q,r,u)=>holder.auth!.handle(q,r,u),authorize:x=>holder.auth!.authorize(x),logout:x=>holder.auth!.logout(x),feedback:(x,i)=>holder.auth!.feedback(x,i),aiGate:x=>holder.auth!.aiGate(x),acceptAiNotice:(x,v)=>holder.auth!.acceptAiNotice(x,v)});
   await new Promise<void>(r=>app.listen(0,'127.0.0.1',r));const port=(app.address() as AddressInfo).port,origin=`https://127.0.0.1:${port}`;
   holder.auth=new PilotAuth(db,fixture.config,origin,{limiter:new RateLimiter(),ai:options.ai});
   const base=`http://127.0.0.1:${port}`,access=new PilotAccess(db,'https://issuer.example');
@@ -119,6 +119,16 @@ export function launchCases(connection:()=>ReturnType<typeof connect>){
     expect(report.timeToFirstDecision.n).toBe(1);expect(JSON.stringify(report)).not.toContain('Primera decisión');expect(JSON.stringify(report)).not.toContain(subject);
     expect((await p.call(cookie,'/api/logout',{})).status).toBe(200);expect((await p.call(cookie,'/api/brands')).status).toBe(401);
    }finally{await p.close();await (pool2?.pool??s.pool).end().catch(()=>{});}
+  });
+  it('session probe answers 200 without revealing why a session is invalid; DEMO tokens never count in PILOT',async()=>{
+   const {db}=connection(),p=await pilotApp(db),subject=randomUUID();await p.access.provision(subject,'A');const demo=await seedIdentity(db);
+   try{
+    const probe=async(cookie:string|null)=>{const r=await p.call(cookie,'/api/session-state');expect(r.status).toBe(200);return r.json();};
+    expect(await probe(null)).toEqual({authenticated:false});
+    expect(await probe(`__Host-brandopolis_session=${demo.token}`)).toEqual({authenticated:false});
+    const {cookie}=await p.fixture.login(p.base,subject);expect(await probe(cookie)).toEqual({authenticated:true});
+    await p.access.revokeSessions((await p.access.inspect({subject})).userId);expect(await probe(cookie)).toEqual({authenticated:false});
+   }finally{await p.close();}
   });
   it('launch smoke passes against a PILOT server and fails against DEMO',async()=>{
    const {db}=connection(),p=await pilotApp(db);
