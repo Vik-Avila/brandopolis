@@ -1,0 +1,337 @@
+{
+  "meta": {
+    "status": "CANONICAL",
+    "version": "2026-09-24-final-micro-patch",
+    "note": "Operative asset inventory only. reference-only/ archive intentionally excluded."
+  },
+  "assets": [
+    {
+      "path": "design/brandopolis-ui/assets/flow/brand-flow-dark.webp",
+      "bytes": 48820,
+      "sha256": "28864cb3f6b9c1fa09a176ae02afd6f30bf6dda04384f446432d2cc5cf3e3e58",
+      "type": "webp",
+      "purpose": "design-source-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/assets/flow/brand-flow-light.webp",
+      "bytes": 135944,
+      "sha256": "cbb01e3722cfcef3762acbcf8f7f3d7f5aadcddff7d9cd8f0f84083aba27326b",
+      "type": "webp",
+      "purpose": "design-source-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/assets/flow/brand-flow-section.jpg",
+      "bytes": 250047,
+      "sha256": "71402836005ccd68816731e2eae51bd8074ddf40574b6f5f8ff49f5584be0014",
+      "type": "jpg",
+      "purpose": "design-source-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/assets/logo/README.md",
+      "bytes": 611,
+      "sha256": "a0c1b393ccb627bd1f6b9fff9fb2b67215a7e665b8709adb05cbbf22edd2d895",
+      "type": "md",
+      "purpose": "design-source-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/assets/logo/brandopolis-logo-horizontal-flat-outlined.svg",
+      "bytes": 4039,
+      "sha256": "912c39504467db8e0d524d542d5ff519e0d74706effa3f6ef6aa23e527e23fe4",
+      "type": "svg",
+      "purpose": "design-source-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/assets/logo/brandopolis-logo-horizontal-premium.png",
+      "bytes": 281421,
+      "sha256": "e4e95a5ec64674fc4fde5cf97523dc37fbee21b8fd5f77159181b39f974f2540",
+      "type": "png",
+      "purpose": "design-source-asset",
+      "canonicalStatus": "REFERENCE"
+    },
+    {
+      "path": "design/brandopolis-ui/assets/logo/brandopolis-logo-vertical-premium.png",
+      "bytes": 555869,
+      "sha256": "c729b21145dedd9b3d8d3613cff05d25077a5d3991de28aff399dc7822283fb1",
+      "type": "png",
+      "purpose": "design-source-asset",
+      "canonicalStatus": "REFERENCE"
+    },
+    {
+      "path": "design/brandopolis-ui/assets/logo/brandopolis-symbol-premium.png",
+      "bytes": 1073048,
+      "sha256": "9c32b4d1abaec2f966599dc84b38d7a4a42c9577d241414b816666a05027f244",
+      "type": "png",
+      "purpose": "design-source-asset",
+      "canonicalStatus": "REFERENCE"
+    },
+    {
+      "path": "design/brandopolis-ui/assets/symbols/brandopolis-symbol-flat.svg",
+      "bytes": 981,
+      "sha256": "879e0858c7f9c58bb63a9b3ee1aed555cdd845ce45a6b87d62363637ba524aff",
+      "type": "svg",
+      "purpose": "design-source-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/reference/screenshots/README.md",
+      "bytes": 1164,
+      "sha256": "cd7d066cd339e27bfad97820ec212fb3babced0e0c363c7f152b0a321bfbee7e",
+      "type": "md",
+      "purpose": "canonical-screen-reference",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/reference/screenshots/login-desktop.png",
+      "bytes": 394848,
+      "sha256": "aa2cb5a0dd5775f42561e7e9180aae11d0af7e01eb8d338178ff09ed7bee1854",
+      "type": "png",
+      "purpose": "canonical-screen-reference",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/reference/screenshots/request-access-desktop.png",
+      "bytes": 385381,
+      "sha256": "80628c6a5011aef68256c761af69d7f76dc2cc814e63eef3851db825e6714330",
+      "type": "png",
+      "purpose": "canonical-screen-reference",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/reference/screenshots/m1-guided-review-desktop.png",
+      "bytes": 341229,
+      "sha256": "cb3bf2120a66306e4b56a48ef5125e2f323000402fac6e2c04ea402de755db52",
+      "type": "png",
+      "purpose": "canonical-screen-reference",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/reference/screenshots/m1-guided-review-mobile.png",
+      "bytes": 98717,
+      "sha256": "58a3aa8731cc474677b6d4f0715acf33d6da5f187659746d6de7b82c8775a47e",
+      "type": "png",
+      "purpose": "canonical-screen-reference",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/reference/screenshots/m1-needs-review-desktop.png",
+      "bytes": 318469,
+      "sha256": "451d26e2976326f1207c049887744523d42a5299aaca27498b5bf18eca72bb30",
+      "type": "png",
+      "purpose": "canonical-screen-reference",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/reference/screenshots/m1-needs-review-mobile.png",
+      "bytes": 99885,
+      "sha256": "9a1e96e214f2ef21cdbc8e5ebad428e1a391f04ecf396ae037ba97a5ab7ca80f",
+      "type": "png",
+      "purpose": "canonical-screen-reference",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/reference/screenshots/m1-workspace-desktop.png",
+      "bytes": 324997,
+      "sha256": "5b021e2a3cd4390ec338d4c5ba89095eea9a10d5170fc1e18abb513ca8211369",
+      "type": "png",
+      "purpose": "canonical-screen-reference",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/reference/screenshots/m1-workspace-mobile.png",
+      "bytes": 93824,
+      "sha256": "b751adcca9e0ed6d61b3936d36d8cc9cb143498e94e8dc78f5a3a342d2292932",
+      "type": "png",
+      "purpose": "canonical-screen-reference",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "design/brandopolis-ui/reference/screenshots/public-gateway-desktop.png",
+      "bytes": 790402,
+      "sha256": "1d5a85bc74e74bb23a932b59d6fbf90fc8c86d61d38bf58f6a3fc17caf9c57ae",
+      "type": "png",
+      "purpose": "canonical-screen-reference",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/flow/brand-flow-dark.webp",
+      "bytes": 48820,
+      "sha256": "28864cb3f6b9c1fa09a176ae02afd6f30bf6dda04384f446432d2cc5cf3e3e58",
+      "type": "webp",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/flow/brand-flow-light.webp",
+      "bytes": 135944,
+      "sha256": "cbb01e3722cfcef3762acbcf8f7f3d7f5aadcddff7d9cd8f0f84083aba27326b",
+      "type": "webp",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/flow/brand-flow-section.jpg",
+      "bytes": 250047,
+      "sha256": "71402836005ccd68816731e2eae51bd8074ddf40574b6f5f8ff49f5584be0014",
+      "type": "jpg",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/logo/brandopolis-logo-horizontal.svg",
+      "bytes": 4039,
+      "sha256": "912c39504467db8e0d524d542d5ff519e0d74706effa3f6ef6aa23e527e23fe4",
+      "type": "svg",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/symbols/brandopolis-symbol-black.png",
+      "bytes": 91366,
+      "sha256": "5babddcc8766e9ac9d7c66a9f69fe066d9aaf847e4362c97d902374beed6845b",
+      "type": "png",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/symbols/brandopolis-symbol-emerald.png",
+      "bytes": 91693,
+      "sha256": "3fc6cb78622fb5bdd29a55d5c5048fbd333b4d9aa3197d21708530a7aabe74da",
+      "type": "png",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/symbols/brandopolis-symbol-flat.png",
+      "bytes": 99304,
+      "sha256": "028fc25cd30b9e7664db3a208c46cbbfcc0ac21a6dc3c253fd6630adf9f1947d",
+      "type": "png",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/symbols/brandopolis-symbol-gold.png",
+      "bytes": 91750,
+      "sha256": "7217e23314b0d54dc38855634ee034aa88f88ede3386ee24a1443a24724775d7",
+      "type": "png",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/symbols/brandopolis-symbol-white.png",
+      "bytes": 90923,
+      "sha256": "d00ea1c5e3f07902cd82e63d1c6b85af794cd4aad42da094946b7c863a238bc9",
+      "type": "png",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/symbols/brandopolis-symbol.svg",
+      "bytes": 981,
+      "sha256": "879e0858c7f9c58bb63a9b3ee1aed555cdd845ce45a6b87d62363637ba524aff",
+      "type": "svg",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/ui/app-icon-192.png",
+      "bytes": 17497,
+      "sha256": "e3a63f668c546c6ee3fe4eeace84000f096af01810d27ea858e0bbbcd10d9fd7",
+      "type": "png",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/ui/app-icon-512.png",
+      "bytes": 82138,
+      "sha256": "ab248c8fe16a2e1eb817abfc537bd4835ac91024709cd467ce4a752fc94166a1",
+      "type": "png",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/ui/apple-touch-icon.png",
+      "bytes": 15809,
+      "sha256": "3985d0407d5f28eda70459977e21ef798bcbc4256f60308f80862f189d541975",
+      "type": "png",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/ui/favicon.ico",
+      "bytes": 24112,
+      "sha256": "9831c98bdf638156c0b7a11639b0c3cda7ba2844676a7cfa68f2c3b16943df44",
+      "type": "ico",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/ui/icon-128.png",
+      "bytes": 5511,
+      "sha256": "05295882ecdb46595227ae43cc23aa83e95472163a8e29f4e36b15dcd0fa1e9f",
+      "type": "png",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/ui/icon-16.png",
+      "bytes": 400,
+      "sha256": "a24bdc3bef2eb2feb0c5429a161bba9d314899b06a926800662515e33a1ceb91",
+      "type": "png",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/ui/icon-256.png",
+      "bytes": 12558,
+      "sha256": "911b432cad49fc6735bf4c89908c36970c601f1197b2923a317554d83622a371",
+      "type": "png",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/ui/icon-32.png",
+      "bytes": 979,
+      "sha256": "4a090dbec09b3e55fc5c688861bb52bee673b7b61e0dc60698fda593903613e2",
+      "type": "png",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/ui/icon-48.png",
+      "bytes": 1621,
+      "sha256": "2fc040847b6a6751fa387d7373be78c8b6a0d4c218ec34cc189dcf820bc062a1",
+      "type": "png",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/ui/icon-512.png",
+      "bytes": 28761,
+      "sha256": "fa5d6d292c46d4a0fc22c6a1ff7f90bdeafd0e8d970637a232ba1ec001e07334",
+      "type": "png",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/ui/icon-64.png",
+      "bytes": 2336,
+      "sha256": "c068cba0473836091960c85a6475bf74e36d87c1c6c7f4309dbcb22c132261bb",
+      "type": "png",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    },
+    {
+      "path": "public/brand/ui/site.webmanifest",
+      "bytes": 393,
+      "sha256": "e019b5f4a96ba2dfbbf4ba8bbd1fd64428ee3158f36677881719f99c7e752f39",
+      "type": "webmanifest",
+      "purpose": "runtime-brand-asset",
+      "canonicalStatus": "CANONICAL"
+    }
+  ]
+}

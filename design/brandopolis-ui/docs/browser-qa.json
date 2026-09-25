@@ -1,0 +1,433 @@
+[
+  {
+    "page": "public-gateway",
+    "viewport": [
+      1600,
+      1000
+    ],
+    "screenshot": "public-gateway-desktop.png",
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "login",
+    "viewport": [
+      1600,
+      1000
+    ],
+    "screenshot": "login-desktop.png",
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "request-access",
+    "viewport": [
+      1600,
+      1000
+    ],
+    "screenshot": "request-access-desktop.png",
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "m1-workspace",
+    "viewport": [
+      1600,
+      1000
+    ],
+    "screenshot": "m1-workspace-desktop.png",
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "m1-needs-review",
+    "viewport": [
+      1600,
+      1000
+    ],
+    "screenshot": "m1-needs-review-desktop.png",
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "m1-guided-review",
+    "viewport": [
+      1600,
+      1000
+    ],
+    "screenshot": "m1-guided-review-desktop.png",
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "m1-workspace",
+    "viewport": [
+      390,
+      844
+    ],
+    "screenshot": "m1-workspace-mobile.png",
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "m1-needs-review",
+    "viewport": [
+      390,
+      844
+    ],
+    "screenshot": "m1-needs-review-mobile.png",
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "m1-guided-review",
+    "viewport": [
+      390,
+      844
+    ],
+    "screenshot": "m1-guided-review-mobile.png",
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "public-gateway",
+    "viewport": [
+      1600,
+      1000
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "public-gateway",
+    "viewport": [
+      1440,
+      900
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "public-gateway",
+    "viewport": [
+      1280,
+      800
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "public-gateway",
+    "viewport": [
+      768,
+      1024
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": [],
+    "mobileNavTrigger": true,
+    "mobileNavOpens": true,
+    "mobileNavClosesEsc": true
+  },
+  {
+    "page": "public-gateway",
+    "viewport": [
+      390,
+      844
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": [],
+    "mobileNavTrigger": true,
+    "mobileNavOpens": true,
+    "mobileNavClosesEsc": true
+  },
+  {
+    "page": "login",
+    "viewport": [
+      1600,
+      1000
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "login",
+    "viewport": [
+      1440,
+      900
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "login",
+    "viewport": [
+      1280,
+      800
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "login",
+    "viewport": [
+      768,
+      1024
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "login",
+    "viewport": [
+      390,
+      844
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "request-access",
+    "viewport": [
+      1600,
+      1000
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "request-access",
+    "viewport": [
+      1440,
+      900
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "request-access",
+    "viewport": [
+      1280,
+      800
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "request-access",
+    "viewport": [
+      768,
+      1024
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "request-access",
+    "viewport": [
+      390,
+      844
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "m1-workspace",
+    "viewport": [
+      1600,
+      1000
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "m1-workspace",
+    "viewport": [
+      1440,
+      900
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "m1-workspace",
+    "viewport": [
+      1280,
+      800
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "m1-workspace",
+    "viewport": [
+      768,
+      1024
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": [],
+    "mobileNavTrigger": true,
+    "mobileNavOpens": true,
+    "mobileNavClosesEsc": true,
+    "mobileDependencyTransform": "none",
+    "mobileDependencyLabel": "\"Dependencia estricta\""
+  },
+  {
+    "page": "m1-workspace",
+    "viewport": [
+      390,
+      844
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": [],
+    "mobileNavTrigger": true,
+    "mobileNavOpens": true,
+    "mobileNavClosesEsc": true,
+    "mobileDependencyTransform": "none",
+    "mobileDependencyLabel": "\"Dependencia estricta\""
+  },
+  {
+    "page": "m1-needs-review",
+    "viewport": [
+      1600,
+      1000
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "m1-needs-review",
+    "viewport": [
+      1440,
+      900
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "m1-needs-review",
+    "viewport": [
+      1280,
+      800
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "m1-needs-review",
+    "viewport": [
+      768,
+      1024
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": [],
+    "mobileNavTrigger": true,
+    "mobileNavOpens": true,
+    "mobileNavClosesEsc": true,
+    "mobileDependencyTransform": "none",
+    "mobileDependencyLabel": "\"Dependencia estricta\""
+  },
+  {
+    "page": "m1-needs-review",
+    "viewport": [
+      390,
+      844
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": [],
+    "mobileNavTrigger": true,
+    "mobileNavOpens": true,
+    "mobileNavClosesEsc": true,
+    "mobileDependencyTransform": "none",
+    "mobileDependencyLabel": "\"Dependencia estricta\""
+  },
+  {
+    "page": "m1-guided-review",
+    "viewport": [
+      1600,
+      1000
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "m1-guided-review",
+    "viewport": [
+      1440,
+      900
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "m1-guided-review",
+    "viewport": [
+      1280,
+      800
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": []
+  },
+  {
+    "page": "m1-guided-review",
+    "viewport": [
+      768,
+      1024
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": [],
+    "mobileNavTrigger": true,
+    "mobileNavOpens": true,
+    "mobileNavClosesEsc": true
+  },
+  {
+    "page": "m1-guided-review",
+    "viewport": [
+      390,
+      844
+    ],
+    "overflowX": false,
+    "consoleErrors": [],
+    "forbiddenVisibleCopy": [],
+    "mobileNavTrigger": true,
+    "mobileNavOpens": true,
+    "mobileNavClosesEsc": true
+  }
+]

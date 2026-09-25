@@ -1,0 +1,300 @@
+{
+  "meta": {
+    "status": "CANONICAL",
+    "version": "2026-09-24-final",
+    "visibleLanguage": "Spanish",
+    "designLayer": "Strategic Glassmorphism"
+  },
+  "components": [
+    {
+      "id": "DecisionCard",
+      "purpose": "Present a strategic decision without conflating AI recommendation and human commit",
+      "propsConcept": [
+        "title",
+        "question",
+        "currentVersion",
+        "displayState",
+        "evidenceCount",
+        "rationale",
+        "historySummary"
+      ],
+      "allowedStates": [
+        "Actual (display relation only)",
+        "Requiere revisión (NEEDS_REVIEW)",
+        "Sustituida (history/version relation)"
+      ],
+      "domainMapping": "See docs/05_DOMAIN_UI_MAPPING.md",
+      "interactions": [
+        "open details",
+        "open review when allowed"
+      ],
+      "disabledBehavior": "actions disabled with reason",
+      "loading": "skeleton statement/meta",
+      "error": "inline recoverable surface",
+      "keyboard": "explicit controls keyboard reachable",
+      "screenReader": "state label announced as text",
+      "responsive": "stack metadata/actions; statement first",
+      "surface": "high-opacity/elevated glass or solid-equivalent"
+    },
+    {
+      "id": "StatusBadge",
+      "purpose": "Communicate state with text + semantic tone",
+      "propsConcept": [
+        "label",
+        "semanticTone",
+        "iconOptional"
+      ],
+      "allowedStates": [
+        "Actual/display",
+        "Requiere revisión",
+        "Rechazada",
+        "Sustituida",
+        "Invalidada if domain exposes"
+      ],
+      "domainMapping": "Never creates domain enums",
+      "interactions": [],
+      "disabledBehavior": "n/a",
+      "loading": "n/a",
+      "error": "n/a",
+      "keyboard": "noninteractive unless explicitly a control",
+      "screenReader": "visible label is accessible name",
+      "responsive": "do not truncate status"
+    },
+    {
+      "id": "ChangeImpactNotice",
+      "purpose": "Explain upstream change impact without automatic rewrite",
+      "propsConcept": [
+        "changedDecision",
+        "affectedDecision",
+        "dependencyType",
+        "why",
+        "reviewAction"
+      ],
+      "allowedStates": [
+        "Requiere revisión"
+      ],
+      "domainMapping": "No automatic cascade",
+      "interactions": [
+        "open guided review"
+      ],
+      "disabledBehavior": "explain why review unavailable",
+      "loading": "text skeleton",
+      "error": "reload/retry without altering strategy",
+      "keyboard": "review action reachable",
+      "screenReader": "heading announces affected decision",
+      "responsive": "single column on mobile",
+      "surface": "semantic review surface; glass only as restrained shell"
+    },
+    {
+      "id": "ReviewItem",
+      "purpose": "Represent a human review obligation surfaced by Change Impact",
+      "propsConcept": [
+        "affectedDecision",
+        "reason",
+        "createdAt",
+        "actorContext"
+      ],
+      "allowedStates": [
+        "main-repo-owned"
+      ],
+      "domainMapping": "ReviewItem state machine remains main repo owned",
+      "interactions": [
+        "open review"
+      ],
+      "disabledBehavior": "show reason",
+      "loading": "skeleton",
+      "error": "explicit",
+      "keyboard": "link/button semantics",
+      "screenReader": "reason included",
+      "responsive": "compact summary + explicit action"
+    },
+    {
+      "id": "EvidenceBlock",
+      "purpose": "Present supporting evidence distinctly from assumptions",
+      "propsConcept": [
+        "source",
+        "summary",
+        "supportLevel"
+      ],
+      "allowedStates": [],
+      "domainMapping": "Evidence",
+      "interactions": [
+        "expand source when supported"
+      ],
+      "disabledBehavior": "n/a",
+      "loading": "skeleton",
+      "error": "source unavailable label",
+      "keyboard": "links reachable",
+      "screenReader": "source/support level readable",
+      "responsive": "stack metadata",
+      "surface": "readability-first"
+    },
+    {
+      "id": "HypothesisBlock",
+      "purpose": "Present assumptions/hypotheses without styling as evidence",
+      "propsConcept": [
+        "statement",
+        "support",
+        "statusFromDomain"
+      ],
+      "allowedStates": [
+        "domain-owned"
+      ],
+      "domainMapping": "Hypothesis",
+      "interactions": [],
+      "disabledBehavior": "n/a",
+      "loading": "skeleton",
+      "error": "n/a",
+      "keyboard": "n/a",
+      "screenReader": "label hypothesis/assumption",
+      "responsive": "stack",
+      "surface": "readability-first"
+    },
+    {
+      "id": "ContextPanel",
+      "purpose": "Summarize relevant Brand Context for active decision",
+      "propsConcept": [
+        "currentState",
+        "historyLink",
+        "dependencies"
+      ],
+      "allowedStates": [],
+      "domainMapping": "Brand Context = structured strategic state",
+      "interactions": [
+        "open history/context"
+      ],
+      "disabledBehavior": "n/a",
+      "loading": "skeleton",
+      "error": "explicit",
+      "keyboard": "controls reachable",
+      "screenReader": "section heading/landmark",
+      "responsive": "collapsible after primary decision/action on mobile",
+      "surface": "subtle context glass"
+    },
+    {
+      "id": "HistoryItem",
+      "purpose": "Represent a versioned strategic change, not generic activity",
+      "propsConcept": [
+        "version",
+        "date",
+        "actor",
+        "status",
+        "rationale",
+        "supersedes"
+      ],
+      "allowedStates": [
+        "current relation",
+        "superseded relation",
+        "domain statuses"
+      ],
+      "domainMapping": "DecisionVersion/history",
+      "interactions": [
+        "open version"
+      ],
+      "disabledBehavior": "n/a",
+      "loading": "skeleton",
+      "error": "n/a",
+      "keyboard": "link semantics",
+      "screenReader": "version relation in text",
+      "responsive": "stack metadata"
+    },
+    {
+      "id": "PrimaryAction",
+      "purpose": "Primary human action",
+      "propsConcept": [
+        "label",
+        "pending",
+        "disabledReason"
+      ],
+      "allowedStates": [
+        "enabled",
+        "hover",
+        "focus",
+        "pending",
+        "disabled"
+      ],
+      "domainMapping": "No domain behavior invented",
+      "interactions": [
+        "host-app handler"
+      ],
+      "disabledBehavior": "visible reason when useful",
+      "loading": "label + progress",
+      "error": "host app",
+      "keyboard": "Enter/Space",
+      "screenReader": "pending state conveyed",
+      "responsive": "44px min target"
+    },
+    {
+      "id": "SecondaryAction",
+      "purpose": "Non-primary human action",
+      "propsConcept": [
+        "label"
+      ],
+      "allowedStates": [
+        "enabled",
+        "hover",
+        "focus",
+        "disabled"
+      ],
+      "domainMapping": "No domain behavior invented",
+      "interactions": [
+        "host-app handler"
+      ],
+      "disabledBehavior": "clear",
+      "loading": "optional",
+      "error": "host app",
+      "keyboard": "Enter/Space",
+      "screenReader": "visible label",
+      "responsive": "44px min target"
+    },
+    {
+      "id": "WorkspaceHeader",
+      "purpose": "Orient user to workspace and active brand without adding domain semantics",
+      "propsConcept": [
+        "workspaceName",
+        "activeBrand",
+        "userContext",
+        "navTrigger"
+      ],
+      "allowedStates": [
+        "desktop",
+        "mobile-drawer-trigger"
+      ],
+      "domainMapping": "Workspace/Brand labels only",
+      "interactions": [
+        "open mobile navigation"
+      ],
+      "disabledBehavior": "n/a",
+      "loading": "stable shell",
+      "error": "host app",
+      "keyboard": "nav trigger keyboard reachable",
+      "screenReader": "mobile button has accessible label",
+      "responsive": "drawer trigger appears when persistent sidebar leaves viewport"
+    },
+    {
+      "id": "GlassSurface",
+      "purpose": "Shared presentational surface; never a domain object",
+      "propsConcept": [
+        "semanticSurface",
+        "density",
+        "elevation"
+      ],
+      "allowedStates": [
+        "hero",
+        "nav",
+        "shell",
+        "context",
+        "modal",
+        "elevated"
+      ],
+      "domainMapping": "presentation only",
+      "interactions": [],
+      "disabledBehavior": "n/a",
+      "loading": "n/a",
+      "error": "n/a",
+      "keyboard": "n/a",
+      "screenReader": "no semantics by itself",
+      "responsive": "opacity/blur may reduce on constrained devices; readability must remain"
+    }
+  ]
+}

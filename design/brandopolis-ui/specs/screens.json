@@ -1,0 +1,229 @@
+{
+  "meta": {
+    "status": "CANONICAL",
+    "version": "2026-09-24-final",
+    "note": "Presentation contract only; domain source of truth lives in the main engineering repo. Visible MVP UI defaults to professional Spanish."
+  },
+  "screens": [
+    {
+      "id": "public-gateway",
+      "status": "CANONICAL",
+      "scope": "public",
+      "canonicalLevel": "gateway",
+      "routeConcept": "/",
+      "purpose": "Category/trust gateway and login entry point",
+      "requiredData": [],
+      "allowedActions": [
+        "login",
+        "request_access"
+      ],
+      "domainDependencies": [],
+      "states": [
+        "default"
+      ],
+      "emptyState": null,
+      "loading": "not required for static shell",
+      "error": "host app owned",
+      "conflict": "none",
+      "accessibility": [
+        "landmark nav/main/footer",
+        "keyboard nav",
+        "mobile menu trigger"
+      ],
+      "responsive": "glass hero + product preview become one column; nav becomes accessible drawer",
+      "classification": "P0 gateway/presentation",
+      "visualLanguage": "Strategic Glassmorphism expressive",
+      "uiLanguage": "Spanish support copy; canonical category statement may remain English"
+    },
+    {
+      "id": "login",
+      "status": "CANONICAL",
+      "scope": "public-auth",
+      "canonicalLevel": "visual",
+      "routeConcept": "/login",
+      "purpose": "Authenticate into existing Brandopolis application",
+      "requiredData": [
+        "auth fields supported by host implementation"
+      ],
+      "allowedActions": [
+        "submit_credentials",
+        "request_access"
+      ],
+      "domainDependencies": [
+        "existing auth/session implementation"
+      ],
+      "states": [
+        "idle",
+        "submitting",
+        "invalid",
+        "session_expired",
+        "server_error"
+      ],
+      "emptyState": null,
+      "loading": "button progress + disabled fields",
+      "error": "inline + form summary as applicable",
+      "conflict": "none",
+      "accessibility": [
+        "visible labels",
+        "focus ring",
+        "error announcement implementation required"
+      ],
+      "responsive": "single-column; brand panel compact",
+      "classification": "P0",
+      "visualLanguage": "Strategic Glassmorphism high-opacity auth card",
+      "uiLanguage": "Spanish"
+    },
+    {
+      "id": "m1-strategic-workspace",
+      "status": "CANONICAL",
+      "scope": "product",
+      "canonicalLevel": "CANONICAL M1",
+      "routeConcept": "existing M1 route",
+      "purpose": "Present Connected Decision Proof over existing green M1 behavior",
+      "requiredData": [
+        "Workspace",
+        "Brand",
+        "Primary Customer Decision",
+        "Positioning Decision",
+        "HARD Dependency",
+        "Decision versions"
+      ],
+      "allowedActions": [
+        "open_decision",
+        "review_change_impact"
+      ],
+      "domainDependencies": [
+        "Decision",
+        "DecisionVersion",
+        "Dependency",
+        "ReviewItem"
+      ],
+      "states": [
+        "display: Actual = current version relation",
+        "domain: NEEDS_REVIEW when applicable",
+        "display: Sustituida in history"
+      ],
+      "emptyState": "show missing required strategic object with safe recovery",
+      "loading": "skeleton preserves hierarchy",
+      "error": "explicit non-destructive error",
+      "conflict": "stale-write pattern when editing",
+      "accessibility": [
+        "status text not color-only",
+        "human actions keyboard reachable",
+        "mobile navigation trigger"
+      ],
+      "responsive": "desktop sidebar; tablet/mobile off-canvas navigation; dependency stacks while preserving causality",
+      "classification": "M1/P0",
+      "visualLanguage": "subtle glass shell + high-opacity strategy cards",
+      "uiLanguage": "Spanish"
+    },
+    {
+      "id": "m1-needs-review",
+      "status": "CANONICAL",
+      "scope": "product",
+      "canonicalLevel": "CANONICAL M1",
+      "routeConcept": "existing M1 review route/state",
+      "purpose": "Explain downstream impact after upstream Customer change",
+      "requiredData": [
+        "changed Customer version",
+        "Positioning",
+        "HARD Dependency",
+        "ReviewItem",
+        "impact explanation"
+      ],
+      "allowedActions": [
+        "open_guided_review"
+      ],
+      "domainDependencies": [
+        "Change Impact",
+        "ReviewItem",
+        "Dependency"
+      ],
+      "states": [
+        "NEEDS_REVIEW -> UI: Requiere revisión"
+      ],
+      "emptyState": "not applicable",
+      "loading": "impact explanation placeholder",
+      "error": "do not auto-rewrite; show retry/reload path",
+      "conflict": "latest version must win; no silent overwrite",
+      "accessibility": [
+        "warning icon + label + text",
+        "mobile navigation trigger"
+      ],
+      "responsive": "notice before history; CTA full-width on mobile",
+      "classification": "M1/P0",
+      "visualLanguage": "review surface uses semantic warning, not decorative glass",
+      "uiLanguage": "Spanish"
+    },
+    {
+      "id": "m1-guided-review",
+      "status": "CANONICAL",
+      "scope": "product",
+      "canonicalLevel": "CANONICAL M1",
+      "routeConcept": "existing guided review route/state",
+      "purpose": "Support human review and commit without automatic strategic cascade",
+      "requiredData": [
+        "upstream change",
+        "impacted Positioning",
+        "rationale",
+        "current version",
+        "history"
+      ],
+      "allowedActions": [
+        "keep_unchanged_if_domain_supports",
+        "modify",
+        "commit_supported_review_action"
+      ],
+      "domainDependencies": [
+        "Human Authority",
+        "DecisionVersion",
+        "ReviewItem"
+      ],
+      "states": [
+        "reviewing",
+        "conflict",
+        "completed per host domain"
+      ],
+      "emptyState": "not applicable",
+      "loading": "action area disabled while loading",
+      "error": "explicit; no implicit commit",
+      "conflict": "stale version notice with reload/review changes",
+      "accessibility": [
+        "button labels explain human action",
+        "mobile navigation trigger"
+      ],
+      "responsive": "comparison stacks; actions stack",
+      "classification": "M1/P0",
+      "visualLanguage": "high-opacity glass frame; Human Authority note",
+      "uiLanguage": "Spanish"
+    },
+    {
+      "id": "request-access",
+      "status": "REFERENCE",
+      "scope": "public",
+      "canonicalLevel": "visual gateway",
+      "routeConcept": "/request-access",
+      "purpose": "Collect or route access request without inventing contact details",
+      "requiredData": [],
+      "allowedActions": [
+        "submit_to_configured_endpoint_when_available",
+        "return_to_login"
+      ],
+      "domainDependencies": [],
+      "states": [
+        "static-reference"
+      ],
+      "emptyState": null,
+      "loading": "implementation-owned",
+      "error": "implementation-owned",
+      "conflict": "none",
+      "accessibility": [
+        "visible labels"
+      ],
+      "responsive": "single column",
+      "classification": "gateway reference",
+      "visualLanguage": "Strategic Glassmorphism auth surface",
+      "uiLanguage": "Spanish"
+    }
+  ]
+}

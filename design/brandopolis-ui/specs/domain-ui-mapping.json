@@ -1,0 +1,67 @@
+{
+  "meta": {
+    "status": "CANONICAL",
+    "version": "2026-09-24-final",
+    "note": "Domain source of truth remains main engineering repository."
+  },
+  "decisionStatusMap": [
+    {
+      "domain": [
+        "APPROVED",
+        "MODIFIED"
+      ],
+      "versionRelation": "current",
+      "uiLabelEs": "Actual",
+      "displayState": "Current",
+      "semanticTone": "approved",
+      "note": "Current/Actual is display/version relation, not Decision.status."
+    },
+    {
+      "domain": [
+        "NEEDS_REVIEW"
+      ],
+      "versionRelation": "current",
+      "uiLabelEs": "Requiere revisión",
+      "displayState": "Needs Review",
+      "semanticTone": "review",
+      "note": "Human review required."
+    },
+    {
+      "domain": [
+        "SUPERSEDED"
+      ],
+      "versionRelation": "prior/superseded",
+      "uiLabelEs": "Sustituida",
+      "displayState": "Superseded",
+      "semanticTone": "superseded"
+    },
+    {
+      "domain": [
+        "REJECTED"
+      ],
+      "versionRelation": "domain-owned",
+      "uiLabelEs": "Rechazada",
+      "displayState": "Rejected",
+      "semanticTone": "rejected"
+    },
+    {
+      "domain": [
+        "INVALIDATED"
+      ],
+      "versionRelation": "domain-owned",
+      "uiLabelEs": "Invalidada",
+      "displayState": "Invalidated",
+      "semanticTone": "rejected"
+    }
+  ],
+  "dependency": {
+    "domain": "HARD",
+    "uiLabelEs": "Dependencia estricta",
+    "note": "Friendly copy only; do not rename domain enum."
+  },
+  "authority": {
+    "recommendation": "AI proposal, not committed",
+    "decision": "human committed state",
+    "principle": "AI proposes. Human decides."
+  }
+}

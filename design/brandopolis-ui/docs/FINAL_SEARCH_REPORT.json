@@ -1,0 +1,54 @@
+[
+  {
+    "term": "CURRENT as Decision.status",
+    "hits": [],
+    "disposition": "CLEAR"
+  },
+  {
+    "term": "hello@brandopolis.ai",
+    "hits": [],
+    "disposition": "CLEAR"
+  },
+  {
+    "term": "TODO",
+    "hits": [],
+    "disposition": "CLEAR"
+  },
+  {
+    "term": "FIXME",
+    "hits": [],
+    "disposition": "CLEAR"
+  },
+  {
+    "term": "TBD",
+    "hits": [],
+    "disposition": "CLEAR"
+  },
+  {
+    "term": "nextjs-blueprint",
+    "hits": [],
+    "disposition": "CLEAR"
+  },
+  {
+    "term": "rebuild M1",
+    "hits": [
+      "design/brandopolis-ui/handoff/CODEX_WEB_UI_START_HERE.md"
+    ],
+    "disposition": "JUSTIFIED: appears only in a DO NOT rebuild M1 instruction in the Codex handoff."
+  },
+  {
+    "term": "implement M1 from scratch",
+    "hits": [],
+    "disposition": "CLEAR"
+  },
+  {
+    "term": "font-family=\"Arial\"",
+    "hits": [],
+    "disposition": "CLEAR"
+  },
+  {
+    "term": "font-family=\"Inter, Arial\"",
+    "hits": [],
+    "disposition": "CLEAR"
+  }
+]
