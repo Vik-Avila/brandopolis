@@ -1,22 +1,30 @@
 import * as oidc from 'openid-client';
+import { readFileSync } from 'node:fs';
 import { and,eq,gt,lt } from 'drizzle-orm';
 import type { IncomingMessage,ServerResponse } from 'node:http';
 import type { Database } from '../persistence/database.js';
 import { loginFlows } from '../persistence/schema.js';
 import { hash } from '../application/engine.js';
 import { PilotAccess } from '../application/pilot-access.js';
+import { AppError } from '../domain/contracts.js';
+import { createHash } from 'node:crypto';
 import type { Limiter } from './http.js';
 export interface PilotBoundary {
   origin:string;
   trustProxy?:boolean;
   requestAccessUrl?:string|null;
   limiter?:Limiter;
+  ai?:PilotAiPolicy;
+  aiGate?(token:string):Promise<'OK'|'CONSENT_REQUIRED'|'CAP_REACHED'>;
+  acceptAiNotice?(token:string,version:string):Promise<unknown>;
   handle(req:IncomingMessage,res:ServerResponse,url:URL):Promise<boolean>;
   authorize(token:string):Promise<unknown>;
   logout(token:string):Promise<void>;
   feedback(token:string,input:Record<string,unknown>):Promise<unknown>;
 }
-export interface PilotAuthOptions {redirectUri?:string;trustProxy?:boolean;requestAccessUrl?:string|null;limiter?:Limiter}
+/** notice is null when AI is disabled (nothing is sent to a provider, so no acknowledgement is needed). */
+export interface PilotAiPolicy {notice:{version:string;text:string}|null;capPerTester:number;capTotal:number}
+export interface PilotAuthOptions {redirectUri?:string;trustProxy?:boolean;requestAccessUrl?:string|null;limiter?:Limiter;ai?:PilotAiPolicy}
 /** Operator-facing configuration error; messages never include secret values. */
 export class ConfigError extends Error {}
 const FLOW='__Host-brandopolis_flow',SESSION='__Host-brandopolis_session';
@@ -24,16 +32,23 @@ const FLOW='__Host-brandopolis_flow',SESSION='__Host-brandopolis_session';
 // signature (JWKS), issuer, audience, expiry and nonce; identity is keyed by (issuer, subject), never email.
 export class PilotAuth implements PilotBoundary {
   private access:PilotAccess;
-  readonly redirectUri:string;readonly trustProxy:boolean;readonly requestAccessUrl:string|null;readonly limiter?:Limiter;
+  readonly redirectUri:string;readonly trustProxy:boolean;readonly requestAccessUrl:string|null;readonly limiter?:Limiter;readonly ai?:PilotAiPolicy;
   constructor(private db:Database,private config:oidc.Configuration,readonly origin:string,options:PilotAuthOptions={}){
     this.access=new PilotAccess(db,config.serverMetadata().issuer);
-    this.redirectUri=options.redirectUri??origin+'/auth/callback';this.trustProxy=options.trustProxy??false;this.requestAccessUrl=options.requestAccessUrl??null;this.limiter=options.limiter;
+    this.redirectUri=options.redirectUri??origin+'/auth/callback';this.trustProxy=options.trustProxy??false;this.requestAccessUrl=options.requestAccessUrl??null;this.limiter=options.limiter;this.ai=options.ai;
     if(new URL(this.redirectUri).origin!==origin||new URL(this.redirectUri).pathname!=='/auth/callback')throw new ConfigError('OIDC_REDIRECT_URI must be PILOT_ORIGIN/auth/callback');
   }
   authorize(token:string){return this.access.authorize(token);}
   logout(token:string){return this.access.logout(token);}
   feedback(token:string,input:Record<string,unknown>){return this.access.saveFeedback(token,input);}
+  async aiGate(token:string){return this.ai?this.access.aiGate(token,{noticeVersion:this.ai.notice?.version??null,capPerTester:this.ai.capPerTester,capTotal:this.ai.capTotal}):'OK' as const;}
+  acceptAiNotice(token:string,version:string){
+    if(!this.ai?.notice||version!==this.ai.notice.version)throw new AppError('CONFLICT','Notice changed; reload');
+    return this.access.acceptAiNotice(token,version);
+  }
   private fail(res:ServerResponse,reason:'denied'|'expired'|'failed'){
+    // Category only: never the code, state, tokens or the identity's subject.
+    console.log(JSON.stringify({event:'auth_failure',reason}));
     res.setHeader('Set-Cookie',`${FLOW}=; Secure; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
     res.writeHead(302,{Location:'/?login='+reason});res.end();return true;
   }
@@ -69,8 +84,19 @@ export function oidcSettings(env:NodeJS.ProcessEnv=process.env){
   if(!secret&&env.OIDC_PUBLIC_CLIENT!=='true')throw new ConfigError('Set OIDC_CLIENT_SECRET, or OIDC_PUBLIC_CLIENT=true for a PKCE public client.');
   return {issuer:new URL(issuer),clientId,secret,redirectUri:env.OIDC_REDIRECT_URI||undefined};
 }
+// Testers are bound to the issuer exactly as the provider's discovery document states it (the ID token `iss`),
+// so provisioning and login must both use this value, never the raw environment string.
+export async function discoverIssuer(){
+  const s=oidcSettings();
+  return (await oidc.discovery(s.issuer,s.clientId,s.secret,s.secret?undefined:oidc.None(),{timeout:10})).serverMetadata().issuer;
+}
 export async function pilotAuth(db:Database,origin:string,options:Omit<PilotAuthOptions,'redirectUri'>={}){
   const s=oidcSettings();
   const config=await oidc.discovery(s.issuer,s.clientId,s.secret,s.secret?undefined:oidc.None(),{timeout:10});
   return new PilotAuth(db,config,origin,{...options,redirectUri:s.redirectUri});
+}
+export function loadAiNotice(file:string){
+  const text=readFileSync(file,'utf8').trim();
+  if(!text)throw new ConfigError(`AI notice file ${file} is empty.`);
+  return {version:createHash('sha256').update(text).digest('hex').slice(0,12),text};
 }

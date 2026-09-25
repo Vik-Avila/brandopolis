@@ -13,9 +13,9 @@ import { PilotAccess } from '../src/application/pilot-access.js';
 import { Engine } from '../src/application/engine.js';
 import { ModelGateway } from '../src/domain/analysis.js';
 import { UnavailableProvider } from '../src/transport/anthropic-provider.js';
-import { PilotAuth } from '../src/transport/pilot-auth.js';
+import { PilotAuth,loadAiNotice } from '../src/transport/pilot-auth.js';
 import { createApp } from '../src/transport/http.js';
-import { runtimeAssets } from '../src/transport/server.js';
+import { runtimeAssets } from '../src/transport/assets.js';
 import { readiness } from '../src/persistence/readiness.js';
 // Test-only fixtures: a throwaway PILOT database, a fixture OIDC provider and an operator revoke hook.
 // Never imported by pilot:start; the production server has no HTTP provisioning or bypass.
@@ -25,10 +25,10 @@ execFileSync(process.env.OPENSSL_BIN??(process.platform==='win32'?'C:/Program Fi
 const admin=connect(databaseUrl()),name=`pilot_browser_${randomUUID().replaceAll('-','')}`;await admin.pool.query(`CREATE DATABASE "${name}"`);await admin.pool.end();
 const db=connect(databaseUrl().replace(/\/postgres$/,`/${name}`));await migrateDatabase(db.db);
 const origin='https://127.0.0.1:3002',issuer='https://browser-idp.example',clientId='fixture-client',access=new PilotAccess(db.db,issuer);
-await access.provision('tester-a','A');await access.provision('tester-b','B');
 for(const project of ['wide','desktop','compact','tablet','mobile'])await access.provision('fresh-'+project,'A');
 // One session pair per viewport: each run ends with a real logout that revokes its own session.
-const sessions:Record<string,unknown>={};for(const project of ['wide','desktop','compact','tablet','mobile'])sessions[project]={a:await access.issueSession('tester-a'),b:await access.issueSession('tester-b')};
+const sessions:Record<string,unknown>={};// Distinct testers per viewport: acknowledgements and brands are per tester, and each run ends with logout.
+for(const project of ['wide','desktop','compact','tablet','mobile']){await access.provision(`tester-a-${project}`,'A');await access.provision(`tester-b-${project}`,'B');sessions[project]={a:await access.issueSession(`tester-a-${project}`),b:await access.issueSession(`tester-b-${project}`)};}
 writeFileSync(folder+'/sessions.json',JSON.stringify(sessions),{mode:0o600});
 const {privateKey,publicKey}=await generateKeyPair('RS256'),jwk={...await exportJWK(publicKey),kid:'fixture',alg:'RS256',use:'sig'},codes=new Map<string,{nonce:string;subject:string}>();
 const config=new oidc.Configuration({issuer,authorization_endpoint:origin+'/fixture-idp/authorize',token_endpoint:issuer+'/token',jwks_uri:issuer+'/jwks'},clientId,'fixture-secret');
@@ -40,7 +40,8 @@ config[oidc.customFetch]=async(url,options)=>{
   return Response.json({access_token:'fixture-access',token_type:'Bearer',id_token});
 };
 // Five viewports share one loopback client; production limits are covered by the engine-level test.
-const auth=new PilotAuth(db.db,config,origin,{limiter:{allow:()=>true}});
+// AI configured but unavailable: exercises the data notice and the outage path without a real provider.
+const auth=new PilotAuth(db.db,config,origin,{limiter:{allow:()=>true},ai:{notice:loadAiNotice('config/pilot/ai-notice.v1.md'),capPerTester:30,capTotal:300}});
 const app=createApp(new Engine(db.db,undefined,new ModelGateway(new UnavailableProvider(),'pilot-strategic-v1')),path=>{const entry=runtimeAssets[path as keyof typeof runtimeAssets];return entry?{content:readFileSync(entry[0]),type:entry[1]}:undefined;},()=>readiness(db.pool),auth);
 await new Promise<void>(r=>app.listen(0,'127.0.0.1',r));
 const cookie=(header:string|undefined,key:string)=>header?.split(';').map(c=>c.trim()).find(c=>c.startsWith(key+'='))?.slice(key.length+1);

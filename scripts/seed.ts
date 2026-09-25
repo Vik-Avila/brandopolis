@@ -6,6 +6,7 @@ import { connect,type Database } from '../src/persistence/database.js';
 import * as t from '../src/persistence/schema.js';
 import { hash } from '../src/application/engine.js';
 import { databaseUrl } from './local-db.js';
+import { containsPilotData } from '../src/persistence/readiness.js';
 export async function seedIdentity(db:Database,role='ADMIN',workspaceId=randomUUID()) {
   const userId=randomUUID(),token=randomBytes(32).toString('base64url');
   await db.transaction(async tx=>{
@@ -19,5 +20,5 @@ export async function seedIdentity(db:Database,role='ADMIN',workspaceId=randomUU
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href) {
   if(process.env.NODE_ENV==='production') throw new Error('DEMO seed disabled in production');
   const {db,pool}=connect(databaseUrl());
-  try {const identity=await seedIdentity(db);mkdirSync('.local',{recursive:true});writeFileSync('.local/demo-session.json',JSON.stringify(identity),{mode:0o600});console.log('Sesión DEMO creada en .local/demo-session.json (privado, expira en 24h).');} finally {await pool.end();}
+  try {if(await containsPilotData(pool))throw new Error('DEMO seed refused: this database contains PILOT data.');const identity=await seedIdentity(db);mkdirSync('.local',{recursive:true});writeFileSync('.local/demo-session.json',JSON.stringify(identity),{mode:0o600});console.log('Sesión DEMO creada en .local/demo-session.json (privado, expira en 24h).');} finally {await pool.end();}
 }

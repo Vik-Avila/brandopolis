@@ -27,7 +27,10 @@
     "pilot:operator": "tsx scripts/pilot-operator.ts",
     "pilot:migrate": "tsx scripts/pilot-migrate.ts",
     "pilot:backup": "tsx scripts/pilot-backup.ts",
-    "test:pilot:e2e": "playwright test --config playwright.pilot.config.ts"
+    "test:pilot:e2e": "playwright test --config playwright.pilot.config.ts",
+    "pilot:validate-config": "tsx scripts/pilot-validate-config.ts",
+    "pilot:preflight": "tsx scripts/pilot-preflight.ts",
+    "pilot:smoke": "tsx scripts/pilot-smoke.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",
@@ -35,7 +38,8 @@
     "ajv-formats": "^3.0.1",
     "drizzle-orm": "0.45.3",
     "openid-client": "^6.8.8",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "tsx": "^4.23.15"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
@@ -45,7 +49,6 @@
     "embedded-postgres": "17.10.0-beta.17",
     "eslint": "^9.39.0",
     "jose": "^6.2.12",
-    "tsx": "^4.20.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.0",
     "vitest": "^4.0.0"

@@ -17,8 +17,10 @@ import { assemble } from '../src/domain/context-assembler.js';
 import { readiness,migrationsReadyMessage } from '../src/persistence/readiness.js';
 import { competitionProfile,ensureDemoSession } from '../scripts/competition-environment.js';
 import { pilotCases } from './pilot-cases.js';
+import { launchCases } from './launch-cases.js';
 let local:Awaited<ReturnType<typeof startLocalDb>>,connection:ReturnType<typeof connect>,engine:Engine;
 pilotCases(()=>connection);
+launchCases(()=>connection);
 beforeAll(async()=>{
   local=await startLocalDb(true);
   const name=`m1_${randomUUID().replaceAll('-','')}`;

@@ -49,9 +49,10 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
       const url=new URL(req.url??'/',pilot?.origin??`http://${req.headers.host}`),path=url.pathname;
       if(pilot&&url.origin!==pilot.origin)throw new AppError('FORBIDDEN','Origin not allowed');
       if(pilot&&await pilot.handle(req,res,url))return;
-      if(req.method==='GET'&&path==='/api/mode')return send(res,200,{mode:pilot?'PILOT':'DEMO',requestAccessUrl:pilot?.requestAccessUrl??null});
+      if(req.method==='GET'&&path==='/api/mode')return send(res,200,{mode:pilot?'PILOT':'DEMO',requestAccessUrl:pilot?.requestAccessUrl??null,aiNotice:pilot?.ai?.notice??null});
       if(req.method==='GET'&&path==='/health') {
-        const ready=health?await health():'UNAVAILABLE';return send(res,ready==='READY'?200:503,{application:pilot?'brandopolis-pilot':'brandopolis-competition',protocol:pilot?'pilot-v1':'rc1',status:ready==='READY'?'ready':'unavailable'});
+        const ready=health?await health():'UNAVAILABLE';
+        if(pilot&&ready!=='READY')console.error(JSON.stringify({event:'readiness',status:ready}));return send(res,ready==='READY'?200:503,{application:pilot?'brandopolis-pilot':'brandopolis-competition',protocol:pilot?'pilot-v1':'rc1',status:ready==='READY'?'ready':'unavailable'});
       }
       if(req.method==='GET'&&!path.startsWith('/api/')) {
         const asset=assets?.(path);if(!asset) return send(res,404,{code:'NOT_FOUND'});
@@ -67,7 +68,13 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(req.method==='POST'&&path==='/api/logout'){if(token)await pilot.logout(token);res.setHeader('Set-Cookie',`${cookieName}=; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`);return send(res,200,{authenticated:false});}
         await pilot.authorize(token);
         const subject=createHash('sha256').update(token).digest('hex');
-        if(req.method==='POST'&&path==='/api/recommendations/generate'&&limited('ai:'+subject,pilotLimits.ai))return;
+        if(req.method==='POST'&&path==='/api/recommendations/generate'){
+          if(limited('ai:'+subject,pilotLimits.ai))return;
+          const gate=await pilot.aiGate?.(token)??'OK';
+          if(gate==='CONSENT_REQUIRED')return send(res,428,{code:'AI_CONSENT_REQUIRED',message:'Confirm the AI data notice first.'});
+          if(gate==='CAP_REACHED'){res.setHeader('Retry-After','3600');return send(res,429,{code:'AI_CAP_REACHED',message:'Daily AI proposal limit reached.'});}
+        }
+        if(req.method==='POST'&&path==='/api/ai-notice/accept'){const input=await body(req);return send(res,200,await pilot.acceptAiNotice!(token,string(input.version)));}
         if(req.method==='POST'&&path==='/api/feedback'&&limited('feedback:'+subject,pilotLimits.feedback))return;
       }
       if(req.method==='POST') {
@@ -85,7 +92,12 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(path==='/api/brands') return send(res,201,await engine.createBrand(token,string(input.name),input.initialContext===undefined?undefined:string(input.initialContext)));
         if(path==='/api/context/capture') return send(res,201,await engine.captureContext(token,string(input.brandId),string(input.kind),input.entity as Record<string,unknown>));
         if(path==='/api/context/assemble') return send(res,200,await engine.assembleContext(token,string(input.brandId),string(input.questionId),input.budget===undefined?undefined:Number(input.budget)));
-        if(path==='/api/recommendations/generate') return send(res,200,await engine.analyze(token,string(input.brandId),string(input.questionId)));
+        if(path==='/api/recommendations/generate') {
+          const result=await engine.analyze(token,string(input.brandId),string(input.questionId));
+          // Outcome only; no prompt, context or proposal text.
+          if(pilot)console.log(JSON.stringify({event:'ai_request',requestId,outcome:result.error??'OK',provider:result.provider}));
+          return send(res,200,result);
+        }
         if(path==='/api/recommendations/reject') return send(res,200,await engine.rejectRecommendation(token,string(input.brandId),string(input.recommendationId),string(input.rationale)));
         if(path==='/api/learning/create') return send(res,201,await engine.createLearningObject(token,string(input.brandId),string(input.kind),input.entity as Record<string,unknown>,input.decisionId===undefined?undefined:string(input.decisionId),input.plan as {objective:string;successCriteria:string}|undefined));
         if(path==='/api/learning/transition') return send(res,200,await engine.transitionLearningObject(token,string(input.brandId),string(input.kind),string(input.objectId),string(input.expectedStatus),string(input.status)));

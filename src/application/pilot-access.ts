@@ -1,5 +1,5 @@
 import { randomBytes,randomUUID } from 'node:crypto';
-import { and,asc,eq,gt } from 'drizzle-orm';
+import { and,asc,count,eq,gt } from 'drizzle-orm';
 import type { Database } from '../persistence/database.js';
 import * as t from '../persistence/schema.js';
 import { AppError } from '../domain/contracts.js';
@@ -67,6 +67,42 @@ export class PilotAccess {
         decisionsApproved:decisions.length,activated:decisions.length>0,reviewsCompleted:events.filter(e=>e.name==='change_impact_review_completed').length,
         secondStrategicEvent:decisions.length>1,timeToFirstInsightSeconds:since(start,first(events,'recommendation_generated')),timeToFirstDecisionSeconds:since(start,decisions[0]?.occurredAt)};
     });
+  }
+  // AI guardrails for PILOT: one acknowledgement per notice version (append-only event, no schema change)
+  // and rolling 24 h request caps per tester and in total. A cap of 0 disables AI requests.
+  async aiGate(token:string,policy:{noticeVersion:string|null;capPerTester:number;capTotal:number}):Promise<'OK'|'CONSENT_REQUIRED'|'CAP_REACHED'> {
+    const who=await this.authorize(token),since=new Date(Date.now()-86400000);
+    if(policy.noticeVersion){
+      const [accepted]=await this.db.select({id:t.pilotEvents.id}).from(t.pilotEvents).where(and(eq(t.pilotEvents.userId,who.userId),eq(t.pilotEvents.name,'ai_notice_accepted:'+policy.noticeVersion))).limit(1);
+      if(!accepted)return 'CONSENT_REQUIRED';
+    }
+    const requested=and(eq(t.pilotEvents.name,'recommendation_requested'),gt(t.pilotEvents.occurredAt,since));
+    const [mine]=await this.db.select({n:count()}).from(t.pilotEvents).where(and(requested,eq(t.pilotEvents.userId,who.userId)));
+    const [all]=await this.db.select({n:count()}).from(t.pilotEvents).where(requested);
+    return mine.n>=policy.capPerTester||all.n>=policy.capTotal?'CAP_REACHED':'OK';
+  }
+  async acceptAiNotice(token:string,version:string) {
+    const who=await this.authorize(token);
+    if(!/^[a-f0-9]{12}$/.test(version))throw new AppError('INVALID','Invalid notice version');
+    const [workspace]=await this.db.select().from(t.pilotWorkspaces).where(eq(t.pilotWorkspaces.workspaceId,who.workspaceId));
+    const [session]=await this.db.select().from(t.pilotSessions).where(eq(t.pilotSessions.sessionId,who.sessionId));
+    await this.db.insert(t.pilotEvents).values({id:randomUUID(),userId:who.userId,workspaceId:who.workspaceId,sessionId:who.sessionId,name:'ai_notice_accepted:'+version,cohort:workspace.cohort,intervention:session?.intervention??'NONE',occurredAt:new Date()});
+    return {accepted:true};
+  }
+  // Aggregate Pilot evidence for the operator: counts, rates and durations only; no strategy text, no subjects.
+  async report() {
+    const people=await this.metrics(),feedback=await this.db.select().from(t.feedback);
+    const stats=(values:(number|null)[])=>{const v=values.filter((x):x is number=>x!==null).sort((a,b)=>a-b);if(!v.length)return {n:0,medianSeconds:null,averageSeconds:null};
+      const mid=Math.floor(v.length/2);return {n:v.length,medianSeconds:v.length%2?v[mid]:Math.round((v[mid-1]+v[mid])/2),averageSeconds:Math.round(v.reduce((a,b)=>a+b,0)/v.length)};};
+    const distribution=(key:'usefulness'|'clarity'|'confidence')=>Object.fromEntries([1,2,3,4,5].map(n=>[n,feedback.filter(f=>f[key]===n).length]));
+    const activated=people.filter(p=>p.activated).length,identities=await this.db.select().from(t.pilotIdentities);
+    return {generatedAt:new Date().toISOString(),testers:identities.length,activeTesters:identities.filter(i=>i.active).length,testersWithSessions:people.filter(p=>p.sessions>0).length,
+      activated,activationRate:identities.length?Math.round(activated/identities.length*1000)/1000:null,
+      returningTesters:people.filter(p=>p.sessions>1).length,secondStrategicEvent:people.filter(p=>p.secondStrategicEvent).length,testersWithSecondBrand:people.filter(p=>p.brands>1).length,
+      timeToFirstInsight:stats(people.map(p=>p.timeToFirstInsightSeconds)),timeToFirstDecision:stats(people.map(p=>p.timeToFirstDecisionSeconds)),
+      ai:{requested:people.reduce((a,p)=>a+p.recommendationsRequested,0),failed:people.reduce((a,p)=>a+p.recommendationsFailed,0)},
+      reviewsCompleted:people.reduce((a,p)=>a+p.reviewsCompleted,0),
+      feedback:{responses:feedback.filter(f=>f.kind==='FEEDBACK').length,issues:feedback.filter(f=>f.kind==='ISSUE').length,usefulness:distribution('usefulness'),clarity:distribution('clarity'),confidence:distribution('confidence')}};
   }
   async issueSession(subject:string) {
     return this.db.transaction(async tx=>{
