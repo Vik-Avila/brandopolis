@@ -1,5 +1,29 @@
 # Session State
 
+Current Phase: LIVE PILOT LAUNCH GATE — closed by Claude Code.
+
+Gate state: **EXTERNAL-CONFIG READY**. The repository, launch tooling, runbooks and tests are ready; nothing is deployed. No real hosting, OIDC provider or Anthropic API was used. Production: NOT CLAIMED.
+
+Frozen Pilot engineering SHA: af73d0306e6fa0ba99462370a7ab5c1ba0c59f12 (tag brandopolis-pilot-engineering-ready-2026-09-25, branch release/pilot-engineering-ready-2026-09-25; untouched).
+Live launch branch: pilot/live-launch-2026-09-25. Commits: b4f5091 (deployment prep), 9469ec2 (docs), b006b91 (launch validation), plus the closing commit that last modifies this file (`git log -1 --format=%H -- SESSION_STATE.md`; full SHA in the gate report).
+Frozen RC1: f4946683c8767aedc6c2fc7403d03beb3ab61e04 (untouched).
+
+Delivered in this gate: runtime free of dev-only imports (`pnpm install --frozen-lockfile --prod` + `pnpm pilot:start`, import graph verified); `pilot:validate-config` (offline), `pilot:preflight` (read-only), `pilot:smoke` (post-deploy); single-instance advisory lock; operator bound to the OIDC-discovered issuer; operator `report`; AI data notice with per-tester versioned acknowledgement and daily caps (no schema change); forward-only migration plan with divergence detection; DEMO tools refuse PILOT data; testable hosted backup wrapper; auth/AI/readiness logs without secrets; canonical second High-Value Event metric. Docs: PILOT_RUNBOOK, PILOT_DEPLOYMENT_CONTRACT (environment matrix), LIVE_HOSTING_DECISION, OIDC_PROVIDER_DECISION, AI_PROVIDER_LAUNCH, FIRST_TESTER_COHORT, DOMAIN_DNS_LAUNCH, LIVE_PILOT_LAUNCH_CHECKLIST, launch security review.
+
+Final gate (2026-09-25): typecheck/lint PASS; pnpm test 52/52; test:integration 52/52 (same suite); test:e2e 25/25 (5 viewports); test:pilot:e2e 10/10 over HTTPS; competition:start/check --isolated PASS (9 migrations) and competition:test-boot 1/1; Foundation PASS (errors 0); UI validator --integrated PASS; pnpm audit --prod: No known vulnerabilities found; git diff --check clean. Real-process rehearsal on a scratch PILOT database (local HTTPS discovery endpoint, then dropped): validate-config VALID, pilot:migrate 9 applied then up to date, preflight PASS (backup tools WARN), pilot:start started, launch smoke 8/8 PASS, second instance refused, db:migrate/db:seed refused.
+
+Schema/rollback: no migration added in this gate (still 0000–0008, 9 entries). The frozen build and this build read and write the same database both ways (automated test), so application rollback to af73d030 is supported; database changes are forward-only.
+
+Known deferred risks: in-memory rate limiter (one instance, enforced); pg_dump/pg_restore execution not rehearsed (client tools absent locally); real OIDC provider and real Anthropic API not exercised; non-strategic creates not universally idempotent; no full WCAG audit; Chrome only.
+
+Remaining human decisions: hosting provider and region; dedicated PostgreSQL 17 (DATABASE_URL); OIDC provider (issuer, client ID, secret or public client); PILOT_ORIGIN domain and DNS; Anthropic key, model and spend limit (or AI disabled); request-access destination; approval of the AI data notice text; first testers' OIDC subjects and cohorts.
+
+Next: follow docs/15-handoff/LIVE_PILOT_LAUNCH_CHECKLIST.md. Do not begin a new product phase automatically.
+
+---
+
+## Previous phase (MVP / Pilot engineering)
+
 Current Phase: MVP / PILOT RELEASE — Claude continuation of the Codex Pilot handoff.
 
 Current Status: PILOT READY FOR CONFIGURATION AND FIRST TESTERS once external decisions are supplied (hosting, OIDC provider, domain, Anthropic account). Local DEMO remains ready. Production: NOT claimed.

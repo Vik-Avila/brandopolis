@@ -7,6 +7,16 @@ Depends on: —
 
 # Registro
 
+## LIVE PILOT LAUNCH GATE · 2026-09-25 · EXTERNAL-CONFIG READY
+
+- Runtime PILOT sin dependencias de desarrollo; `tsx` como dependencia de runtime.
+- Nuevos comandos: `pilot:validate-config`, `pilot:preflight`, `pilot:smoke`; `pilot:operator report`.
+- Instancia única garantizada por lock de PostgreSQL; operador vinculado al issuer de discovery.
+- Aviso de datos IA con aceptación versionada y topes diarios; logs de auth, IA y readiness sin secretos.
+- Plan de migraciones forward-only con detección de divergencia; herramientas DEMO rechazan bases PILOT.
+- Pruebas: 52 de motor/contrato, 10 de navegador PILOT, ensayo real de procesos PILOT.
+- Documentos de lanzamiento: hosting, OIDC, IA, cohorte, DNS y checklist; runbook y contrato de despliegue actualizados.
+
 ## MVP / PILOT · continuación de Claude · 2026-09-25
 
 - Se conserva el checkpoint de Codex (acceso OIDC, sesiones, CLI, migración 0008, feedback, telemetría, adaptador IA).
