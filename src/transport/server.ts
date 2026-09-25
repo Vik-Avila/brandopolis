@@ -6,8 +6,10 @@ import { databaseUrl } from '../../scripts/local-db.js';
 if(process.env.NODE_ENV==='production') throw new Error('M1 demo authentication is not enabled for production');
 const {db,pool}=connect(databaseUrl());
 const assets:Record<string,[string,string]>={'/':['index.html','text/html; charset=utf-8'],'/app.js':['app.js','text/javascript; charset=utf-8'],'/style.css':['style.css','text/css; charset=utf-8']};
+const brandAssets:Record<string,[string,string]>={'/brand/logo.svg':['public/brand/logo/brandopolis-logo-horizontal.svg','image/svg+xml'],'/brand/symbol.svg':['public/brand/symbols/brandopolis-symbol.svg','image/svg+xml'],'/brand/flow.webp':['public/brand/flow/brand-flow-light.webp','image/webp'],'/tokens.css':['design/brandopolis-ui/tokens/brandopolis.tokens.css','text/css; charset=utf-8']};
 const server=createApp(new Engine(db),path=>{
-  const file=assets[path];if(!file) return;
+  if(brandAssets[path]){const [file,type]=brandAssets[path];return {content:readFileSync(file),type};}
+  const file=assets[path]??(['/login','/workspace'].includes(path)?assets['/']:undefined);if(!file) return;
   return {content:readFileSync(new URL(`./public/${file[0]}`,import.meta.url),'utf8'),type:file[1]};
 });
 server.listen(3000,'127.0.0.1',()=>console.log('Brandopolis M1 DEMO: http://127.0.0.1:3000'));

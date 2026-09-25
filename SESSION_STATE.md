@@ -1,6 +1,6 @@
 # Session State
 
-Current Phase: Engineering
+Current Phase: Engineering — Competition MVP
 Current Milestone: M1 COMPLETE; NEXT-A–NEXT-F completados como shell P0 local. Siguiente gate: review independiente de M1.
 
 ## Completed
@@ -45,3 +45,6 @@ Next Recommended Task: Claude Code review de autoridad, transacciones, tenancy, 
 Claude Review Ready: YES
 
 Git: codex/m1-connected-decision-proof; sin merge/deploy. Ver git log para commits y remote tracking para push.
+
+## Sprint Competition MVP · Phase A
+Visual System integrado sobre M1: assets canónicos, tokens, glass legible, drawer, copy ES, revisión mantener/modificar con commit humano, historial y conflicto con borrador conservado. M1 preflight 20/20, browser inicial 4/4. Nueva autorización amplía P0 más allá de M1; no requiere reconstrucción ni revisión externa previa como gate. Rama actual codex/ui-kit-integration.

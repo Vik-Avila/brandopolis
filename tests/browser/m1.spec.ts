@@ -1,3 +1,5 @@
+import type { Page } from '@playwright/test';
+async function navigate(page:Page,name:string){if(await page.getByRole('button',{name:'Abrir navegación',exact:true}).isVisible())await page.getByRole('button',{name:'Abrir navegación',exact:true}).click();await page.getByRole('button',{name,exact:true}).click();}
 import { test,expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 test('human connected proof survives reload without console errors or overflow',async({page},testInfo)=>{
@@ -5,40 +7,45 @@ test('human connected proof survives reload without console errors or overflow',
   const session=JSON.parse(readFileSync('.local/demo-session.json','utf8'));
   await page.goto('/');
   await page.getByLabel('Token de sesión local').fill(session.token);
-  await page.getByRole('button',{name:'Entrar al workspace'}).click();
+  await page.getByRole('button',{name:'Entrar al espacio estratégico'}).click();
   await expect(page.getByRole('heading',{name:'Una decisión conecta con la siguiente.'})).toBeVisible();
-  await page.getByLabel('Nueva Brand',{exact:true}).fill(`Browser DEMO ${testInfo.project.name} ${Date.now()}`);
-  await page.getByRole('button',{name:'Crear Brand',exact:true}).click();
-  await expect(page.locator('#decision')).toContainText('POR DECIDIR');
+  if(await page.getByRole('button',{name:'Abrir navegación',exact:true}).isVisible()) {
+    const menu=page.getByRole('button',{name:'Abrir navegación',exact:true});
+    await menu.click();await expect(menu).toHaveAttribute('aria-expanded','true');await page.keyboard.press('Escape');await expect(menu).toBeFocused();await expect(menu).toHaveAttribute('aria-expanded','false');
+    await menu.click();await page.locator('#nav-backdrop').click({position:{x:(page.viewportSize()?.width??390)-10,y:150}});await expect(menu).toHaveAttribute('aria-expanded','false');
+  }
+  await page.getByLabel('Nueva marca',{exact:true}).fill(`Browser DEMO ${testInfo.project.name} ${Date.now()}`);
+  await page.getByRole('button',{name:'Crear marca',exact:true}).click();
+  await expect(page.locator('#decision')).toContainText('Por decidir');
   async function approve(option:string,rationale:string,button='Preparar decisión') {
     await page.getByRole('button',{name:button,exact:true}).click();
     await page.getByLabel('Decisión propuesta').fill(option);
     await page.getByLabel('¿Por qué eliges esta opción?').fill(rationale);
-    await page.getByRole('button',{name:'Aprobar decisión',exact:true}).click();
+    await page.getByRole('button',{name:button==='Iniciar revisión humana'?'Confirmar revisión':'Aprobar decisión',exact:true}).click();
     await expect(page.locator('#decision .current')).toHaveText(option);
   }
   await approve('Agencies','Servicio recurrente para múltiples marcas');
-  await page.getByRole('button',{name:'02 Positioning'}).click();
+  await navigate(page,'02 Posicionamiento');
   await approve('Strategic OS for Agencies','Continuidad del criterio estratégico');
-  await page.getByRole('button',{name:'01 Customer'}).click();
+  await navigate(page,'01 Cliente principal');
   await approve('Internal Marketing Teams','Cambio humano de cliente prioritario','Preparar nueva versión');
   await page.getByText('Historial · 2 versiones',{exact:true}).click();
-  await expect(page.locator('.history-item').filter({hasText:'SUPERSEDED'})).toContainText('Agencies');
-  await page.getByRole('button',{name:'02 Positioning'}).click();
-  await expect(page.locator('#decision')).toContainText('NEEDS REVIEW');
+  await expect(page.locator('.history-item').filter({hasText:'Sustituida'})).toContainText('Agencies');
+  await navigate(page,'02 Posicionamiento');
+  await expect(page.locator('#decision')).toContainText('Requiere revisión');
   await expect(page.locator('#decision .current')).toHaveText('Strategic OS for Agencies');
   await page.getByRole('button',{name:'Ver impacto',exact:true}).click();
   await expect(page.locator('#decision')).toContainText('versión 1 → 2');
   await page.screenshot({path:`test-results/m1-impact-${testInfo.project.name}.png`,fullPage:true});
   await page.reload();
-  await expect(page.locator('#decision')).toContainText('NEEDS REVIEW');
+  await expect(page.locator('#decision')).toContainText('Requiere revisión');
   await approve('Strategic OS for Internal Marketing Teams','Revisión humana tras el cambio de cliente','Iniciar revisión humana');
   await page.reload();
-  await expect(page.locator('#decision')).toContainText('APROBADA · v2');
-  await expect(page.locator('#decision')).not.toContainText('NEEDS REVIEW');
+  await expect(page.locator('#decision')).toContainText('Actual · v2');
+  await expect(page.locator('#decision')).not.toContainText('Requiere revisión');
   await page.getByText('Historial · 2 versiones',{exact:true}).click();
   await expect(page.locator('.history-item')).toHaveCount(2);
-  await expect(page.locator('.history-item').filter({hasText:'SUPERSEDED'})).toContainText('Strategic OS for Agencies');
+  await expect(page.locator('.history-item').filter({hasText:'Sustituida'})).toContainText('Strategic OS for Agencies');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:`test-results/m1-completed-${testInfo.project.name}.png`,fullPage:true});
   expect(errors).toEqual([]);
@@ -47,15 +54,15 @@ test('human connected proof survives reload without console errors or overflow',
 });
 test('two human tabs cannot silently overwrite a newer version',async({page,context})=>{
   const session=JSON.parse(readFileSync('.local/demo-session.json','utf8'));
-  await page.goto('/');await page.getByLabel('Token de sesión local').fill(session.token);await page.getByRole('button',{name:'Entrar al workspace'}).click();
-  await page.getByLabel('Nueva Brand',{exact:true}).fill(`Concurrency DEMO ${Date.now()}`);await page.getByRole('button',{name:'Crear Brand',exact:true}).click();await expect(page.locator('#decision')).toContainText('POR DECIDIR');
+  await page.goto('/');await page.getByLabel('Token de sesión local').fill(session.token);await page.getByRole('button',{name:'Entrar al espacio estratégico'}).click();
+  await page.getByLabel('Nueva marca',{exact:true}).fill(`Concurrency DEMO ${Date.now()}`);await page.getByRole('button',{name:'Crear marca',exact:true}).click();await expect(page.locator('#decision')).toContainText('Por decidir');
   await page.getByRole('button',{name:'Preparar decisión',exact:true}).click();await page.getByLabel('Decisión propuesta').fill('Original');await page.getByLabel('¿Por qué eliges esta opción?').fill('Original rationale');await page.getByRole('button',{name:'Aprobar decisión',exact:true}).click();await expect(page.locator('#decision .current')).toHaveText('Original');
   const second=await context.newPage();await second.goto(page.url());await expect(second.locator('#decision .current')).toHaveText('Original');
   await page.getByRole('button',{name:'Preparar nueva versión',exact:true}).click();await second.getByRole('button',{name:'Preparar nueva versión',exact:true}).click();
   await page.getByLabel('Decisión propuesta').fill('Newer');await page.getByLabel('¿Por qué eliges esta opción?').fill('Newer rationale');await page.getByRole('button',{name:'Aprobar decisión',exact:true}).click();await expect(page.locator('#decision .current')).toHaveText('Newer');
   await second.getByLabel('Decisión propuesta').fill('Stale');await second.getByLabel('¿Por qué eliges esta opción?').fill('Stale rationale');await second.getByRole('button',{name:'Aprobar decisión',exact:true}).click();
-  await expect(second.getByRole('status')).toContainText('El estado cambió');await expect(second.getByLabel('Decisión propuesta')).toHaveValue('Stale');
-  await second.getByRole('button',{name:'Recargar contexto',exact:true}).click();await expect(second.locator('#decision .current')).toHaveText('Newer');
+  await expect(second.getByRole('status')).toContainText('Esta decisión cambió');await expect(second.getByLabel('Decisión propuesta')).toHaveValue('Stale');
+  await second.getByRole('button',{name:'Revisar versión más reciente',exact:true}).click();await expect(second.locator('#decision .current')).toHaveText('Newer');
   await second.getByText('Historial · 2 versiones',{exact:true}).focus();await second.keyboard.press('Enter');await expect(second.locator('.history-item')).toHaveCount(2);await expect(second.locator('.history-item').first()).toBeVisible();
   await second.close();
 });

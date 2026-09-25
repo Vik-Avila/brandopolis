@@ -40,3 +40,8 @@ Depends on: —
 - Corregida preparación concurrente de preguntas detectada por prueba de dos pestañas, sin cambiar máquina de estados.
 - 20 pruebas dominio/PostgreSQL/HTTP y 4 E2E Chrome en escritorio/móvil; typecheck/lint verdes; demo real ejecutada.
 - Documentados setup, comandos, límites DEMO y handoff de revisión. No IA live, P1/P2, merge ni despliegue.
+
+## Competition MVP · sistema visual
+- Integración sobre runtime existente con tokens y assets canónicos, sin framework nuevo.
+- Estados visibles en español, historial con actor y revisión explícita; drawer con foco, Escape y backdrop.
+- Pruebas M1 conservadas; ampliación a cinco viewports.

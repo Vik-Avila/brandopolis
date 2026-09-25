@@ -10,7 +10,7 @@ async function body(req:IncomingMessage):Promise<Record<string,unknown>> {
 }
 function string(value:unknown):string {if(typeof value!=='string'||!value) throw new AppError('INVALID','String required');return value;}
 function send(res:ServerResponse,status:number,data:unknown) {res.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(data));}
-export function createApp(engine:Engine,assets?:(path:string)=>{content:string;type:string}|undefined) {
+export function createApp(engine:Engine,assets?:(path:string)=>{content:string|Buffer;type:string}|undefined) {
   return createServer(async(req,res)=>{
     res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
     res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
