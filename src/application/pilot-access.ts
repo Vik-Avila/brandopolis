@@ -62,10 +62,13 @@ export class PilotAccess {
     const since=(a?:Date,b?:Date)=>a&&b?Math.round((b.getTime()-a.getTime())/1000):null;
     return [...users].map(([userId,events])=>{
       const start=first(events,'session_started'),decisions=events.filter(e=>e.name==='decision_created');
+      // Canonical High-Value Strategic Events (Master Context §45); activation is the first approved Decision.
+      const activation=decisions[0]?.occurredAt,hve=['strategic_question_started','decision_created','change_impact_review_completed','dependency_triggered','experiment_created','signal_added','learning_created'];
+      const secondHighValueEvent14d=Boolean(activation)&&events.some(e=>hve.includes(e.name)&&e.occurredAt>activation!&&e.occurredAt.getTime()-activation!.getTime()<=14*86400000);
       return {userId,cohort:events[0].cohort,sessions:events.filter(e=>e.name==='session_started').length,brands:new Set(events.filter(e=>e.name==='brand_created').map(e=>e.brandId)).size,
         recommendationsRequested:events.filter(e=>e.name==='recommendation_requested').length,recommendationsFailed:events.filter(e=>e.name==='analysis_failed').length,
         decisionsApproved:decisions.length,activated:decisions.length>0,reviewsCompleted:events.filter(e=>e.name==='change_impact_review_completed').length,
-        secondStrategicEvent:decisions.length>1,timeToFirstInsightSeconds:since(start,first(events,'recommendation_generated')),timeToFirstDecisionSeconds:since(start,decisions[0]?.occurredAt)};
+        secondHighValueEvent14d,timeToFirstInsightSeconds:since(start,first(events,'recommendation_generated')),timeToFirstDecisionSeconds:since(start,decisions[0]?.occurredAt)};
     });
   }
   // AI guardrails for PILOT: one acknowledgement per notice version (append-only event, no schema change)
@@ -98,7 +101,7 @@ export class PilotAccess {
     const activated=people.filter(p=>p.activated).length,identities=await this.db.select().from(t.pilotIdentities);
     return {generatedAt:new Date().toISOString(),testers:identities.length,activeTesters:identities.filter(i=>i.active).length,testersWithSessions:people.filter(p=>p.sessions>0).length,
       activated,activationRate:identities.length?Math.round(activated/identities.length*1000)/1000:null,
-      returningTesters:people.filter(p=>p.sessions>1).length,secondStrategicEvent:people.filter(p=>p.secondStrategicEvent).length,testersWithSecondBrand:people.filter(p=>p.brands>1).length,
+      returningTesters:people.filter(p=>p.sessions>1).length,secondHighValueEvent14d:people.filter(p=>p.secondHighValueEvent14d).length,testersWithSecondBrand:people.filter(p=>p.brands>1).length,
       timeToFirstInsight:stats(people.map(p=>p.timeToFirstInsightSeconds)),timeToFirstDecision:stats(people.map(p=>p.timeToFirstDecisionSeconds)),
       ai:{requested:people.reduce((a,p)=>a+p.recommendationsRequested,0),failed:people.reduce((a,p)=>a+p.recommendationsFailed,0)},
       reviewsCompleted:people.reduce((a,p)=>a+p.reviewsCompleted,0),

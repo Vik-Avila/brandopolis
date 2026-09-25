@@ -40,3 +40,21 @@ Revisión de código y pruebas del 25 de septiembre de 2026. No es pentest, cert
 - `pg_dump`/`pg_restore` (herramientas cliente ausentes en este entorno): ensayar en el hosting antes del primer tester.
 - Proveedor OIDC real y API real de Anthropic (se usaron fixtures firmados y respuestas simuladas).
 - Despliegue detrás de un proxy real, TLS del hosting, carga, navegadores distintos de Chrome, auditoría WCAG completa.
+
+## Revisión de la puerta de lanzamiento (2026-09-25)
+
+Revisión renovada de OIDC, sesiones, cookies, CSRF/Origin, Host, límites, rutas públicas, solicitud de acceso, endpoint IA, CLI de operador, logs, migraciones, respaldos, scripts de despliegue, cabeceras y secretos.
+
+| Severidad | Hallazgo | Estado |
+|---|---|---|
+| BLOCKER | El runtime PILOT importaba el servidor DEMO y, con él, `embedded-postgres` (dependencia de desarrollo): una instalación `--prod` no arrancaba. `tsx` era dependencia de desarrollo pero es el runtime. | **Corregido**: assets en módulo propio; `tsx` en dependencias; grafo de imports PILOT verificado (sólo dependencias de runtime). |
+| BLOCKER | El operador vinculaba testers con la cadena `OIDC_ISSUER` y el login con el issuer de discovery: una diferencia de formato (p. ej. barra final) dejaba a todos los testers sin acceso. | **Corregido**: el operador usa el issuer de discovery. |
+| BLOCKER | El limitador en memoria no protege con varias instancias. | **Corregido**: lock de instancia única en PostgreSQL. |
+| IMPORTANT | Sin aviso de datos ni topes de gasto IA antes de enviar contexto a un proveedor real. | **Corregido**: aviso versionado con aceptación por tester, topes diarios por tester y total, logs de resultado. |
+| IMPORTANT | `db:migrate`/`db:seed` (DEMO) podían ejecutarse contra una base PILOT saltando la compuerta de respaldo; `pilot:migrate` no detectaba migraciones editadas o una base más nueva. | **Corregido**: rechazo por clase de datos y plan forward-only con detección de divergencia. |
+| IMPORTANT | Configuración errónea sólo se detectaba al arrancar. | **Corregido**: `pilot:validate-config` (sin red) y `pilot:preflight` (sólo lectura); sin eco de secretos (prueba). |
+| DEFERRED | Limitador en memoria (una instancia); sin MFA propia (depende del proveedor OIDC); verifier PKCE en claro ≤ 10 min en `login_flows`; mensajes de error internos en inglés breve; sin rotación automática de sesiones más allá de 8 h. | Documentado. |
+
+Verificado además: logs sin rutas, queries, cookies, tokens, prompts ni contexto (revisión de todas las llamadas a `console.*` del runtime PILOT); `pilot:backup` pasa credenciales por variables `PG*`, nunca en argumentos, y nunca usa `--clean`/`--create`; la solicitud de acceso es sólo un enlace `https:`/`mailto:` validado (sin almacenamiento ni superficie de abuso); `/api/mode` expone únicamente modo, enlace de acceso y aviso público. `pnpm audit --prod`: ver SESSION_STATE (resultado del gate final).
+
+No probado: proveedor OIDC real, API real de Anthropic, `pg_dump`/`pg_restore` reales, proxy/TLS del hosting, carga.

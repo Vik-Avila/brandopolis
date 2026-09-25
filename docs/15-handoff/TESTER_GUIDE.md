@@ -33,7 +33,8 @@ La sesión dura hasta 8 horas. Pulsa **Salir** al terminar en un equipo comparti
 
 - La propuesta es un punto de partida, no un hecho ni evidencia de mercado.
 - Si la IA no está disponible, verás un aviso y puedes decidir con tu propio criterio.
-- El contexto de la marca se envía al proveedor de IA sólo cuando pides una propuesta. No incluyas secretos ni datos personales de terceros.
+- La primera vez que pidas una propuesta verás un aviso: el contexto de tu marca se envía al proveedor de IA sólo cuando pides una propuesta. Pulsa «Entiendo y acepto» para continuar o «Ahora no» para decidir sin IA. No incluyas secretos ni datos personales de terceros.
+- Hay un límite diario de propuestas; si lo alcanzas, sigue decidiendo con tu criterio.
 
 ## Feedback y problemas
 

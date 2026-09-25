@@ -2,104 +2,122 @@ Status: derived
 Owner: Engineering
 Canonical: no
 Last reviewed: 2026-09-25
-Related: docs/15-handoff/PILOT_DEPLOYMENT_CONTRACT.md, docs/14-decisions/ADR-0013.md, docs/14-decisions/ADR-0014.md
-Depends on: MVP / Pilot release 2026-09-25
+Related: docs/15-handoff/PILOT_DEPLOYMENT_CONTRACT.md, docs/15-handoff/LIVE_PILOT_LAUNCH_CHECKLIST.md, docs/14-decisions/ADR-0013.md, docs/14-decisions/ADR-0014.md
+Depends on: MVP / Pilot release 2026-09-25; Live Pilot Launch Gate 2026-09-25
 
 # PILOT · runbook de operación
 
-PILOT es un entorno de prueba con testers invitados por Internet. **No es producción.** DEMO (concurso, loopback) y PILOT usan bases distintas y cada servidor rechaza datos de la otra clase al arrancar.
+PILOT es un entorno de prueba con testers invitados por Internet. **No es producción.** DEMO (concurso, loopback, `pnpm competition:start`) y PILOT usan bases distintas; cada servidor y cada herramienta rechaza datos de la otra clase. Variables: [contrato de despliegue](PILOT_DEPLOYMENT_CONTRACT.md#matriz-de-entorno). Todos los comandos se ejecutan desde la raíz del repositorio.
 
-## 1. Variables de entorno
+## 1. Comandos PILOT
 
-Se definen en el entorno del proceso o en el gestor de secretos del hosting, nunca en el repositorio. Plantilla sin valores: `.env.example`.
-
-| Variable | Requerida | Uso |
+| Comando | Qué hace | Escribe datos |
 |---|---|---|
-| `PILOT_DATA_CLASS` | sí | Debe ser `PILOT`. Evita arrancar sobre una base DEMO por error. |
-| `DATABASE_URL` | sí | PostgreSQL 17 dedicado a PILOT. Con TLS (`sslmode=verify-full` recomendado). |
-| `PILOT_ORIGIN` | sí | Origen HTTPS público exacto, p. ej. `https://pilot.example.com` (sin ruta). |
-| `OIDC_ISSUER` | sí | Issuer HTTPS del proveedor de identidad (se usa discovery `/.well-known/openid-configuration`). |
-| `OIDC_CLIENT_ID` | sí | Client ID registrado. |
-| `OIDC_CLIENT_SECRET` | sí, salvo cliente público | Cliente confidencial. Para cliente público PKCE: omitir y `OIDC_PUBLIC_CLIENT=true`. |
-| `OIDC_REDIRECT_URI` | no | Si se define, debe ser `PILOT_ORIGIN/auth/callback`. |
-| `PORT`, `BIND_HOST` | no | Por defecto `3000` y `127.0.0.1` (detrás del proxy). |
-| `TRUST_PROXY` | no | `true` sólo si un proxy propio fija `X-Forwarded-For`; habilita límites por IP real. |
-| `PILOT_REQUEST_ACCESS_URL` | no | Enlace `https:` o `mailto:` para «Solicitar acceso». Sin él, se indica contactar al organizador. |
-| `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | no | Activan propuestas IA. Sin ambos, PILOT informa que la IA no está disponible y permite decidir. Modelo sugerido: `claude-opus-5`. |
-| `AI_TIMEOUT_MS` | no | Límite por propuesta; por defecto 30000. |
-| `PG_BIN` | backup | Carpeta de `pg_dump`/`pg_restore`/`psql` si no están en PATH. |
+| `pnpm pilot:validate-config` | Valida variables sin red ni base. `FAIL`/`WARN`/`PASS`, nunca imprime secretos. Exit ≠ 0 si inválido. | No |
+| `pnpm pilot:preflight` | Config + PostgreSQL + plan de migraciones + clase de datos + instancia única + discovery OIDC + herramientas de backup. | No |
+| `pnpm pilot:migrate` | Aplica migraciones pendientes (forward-only). Con datos existentes exige `PILOT_BACKUP_FILE` y `PILOT_RECOVERY_VERIFIED=yes`. Rechaza esquemas divergentes y datos DEMO. | Esquema |
+| `pnpm pilot:start` | Inicia la app (una instancia; lock en PostgreSQL). | Sí (uso) |
+| `pnpm pilot:smoke` | Smoke post-despliegue contra `PILOT_ORIGIN`: health, modo, cabeceras, redirección OIDC con PKCE, 401 sin sesión, CSRF, DEMO deshabilitado. | No |
+| `pnpm pilot:operator <cmd>` | Testers y evidencia (§4). | Según cmd |
+| `pnpm pilot:backup backup <archivo>` / `restore-empty <archivo>` | Respaldo lógico y restauración sólo en base vacía aislada (§5). | Sólo destino vacío |
 
-## 2. Proveedor OIDC (genérico)
+Salida esperada de `pilot:preflight` (ejemplo con valores ficticios):
 
-1. Crear una aplicación web OIDC (Authorization Code con PKCE) en el proveedor elegido.
-2. Redirect URI permitido: `https://<PILOT_ORIGIN>/auth/callback`. Scope: `openid`.
-3. Copiar issuer, client ID y, si es confidencial, el secret al gestor de secretos.
-4. Brandopolis vincula a cada tester por **issuer + subject (`sub`)**; el email no es identidad. Obtén el `sub` del tester desde la consola del proveedor.
-
-Validaciones que realiza `openid-client`: firma por JWKS, issuer, audience, expiración, nonce, state y PKCE. Un callback fallido, expirado, repetido o de una identidad no provisionada vuelve a la entrada con un aviso genérico y no crea sesión.
-
-## 3. Base de datos y migraciones
-
-La aplicación nunca crea, borra ni recrea la base. Las migraciones sólo se aplican con el comando explícito:
-
-```sh
-pnpm pilot:migrate
+```
+PASS config          origin https://pilot.<dominio>; callback https://pilot.<dominio>/auth/callback; OIDC confidential client; AI enabled (claude-opus-5, caps 30/tester, 300/day)
+PASS ai-notice       version 1a2b3c4d5e6f from config/pilot/ai-notice.v1.md
+PASS database        PostgreSQL reachable.
+PASS migrations      9/9 migrations applied and matching.
+PASS data-class      No DEMO data in the PILOT database.
+PASS single-instance No other PILOT instance is running.
+PASS oidc            Discovery OK; testers are bound to issuer https://<issuer>/
+WARN backup-tools    pg_dump not found (set PG_BIN) ...
+PRE-FLIGHT PASSED: safe to start pnpm pilot:start.
 ```
 
-- Base vacía: aplica todas las migraciones.
-- Base con datos: exige `PILOT_BACKUP_FILE` (respaldo no vacío) y `PILOT_RECOVERY_VERIFIED=yes`, es decir, un respaldo cuya restauración ya se probó (§6). Toma un advisory lock para evitar migraciones concurrentes.
+## 2. Secuencia de release (cada despliegue)
 
-## 4. Arranque, salud y apagado
+1. **Rama y SHA**: `git rev-parse HEAD` coincide con el SHA aprobado; `git status` limpio.
+2. **Configuración**: `pnpm pilot:validate-config` → `CONFIG VALID`.
+3. **Punto de recuperación**: respaldo nuevo (`pnpm pilot:backup backup ./backups/pilot-<fecha>.dump` o snapshot del proveedor) **y** restauración probada en una base vacía aislada (§5). Sin datos aún (primer despliegue): omitir.
+4. **Plan de migraciones**: `pnpm pilot:preflight` — línea `migrations` muestra aplicadas/pendientes; `diverge` = detener.
+5. **Migrar**: `PILOT_BACKUP_FILE=<archivo> PILOT_RECOVERY_VERIFIED=yes pnpm pilot:migrate`.
+6. **Detener la versión anterior** (SIGTERM) y **arrancar** la nueva: `pnpm pilot:start`. La nueva instancia no arranca mientras la anterior tenga el lock (instancia única).
+7. **Readiness**: `GET /health` → 200 `brandopolis-pilot`.
+8. **Smoke**: `PILOT_ORIGIN=... pnpm pilot:smoke` → `LAUNCH SMOKE PASSED`.
+9. **Auth real**: un tester de control entra por el proveedor OIDC.
+10. **Acceso a marca**: el tester de control ve/crea su marca.
+11. **Persistencia**: aprueba una decisión y recarga; la versión permanece.
+12. **Telemetría**: `pnpm pilot:operator report` muestra la sesión y la decisión del tester de control.
+13. **Declarar activa** la release y registrar SHA y hora.
+
+## 3. Rollback
+
+**Rollback de aplicación ≠ rollback de base de datos.**
+
+- *Aplicación*: volver a desplegar el SHA anterior **sólo si es compatible con el esquema actual**. Verificado: la build congelada `af73d030` (tag `brandopolis-pilot-engineering-ready-2026-09-25`) y la build de esta puerta comparten esquema (9 migraciones; esta puerta no añadió migraciones) y una prueba automática demuestra que ambas leen y escriben la misma base en los dos sentidos. Nota: la build congelada no aplica el lock de instancia única ni el aviso de IA.
+- *Base de datos*: **forward-only**. Nunca se revierte una migración ni se borra una base. Si una migración resulta defectuosa: se corrige con una nueva migración forward. Si hay corrupción de datos: restaurar el último respaldo verificado **en una base nueva**, apuntar `DATABASE_URL` a ella tras validarla y conservar la base dañada para análisis.
+- Un código anterior contra una base con más migraciones se niega a arrancar (`readiness` exacto): es intencional.
+- RC1 no es destino de rollback de PILOT (sin autenticación pública).
+
+## 4. Operación de testers
+
+Los datos van en un archivo JSON privado (fuera del repositorio; bórralo después). Nunca en la línea de comandos. Ejemplos con valores ficticios:
 
 ```sh
-pnpm pilot:start
+# 1. Obtener issuer + subject del tester en la consola del proveedor OIDC (ver OIDC_PROVIDER_DECISION.md).
+# 2. Crear tester con workspace propio y cohorte (A o B):
+echo '{"subject":"00u1abcdEXAMPLE","cohort":"A"}' > /tmp/tester.json
+pnpm pilot:operator create /tmp/tester.json          # → {"userId":"…","workspaceId":"…"}
+# 3. El tester entra en PILOT_ORIGIN, crea su marca y toma su primera decisión.
+# 4. Verificar acceso:
+pnpm pilot:operator inspect /tmp/tester.json          # identityActive, membershipActive, brands, activeSessions
+# 5. Revocar si hace falta:
+echo '{"userId":"<userId>"}' > /tmp/who.json
+pnpm pilot:operator revoke-sessions /tmp/who.json     # fuerza nuevo login
+pnpm pilot:operator disable /tmp/who.json             # retira acceso (identidad, membership, sesiones)
+# Clasificar la intervención de una sesión (Product-only / Assisted / Concierge):
+echo '{"sessionId":"<id>","intervention":"ASSISTED"}' > /tmp/s.json && pnpm pilot:operator classify-session /tmp/s.json
+# Evidencia agregada (sin texto estratégico ni subjects):
+pnpm pilot:operator report
+pnpm pilot:operator metrics
+rm /tmp/tester.json /tmp/who.json /tmp/s.json
 ```
 
-Rechaza arrancar si falta configuración, si la base no está `READY` (migraciones exactas) o si contiene datos DEMO. Mensajes de configuración legibles, sin secretos.
+Compartir espacio: `create` con `"workspaceId"` de un workspace PILOT existente de la misma cohorte y luego `assign` (`{"userId","brandId"}`). Las sesiones duran 8 horas y viven en PostgreSQL: **sobreviven a reinicios** de la aplicación (verificado) y se revocan con `revoke-sessions`/`disable`.
 
-- `GET /health` → `200 {"application":"brandopolis-pilot","protocol":"pilot-v1","status":"ready"}`; `503` si la base no está lista. Úsalo como readiness del hosting.
-- Logs: una línea JSON por petición (`event:http_request`, `requestId`, `status`, `method`) sin rutas, cookies ni cuerpos; errores inesperados como `event:http_error` con el tipo de error. Header `X-Request-Id` para correlacionar.
-- Apagado seguro: enviar `SIGTERM` (o Ctrl+C). El servidor deja de aceptar peticiones y cierra el pool.
+## 5. Respaldo y restauración
 
-## 5. Operación de testers
-
-Los datos se pasan en un archivo JSON privado (no en la línea de comandos) y se borra al terminar.
-
-```sh
-pnpm pilot:operator create tester.json        # {"subject":"<sub OIDC>","cohort":"A"}  (workspaceId opcional para compartir espacio)
-pnpm pilot:operator inspect tester.json       # {"subject":"..."} o {"userId":"..."}
-pnpm pilot:operator assign assign.json        # {"userId":"...","brandId":"..."} marca PILOT del mismo workspace
-pnpm pilot:operator revoke-sessions who.json  # {"userId":"..."} cierra todas sus sesiones
-pnpm pilot:operator disable who.json          # {"userId":"..."} desactiva identidad y membership y revoca sesiones
-pnpm pilot:operator classify-session s.json   # {"sessionId":"...","intervention":"PRODUCT_ONLY|ASSISTED|CONCIERGE"}
-pnpm pilot:operator metrics                   # activación, tiempo a primera propuesta y a primera decisión por tester
-```
-
-`create` genera un workspace PILOT propio por tester (cohorte `A` o `B`) y la membership. El tester crea su primera marca desde la interfaz. Las sesiones duran 8 horas.
-
-## 6. Respaldo y restauración
-
-Hosting (PostgreSQL gestionado o propio) con herramientas cliente de PostgreSQL 17:
+Hosting con herramientas cliente de PostgreSQL 17 (`PG_BIN` si no están en PATH):
 
 ```sh
 pnpm pilot:backup backup ./backups/pilot-AAAAMMDD.dump
-PILOT_RESTORE_CONFIRM=EMPTY_ISOLATED_DATABASE DATABASE_URL=<base vacía aislada> pnpm pilot:backup restore-empty ./backups/pilot-AAAAMMDD.dump
+PILOT_RESTORE_CONFIRM=EMPTY_ISOLATED_DATABASE DATABASE_URL=<base nueva y vacía> pnpm pilot:backup restore-empty ./backups/pilot-AAAAMMDD.dump
+DATABASE_URL=<base restaurada> pnpm pilot:preflight   # migrations 9/9, data-class PASS
 ```
 
-`restore-empty` sólo restaura en una base **vacía** y confirmada; nunca limpia una base existente. Después: `GET /health` contra esa base, verificar marcas, decisiones e historial con un tester de prueba, y sólo entonces marcar `PILOT_RECOVERY_VERIFIED=yes`. El respaldo gestionado del proveedor (PITR) es complementario, no sustituto de una restauración probada.
+`backup` se niega a sobrescribir un archivo. `restore-empty` se niega sin confirmación explícita, si el archivo no existe o si la base destino tiene tablas; usa `--single-transaction` y nunca `--clean`/`--create`. Las credenciales viajan en variables `PG*`, no en argumentos.
 
-Estado de verificación: el procedimiento local de copia en frío (apagado limpio con `pg_ctl -w`, copia, restauración en un clúster separado y verificación de historial) está probado automáticamente. El camino `pg_dump`/`pg_restore` **no se ejecutó** en este entorno (sin herramientas cliente instaladas) y debe ensayarse una vez en el hosting elegido antes del primer tester.
+Estado de verificación: copia en frío local con apagado limpio y restauración en clúster aislado — **probado**. Construcción y rechazos del wrapper `pg_dump`/`pg_restore` — **probados**. Ejecución real de `pg_dump`/`pg_restore` — **no probada** (herramientas no instaladas en la máquina de desarrollo): ensayarla una vez en el hosting antes del primer tester.
 
-## 7. Actualización y rollback
+## 6. Salud, logs y apagado
 
-Orden obligatorio: **respaldo → restauración probada → `pnpm pilot:migrate` → verificar `/health` → desplegar la nueva versión de la app**. Migraciones sólo aditivas. Rollback = volver a la versión anterior de la app compatible con el esquema ampliado; nunca revertir la base borrando datos. RC1 no es destino de rollback de PILOT (no tiene autenticación pública).
+- `GET /health` → `200 {"application":"brandopolis-pilot","protocol":"pilot-v1","status":"ready"}`; `503` si la base no está lista (registra `event:readiness`).
+- Logs JSON por línea: `pilot_started` (puerto, proveedor IA, modelo, versión del aviso), `http_request` (requestId, status, método), `auth_failure` (motivo: `failed|expired|denied`), `ai_request` (resultado y proveedor), `http_error` (tipo), `pilot_stopping`/`pilot_stopped`. Nunca rutas, queries, cookies, tokens, prompts, contexto de marca ni claves. `X-Request-Id` correlaciona con el usuario.
+- Apagado: `SIGTERM` o Ctrl+C. Cierra el servidor, libera el lock y el pool.
 
-## 8. Incidentes
+## 7. Recuperación de incidentes
 
-| Situación | Acción |
-|---|---|
-| Revocar a un tester | `disable` (permanente) o `revoke-sessions` (forzar nuevo login). |
-| IA caída o sin cuota | El tester ve «No se pudo generar una propuesta válida. Puedes continuar con tu decisión humana». No hay estado estratégico parcial. Revisar cuota/clave; no hace falta reiniciar. |
-| 429 frecuentes | Límites por cliente: 600 req/min, 20 login/min, 20 propuestas IA y 20 feedback por sesión cada 10 min. En memoria, por instancia. |
-| `/health` 503 | Base no disponible o migraciones distintas; no arrancar otra versión hasta revisar. |
-| Sospecha de sesión filtrada | `revoke-sessions`; las cookies son `__Host-`, `Secure`, `HttpOnly`, `SameSite=Strict`. |
+| Situación | Síntoma | Respuesta |
+|---|---|---|
+| OIDC caído | `auth_failure` `failed`; testers vuelven a la entrada | Estado del proveedor. Las sesiones existentes siguen válidas hasta expirar. `pilot:preflight` línea `oidc`. |
+| OIDC mal configurado | Arranque rechazado o `failed` en todos | `pilot:validate-config`; redirect exacto `PILOT_ORIGIN/auth/callback`; client ID/secret; tipo de cliente. |
+| Tester «sin acceso» | `auth_failure` `denied` | `pilot:operator inspect`; issuer + subject correctos; si estaba desactivado: `create` no reactiva — crear con un subject nuevo o reactivar manualmente sólo tras decisión explícita. |
+| IA caída / sin cuota | `ai_request` con `UNAVAILABLE`, `PROVIDER_ERROR`, `RATE_LIMIT` o `TIMEOUT` | El tester puede decidir sin IA; no hay estado parcial. Revisar cuenta/cuota. Desactivar IA: quitar `ANTHROPIC_API_KEY` y `ANTHROPIC_MODEL` y reiniciar. |
+| Límite diario IA | 429 `AI_CAP_REACHED` | Esperado. Ajustar `PILOT_AI_DAILY_CAP_*` y reiniciar sólo si el presupuesto lo permite. |
+| DB caída | `/health` 503, `event:readiness` | Estado del proveedor de PostgreSQL; no desplegar ni migrar hasta 200. |
+| Migraciones distintas | Arranque rechazado; preflight `migrations FAIL` | Pendientes: flujo §2 pasos 3–5. Divergentes: desplegar la release que corresponde a la base; nunca editar migraciones. |
+| Otra instancia activa | «Another PILOT instance holds the single-instance lock» | Detener la otra instancia; PILOT es de instancia única. |
+| Sesión revocada | Tester vuelve a la entrada | Esperado tras `revoke-sessions`/`disable`; volver a entrar. |
+| Backup fallido | `pilot:backup` exit ≠ 0 | Herramientas cliente/PG_BIN, TLS, permisos. No migrar sin punto de recuperación. |
+| `PILOT_ORIGIN` inválido | validate-config `FAIL` | Origen HTTPS público exacto, sin ruta; coincidir con el dominio del proxy y el redirect OIDC. |

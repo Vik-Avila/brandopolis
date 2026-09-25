@@ -178,8 +178,11 @@ export function pilotCases(connection:()=>ReturnType<typeof connect>){
    await a.engine.prepareQuestion(a.session.token,brand.id,q.id,null);
    await a.engine.commitDecision(a.session.token,{brandId:brand.id,questionId:q.id,selectedOption:'Primera',rationale:'Humana',expectedActiveVersion:null,actorUserId:a.who.userId,sourceRecommendationId:null,idempotencyKey:randomUUID()});
    const mine=(await a.access.metrics()).find(m=>m.userId===a.who.userId)!;
-   expect(mine).toMatchObject({cohort:'A',sessions:1,brands:1,recommendationsRequested:1,decisionsApproved:1,activated:true,secondStrategicEvent:false});
+   expect(mine).toMatchObject({cohort:'A',sessions:1,brands:1,recommendationsRequested:1,decisionsApproved:1,activated:true,secondHighValueEvent14d:false});
    expect(mine.timeToFirstInsightSeconds).toBeGreaterThanOrEqual(0);expect(mine.timeToFirstDecisionSeconds).toBeGreaterThanOrEqual(mine.timeToFirstInsightSeconds!);
+   // Opening the next connected question after activation is a second High-Value Strategic Event.
+   const positioning=(await a.engine.context(a.session.token,brand.id)).questions.find(x=>x.module==='Positioning')!;await a.engine.prepareQuestion(a.session.token,brand.id,positioning.id,null);
+   expect((await a.access.metrics()).find(m=>m.userId===a.who.userId)).toMatchObject({secondHighValueEvent14d:true});
    await a.access.disable(a.who.userId);expect(await a.access.inspect({userId:a.who.userId})).toMatchObject({identityActive:false,membershipActive:false,activeSessions:0});
    await expect(a.access.inspect({subject:'nobody'})).rejects.toMatchObject({code:'NOT_FOUND'});
   });
