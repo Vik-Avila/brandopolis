@@ -5,3 +5,6 @@ body:has(#workspace:not([hidden])) #notice{padding-left:268px}@media(max-width:1
 nav{overflow-y:auto}fieldset{min-width:0;border:1px solid var(--border-default);border-radius:var(--bp-radius-md);margin:20px 0}input[type=checkbox]{width:auto;min-height:24px}
 
 .new-brand{flex-wrap:wrap}.new-brand .intake{flex-basis:100%;margin:0;padding-top:8px}.intake textarea{max-width:720px}
+/* Context column is intentionally narrow; keep dependency labels intact. */
+.dependency-path{flex-direction:column;align-items:flex-start}.dependency-arrow{font-size:0}.dependency-arrow:after{content:'↓';font-size:20px}
+html{scroll-padding-top:100px}nav button{scroll-margin-block:16px}

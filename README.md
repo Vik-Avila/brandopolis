@@ -34,7 +34,7 @@ User/Workspace/Brand; Customer + Positioning HARD; cambiar Customer con optimist
 
 ## Current Status
 
-M1 implementado con persistencia PostgreSQL, motor de decisiones e interfaz local DEMO. Foundation validada. Ver [estado de sesión](SESSION_STATE.md) y [evidencia M1](docs/15-handoff/m1-implementation.md). No hay clientes/ingresos validados; auth y despliegue de producción quedan pendientes.
+Competition MVP local DEMO: M1 conservado, vertical Customer → Business → Position → Message, contexto explícito, recomendaciones DEMO con aprobación humana, Experimento → Señal → Aprendizaje revisado, práctica personal y Blueprint derivado. Ver [estado de sesión](SESSION_STATE.md), [evidencia M1 histórica](docs/15-handoff/m1-implementation.md) y [continuación Competition MVP](docs/15-handoff/competition-mvp-implementation.md). No hay clientes/ingresos validados; auth, proveedor IA y despliegue de producción quedan pendientes.
 
 ## Open Technical Decisions
 

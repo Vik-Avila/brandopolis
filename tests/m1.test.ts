@@ -90,6 +90,10 @@ describe('PostgreSQL M1',()=>{
     await engine.transitionLearningObject(s.who.token,s.brand.id,'learning',String(learning.id),'CANDIDATE','REVIEWED');await engine.transitionLearningObject(s.who.token,s.brand.id,'learning',String(learning.id),'REVIEWED','ACCEPTED');
     const auditCount=(await s.context()).audit.length;
     await engine.transitionLearningObject(s.who.token,s.brand.id,'learning',String(learning.id),'REVIEWED','ACCEPTED');expect((await s.context()).audit).toHaveLength(auditCount);
+    const events=await connection.db.select().from(t.telemetry).where(eq(t.telemetry.brandId,s.brand.id));
+    expect(events.filter(e=>(e.payload as {name:string}).name==='learning_created')).toHaveLength(1);
+    expect(events.filter(e=>(e.payload as {name:string}).name==='learning_candidate_created')).toHaveLength(1);
+    expect(events.filter(e=>(e.payload as {name:string}).name==='signal_added')).toHaveLength(1);
     await expect(engine.blueprint(other.who.token,s.brand.id)).rejects.toMatchObject({code:'NOT_FOUND'});
     expect((await engine.blueprint(s.who.token,s.brand.id)).learnings).toMatchObject([{status:'ACCEPTED',reviewedBy:s.who.userId}]);
     expect((await engine.assembleContext(s.who.token,s.brand.id,s.customer.id)).items.find(i=>i.type==='Learning')?.trust).toBe('HUMAN_ACCEPTED');

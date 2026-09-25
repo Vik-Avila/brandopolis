@@ -140,6 +140,7 @@ export class Engine {
       await tx.insert(tables[kind as keyof typeof tables]).values({id:payload.id,workspaceId:s.workspaceId,brandId,payload,createdBy:s.userId,createdAt:now});
       await tx.update(t.recommendations).set({resolution:'STALE'}).where(and(inScope(t.recommendations,s),eq(t.recommendations.resolution,'GENERATED')));
       await this.audit(tx,s,{operation:`CONTEXT_${kind.toUpperCase()}_CAPTURED`,idempotencyKey:payload.id,rationale:kind==='evidence'?'Human source assessment recorded; not independent verification':undefined});
+      if(kind==='evidence')await this.event(tx,s,'evidence_added');
       return payload;
     });
   }
@@ -221,7 +222,7 @@ export class Engine {
       }
       await tx.update(t.recommendations).set({resolution:'STALE'}).where(and(inScope(t.recommendations,s),eq(t.recommendations.resolution,'GENERATED')));
       await this.audit(tx,s,{operation:`${kind.toUpperCase()}_CREATED`,idempotencyKey:objectId,decisionId:kind==='experiment'?decisionId:undefined});
-      await this.event(tx,s,kind==='signal'?'signal_recorded':`${kind}_created`);return payload;
+      await this.event(tx,s,kind==='signal'?'signal_added':kind==='learning'?'learning_candidate_created':'experiment_created');return payload;
     });
   }
   async transitionLearningObject(token:string,brandId:string,kind:string,objectId:string,expectedStatus:string,status:string) {
@@ -240,6 +241,7 @@ export class Engine {
       if(kind==='experiment')await tx.update(t.experiments).set({payload,...(status==='RUNNING'?{startedAt:new Date()}:{completedAt:new Date()})}).where(and(inScope(t.experiments,s),eq(t.experiments.id,objectId)));
       else await tx.update(t.learnings).set({payload}).where(and(inScope(t.learnings,s),eq(t.learnings.id,objectId)));
       await tx.update(t.recommendations).set({resolution:'STALE'}).where(and(inScope(t.recommendations,s),eq(t.recommendations.resolution,'GENERATED')));
+      if(kind==='learning'&&status==='ACCEPTED')await this.event(tx,s,'learning_created');
       await this.audit(tx,s,{operation:`${kind.toUpperCase()}_${status}`,idempotencyKey:id(),rationale:`${objectId}: ${expectedStatus} -> ${status}`});return payload;
     });
   }
@@ -307,7 +309,7 @@ export class Engine {
         }
         const resolution=proposal.options.find(o=>o.id===proposal.recommendedOptionId)?.label===command.selectedOption?'ACCEPTED':'MODIFIED';
         await tx.update(t.recommendations).set({resolution}).where(and(inScope(t.recommendations,s),eq(t.recommendations.id,rec.id)));
-        await this.event(tx,s,resolution==='ACCEPTED'?'recommendation_accepted':'recommendation_modified');
+        await this.event(tx,s,resolution==='ACCEPTED'?'recommendation_approved':'recommendation_modified');
       }
       if(!decision) {
         [decision]=await tx.insert(t.decisions).values({id:id(),workspaceId:s.workspaceId,brandId:s.brandId,questionId:question.id,activeVersionId:null,reviewStatus:'APPROVED'}).returning();

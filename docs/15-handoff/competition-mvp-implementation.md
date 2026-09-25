@@ -36,3 +36,15 @@ DEMO_FIXTURE presenta alternativas fijas explícitas, no IA en vivo. ModelGatewa
 ## Límites reales
 
 Auth y despliegue de producción pendientes; sólo demostración local loopback. Proveedor real OPEN, investigación externa no implementada. No se valida causalidad ni significancia de las señales; la persona declara límites. Las hipótesis no cambian automáticamente al aceptar Learning. Retención/borrado personal, backup/restore y auditoría exhaustiva WCAG no completados. No hay componentes P1/P2.
+
+## P0 posterior al bloque recuperado
+
+«Tu estrategia hoy» deriva prioridades reales: Needs Review, preguntas sin decisión, experimentos activos, señales sin interpretación y aprendizajes por revisar. La vista de Contexto reúne decisiones, evidencia con procedencia, hipótesis, aportaciones, preguntas y aprendizajes aceptados. Decision Card distingue lo registrado de lo supuesto y advierte que la fixture no utiliza las fuentes para inferir una recomendación.
+
+Multi-Brand: crear/listar/seleccionar según membership y asignación, etiqueta DEMO, intake opcional atómico como UserInput. Los borradores de decisión se conservan por User/Brand/módulo en sessionStorage al cambiar marca o sección; no se aprueban ni se rebasan automáticamente. El drawer oculta controles externos al foco, cierra por Escape/backdrop, contiene Tab y devuelve foco al disparador. Reduced motion permanece soportado.
+
+`pnpm demo:competition` verifica con assertions el recorrido de cuatro decisiones y siete versiones; un aprendizaje aceptado aparece en contexto y Blueprint, con todas las revisiones completadas. Crea únicamente datos ficticios y utiliza los mismos casos de uso que la interfaz.
+
+## Guía de revisión independiente
+
+Revisar autoridad en Engine, scope de referencias, FKs de 0006, backfill aditivo de 0007, exact replay de aceptación, contextVersion y reservas de presupuesto. Comprobar que ninguna ruta de Blueprint, Learning, Gateway o Evaluator modifica DecisionVersion. Los tests de upgrade siembran una versión en una base sólo hasta 0005 y comparan exactamente su contenido tras migrar y repetir.

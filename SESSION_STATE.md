@@ -1,116 +1,53 @@
 # Session State
 
-
-
 Current Phase: Engineering — Competition MVP
 
-Current Milestone: M1 COMPLETE; NEXT-A–NEXT-F completados como shell P0 local. Siguiente gate: review independiente de M1.
+M1: GREEN. Se conserva el motor transaccional, historial, HARD Needs Review, revisión humana, idempotencia, aislamiento y conflicto entre pestañas.
 
+Visual System: INTEGRATED. Assets y tokens canónicos; glass legible, navegación responsive y foco de drawer. Sin rediseño.
 
+Strategic Vertical Slice: Customer → Business → Position → Message implementado y conectado por las reglas v1. Cuatro decisiones persistentes y versionadas.
 
-## Completed
+Brand Context: UserInput, Evidence, Hypothesis, OpenQuestion, Experiment, Signal y Learning explícitos. Aprendizajes ACCEPTED disponibles en vista de contexto y Context Assembler. Categorías separadas; hipótesis nunca se presentan como evidencia. Presupuesto de caracteres con reserva para información crítica y omisiones declaradas.
 
+Recommendations: DEMO_FIXTURE, alternativas didácticas fijas explícitas. ModelGateway, validación estructurada, guard de referencias, evaluación conservadora y trazas. Usar/modificar exige criterio y commit humano; rechazar no crea decisión. Cambio de contexto invalida propuestas. Sin IA en vivo ni research externo.
 
+Experiment: PLANNED → RUNNING → COMPLETED / INCONCLUSIVE / CANCELLED; PLANNED → CANCELLED autorizado por continuación. Objetivo, criterio de éxito, responsable, relación con Decision/Hypothesis, creación/inicio/cierre persistentes. Completar exige señal. Fechas históricas desconocidas permanecen null.
 
-- Corregido drift ASSUMPTION_IN_USE en Brand Context y reconciliation log. Bible, schemas v1 y config intactos.
+Signal: observación con fuente, fecha no futura, autor y Experiment en curso. No crea Learning automáticamente.
 
-- TypeScript modular monolith, PostgreSQL 17 real, Drizzle, 17 tablas y 3 migraciones reproducibles.
+Learning: CANDIDATE → REVIEWED → ACCEPTED / REJECTED mediante actor humano autorizado. Fuentes y límites conservados. Aceptación repetida del mismo actor idempotente. No cambia decisiones, versiones ni preguntas estratégicas.
 
-- Sesión humana server-side, memberships/asignación Brand, tenant-scoped read/write, validación de inputs.
+Strategic Practice: eventos descriptivos ligados a User, privados y separados de Brand Context. Learning Moments de cuatro módulos con Por qué importa / Qué observar / En tu negocio / Cuidado con. Sin score, gamificación ni LMS.
 
-- Commit humano con expectedActiveVersion, idempotencia/fingerprint, versionado, audit atómico y outbox.
+Blueprint: proyección desde persistencia de decisiones vigentes, Needs Review, dependencias, hipótesis abiertas y aprendizajes aceptados. Sin almacenamiento duplicado ni ruta de escritura estratégica.
 
-- HARD Needs Review determinista, ReviewItem y explicación, sin edición downstream ni cascade; pending/retry visibles.
+Multi-Brand: crear/listar/seleccionar según membership y asignación; etiqueta DEMO. Contexto aislado; borrador de decisión conservado por User/Brand/módulo en sessionStorage al cambiar marca o sección.
 
-- Guided Review con receipt de impacto visto, Positioning v2 e historial persistente.
+Progressive Intake: pregunta opcional «¿Qué estás construyendo?»; UserInput guardado atómicamente al crear Brand. Se puede iniciar incompleta.
 
-- Shell Customer/Positioning/Impact/Brand Context, demo CLI reproducible, comandos locales documentados.
+Strategic Home: «Tu estrategia hoy» prioriza revisiones, preguntas abiertas, experimentos activos, señales sin interpretación y aprendizajes por revisar. Sin KPIs ficticios.
 
+Competition Demo: pnpm demo:competition crea datos ficticios mediante casos de uso reales; cuatro decisiones, siete versiones, revisiones completadas y un aprendizaje aceptado. Resultado sin credenciales en .local/competition-demo.json. No acredita clientes ni resultados de negocio.
 
+Browser QA: 20/20 Chrome PASS en 1600×1000, 1440×900, 1280×800, 768×1024 y 390×844. M1, stale conflict, contexto, aprobar/modificar/rechazar Recommendation DEMO, cuatro módulos, experimento/señal/aprendizaje, Blueprint, práctica, intake y cambio de marca. Teclado/Tab/Escape/backdrop/focus return y reduced motion verificados. Capturas inspeccionadas en escritorio y móvil; sin overflow en recorridos comprobados. No se afirma certificación WCAG completa.
 
-## Tests
+Foundation: PASS — Markdown 158 JSON 46 schemas 21 requirements 15 golden cases 13 errors 0. Validación visual integrada PASS.
 
+Tests: pnpm typecheck y pnpm lint PASS. pnpm test 26/26. pnpm test:integration 26/26 (misma suite, no cobertura adicional). pnpm test:e2e 20/20. pnpm db:migrate, pnpm demo y pnpm demo:competition PASS. pnpm audit --prod: No known vulnerabilities found. git diff --check PASS. Ver salida final de comandos para validación del cierre.
 
+Database: PostgreSQL 17, 27 tablas, migraciones 0000–0007. 0006 preservada: Experiment/Signal/Learning/enlaces/CapabilityEvent. 0007 aditiva: plan, fechas e índices. Prueba de base limpia, upgrade desde 0005 con DecisionVersion existente y replay sin duplicación; historia comparada exactamente.
 
-- pnpm typecheck: PASS, exit 0.
+Domain Changes: se documenta PLANNED → CANCELLED por instrucción explícita de continuación. No se cambió Product Bible, enums ni schemas v1. Metadatos de plan separados del payload canónico. Telemetría nueva alineada con recommendation_approved/signal_added; learning_created sólo tras aceptación. Historia DEMO anterior conservada sin recalcular métricas.
 
-- pnpm lint: PASS, exit 0.
+Known Debt: autenticación/provisioning/recuperación de producción; proveedor IA real y evaluación semántica de calidad; política operativa de retención/borrado personal; backup/restore; auditoría WCAG completa y navegadores distintos de Chrome. Hypothesis no cambia automáticamente tras Learning; revisión de soporte de hipótesis aún pendiente. No hay research en vivo. Gateway mide caracteres y no simula tokens/costo; futuro proveedor requiere cancelación real de red. Datos DEMO locales no son evidencia de piloto.
 
-- pnpm test: PASS, 20/20 (dominio, contratos, PostgreSQL real, HTTP E2E).
+Blockers: NONE para demostración local y revisión técnica. Producción depende de decisiones técnicas abiertas sobre auth/proveedor/despliegue. Patch independiente no localizado ni cotejado; limitación histórica, no bloqueo administrativo de M1/MVP.
 
-- pnpm test:integration: misma suite explícita; resultado registrado en cierre de Sprint 01.
+Next Highest Value Task: revisar y cerrar la política de autenticación de piloto sobre ADR-0004, manteniendo la demo aislada hasta una implementación autorizada.
 
-- pnpm test:e2e: PASS, 4/4 en Chrome, 1440×1000 y 390×844. Flujo completo y conflicto entre pestañas; reload e historial; teclado en disclosure; sin overflow ni errores JS en flujo principal.
+Claude Code Review Readiness: READY. Revisar autoridad, scope, migraciones 0006/0007, idempotencia de Learning y reserva de Context Assembler según docs/15-handoff/competition-mvp-implementation.md.
 
-- pnpm db:migrate: PASS, 3 migraciones aplicadas; replay de migraciones probado sin duplicación.
+Git: codex/ui-kit-integration. Checkpoints dd0afdc y 8e1b621 preservados. Correcciones en commits posteriores, sin amend, reset, squash, merge ni force push. 690d1a3 recupera el ciclo; el siguiente commit registra home/contexto/demo y QA P0.
 
-- pnpm demo: PASS, 4 versiones conservadas y ReviewItem COMPLETED.
-
-- pnpm audit --prod: No known vulnerabilities found.
-
-- Inspección visual: capturas Needs Review escritorio y historial final móvil en test-results/.
-
-- Revisión de secretos: 0 hallazgos en 198 archivos candidatos; valores privados locales no están en archivos versionables.
-
-- E2E detectó preparación concurrente duplicada; corregida en operación transaccional y reejecutada 4/4 en verde.
-
-
-
-Foundation Check: PASS — Markdown 137 JSON 33 schemas 21 requirements 15 golden cases 13 errors 0.
-
-
-
-## Technical Decisions
-
-
-
-ADR-0003 ACCEPTED (Drizzle); ADR-0011 runtime y boundary de sesiones opacas DEMO. ADR-0004 proveedor auth final OPEN, sin bloqueo M1. Estados DB derivados de JSON schemas; restricciones SQL custom versionadas. Lecturas/commits serializados por Brand para corrección conservadora.
-
-
-
-## Known Debt
-
-
-
-Auth/provisioning/recuperación de cuenta y despliegue de producción pendientes. Sólo DEMO local/loopback; seed no representa onboarding público. Wrapper embedded-postgres beta fijado sólo dev. Impacto pendiente requiere reintento explícito. Bases de prueba conservadas localmente para diagnóstico. Backup/restore, otros navegadores y auditoría exhaustiva de accesibilidad no verificados. INV-005/007 probadas como guards/boundaries; sus journeys completos quedan fuera de M1.
-
-
-
-## Blockers
-
-
-
-Ninguno para revisión de M1. No habilitar producción/piloto con auth DEMO. Patch independiente no localizado ni cotejado; limitación histórica de signoff, no gate M1 por resolución humana 2026-09-24. No se inventa contenido del Patch.
-
-
-
-Next Recommended Task: Claude Code review de autoridad, transacciones, tenancy, sesiones, migraciones y concurrencia según docs/15-handoff/m1-implementation.md. Corregir hallazgos antes de ampliar alcance.
-
-Claude Review Ready: YES
-
-
-
-Git: codex/m1-connected-decision-proof; sin merge/deploy. Ver git log para commits y remote tracking para push.
-
-
-
-## Sprint Competition MVP · Phase A
-
-Visual System integrado sobre M1: assets canónicos, tokens, glass legible, drawer, copy ES, revisión mantener/modificar con commit humano, historial y conflicto con borrador conservado. M1 preflight 20/20, browser inicial 4/4. Nueva autorización amplía P0 más allá de M1; no requiere reconstrucción ni revisión externa previa como gate. Rama actual codex/ui-kit-integration.
-
-
-
-## Phase C y Blueprint
-
-Customer → Business → Position → Message implementado sobre los mismos commits/versiones. Migración 0003 añade preguntas faltantes sin tocar decisiones existentes. Dependencias sólo de config v1. Blueprint es proyección de current state. Tests motor 21/21; browser ampliado conserva regresión.
-
-
-
-## Phase D · Contexto explícito
-UserInput, Evidence, Hypothesis y OpenQuestion persistentes por Brand; captura humana con schemas v1, fecha/actor y auditoría. Context Assembler conserva decisiones/dependencias críticas, marca fuentes externas y declara omisiones por presupuesto de caracteres. Cambios de contexto invalidan recomendaciones previas. Tests 22/22; typecheck/lint PASS. Aún pendiente Learning aceptado e historia relevante en packet.
-
-## Phases E/F · asistencia DEMO y autoridad humana
-ModelGateway, adaptador DEMO_FIXTURE explícito, validación estructurada, guard de referencias, evaluación conservadora y trazas persistentes. Decision Card permite usar/modificar y aprobar con rationale humano o rechazar sin crear DecisionVersion. Contexto obsoleto bloquea la propuesta. Proveedor real OPEN; no hay inferencia en vivo. ADR-0012 documenta límites. Tests motor 23/23; no regresión M1.
-
-## Recuperación WIP 8e1b621
-Checkpoints preservados. Motor 26/26, navegador 15/15 en 1600x1000, 1440x900, 1280x800, 768x1024 y 390x844. Typecheck, lint, demo M1, migraciones y audit --prod PASS. Foundation: Markdown 158 JSON 46 schemas 21 requirements 15 golden cases 13 errors 0. Upgrade de base 0005 con historial y replay verificados. 0007 aditiva completa plan/fechas/índices; cancelación PLANNED e idempotencia de aceptación verificadas. Learning no cambia decisiones. Continúa P0 autorizado: home estratégica, vista de contexto y demo reproducible.
+Historial M1: docs/15-handoff/m1-implementation.md. Evidencia y alcance actual: docs/15-handoff/competition-mvp-implementation.md. Ejecución: LOCAL_HANDOFF.md.

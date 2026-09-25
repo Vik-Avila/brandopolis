@@ -65,3 +65,10 @@ Depends on: —
 - Preserva dd0afdc/8e1b621 y valida instalación limpia, upgrade desde 0005 y replay sin pérdida de historial.
 - Completa cancelación planeada, aceptación idempotente, presupuesto reservado y plan/fechas de Experiment mediante migración 0007 aditiva.
 - Conserva Signal separado de Learning, revisión humana, práctica personal y Blueprint derivado.
+
+### Continuación P0 · recorrido Competition MVP
+- Añade home estratégica con prioridades reales y contexto que incluye aprendizajes aceptados.
+- Valida intake opcional, separación multi-brand y borradores personales conservados al navegar.
+- Completa Decision Card con evidencia/supuestos y refuerza foco del drawer, navegación activa y legibilidad de dependencias.
+- Añade demo reproducible de cuatro decisiones, siete versiones y aprendizaje aceptado; amplía QA de navegador a 20 escenarios.
+- Alinea los nuevos eventos con el catálogo y separa interpretación candidata de aceptación; conserva telemetría DEMO histórica sin reescribirla.
