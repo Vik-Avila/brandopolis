@@ -37,6 +37,23 @@ async function setup(target=engine) {
   return {who,brand,customer,position,ready,command,commit,context:()=>target.context(who.token,brand.id)};
 }
 describe('PostgreSQL M1',()=>{
+  it('Brand Context isolates facts, invalidates stale context and preserves critical decisions',async()=>{
+    const s=await setup(),other=await setup(),before=(await s.context()).contextVersion;
+    const input=await engine.captureContext(s.who.token,s.brand.id,'user-input',{statement:'Vendemos servicios a agencias'});
+    const hypothesis=await engine.captureContext(s.who.token,s.brand.id,'hypothesis',{statement:'Las agencias necesitan continuidad',status:'SUPPORTED'});
+    expect(hypothesis.status).toBe('UNTESTED');expect(input.createdBy).toBe(s.who.userId);
+    expect((await s.context()).contextVersion).not.toBe(before);
+    await expect(engine.captureContext(other.who.token,s.brand.id,'user-input',{statement:'Intrusión'})).rejects.toMatchObject({code:'NOT_FOUND'});
+    await expect(engine.captureContext(s.who.token,other.brand.id,'open-question',{text:'Referencia cruzada',relatedHypothesisId:hypothesis.id})).rejects.toMatchObject({code:'NOT_FOUND'});
+    await expect(engine.captureContext(s.who.token,s.brand.id,'evidence',{claim:'Sin procedencia'})).rejects.toMatchObject({code:'INVALID'});
+    await s.commit(s.customer.id,'Agencias',null);
+    const packet=await engine.assembleContext(s.who.token,s.brand.id,s.customer.id);
+    expect(packet.items.map(i=>i.type)).toEqual(['Decision','UserInput','Hypothesis']);
+    expect(packet.items.find(i=>i.type==='Hypothesis')?.trust).toBe('UNVALIDATED');
+    expect(packet.includedIds).toContain(input.id);expect(packet.exhaustive).toBe(true);
+    await expect(engine.assembleContext(s.who.token,s.brand.id,s.customer.id,100)).rejects.toMatchObject({code:'INVALID'});
+    const reloaded=new Engine(connection.db);expect((await reloaded.context(s.who.token,s.brand.id)).userInputs).toHaveLength(1);
+  });
   it('full vertical: Business impacts Positioning; Message follows its canonical HARD dependency',async()=>{
     const s=await setup(),qs=(await s.context()).questions;
     const business=qs.find(q=>q.module==='Value Mechanism')!,message=qs.find(q=>q.module==='Core Message')!;
@@ -175,7 +192,7 @@ describe('PostgreSQL M1',()=>{
     const ctx=await s.context();expect(ctx.versions).toHaveLength(3);expect(ctx.reviews[0].status).toBe('OPEN');
   });
   it('M1 migrations have applied exactly once',async()=>{
-    const result=await connection.pool.query('select count(*)::int as n from drizzle.__drizzle_migrations');expect(result.rows[0].n).toBe(4);
+    const result=await connection.pool.query('select count(*)::int as n from drizzle.__drizzle_migrations');expect(result.rows[0].n).toBe(5);
     const server=await connection.pool.query('show server_version');expect(server.rows[0].server_version).toMatch(/^17\./);
   });
   it('superseding without a new current version is rejected by PostgreSQL',async()=>{

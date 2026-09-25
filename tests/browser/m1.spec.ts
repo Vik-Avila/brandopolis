@@ -17,6 +17,13 @@ test('human connected proof survives reload without console errors or overflow',
   await page.getByLabel('Nueva marca',{exact:true}).fill(`Browser DEMO ${testInfo.project.name} ${Date.now()}`);
   await page.getByRole('button',{name:'Crear marca',exact:true}).click();
   await expect(page.locator('#decision')).toContainText('Por decidir');
+  await navigate(page,'Contexto estratégico');
+  await page.getByLabel('Contenido',{exact:true}).fill('Ayudamos a agencias a conservar decisiones');
+  await page.getByRole('button',{name:'Guardar contexto',exact:true}).click();
+  await expect(page.locator('#decision')).toContainText('Ayudamos a agencias a conservar decisiones');
+  await page.reload();await navigate(page,'Contexto estratégico');
+  await expect(page.locator('#decision')).toContainText('Ayudamos a agencias a conservar decisiones');
+  await navigate(page,'01 Cliente principal');
   async function approve(option:string,rationale:string,button='Preparar decisión') {
     await page.getByRole('button',{name:button,exact:true}).click();
     await page.getByLabel('Decisión propuesta').fill(option);

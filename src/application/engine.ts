@@ -5,6 +5,7 @@ import { AppError, validate, rules, transition, reviewOrder, type CommitCommand 
 import type { Database, Transaction } from '../persistence/database.js';
 import * as t from '../persistence/schema.js';
 import { vertical } from '../domain/modules.js';
+import { assemble } from '../domain/context-assembler.js';
 
 const id=()=>randomUUID();
 export const hash=(value:string)=>createHash('sha256').update(value).digest('hex');
@@ -111,10 +112,43 @@ export class Engine {
   }
   private async contextVersion(tx:Transaction,s:Scope) {
     const decisions=await tx.select().from(t.decisions).where(inScope(t.decisions,s));
-    return hash(JSON.stringify(decisions.map(d=>[d.id,d.activeVersionId]).sort()));
+    return hash(JSON.stringify([decisions.map(d=>[d.id,d.activeVersionId,d.reviewStatus]).sort(),await this.contextEntities(tx,s)]));
+  }
+  private async contextEntities(tx:Transaction,s:Scope) {
+    const read=async(table:typeof t.userInputs|typeof t.evidence|typeof t.hypotheses|typeof t.openQuestions)=> (await tx.select().from(table).where(inScope(table,s)).orderBy(asc(table.id))).map(r=>r.payload);
+    return {userInputs:await read(t.userInputs),evidence:await read(t.evidence),hypotheses:await read(t.hypotheses),openQuestions:await read(t.openQuestions)};
+  }
+  async captureContext(token:string,brandId:string,kind:string,input:Record<string,unknown>) {
+    const tables={'user-input':t.userInputs,evidence:t.evidence,hypothesis:t.hypotheses,'open-question':t.openQuestions};
+    if(!Object.hasOwn(tables,kind)||!input||Array.isArray(input)||JSON.stringify(input).length>16000) throw new AppError('INVALID','Invalid context entity');
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId),now=new Date();
+      const payload={...input,id:id(),brandId,...(kind==='user-input'?{createdBy:s.userId,createdAt:now.toISOString()}:{}),...(kind==='hypothesis'?{status:'UNTESTED',evidenceReferences:[]}:{}),...(kind==='open-question'?{status:'OPEN'}:{})};
+      validate(kind,payload);
+      if(Object.values(payload).some(v=>typeof v==='string'&&!v.trim())) throw new AppError('INVALID','Empty context content');
+      if(kind==='open-question'&&input.relatedHypothesisId) {
+        const [hypothesis]=await tx.select().from(t.hypotheses).where(and(inScope(t.hypotheses,s),eq(t.hypotheses.id,String(input.relatedHypothesisId))));
+        if(!hypothesis) throw new AppError('NOT_FOUND','Hypothesis not available');
+      }
+      await tx.insert(tables[kind as keyof typeof tables]).values({id:payload.id,workspaceId:s.workspaceId,brandId,payload,createdBy:s.userId,createdAt:now});
+      await tx.update(t.recommendations).set({resolution:'STALE'}).where(and(inScope(t.recommendations,s),eq(t.recommendations.resolution,'GENERATED')));
+      await this.audit(tx,s,{operation:`CONTEXT_${kind.toUpperCase()}_CAPTURED`,idempotencyKey:payload.id,rationale:kind==='evidence'?'Human source assessment recorded; not independent verification':undefined});
+      return payload;
+    });
   }
   private async openReviews(tx:Transaction,s:Scope,decisionId:string) {
     return tx.select().from(t.reviews).where(and(inScope(t.reviews,s),eq(t.reviews.downstreamDecisionId,decisionId),ne(t.reviews.status,'COMPLETED')));
+  }
+  async assembleContext(token:string,brandId:string,questionId:string,budget=12000) {
+    const ctx=await this.context(token,brandId),question=ctx.questions.find(q=>q.id===questionId);
+    if(!question) throw new AppError('NOT_FOUND','Question not available');
+    return assemble(ctx.contextVersion,question,ctx.dependencies,ctx.reviews,[
+      ...ctx.decisions.map(d=>({id:d.id,type:'Decision',critical:true,data:{...d,version:ctx.versions.find(v=>v.id===d.activeVersionId)},trust:'HUMAN_APPROVED'})),
+      ...ctx.evidence.map(e=>({id:String(e.id),type:'Evidence',critical:false,data:e,trust:e.external?'UNTRUSTED_EXTERNAL':'HUMAN_RECORDED'})),
+      ...ctx.userInputs.map(e=>({id:String(e.id),type:'UserInput',critical:false,data:e,trust:'USER_STATEMENT'})),
+      ...ctx.hypotheses.filter(e=>e.status!=='REJECTED').map(e=>({id:String(e.id),type:'Hypothesis',critical:false,data:e,trust:e.status==='SUPPORTED'?'HUMAN_REVIEWED':'UNVALIDATED'})),
+      ...ctx.openQuestions.filter(e=>e.status==='OPEN').map(e=>({id:String(e.id),type:'OpenQuestion',critical:false,data:e,trust:'OPEN'}))
+    ],budget);
   }
   private reviewFingerprint(rows:{triggerVersionId:string;ruleVersion:string}[]) {return hash(JSON.stringify(rows.map(r=>[r.triggerVersionId,r.ruleVersion]).sort()));}
   async beginReview(token:string,brandId:string,decisionId:string) {
@@ -248,7 +282,7 @@ export class Engine {
       const rs=await tx.select().from(t.reviews).where(inScope(t.reviews,s));
       const impact=await tx.select().from(t.impacts).where(inScope(t.impacts,s));
       const audit=await tx.select().from(t.audits).where(inScope(t.audits,s));
-      const output={contextVersion:await this.contextVersion(tx,s),questions:qs.sort((a,b)=>vertical.findIndex(m=>m.primaryDecision===a.module)-vertical.findIndex(m=>m.primaryDecision===b.module)).map(({workspaceId:_w,...q})=>q),decisions:ds.map(({workspaceId:_w,...d})=>d),versions:vs.map(versionOutput),dependencies:deps.map(({workspaceId:_w,...d})=>d),reviews:rs.map(reviewOutput),impacts:impact.map(({status,result,triggerVersionId})=>({status,result,triggerVersionId})),audit};
+      const output={...await this.contextEntities(tx,s),contextVersion:await this.contextVersion(tx,s),questions:qs.sort((a,b)=>vertical.findIndex(m=>m.primaryDecision===a.module)-vertical.findIndex(m=>m.primaryDecision===b.module)).map(({workspaceId:_w,...q})=>q),decisions:ds.map(({workspaceId:_w,...d})=>d),versions:vs.map(versionOutput),dependencies:deps.map(({workspaceId:_w,...d})=>d),reviews:rs.map(reviewOutput),impacts:impact.map(({status,result,triggerVersionId})=>({status,result,triggerVersionId})),audit};
       for(const [name,rows] of [['strategic-question',output.questions],['decision',output.decisions],['decision-version',output.versions],['dependency',output.dependencies],['review-item',output.reviews]] as const) for(const row of rows) validate(name,row);
       return output;
     });
