@@ -37,6 +37,18 @@ async function setup(target=engine) {
   return {who,brand,customer,position,ready,command,commit,context:()=>target.context(who.token,brand.id)};
 }
 describe('PostgreSQL M1',()=>{
+  it('full vertical: Business impacts Positioning; Message follows its canonical HARD dependency',async()=>{
+    const s=await setup(),qs=(await s.context()).questions;
+    const business=qs.find(q=>q.module==='Value Mechanism')!,message=qs.find(q=>q.module==='Core Message')!;
+    await s.commit(s.customer.id,'Agencias',null);
+    const b=await s.commit(business.id,'Suscripción por marca activa',null),p=await s.commit(s.position.id,'Continuidad estratégica',null),m=await s.commit(message.id,'Decisiones conectadas',null);
+    expect((await s.context()).dependencies).toHaveLength(4);
+    await s.commit(business.id,'Servicio y suscripción',b.versionId);
+    let ctx=await s.context();expect(ctx.decisions.find(d=>d.id===p.decisionId)?.reviewStatus).toBe('NEEDS_REVIEW');expect(ctx.decisions.find(d=>d.id===m.decisionId)?.reviewStatus).toBe('APPROVED');
+    const receipt=await engine.beginReview(s.who.token,s.brand.id,p.decisionId);
+    await s.commit(s.position.id,'Continuidad estratégica con acompañamiento',p.versionId,receipt.reviewToken);
+    ctx=await s.context();expect(ctx.decisions.find(d=>d.id===m.decisionId)?.reviewStatus).toBe('NEEDS_REVIEW');expect(ctx.versions.find(v=>v.id===m.versionId)?.selectedOption).toBe('Decisiones conectadas');
+  });
   it('INV-002/003/008/010: complete connected proof, real reload, human review and history',async()=>{
     const s=await setup();
     const c1=await s.commit(s.customer.id,'Agencies',null),p1=await s.commit(s.position.id,'Strategic OS for Agencies',null);
@@ -163,7 +175,7 @@ describe('PostgreSQL M1',()=>{
     const ctx=await s.context();expect(ctx.versions).toHaveLength(3);expect(ctx.reviews[0].status).toBe('OPEN');
   });
   it('M1 migrations have applied exactly once',async()=>{
-    const result=await connection.pool.query('select count(*)::int as n from drizzle.__drizzle_migrations');expect(result.rows[0].n).toBe(3);
+    const result=await connection.pool.query('select count(*)::int as n from drizzle.__drizzle_migrations');expect(result.rows[0].n).toBe(4);
     const server=await connection.pool.query('show server_version');expect(server.rows[0].server_version).toMatch(/^17\./);
   });
   it('superseding without a new current version is rejected by PostgreSQL',async()=>{
@@ -195,8 +207,8 @@ describe('PostgreSQL M1',()=>{
   });
   it('SOFT suggests, INFORMATIVE explains and HARD does not cascade downstream',async()=>{
     const s=await setup(),c=await s.commit(s.customer.id,'A',null),p=await s.commit(s.position.id,'P',null);
-    const q=randomUUID(),info=randomUUID();
-    await connection.db.insert(t.questions).values([{id:q,workspaceId:s.who.workspaceId,brandId:s.brand.id,module:'Core Message',text:'Message?',status:'OPEN'},{id:info,workspaceId:s.who.workspaceId,brandId:s.brand.id,module:'Context note',text:'Context?',status:'OPEN'}]);
+    const q=(await s.context()).questions.find(q=>q.module==='Core Message')!.id,info=randomUUID();
+    await connection.db.insert(t.questions).values([{id:info,workspaceId:s.who.workspaceId,brandId:s.brand.id,module:'Context note',text:'Context?',status:'OPEN'}]);
     const message=await s.commit(q,'Unchanged message',null),note=await s.commit(info,'Unchanged context',null);
     await connection.db.insert(t.dependencies).values({id:randomUUID(),workspaceId:s.who.workspaceId,brandId:s.brand.id,upstreamDecisionId:c.decisionId,downstreamDecisionId:note.decisionId,kind:'INFORMATIVE',reason:'Context only',ruleVersion:'v1'});
     await s.commit(s.customer.id,'B',c.versionId);

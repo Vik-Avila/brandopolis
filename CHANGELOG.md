@@ -45,3 +45,9 @@ Depends on: —
 - Integración sobre runtime existente con tokens y assets canónicos, sin framework nuevo.
 - Estados visibles en español, historial con actor y revisión explícita; drawer con foco, Escape y backdrop.
 - Pruebas M1 conservadas; ampliación a cinco viewports.
+
+## Competition MVP · vertical estratégico
+- Preguntas canónicas Business/Message persistentes para marcas nuevas y existentes, sin pérdida de datos.
+- Dependencias Customer/Business/Position/Message desde config v1; sin cascade.
+- Blueprint de decisiones vigentes y estados de revisión; pruebas dominio y navegador ampliadas.
+- Validador UI soporta --integrated: evita exigir archivos excluidos deliberadamente al copiar el kit; conserva hashes y guards visuales.

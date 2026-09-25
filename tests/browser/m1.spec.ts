@@ -25,13 +25,17 @@ test('human connected proof survives reload without console errors or overflow',
     await expect(page.locator('#decision .current')).toHaveText(option);
   }
   await approve('Agencies','Servicio recurrente para múltiples marcas');
-  await navigate(page,'02 Posicionamiento');
+  await navigate(page,'02 Modelo de valor');
+  await approve('Suscripción por marca activa','Ingresos por continuidad estratégica');
+  await navigate(page,'03 Posicionamiento');
   await approve('Strategic OS for Agencies','Continuidad del criterio estratégico');
+  await navigate(page,'04 Mensaje principal');
+  await approve('Decisiones conectadas, criterio compartido','Una idea principal recordable');
   await navigate(page,'01 Cliente principal');
   await approve('Internal Marketing Teams','Cambio humano de cliente prioritario','Preparar nueva versión');
   await page.getByText('Historial · 2 versiones',{exact:true}).click();
   await expect(page.locator('.history-item').filter({hasText:'Sustituida'})).toContainText('Agencies');
-  await navigate(page,'02 Posicionamiento');
+  await navigate(page,'03 Posicionamiento');
   await expect(page.locator('#decision')).toContainText('Requiere revisión');
   await expect(page.locator('#decision .current')).toHaveText('Strategic OS for Agencies');
   await page.getByRole('button',{name:'Ver impacto',exact:true}).click();
@@ -48,6 +52,11 @@ test('human connected proof survives reload without console errors or overflow',
   await expect(page.locator('.history-item').filter({hasText:'Sustituida'})).toContainText('Strategic OS for Agencies');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:`test-results/m1-completed-${testInfo.project.name}.png`,fullPage:true});
+  if(await page.getByRole('button',{name:'Abrir navegación',exact:true}).isVisible())await page.getByRole('button',{name:'Abrir navegación',exact:true}).click();
+  await page.getByRole('button',{name:'Blueprint estratégico',exact:true}).click();
+  await expect(page.locator('#decision')).toContainText('Suscripción por marca activa');
+  await expect(page.locator('#decision')).toContainText('Decisiones conectadas, criterio compartido');
+  await expect(page.locator('#decision')).toContainText('Requiere revisión');
   expect(errors).toEqual([]);
   await page.getByRole('button',{name:'Salir',exact:true}).click();
   await expect(page.getByLabel('Token de sesión local')).toBeVisible();

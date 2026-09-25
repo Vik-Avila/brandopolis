@@ -2,7 +2,7 @@
 import argparse, json, hashlib, re, sys
 from pathlib import Path
 
-parser=argparse.ArgumentParser(); parser.add_argument('--root',default='.')
+parser=argparse.ArgumentParser(); parser.add_argument('--root',default='.'); parser.add_argument('--integrated',action='store_true',help='Validate the copied kit in the host repository without package-only archive requirements')
 args=parser.parse_args(); root=Path(args.root).resolve(); kit=root/'design'/'brandopolis-ui'; public=root/'public'/'brand'
 errors=[]
 
@@ -10,13 +10,15 @@ def need(p):
     if not p.exists(): errors.append(f'MISSING: {p.relative_to(root) if p.is_absolute() and root in p.parents else p}')
 
 required=[kit/'README.md',kit/'docs/02_DESIGN_SYSTEM.md',kit/'docs/03_PRODUCT_UI_PRINCIPLES.md',kit/'docs/05_DOMAIN_UI_MAPPING.md',kit/'docs/07_STRATEGIC_GLASSMORPHISM.md',kit/'tokens/brandopolis.tokens.json',kit/'tokens/brandopolis.tokens.css',kit/'specs/screens.json',kit/'specs/components.json',kit/'specs/domain-ui-mapping.json',kit/'assets/logo/brandopolis-logo-horizontal-flat-outlined.svg',kit/'assets/symbols/brandopolis-symbol-flat.svg',kit/'handoff/CODEX_WEB_UI_START_HERE.md',kit/'handoff/CLAUDE_WEB_UI_REVIEW.md',kit/'reference/screenshots/README.md',kit/'validation/validate.py',public/'logo/brandopolis-logo-horizontal.svg',public/'symbols/brandopolis-symbol.svg',public/'ui/favicon.ico',root/'INTEGRATION_MANIFEST.md']
-for p in required: need(p)
+for p in required:
+    if args.integrated and p.name=='INTEGRATION_MANIFEST.md': continue
+    need(p)
 
 # Repo safety.
 for name in ['AGENTS.md','CLAUDE.md','package.json','tsconfig.json','pnpm-lock.yaml']:
-    if (root/name).exists(): errors.append(f'ROOT COLLISION FILE IN PACKAGE: {name}')
+    if not args.integrated and (root/name).exists(): errors.append(f'ROOT COLLISION FILE IN PACKAGE: {name}')
 if (kit/'archive'/'brand-marketing').exists(): errors.append('Marketing archive remains inside copy-to-main kit')
-if not (root/'reference-only'/'brand-marketing'/'README.md').exists(): errors.append('Reference-only marketing archive missing/undocumented')
+if not args.integrated and not (root/'reference-only'/'brand-marketing'/'README.md').exists(): errors.append('Reference-only marketing archive missing/undocumented')
 
 # Parse JSON.
 for p in [kit/'tokens/brandopolis.tokens.json',kit/'specs/screens.json',kit/'specs/components.json',kit/'specs/domain-ui-mapping.json']:
@@ -110,6 +112,7 @@ if manifest.exists():
 
 # Key READMEs.
 for p in [kit/'assets/logo/README.md',kit/'prototype/README.md',kit/'reference/screenshots/README.md',kit/'reference/future-concepts/README.md',root/'reference-only/brand-marketing/README.md']:
+    if args.integrated and 'reference-only' in p.parts: continue
     need(p)
 
 if errors:

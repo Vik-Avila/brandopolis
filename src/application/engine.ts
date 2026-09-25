@@ -4,6 +4,7 @@ import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { AppError, validate, rules, transition, reviewOrder, type CommitCommand } from '../domain/contracts.js';
 import type { Database, Transaction } from '../persistence/database.js';
 import * as t from '../persistence/schema.js';
+import { vertical } from '../domain/modules.js';
 
 const id=()=>randomUUID();
 export const hash=(value:string)=>createHash('sha256').update(value).digest('hex');
@@ -60,7 +61,7 @@ export class Engine {
       const brand={id:id(),workspaceId:who.workspaceId,name:name.trim(),dataClass:'DEMO'};
       await tx.insert(t.brands).values(brand);
       await tx.insert(t.assignments).values({workspaceId:who.workspaceId,brandId:brand.id,userId:who.userId});
-      for(const [module,text] of [['Primary Customer','¿Quién debe ser nuestro cliente prioritario?'],['Positioning','¿Cómo queremos ser elegidos por ese cliente?']]) {
+      for(const {primaryDecision:module,primaryQuestion:text} of vertical) {
         await tx.insert(t.questions).values({id:id(),workspaceId:who.workspaceId,brandId:brand.id,module,text,status:'OPEN'});
       }
       const s={workspaceId:who.workspaceId,brandId:brand.id,userId:who.userId};
@@ -247,7 +248,7 @@ export class Engine {
       const rs=await tx.select().from(t.reviews).where(inScope(t.reviews,s));
       const impact=await tx.select().from(t.impacts).where(inScope(t.impacts,s));
       const audit=await tx.select().from(t.audits).where(inScope(t.audits,s));
-      const output={contextVersion:await this.contextVersion(tx,s),questions:qs.sort((a,b)=>(a.module==='Primary Customer'?0:1)-(b.module==='Primary Customer'?0:1)).map(({workspaceId:_w,...q})=>q),decisions:ds.map(({workspaceId:_w,...d})=>d),versions:vs.map(versionOutput),dependencies:deps.map(({workspaceId:_w,...d})=>d),reviews:rs.map(reviewOutput),impacts:impact.map(({status,result,triggerVersionId})=>({status,result,triggerVersionId})),audit};
+      const output={contextVersion:await this.contextVersion(tx,s),questions:qs.sort((a,b)=>vertical.findIndex(m=>m.primaryDecision===a.module)-vertical.findIndex(m=>m.primaryDecision===b.module)).map(({workspaceId:_w,...q})=>q),decisions:ds.map(({workspaceId:_w,...d})=>d),versions:vs.map(versionOutput),dependencies:deps.map(({workspaceId:_w,...d})=>d),reviews:rs.map(reviewOutput),impacts:impact.map(({status,result,triggerVersionId})=>({status,result,triggerVersionId})),audit};
       for(const [name,rows] of [['strategic-question',output.questions],['decision',output.decisions],['decision-version',output.versions],['dependency',output.dependencies],['review-item',output.reviews]] as const) for(const row of rows) validate(name,row);
       return output;
     });

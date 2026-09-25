@@ -48,3 +48,6 @@ Git: codex/m1-connected-decision-proof; sin merge/deploy. Ver git log para commi
 
 ## Sprint Competition MVP · Phase A
 Visual System integrado sobre M1: assets canónicos, tokens, glass legible, drawer, copy ES, revisión mantener/modificar con commit humano, historial y conflicto con borrador conservado. M1 preflight 20/20, browser inicial 4/4. Nueva autorización amplía P0 más allá de M1; no requiere reconstrucción ni revisión externa previa como gate. Rama actual codex/ui-kit-integration.
+
+## Phase C y Blueprint
+Customer → Business → Position → Message implementado sobre los mismos commits/versiones. Migración 0003 añade preguntas faltantes sin tocar decisiones existentes. Dependencias sólo de config v1. Blueprint es proyección de current state. Tests motor 21/21; browser ampliado conserva regresión.
