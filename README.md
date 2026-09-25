@@ -2,7 +2,7 @@
 
 ## What It Is
 
-SaaS B2B AI-native de decisiones estratégicas conectadas para marcas. **AI proposes. Humans decide. Brandopolis remembers. People learn by building.** Competition MVP local DEMO; alcance congelado para RC1.
+SaaS B2B AI-native de decisiones estratégicas conectadas para marcas. **AI proposes. Humans decide. Brandopolis remembers. People learn by building.** MVP fases 1–9 cerradas para piloto; siguiente fase: testers reales (Fase 10). Dominio público **brandopolis.ai**; piloto previsto en **https://pilot.brandopolis.ai**.
 
 ## Why It Exists
 
@@ -34,11 +34,11 @@ User/Workspace/Brand; Customer + Positioning HARD; cambiar Customer con optimist
 
 ## Current Status
 
-Competition MVP local DEMO: M1 conservado, vertical Customer → Business → Position → Message, contexto explícito, recomendaciones DEMO con aprobación humana, Experimento → Señal → Aprendizaje revisado, práctica personal y Blueprint derivado. Ver [estado de sesión](SESSION_STATE.md), [evidencia M1 histórica](docs/15-handoff/m1-implementation.md) y [continuación Competition MVP](docs/15-handoff/competition-mvp-implementation.md). No hay clientes/ingresos validados; auth, proveedor IA y despliegue de producción quedan pendientes.
+Fases 1–9 cerradas para MVP ([cierre](docs/15-handoff/MVP_PHASES_1_TO_9_CLOSURE.md)). DEMO local determinista para el concurso ([guía](docs/15-handoff/COMPETITION_DEMO_GUIDE.md)); PILOT con OIDC, espacio por tester, IA opcional con aviso y topes, telemetría y feedback, listo para configuración externa ([checklist](docs/15-handoff/LIVE_PILOT_LAUNCH_CHECKLIST.md)); frontend canónico integrado ([auditoría visual](design/brandopolis-ui/FINAL_VISUAL_GAP_AUDIT.md)). Pendiente externo: hosting, proveedor OIDC y credencial de IA. No hay clientes ni ingresos validados; no es producción. Ver [estado de sesión](SESSION_STATE.md) y [alcance diferido](docs/15-handoff/POST_MVP_DEFERRED_SCOPE.md).
 
 ## Open Technical Decisions
 
-Drizzle elegido en ADR-0011. Auth final, proveedor IA inicial, research y despliegue siguen abiertos; precio/WTP para piloto. [Open Questions](docs/15-handoff/open-questions.md).
+Drizzle elegido en ADR-0011. Autenticación PILOT por OIDC neutral (ADR-0013) y adaptador IA opcional (ADR-0014) decididos; proveedor OIDC concreto, hosting, research y precio/WTP siguen abiertos. [Open Questions](docs/15-handoff/open-questions.md).
 
 ## Local Setup
 
@@ -46,6 +46,7 @@ Drizzle elegido en ADR-0011. Auth final, proveedor IA inicial, research y despli
 
 ## Validation Commands
 
+`pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm test:e2e`, `pnpm test:pilot:e2e`, `pnpm test:visual`, `pnpm competition:test-boot` (con `pnpm competition:start --isolated` en marcha) y `pnpm pilot:validate-config` / `pnpm pilot:preflight` para PILOT.
 `python3 scripts/foundation_check.py` (Windows: `py -3 scripts/foundation_check.py`). Valida schemas con `jsonschema` si instalado; la distribución de Foundation incluye `requirements-foundation.txt` para instalarlo. Recomendado: `python3 -m pip install -r requirements-foundation.txt` antes de QA.
 
 ## Start Here — Codex

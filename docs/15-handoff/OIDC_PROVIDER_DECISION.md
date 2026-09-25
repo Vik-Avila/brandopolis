@@ -27,7 +27,7 @@ Validado por pruebas con tokens firmados: identidad válida entra; audiencia inc
    <PILOT_ORIGIN>/auth/callback
    ```
 
-   p. ej. `https://pilot.<tu-dominio>/auth/callback`. Coincidencia exacta; sin comodines.
+   p. ej. `https://pilot.brandopolis.ai/auth/callback`. Coincidencia exacta; sin comodines.
 3. Grant type: Authorization Code (PKCE habilitado). No se necesitan refresh tokens.
 4. Scopes: `openid` (email/perfil no son necesarios; el email no es identidad en Brandopolis).
 5. Copiar al gestor de secretos: issuer (`OIDC_ISSUER`), client ID y, si aplica, secret.

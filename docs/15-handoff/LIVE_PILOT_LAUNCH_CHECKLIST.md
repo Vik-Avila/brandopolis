@@ -15,7 +15,7 @@ Estado: **EXTERNAL-CONFIG READY**. El repositorio está listo; faltan decisiones
 | 2 | Crear base PILOT | PostgreSQL 17 dedicada con backups diarios | — |
 | 3 | `DATABASE_URL` | Guardarla como secreto (con `sslmode=verify-full` si aplica) | — |
 | 4 | Proveedor OIDC | Elegirlo y crear la app ([guía](OIDC_PROVIDER_DECISION.md)) | — |
-| 5 | `PILOT_ORIGIN` | Dominio `https://pilot.<dominio>` ([DNS](DOMAIN_DNS_LAUNCH.md)) | — |
+| 5 | `PILOT_ORIGIN` | Dominio `https://pilot.brandopolis.ai` ([DNS](DOMAIN_DNS_LAUNCH.md)) | — |
 | 6 | Callback OIDC | Registrar `<PILOT_ORIGIN>/auth/callback`; guardar issuer, client ID, secret | — |
 | 7 | IA | Clave, modelo (`claude-opus-5` sugerido), topes y límite de gasto; o dejar IA desactivada | — |
 | 8 | Solicitar acceso | `PILOT_REQUEST_ACCESS_URL` (`https:` o `mailto:`) o dejarlo vacío | — |
@@ -25,6 +25,7 @@ Estado: **EXTERNAL-CONFIG READY**. El repositorio está listo; faltan decisiones
 | 12 | Pre-flight | Revisar cada línea | `pnpm pilot:preflight` |
 | 13 | Migrar | Base vacía: directo | `pnpm pilot:migrate` |
 | 14 | Iniciar | 1 réplica | `pnpm pilot:start` |
+| 14b | Smoke IA (si hay IA) | Una solicitud ficticia al proveedor real | `pnpm pilot:ai-smoke` |
 | 15 | Smoke | Desde tu máquina con `PILOT_ORIGIN` | `pnpm pilot:smoke` |
 | 16 | Tester de control | Crearte a ti como tester y entrar | `pnpm pilot:operator create tester.json` |
 | 17 | Recorrido de control | Crear marca, decidir, recargar | — |

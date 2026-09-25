@@ -77,6 +77,15 @@ export function launchCases(connection:()=>ReturnType<typeof connect>){
    const offline=new AnthropicProvider('fixture-key','m',async()=>{throw new TypeError('fetch failed');});expect((await new ModelGateway(offline).invoke(req)).error).toBe('PROVIDER_ERROR');
    const slow=new AnthropicProvider('fixture-key','m',()=>new Promise(r=>setTimeout(()=>r(Response.json({})),2000)));expect((await new ModelGateway(slow).invoke({...req,budget:{maxCharacters:20000,timeoutMs:300}})).error).toBe('TIMEOUT');
   },20000);
+  it('controlled AI provider smoke validates a real-shaped response without touching any database',async()=>{
+   const {aiSmoke}=await import('../scripts/pilot-ai-smoke.js');let sent='';
+   const echo=new AnthropicProvider('fixture-key','claude-opus-5',async(_url,init)=>{sent=String(init?.body);const request=JSON.parse(JSON.parse(sent).messages[0].content),output=await new DemoProvider().generate({module:'Primary Customer',questionId:request.questionId,contextVersion:request.contextVersion,tenantScope:{workspaceId:'smoke',brandId:request.brandId}} as unknown as GatewayRequest);
+    return Response.json({id:'msg',type:'message',role:'assistant',model:'claude-opus-5',content:[{type:'text',text:JSON.stringify(output)}],stop_reason:'end_turn',stop_sequence:null,usage:{input_tokens:10,output_tokens:20}});});
+   expect(await aiSmoke(echo)).toMatchObject({outcome:'OK',schemaValid:true,boundToRequest:true,conflicts:0,tokenIn:10,tokenOut:20,promptVersion:'pilot-strategic-v1'});
+   expect(sent).toContain('Marca ficticia');expect(sent).not.toContain('fixture-key');
+   const refused=new AnthropicProvider('fixture-key','m',async()=>Response.json({type:'error',error:{type:'authentication_error',message:'bad key'}},{status:401}));
+   expect((await aiSmoke(refused)).outcome).toBe('PROVIDER_ERROR');
+  });
   it('AI guardrails: notice acknowledgement, per-tester and total daily caps, disabled AI needs no notice',async()=>{
    const {db}=connection(),notice=loadAiNotice('config/pilot/ai-notice.v1.md');
    const p=await pilotApp(db,{ai:{notice,capPerTester:2,capTotal:1000},provider:new DemoProvider()}),subject=randomUUID();await p.access.provision(subject,'B');

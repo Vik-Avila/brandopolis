@@ -1,5 +1,27 @@
 # Session State
 
+Current phase: **MVP PHASES 1–9 CLOSURE COMPLETE** — verdict: PHASES 1–9 CLOSED WITH EXTERNAL CONFIGURATION PENDING ([closure](docs/15-handoff/MVP_PHASES_1_TO_9_CLOSURE.md)).
+
+Next phase: **PHASE 10 — REAL TESTERS / FOUNDER PILOT** (do not begin automatically; testers are not live).
+
+Visual: CANONICAL MVP FRONTEND INTEGRATED. AI: EXTERNAL CONFIGURATION REQUIRED (`pnpm pilot:ai-smoke` pending a key). Deployment: EXTERNAL CONFIGURATION REQUIRED (hosting, OIDC provider, DNS for pilot.brandopolis.ai). Production: NOT CLAIMED.
+
+Branch: frontend/final-visual-integration-2026-09-25 (from de13733, visual package). Candidate SHA: the commit that last modifies this file (`git log -1 --format=%H -- SESSION_STATE.md`); full SHA in the closure report. Frozen, untouched: live launch f552536 (tag brandopolis-live-launch-external-config-ready-2026-09-25), Pilot engineering af73d03, RC1 f494668.
+
+Domain: public https://brandopolis.ai · pilot https://pilot.brandopolis.ai · OIDC callback https://pilot.brandopolis.ai/auth/callback.
+
+Final gate (2026-09-25): typecheck/lint PASS; pnpm test 54/54; test:integration 54/54 (same suite); test:e2e 25/25 (6 full runs: 5 green, 1 with a single intermittent failure not reproduced in 5 later runs nor in 15 repeated mobile runs; cause not identified); test:pilot:e2e 10/10; test:visual 8/8 (5-viewport integrity with 0 console errors, canonical screenshots, reduced motion, contrast incl. pixel-measured hero); competition:start/check --isolated PASS and competition:test-boot 1/1; pilot:validate-config VALID for pilot.brandopolis.ai; preflight covered by the controlled-fixture test; Foundation PASS; UI validator PASS; pnpm audit --prod: No known vulnerabilities found; git diff --check clean.
+
+Environment note: the developer's local DEMO PostgreSQL (55432, started by the user's `pnpm db:start`) stopped uncleanly during this pass for a reason outside the commands run here; it was restarted with `pnpm db:start` (WAL recovery, no data change) and verified (9 migrations, DEMO session valid).
+
+Post-MVP register: [POST_MVP_DEFERRED_SCOPE](docs/15-handoff/POST_MVP_DEFERRED_SCOPE.md). Learning loops: [PILOT_LEARNING_LOOP](docs/15-handoff/PILOT_LEARNING_LOOP.md).
+
+External inputs still required: hosting provider/region; dedicated PostgreSQL 17 `DATABASE_URL`; OIDC provider (issuer, client ID, secret or public client); DNS + TLS for pilot.brandopolis.ai; Anthropic key/model/budget (or AI disabled) and one `pnpm pilot:ai-smoke`; request-access destination; approval of the AI notice text; first testers' OIDC subjects and cohorts; hosted backup/restore rehearsal.
+
+---
+
+## Previous phase (Live Pilot Launch Gate)
+
 Current Phase: LIVE PILOT LAUNCH GATE — closed by Claude Code.
 
 Gate state: **EXTERNAL-CONFIG READY**. The repository, launch tooling, runbooks and tests are ready; nothing is deployed. No real hosting, OIDC provider or Anthropic API was used. Production: NOT CLAIMED.

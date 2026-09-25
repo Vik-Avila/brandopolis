@@ -7,15 +7,15 @@ Depends on: Live Pilot Launch Gate 2026-09-25
 
 # Dominio y DNS para el piloto
 
-Ningún dominio está configurado todavía. No se hizo ningún cambio de DNS.
+Dominio canónico: **brandopolis.ai** (sitio público). Piloto: **https://pilot.brandopolis.ai**. Aún no se configuró DNS, certificado ni hosting; no se hizo ningún cambio de DNS.
 
 ## Patrón recomendado
 
-Un subdominio dedicado, p. ej. `pilot.<tu-dominio>`, separado de la web pública. Entonces:
+Subdominio dedicado `pilot.brandopolis.ai`, separado del sitio público `brandopolis.ai`:
 
 ```
-PILOT_ORIGIN=https://pilot.<tu-dominio>
-Callback OIDC: https://pilot.<tu-dominio>/auth/callback
+PILOT_ORIGIN=https://pilot.brandopolis.ai
+Callback OIDC: https://pilot.brandopolis.ai/auth/callback
 ```
 
 ## Requisitos de `PILOT_ORIGIN`

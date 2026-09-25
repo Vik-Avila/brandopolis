@@ -41,6 +41,16 @@ Texto actual (reemplazable, **no es asesoría legal**; revísalo antes de activa
 
 > Para generar una propuesta, Brandopolis envía al proveedor de IA configurado el contexto relevante de esta marca: tus decisiones, aportaciones, hipótesis y evidencia registradas. No envía tu email ni tus credenciales. La propuesta es sólo una sugerencia: ninguna decisión cambia sin tu aprobación. No incluyas secretos ni datos personales de terceros. Puedes usar Brandopolis sin pedir propuestas de IA.
 
+## Smoke controlado del proveedor real (pendiente de credencial)
+
+Con `ANTHROPIC_API_KEY` y `ANTHROPIC_MODEL` en el entorno del servidor:
+
+```sh
+pnpm pilot:ai-smoke
+```
+
+Envía una sola solicitud construida con una marca ficticia (sin base de datos, sin datos de testers), valida schema, vínculo con la solicitud y Evidence Guard, e imprime resultado, latencia y tokens. `AI PROVIDER SMOKE PASSED` es el único paso pendiente para cerrar la fase 8; si falla, PILOT sigue funcionando sin IA.
+
 ## Desactivar la IA con seguridad
 
 Quitar `ANTHROPIC_API_KEY` y `ANTHROPIC_MODEL` y reiniciar (`pnpm pilot:start`). Alternativa sin tocar la clave: `PILOT_AI_DAILY_CAP_TOTAL=0`. El resto del producto sigue funcionando.

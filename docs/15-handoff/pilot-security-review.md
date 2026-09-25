@@ -58,3 +58,18 @@ Revisión renovada de OIDC, sesiones, cookies, CSRF/Origin, Host, límites, ruta
 Verificado además: logs sin rutas, queries, cookies, tokens, prompts ni contexto (revisión de todas las llamadas a `console.*` del runtime PILOT); `pilot:backup` pasa credenciales por variables `PG*`, nunca en argumentos, y nunca usa `--clean`/`--create`; la solicitud de acceso es sólo un enlace `https:`/`mailto:` validado (sin almacenamiento ni superficie de abuso); `/api/mode` expone únicamente modo, enlace de acceso y aviso público. `pnpm audit --prod`: ver SESSION_STATE (resultado del gate final).
 
 No probado: proveedor OIDC real, API real de Anthropic, `pg_dump`/`pg_restore` reales, proxy/TLS del hosting, carga.
+
+## Cierre MVP fases 1–9 (2026-09-25)
+
+Revisión de las superficies nuevas de la integración visual y del cierre:
+
+| Severidad | Hallazgo | Estado |
+|---|---|---|
+| — | CSP, Origin, Host, cookies `__Host-`, OIDC, limitador y aislamiento de tenant | **Sin cambios.** La integración usa sólo recursos propios (`self`); ni estilos inline ni orígenes externos. La prueba visual confirmó que la CSP bloquea `<style>` inyectado e imágenes `data:`. |
+| IMPORTANT | Visitantes anónimos veían un 401 en consola (sonda `/api/me`). | **Corregido**: `GET /api/session-state` responde 200 `{authenticated}` ejecutando las mismas comprobaciones (expiración, membership, identidad PILOT) sin revelar el motivo; prueba incluye token DEMO en PILOT y sesión revocada. |
+| — | Assets públicos | Allowlist explícita de 10 archivos seleccionados + iconos; el paquete de diseño, manifiestos y tableros no se sirven. Caché `public, max-age=86400` sólo para `/brand/*`; documentos y scripts siguen `no-store`. |
+| — | Manifest PWA con rutas rotas | **Corregido** (sin impacto de seguridad). |
+| — | Metadatos OG | URL absoluta a `https://brandopolis.ai/brand/web/og.webp`; no expone datos. |
+| DEFERRED | Sin cambios respecto de la revisión de lanzamiento. | Ver arriba. |
+
+`pnpm pilot:ai-smoke`: una sola solicitud con marca ficticia, sin base de datos ni datos de testers; la clave no se imprime ni viaja en el cuerpo (prueba).

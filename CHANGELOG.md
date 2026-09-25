@@ -7,6 +7,14 @@ Depends on: —
 
 # Registro
 
+## MVP FASES 1–9 · cierre final · 2026-09-25
+
+- Frontend canónico integrado: gateway público (hero, pilares, «Cómo funciona» con Flow), acceso y solicitud de acceso, workspace con KPIs reales, tarjeta de decisión, impacto, revisión guiada, historial en línea de tiempo y Blueprint; Strategic Glassmorphism por tokens.
+- Sólo 10 assets de runtime seleccionados; favicon y manifest conectados (rutas corregidas); CSP sin cambios.
+- Sonda `/api/session-state` sin errores de consola para visitantes; `pnpm pilot:ai-smoke` para el primer smoke con proveedor real.
+- Suite visual (`pnpm test:visual`) y capturas canónicas reales; corrección de una carrera en el helper de navegación de pruebas.
+- Documentos: cierre de fases 1–9, alcance diferido post-MVP, bucles de aprendizaje, mapeo de assets y auditoría visual; dominio canónico brandopolis.ai.
+
 ## LIVE PILOT LAUNCH GATE · 2026-09-25 · EXTERNAL-CONFIG READY
 
 - Runtime PILOT sin dependencias de desarrollo; `tsx` como dependencia de runtime.

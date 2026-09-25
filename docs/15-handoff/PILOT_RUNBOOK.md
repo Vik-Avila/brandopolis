@@ -18,13 +18,14 @@ PILOT es un entorno de prueba con testers invitados por Internet. **No es produc
 | `pnpm pilot:migrate` | Aplica migraciones pendientes (forward-only). Con datos existentes exige `PILOT_BACKUP_FILE` y `PILOT_RECOVERY_VERIFIED=yes`. Rechaza esquemas divergentes y datos DEMO. | Esquema |
 | `pnpm pilot:start` | Inicia la app (una instancia; lock en PostgreSQL). | Sí (uso) |
 | `pnpm pilot:smoke` | Smoke post-despliegue contra `PILOT_ORIGIN`: health, modo, cabeceras, redirección OIDC con PKCE, 401 sin sesión, CSRF, DEMO deshabilitado. | No |
+| `pnpm pilot:ai-smoke` | Una solicitud IA real con marca ficticia; valida schema y guard; no escribe datos. Requiere `ANTHROPIC_*`. | No |
 | `pnpm pilot:operator <cmd>` | Testers y evidencia (§4). | Según cmd |
 | `pnpm pilot:backup backup <archivo>` / `restore-empty <archivo>` | Respaldo lógico y restauración sólo en base vacía aislada (§5). | Sólo destino vacío |
 
 Salida esperada de `pilot:preflight` (ejemplo con valores ficticios):
 
 ```
-PASS config          origin https://pilot.<dominio>; callback https://pilot.<dominio>/auth/callback; OIDC confidential client; AI enabled (claude-opus-5, caps 30/tester, 300/day)
+PASS config          origin https://pilot.brandopolis.ai; callback https://pilot.brandopolis.ai/auth/callback; OIDC confidential client; AI enabled (claude-opus-5, caps 30/tester, 300/day)
 PASS ai-notice       version 1a2b3c4d5e6f from config/pilot/ai-notice.v1.md
 PASS database        PostgreSQL reachable.
 PASS migrations      9/9 migrations applied and matching.

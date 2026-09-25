@@ -79,8 +79,8 @@
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/README.md",
-      "bytes": 1164,
-      "sha256": "cd7d066cd339e27bfad97820ec212fb3babced0e0c363c7f152b0a321bfbee7e",
+      "bytes": 1849,
+      "sha256": "e9ec0f88d74c5475828d29d3a735e89a09b59e03b7a0fac56c80587cc4a30a96",
       "type": "md",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
