@@ -124,7 +124,7 @@ Verified on the handoff machine (Windows 11): Node **24.19.0**, pnpm **12.4.2**,
 
 ## Clone procedure
 
-**Windows:** clone into a short path (for example `C:\devrandopolis`). Some design files have ~127-character repository paths and the classic 260-character path limit applies; alternatively enable `git config --global core.longpaths true` before cloning. Line endings are handled by `.gitattributes` (hashed brand and kit files are checked out byte-exact).
+**Windows:** clone into a short path (for example `C:\dev\brandopolis`). Some design files have ~127-character repository paths and the classic 260-character path limit applies; alternatively enable `git config --global core.longpaths true` before cloning. Line endings are handled by `.gitattributes` (hashed brand and kit files are checked out byte-exact).
 
 ```bash
 git clone --branch handoff/phase10b-final-2026-09-25 https://github.com/Vik-Avila/brandopolis.git
@@ -142,8 +142,7 @@ To pin the exact handoff state instead: `git checkout brandopolis-mvp-handoff-re
 corepack enable
 ```
 
-On Windows `corepack enable` writes to `C:\Program Files
-odejs` and needs an elevated terminal. Without admin rights use `npm install -g pnpm@12.4.2` instead. Check with `pnpm --version` (must print `12.4.2`).
+On Windows `corepack enable` writes to `C:\Program Files\nodejs` and needs an elevated terminal. Without admin rights use `npm install -g pnpm@12.4.2` instead. Check with `pnpm --version` (must print `12.4.2`).
 
 ```bash
 pnpm install --frozen-lockfile
@@ -247,7 +246,7 @@ pnpm test:visual
 pnpm test:pilot:e2e
 ```
 
-`test:e2e`/`test:visual` reuse the server on 3000 (or start `pnpm dev`). To target the isolated profile set `BRANDOPOLIS_BASE_URL=http://127.0.0.1:3001` and `BRANDOPOLIS_SESSION_FILE=.local/rc1-smoke/demo-session.json`. Boot smoke: `pnpm competition:start --isolated` then `pnpm competition:test-boot`. Browser tests create DEMO brands; that is expected.
+`test:pilot:e2e` creates a throwaway database inside the default local cluster (`.local/postgres`, created by `pnpm competition:start` or `pnpm db:start`) and refuses `DATABASE_URL`. `test:e2e`/`test:visual` reuse the server on 3000 (or start `pnpm dev`). To target the isolated profile set `BRANDOPOLIS_BASE_URL=http://127.0.0.1:3001` and `BRANDOPOLIS_SESSION_FILE=.local/rc1-smoke/demo-session.json`. Boot smoke: `pnpm competition:start --isolated` then `pnpm competition:test-boot`. Browser tests create DEMO brands; that is expected.
 
 ## Browser QA
 
