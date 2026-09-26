@@ -5,7 +5,13 @@ Last reviewed: 2026-09-24
 Related: docs/00-index/source-of-truth.md
 Depends on: Master Context v1.0 + hardening brief 2026-09-24
 
-# REVIEW M1 FOR CONTRACT COMPLIANCE
+# REVIEW COMPETITION MVP RC1 FOR CONTRACT COMPLIANCE
+
+## Revisión actual · alcance congelado
+
+Revisar el SHA exacto del informe final de entrega y cotejarlo con `git rev-parse HEAD`; ver [manifiesto RC1](../docs/15-handoff/competition-mvp-rc1.md), [seguridad](../docs/15-handoff/competition-rc1-security-review.md) y [runbook](../docs/15-handoff/competition-demo-runbook.md). No revisar una rama móvil sin fijar SHA. M1 es la base histórica; no reconstruir ni rediseñar el producto.
+
+Prioridades: Human Authority bypass; aislamiento Workspace/Brand; migraciones 0006/0007; Recommendation → Decision; Learning → Decision; separación Signal/Learning; presupuesto Context Assembler; stale context; idempotencia; concurrencia; Blueprint sin escritura estratégica; seguridad; confiabilidad de boot/browser; accesibilidad con impacto real. Reportar evidencia reproducible y severidad. No introducir auth/proveedor real, dominios nuevos, branding o arquitectura. El brief RC autoriza sólo correcciones acotadas a confiabilidad; una contradicción conceptual real requiere resolución humana.
 
 ## Role A — Implementation
 

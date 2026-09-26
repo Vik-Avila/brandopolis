@@ -22,8 +22,14 @@ Depends on: Master Context v1.0 + hardening brief 2026-09-24
 | dependency_triggered | impacto calculado / SYSTEM / Dependency | INTERNAL |
 | change_impact_shown, change_impact_review_started, change_impact_review_completed | panel visible y revisión humana / USER / ReviewItem | INTERNAL |
 | experiment_created, signal_added, learning_created | persistencia y revisión / USER / Brand | CONFIDENTIAL |
+| learning_candidate_created | interpretación persistida como CANDIDATE, todavía no aceptada / USER / Brand | CONFIDENTIAL |
+| blueprint_viewed | proyección actual solicitada por la persona; no cuenta como evento de alto valor / USER / Brand | INTERNAL |
 | capability_evidence_created, pre_assessment_completed, post_assessment_completed | práctica y evaluación / USER / User | PERSONAL |
 | high_value_return_event | segundo evento en sesión posterior / SYSTEM / User | INTERNAL |
 | offer_shown, payment_recorded | oferta visible/pago confirmado / SYSTEM / Account | CONFIDENTIAL |
 
 No usar views como High-Value Events; no mezclar DEMO, PILOT y PRODUCTION. Fórmulas únicas en `docs/09-validation/metrics.md`.
+
+## Alineación de implementación · continuación 2026-09-24
+
+Desde el cierre de recuperación posterior a 690d1a3, `learning_created` se emite únicamente tras aceptación humana; `learning_candidate_created` identifica el registro previo. La aceptación repetida no duplica eventos. Se alinean `recommendation_approved` y `signal_added` con este catálogo. Los eventos DEMO anteriores llamados `recommendation_accepted`/`signal_recorded` y `learning_created` al proponer una interpretación se conservan como historia de implementación; no se reclasifican ni se mezclan con evidencia de piloto. Las métricas históricas no se recalculan.

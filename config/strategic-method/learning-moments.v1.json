@@ -1,0 +1,9 @@
+{
+  "version": "v1",
+  "moments": {
+    "Primary Customer": {"capability":"Customer Understanding","why":"Elegir un cliente ayuda a priorizar problemas y renuncias.","observe":"Distingue a quien usa, paga y decide.","apply":"Compara dos segmentos y explica cuál atenderás primero.","caution":"Una preferencia del equipo no demuestra demanda."},
+    "Value Mechanism": {"capability":"Business Model Thinking","why":"Crear valor y capturarlo son decisiones conectadas.","observe":"Identifica qué obtiene el cliente y qué estaría dispuesto a intercambiar.","apply":"Explica cómo tu propuesta puede sostener ingresos y entrega.","caution":"Interés declarado no equivale a disposición a pagar."},
+    "Positioning": {"capability":"Strategic Differentiation","why":"Una posición clara ayuda a explicar por qué elegirte.","observe":"Compara alternativas reales, incluido no hacer nada.","apply":"Relaciona tu diferencia con una necesidad del cliente prioritario.","caution":"Ser distinto no basta si la diferencia no importa al cliente."},
+    "Core Message": {"capability":"Message Prioritization","why":"Una idea principal reduce la carga de interpretación.","observe":"Comprueba qué puede recordar y explicar el cliente.","apply":"Escribe una idea que conecte cliente, valor y posición.","caution":"Una frase atractiva no valida la promesa que contiene."}
+  }
+}

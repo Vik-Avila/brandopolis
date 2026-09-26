@@ -11,7 +11,7 @@ Depends on: Master Context v1.0 + hardening brief 2026-09-24
 |---|---|---|
 | StrategicQuestion | OPEN → IN_ANALYSIS → READY_FOR_DECISION → DECIDED; DECIDED → REOPENED → IN_ANALYSIS | análisis abre User; readiness por validación; commit humano decide; reapertura humana |
 | Hypothesis | UNTESTED → TESTING → SUPPORTED / WEAKENED / REJECTED | observación/revisión humana; no evidencia implica UNTESTED |
-| Experiment | PLANNED → RUNNING → COMPLETED / INCONCLUSIVE / CANCELLED | User inicia y cierra; falta señal concluyente → INCONCLUSIVE |
+| Experiment | PLANNED → RUNNING → COMPLETED / INCONCLUSIVE / CANCELLED; PLANNED → CANCELLED | User inicia y cierra; cancelación previa explícitamente autorizada en continuación 2026-09-24; falta señal concluyente → INCONCLUSIVE |
 | BrandDomainHealth | OPEN / PARTIAL / COMPLETE / NEEDS_REVIEW | proyección derivada del conjunto de Decisions/questions; NEEDS_REVIEW domina |
 | Recommendation | GENERATED → ACCEPTED / MODIFIED / REJECTED / STALE | User resuelve; cambio de contexto marca stale |
 | Decision | APPROVED / MODIFIED / REJECTED / NEEDS_REVIEW / INVALIDATED | MODIFIED/REJECTED describen resultado de acción humana; NEEDS_REVIEW no cambia elección; INVALIDATED sólo humano |

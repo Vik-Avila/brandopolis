@@ -34,3 +34,10 @@ INV-001..010 y ENG-011..013 pertinentes; tenant A/B, Brand A/B, stale client 409
 ## Completion Criteria
 
 20 criterios M1 en `docs/15-handoff/m1-acceptance.md`; screenshot/CLI evidencia y tests pasados; cambio documentado. Actualizar ADRs técnicos, schema/config si cambiaron, CHANGELOG y SESSION_STATE. Si Patch nuevo contradice contrato, detener implementación afectada y registrar diff.
+
+
+## Resolución humana · 2026-09-24 · Sprint 01
+El usuario autoriza implementar M1 sobre los contratos canónicos presentes y corregir drift documental inequívoco. ASSUMPTION_IN_USE es relación/flag de dependencia de una Decision vigente sobre una Hypothesis no validada, nunca status. Las referencias anteriores al Patch independiente describen la limitación histórica de cotejo, no un gate de entrada a M1. No se ha localizado ni se afirma haber cotejado ese archivo. Esta resolución sustituye instrucciones anteriores de esperar ese cotejo para iniciar M1; no cambia Bible, invariantes ni alcance.
+
+## Continuación tras Sprint 01
+Antes de nuevas features, revisar SESSION_STATE.md, docs/15-handoff/m1-implementation.md y LOCAL_HANDOFF.md. M1 y shell P0 cuentan con implementación y pruebas; no repetir bootstrap. Mantener secuencia de review de contrato antes del siguiente bloque de producto.

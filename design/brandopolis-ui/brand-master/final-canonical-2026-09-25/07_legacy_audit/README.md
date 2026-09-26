@@ -1,0 +1,1 @@
+Inventory: 24 supplied identity assets; 19 deprecated runtime assets; premium images retained as approved visual/material references. None of the legacy runtime binaries is copied into the canonical runtime folders.

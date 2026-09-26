@@ -1,0 +1,1098 @@
+{
+  "canonicalDomain": "brandopolis.ai",
+  "pilotOrigin": "pilot.brandopolis.ai",
+  "geometryIoUToApprovedPremium": 0.9696,
+  "assets": [
+    {
+      "path": "01_master/brandopolis-logo-horizontal-master.svg",
+      "type": "svg",
+      "role": "master",
+      "dimensionsOrViewBox": "0 0 1700 500",
+      "bytes": 3854,
+      "sha256": "aa39f5dc7fe31fb8815e35a7b0fe3de2bebcd4f702d6d2319edd66906fbe1dbb",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL MASTER",
+      "recommendedUsage": "Scalable authoritative geometry and wordmark",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": false,
+      "runtime": false,
+      "replacementFor": []
+    },
+    {
+      "path": "01_master/brandopolis-symbol-master.svg",
+      "type": "svg",
+      "role": "master",
+      "dimensionsOrViewBox": "278 151 836 1023",
+      "bytes": 812,
+      "sha256": "bda919a39da9c99c9ae8bda7571bac4de47e3d4294ea5788d4a520d715042bb9",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL MASTER",
+      "recommendedUsage": "Scalable authoritative geometry and wordmark",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": false,
+      "runtime": false,
+      "replacementFor": []
+    },
+    {
+      "path": "01_master/brandopolis-wordmark.svg",
+      "type": "svg",
+      "role": "master",
+      "dimensionsOrViewBox": "610 245 1040 100",
+      "bytes": 3076,
+      "sha256": "12caf209959be51cc67c669eff298718290d7880748b57251d26ea60851384f0",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL MASTER",
+      "recommendedUsage": "Scalable authoritative geometry and wordmark",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": false,
+      "runtime": false,
+      "replacementFor": []
+    },
+    {
+      "path": "02_runtime/app-icons/app-icon-1024.png",
+      "type": "png",
+      "role": "runtime",
+      "dimensionsOrViewBox": [
+        1024,
+        1024
+      ],
+      "bytes": 60526,
+      "sha256": "dce76ec23b9d5ea78e47e0ec231465c4646ad4628fcbd5fabc6dcae85f7709f0",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "02_runtime/app-icons/app-icon-1024.webp",
+      "type": "webp",
+      "role": "runtime",
+      "dimensionsOrViewBox": [
+        1024,
+        1024
+      ],
+      "bytes": 28236,
+      "sha256": "a760b87e604dc97634037bc7b5e1ace7abb63c1326a74ea5f8730f1019b68c89",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "02_runtime/app-icons/app-icon-128.png",
+      "type": "png",
+      "role": "runtime",
+      "dimensionsOrViewBox": [
+        128,
+        128
+      ],
+      "bytes": 5988,
+      "sha256": "59adb46dc99d85d14c06f46bd3b90ad0776a05e5af1f71624bf08e581fa47144",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": [
+        "public/brand/ui/icon-128.png"
+      ]
+    },
+    {
+      "path": "02_runtime/app-icons/app-icon-180.png",
+      "type": "png",
+      "role": "runtime",
+      "dimensionsOrViewBox": [
+        180,
+        180
+      ],
+      "bytes": 8681,
+      "sha256": "b07b754d629f8bd9eb333f0b48f1a16e460a4b52a55a495f7b87f59cd297df3d",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": [
+        "public/brand/ui/apple-touch-icon.png"
+      ]
+    },
+    {
+      "path": "02_runtime/app-icons/app-icon-192.png",
+      "type": "png",
+      "role": "runtime",
+      "dimensionsOrViewBox": [
+        192,
+        192
+      ],
+      "bytes": 9237,
+      "sha256": "168a49b3ed6efe5436581aaaa61836633da1fcd68b7ed7ec412378ffd2128475",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": [
+        "public/brand/ui/app-icon-192.png"
+      ]
+    },
+    {
+      "path": "02_runtime/app-icons/app-icon-192.webp",
+      "type": "webp",
+      "role": "runtime",
+      "dimensionsOrViewBox": [
+        192,
+        192
+      ],
+      "bytes": 5700,
+      "sha256": "3c371043ad8b5618aff6c38a5891b250efc85ef7476c99b95c7fc39ead11faf0",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "02_runtime/app-icons/app-icon-256.png",
+      "type": "png",
+      "role": "runtime",
+      "dimensionsOrViewBox": [
+        256,
+        256
+      ],
+      "bytes": 12654,
+      "sha256": "bec569e0fefb9d5ee8baf75c3d685f6fe0023386f2ec2cd8f5020658fa5180ce",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": [
+        "public/brand/ui/icon-256.png"
+      ]
+    },
+    {
+      "path": "02_runtime/app-icons/app-icon-256.webp",
+      "type": "webp",
+      "role": "runtime",
+      "dimensionsOrViewBox": [
+        256,
+        256
+      ],
+      "bytes": 7288,
+      "sha256": "a219e0fc558d163dec9377d2ae996e689c0425a89f069b4a56621f54eb73407c",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "02_runtime/app-icons/app-icon-512.png",
+      "type": "png",
+      "role": "runtime",
+      "dimensionsOrViewBox": [
+        512,
+        512
+      ],
+      "bytes": 26954,
+      "sha256": "37abb61e2340928240429e38a6797ed054f1915080a8c9a608abe1a9b7e42461",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": [
+        "public/brand/ui/app-icon-512.png",
+        "public/brand/ui/icon-512.png"
+      ]
+    },
+    {
+      "path": "02_runtime/app-icons/app-icon-512.webp",
+      "type": "webp",
+      "role": "runtime",
+      "dimensionsOrViewBox": [
+        512,
+        512
+      ],
+      "bytes": 14364,
+      "sha256": "38ddfa65ba3d81c096c30af548dbba7e2d70556c931803e365162657283b3ab0",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "02_runtime/app-icons/app-icon-64.png",
+      "type": "png",
+      "role": "runtime",
+      "dimensionsOrViewBox": [
+        64,
+        64
+      ],
+      "bytes": 2678,
+      "sha256": "52da953d1516523b576fa9697535f5a6f38a4a5cf56c6b9f8ce273dbe28c4cad",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "02_runtime/app-icons/apple-touch-icon.png",
+      "type": "png",
+      "role": "runtime",
+      "dimensionsOrViewBox": [
+        180,
+        180
+      ],
+      "bytes": 8681,
+      "sha256": "b07b754d629f8bd9eb333f0b48f1a16e460a4b52a55a495f7b87f59cd297df3d",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "02_runtime/favicon/favicon-128.png",
+      "type": "png",
+      "role": "runtime",
+      "dimensionsOrViewBox": [
+        128,
+        128
+      ],
+      "bytes": 7055,
+      "sha256": "16ba401fc5764db013b0d36a8ce05b9f37d69855005abd3c51ed82ff16e68e34",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "02_runtime/favicon/favicon-16.png",
+      "type": "png",
+      "role": "runtime",
+      "dimensionsOrViewBox": [
+        16,
+        16
+      ],
+      "bytes": 539,
+      "sha256": "49715756791e7d9397ba4baa7b4dee6abc2c518c1007929b68a984613e2ca7f1",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": [
+        "public/brand/ui/icon-16.png"
+      ]
+    },
+    {
+      "path": "02_runtime/favicon/favicon-256.png",
+      "type": "png",
+      "role": "runtime",
+      "dimensionsOrViewBox": [
+        256,
+        256
+      ],
+      "bytes": 14608,
+      "sha256": "ad25d440201bcc11d047fb567774917dec6ec364478a1ca87f1dce17fd1e89fc",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "02_runtime/favicon/favicon-32.png",
+      "type": "png",
+      "role": "runtime",
+      "dimensionsOrViewBox": [
+        32,
+        32
+      ],
+      "bytes": 1394,
+      "sha256": "4a0636c4391d59a067c79543e7f69e8a2cafe81f6327bd3d83a91803442d50ed",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": [
+        "public/brand/ui/icon-32.png"
+      ]
+    },
+    {
+      "path": "02_runtime/favicon/favicon-48.png",
+      "type": "png",
+      "role": "runtime",
+      "dimensionsOrViewBox": [
+        48,
+        48
+      ],
+      "bytes": 2319,
+      "sha256": "358b25b45b2f13dbc6ba08c2b6ee8ad4168d57fbebd832c3c9a96eb0c0e35cc4",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": [
+        "public/brand/ui/icon-48.png"
+      ]
+    },
+    {
+      "path": "02_runtime/favicon/favicon-64.png",
+      "type": "png",
+      "role": "runtime",
+      "dimensionsOrViewBox": [
+        64,
+        64
+      ],
+      "bytes": 3261,
+      "sha256": "46c4a5d7b29a2fd04debef326098ee21e04943123892ba076d0d3df4394c6286",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": [
+        "public/brand/ui/icon-64.png"
+      ]
+    },
+    {
+      "path": "02_runtime/favicon/favicon.ico",
+      "type": "ico",
+      "role": "runtime",
+      "dimensionsOrViewBox": [
+        256,
+        256
+      ],
+      "bytes": 30691,
+      "sha256": "2362ea2dab2f58a06a3c27d198a72e63934508319e854dc9bb10ad0e0fa00430",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": [
+        "public/brand/ui/favicon.ico"
+      ]
+    },
+    {
+      "path": "02_runtime/logo/brandopolis-logo-horizontal-color.svg",
+      "type": "svg",
+      "role": "runtime",
+      "dimensionsOrViewBox": "0 0 1700 500",
+      "bytes": 3854,
+      "sha256": "aa39f5dc7fe31fb8815e35a7b0fe3de2bebcd4f702d6d2319edd66906fbe1dbb",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": [
+        "public/brand/logo/brandopolis-logo-horizontal.svg"
+      ]
+    },
+    {
+      "path": "02_runtime/logo/brandopolis-logo-horizontal-dark.svg",
+      "type": "svg",
+      "role": "runtime",
+      "dimensionsOrViewBox": "0 0 1700 500",
+      "bytes": 3854,
+      "sha256": "aa39f5dc7fe31fb8815e35a7b0fe3de2bebcd4f702d6d2319edd66906fbe1dbb",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "02_runtime/logo/brandopolis-logo-horizontal-flat-color.svg",
+      "type": "svg",
+      "role": "runtime",
+      "dimensionsOrViewBox": "0 0 1700 500",
+      "bytes": 3854,
+      "sha256": "aa39f5dc7fe31fb8815e35a7b0fe3de2bebcd4f702d6d2319edd66906fbe1dbb",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "02_runtime/logo/brandopolis-logo-horizontal-light.svg",
+      "type": "svg",
+      "role": "runtime",
+      "dimensionsOrViewBox": "0 0 1700 500",
+      "bytes": 3854,
+      "sha256": "b5c8a7e1319443625a70175b92efb5eb4624b71bd3ac17c0c402a8cd8ecc51c2",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "02_runtime/logo/brandopolis-logo-horizontal-mono.svg",
+      "type": "svg",
+      "role": "runtime",
+      "dimensionsOrViewBox": "0 0 1700 500",
+      "bytes": 3854,
+      "sha256": "7d4db8f4019b86f59810aaaa5d82c791544300892e801e4279d04faed5bdcebd",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "02_runtime/manifest/site.webmanifest",
+      "type": "webmanifest",
+      "role": "runtime",
+      "dimensionsOrViewBox": null,
+      "bytes": 441,
+      "sha256": "2b47844f49bf5e88500593fc141c361215d26f9e36988c1d081af6cc0fe05129",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": [
+        "public/brand/ui/site.webmanifest"
+      ]
+    },
+    {
+      "path": "02_runtime/symbol/brandopolis-symbol-flat-color.svg",
+      "type": "svg",
+      "role": "runtime",
+      "dimensionsOrViewBox": "278 151 836 1023",
+      "bytes": 812,
+      "sha256": "bda919a39da9c99c9ae8bda7571bac4de47e3d4294ea5788d4a520d715042bb9",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": [
+        "public/brand/symbols/brandopolis-symbol-black.png",
+        "public/brand/symbols/brandopolis-symbol-emerald.png",
+        "public/brand/symbols/brandopolis-symbol.svg",
+        "public/brand/symbols/brandopolis-symbol-gold.png",
+        "public/brand/symbols/brandopolis-symbol-white.png",
+        "public/brand/symbols/brandopolis-symbol-flat.png"
+      ]
+    },
+    {
+      "path": "03_premium/brandopolis-logo-horizontal-premium.png",
+      "type": "png",
+      "role": "premium render",
+      "dimensionsOrViewBox": [
+        2085,
+        478
+      ],
+      "bytes": 249803,
+      "sha256": "28877e609f4e051ed4eff4906a81170b02d17cbe769efdd093d9fa5d227150ad",
+      "alpha": true,
+      "canonicalStatus": "CANONICAL PREMIUM",
+      "recommendedUsage": "Screen, presentation and marketing; premium material appearance",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": true,
+      "runtime": false,
+      "replacementFor": []
+    },
+    {
+      "path": "03_premium/brandopolis-logo-horizontal-premium.webp",
+      "type": "webp",
+      "role": "premium render",
+      "dimensionsOrViewBox": [
+        2085,
+        478
+      ],
+      "bytes": 152350,
+      "sha256": "1a0050defc9b6b419e3971143f596b34287d550418ac55126a0a5b9d6b81de09",
+      "alpha": true,
+      "canonicalStatus": "CANONICAL PREMIUM",
+      "recommendedUsage": "Screen, presentation and marketing; premium material appearance",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": true,
+      "runtime": false,
+      "replacementFor": []
+    },
+    {
+      "path": "03_premium/brandopolis-symbol-premium-1024.png",
+      "type": "png",
+      "role": "premium render",
+      "dimensionsOrViewBox": [
+        1024,
+        1024
+      ],
+      "bytes": 717032,
+      "sha256": "5f547be1d55b1d2a951e6e42693286c90aa9b86724f148a5d40390cbf4e8b252",
+      "alpha": true,
+      "canonicalStatus": "CANONICAL PREMIUM",
+      "recommendedUsage": "Screen, presentation and marketing; premium material appearance",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": true,
+      "runtime": false,
+      "replacementFor": []
+    },
+    {
+      "path": "03_premium/brandopolis-symbol-premium-1024.webp",
+      "type": "webp",
+      "role": "premium render",
+      "dimensionsOrViewBox": [
+        1024,
+        1024
+      ],
+      "bytes": 456992,
+      "sha256": "5102e20d893bae2db2f3a7f43362e67e98cd291e74421f6df8fd1d9340b0a625",
+      "alpha": true,
+      "canonicalStatus": "CANONICAL PREMIUM",
+      "recommendedUsage": "Screen, presentation and marketing; premium material appearance",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": true,
+      "runtime": false,
+      "replacementFor": []
+    },
+    {
+      "path": "03_premium/brandopolis-symbol-premium-2048.png",
+      "type": "png",
+      "role": "premium render",
+      "dimensionsOrViewBox": [
+        2048,
+        2048
+      ],
+      "bytes": 2223537,
+      "sha256": "5929c47adf5b5c8693e2bce40a1cad1e174b988ce03945a20ed6eb856e55abd2",
+      "alpha": true,
+      "canonicalStatus": "CANONICAL PREMIUM",
+      "recommendedUsage": "Screen, presentation and marketing; premium material appearance",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": true,
+      "runtime": false,
+      "replacementFor": []
+    },
+    {
+      "path": "03_premium/brandopolis-symbol-premium-2048.webp",
+      "type": "webp",
+      "role": "premium render",
+      "dimensionsOrViewBox": [
+        2048,
+        2048
+      ],
+      "bytes": 1432476,
+      "sha256": "50f1ed1130aa3a01da63a1b35f86474d29c46b5e739eca5e64ff61ccca4b174b",
+      "alpha": true,
+      "canonicalStatus": "CANONICAL PREMIUM",
+      "recommendedUsage": "Screen, presentation and marketing; premium material appearance",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": true,
+      "runtime": false,
+      "replacementFor": []
+    },
+    {
+      "path": "03_premium/brandopolis-symbol-premium-4096.png",
+      "type": "png",
+      "role": "premium render",
+      "dimensionsOrViewBox": [
+        4096,
+        4096
+      ],
+      "bytes": 5888088,
+      "sha256": "44be298a428db65773b8e638fa3d365ba026b5341e44217a89087a86a6106376",
+      "alpha": true,
+      "canonicalStatus": "CANONICAL PREMIUM",
+      "recommendedUsage": "Screen, presentation and marketing; premium material appearance",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": true,
+      "runtime": false,
+      "replacementFor": []
+    },
+    {
+      "path": "03_premium/brandopolis-symbol-premium-4096.webp",
+      "type": "webp",
+      "role": "premium render",
+      "dimensionsOrViewBox": [
+        4096,
+        4096
+      ],
+      "bytes": 3895416,
+      "sha256": "d73c1b5af7068945c30d69efa5c0e79d81eb7c50be5bc04f5f2dd9ee6f1721b5",
+      "alpha": true,
+      "canonicalStatus": "CANONICAL PREMIUM",
+      "recommendedUsage": "Screen, presentation and marketing; premium material appearance",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": true,
+      "runtime": false,
+      "replacementFor": []
+    },
+    {
+      "path": "03_premium/brandopolis-symbol-premium-512.png",
+      "type": "png",
+      "role": "premium render",
+      "dimensionsOrViewBox": [
+        512,
+        512
+      ],
+      "bytes": 186002,
+      "sha256": "f0ad754218f882dba5883b23105604eb39285f3741feed2b1287cf30355b66b8",
+      "alpha": true,
+      "canonicalStatus": "CANONICAL PREMIUM",
+      "recommendedUsage": "Screen, presentation and marketing; premium material appearance",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": true,
+      "runtime": false,
+      "replacementFor": []
+    },
+    {
+      "path": "03_premium/brandopolis-symbol-premium-512.webp",
+      "type": "webp",
+      "role": "premium render",
+      "dimensionsOrViewBox": [
+        512,
+        512
+      ],
+      "bytes": 124106,
+      "sha256": "de71a21bc5bee7064941400db0ff67913c0386dbdc2efafd41e486c3f0df733f",
+      "alpha": true,
+      "canonicalStatus": "CANONICAL PREMIUM",
+      "recommendedUsage": "Screen, presentation and marketing; premium material appearance",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": true,
+      "runtime": false,
+      "replacementFor": []
+    },
+    {
+      "path": "04_mono/brandopolis-symbol-mono-champagne.svg",
+      "type": "svg",
+      "role": "monochrome runtime",
+      "dimensionsOrViewBox": "278 151 836 1023",
+      "bytes": 812,
+      "sha256": "389ae84ffb5a7cd29d0d0a59dc79ee2e98ff3f83bff1c0b7f37345165933f99e",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "04_mono/brandopolis-symbol-mono-charcoal.svg",
+      "type": "svg",
+      "role": "monochrome runtime",
+      "dimensionsOrViewBox": "278 151 836 1023",
+      "bytes": 812,
+      "sha256": "086627b4bcef755c0c57c5d76d7fa479ca1b37958ed32266da7e422f054fb2be",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "04_mono/brandopolis-symbol-mono-emerald.svg",
+      "type": "svg",
+      "role": "monochrome runtime",
+      "dimensionsOrViewBox": "278 151 836 1023",
+      "bytes": 812,
+      "sha256": "4d2afb5b69711461b0dd659d8cbfd74eb9dfb53f174334519dfe057c777cb3ce",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "04_mono/brandopolis-symbol-mono-white.svg",
+      "type": "svg",
+      "role": "monochrome runtime",
+      "dimensionsOrViewBox": "278 151 836 1023",
+      "bytes": 812,
+      "sha256": "88684d3245cdebee9754941276daa30bba7e923f6726792ac692073638466239",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL RUNTIME",
+      "recommendedUsage": "Web application and browser runtime",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "05_micro/brandopolis-symbol-micro.svg",
+      "type": "svg",
+      "role": "micro",
+      "dimensionsOrViewBox": "278 151 836 1023",
+      "bytes": 812,
+      "sha256": "bda919a39da9c99c9ae8bda7571bac4de47e3d4294ea5788d4a520d715042bb9",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL MICRO",
+      "recommendedUsage": "Browser/PWA small-size deployment",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "05_micro/favicon-128.png",
+      "type": "png",
+      "role": "micro",
+      "dimensionsOrViewBox": [
+        128,
+        128
+      ],
+      "bytes": 7055,
+      "sha256": "16ba401fc5764db013b0d36a8ce05b9f37d69855005abd3c51ed82ff16e68e34",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL MICRO",
+      "recommendedUsage": "Browser/PWA small-size deployment",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "05_micro/favicon-16.png",
+      "type": "png",
+      "role": "micro",
+      "dimensionsOrViewBox": [
+        16,
+        16
+      ],
+      "bytes": 539,
+      "sha256": "49715756791e7d9397ba4baa7b4dee6abc2c518c1007929b68a984613e2ca7f1",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL MICRO",
+      "recommendedUsage": "Browser/PWA small-size deployment",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "05_micro/favicon-24.png",
+      "type": "png",
+      "role": "micro",
+      "dimensionsOrViewBox": [
+        24,
+        24
+      ],
+      "bytes": 935,
+      "sha256": "842a6c2abfd891bdd9d21f9862bfc7e97d791e7befa89c662ac2198628c8ef34",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL MICRO",
+      "recommendedUsage": "Browser/PWA small-size deployment",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "05_micro/favicon-256.png",
+      "type": "png",
+      "role": "micro",
+      "dimensionsOrViewBox": [
+        256,
+        256
+      ],
+      "bytes": 14608,
+      "sha256": "ad25d440201bcc11d047fb567774917dec6ec364478a1ca87f1dce17fd1e89fc",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL MICRO",
+      "recommendedUsage": "Browser/PWA small-size deployment",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "05_micro/favicon-32.png",
+      "type": "png",
+      "role": "micro",
+      "dimensionsOrViewBox": [
+        32,
+        32
+      ],
+      "bytes": 1394,
+      "sha256": "4a0636c4391d59a067c79543e7f69e8a2cafe81f6327bd3d83a91803442d50ed",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL MICRO",
+      "recommendedUsage": "Browser/PWA small-size deployment",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "05_micro/favicon-48.png",
+      "type": "png",
+      "role": "micro",
+      "dimensionsOrViewBox": [
+        48,
+        48
+      ],
+      "bytes": 2319,
+      "sha256": "358b25b45b2f13dbc6ba08c2b6ee8ad4168d57fbebd832c3c9a96eb0c0e35cc4",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL MICRO",
+      "recommendedUsage": "Browser/PWA small-size deployment",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "05_micro/favicon-64.png",
+      "type": "png",
+      "role": "micro",
+      "dimensionsOrViewBox": [
+        64,
+        64
+      ],
+      "bytes": 3261,
+      "sha256": "46c4a5d7b29a2fd04debef326098ee21e04943123892ba076d0d3df4394c6286",
+      "alpha": false,
+      "canonicalStatus": "CANONICAL MICRO",
+      "recommendedUsage": "Browser/PWA small-size deployment",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": true,
+      "premium": false,
+      "runtime": true,
+      "replacementFor": []
+    },
+    {
+      "path": "06_qa/approved-horizontal-reference.png",
+      "type": "png",
+      "role": "reference board",
+      "dimensionsOrViewBox": [
+        2085,
+        478
+      ],
+      "bytes": 281421,
+      "sha256": "e4e95a5ec64674fc4fde5cf97523dc37fbee21b8fd5f77159181b39f974f2540",
+      "alpha": true,
+      "canonicalStatus": "REFERENCE ONLY",
+      "recommendedUsage": "Quality review only",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": false,
+      "runtime": false,
+      "replacementFor": []
+    },
+    {
+      "path": "06_qa/micro-size-board.png",
+      "type": "png",
+      "role": "reference board",
+      "dimensionsOrViewBox": [
+        760,
+        470
+      ],
+      "bytes": 75011,
+      "sha256": "fe98e8f7d88a864d279d5af89ea7a15c6e28caebdbcf25267374eae91eb45f7f",
+      "alpha": false,
+      "canonicalStatus": "REFERENCE ONLY",
+      "recommendedUsage": "Quality review only",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": false,
+      "runtime": false,
+      "replacementFor": []
+    },
+    {
+      "path": "06_qa/premium-contexts.png",
+      "type": "png",
+      "role": "reference board",
+      "dimensionsOrViewBox": [
+        1050,
+        790
+      ],
+      "bytes": 184204,
+      "sha256": "4f933214227e1080903b4297b7b09d1560cba62b7a02df3c9ac0a603252ece40",
+      "alpha": false,
+      "canonicalStatus": "REFERENCE ONLY",
+      "recommendedUsage": "Quality review only",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": false,
+      "runtime": false,
+      "replacementFor": []
+    },
+    {
+      "path": "06_qa/premium-vector-comparison.png",
+      "type": "png",
+      "role": "reference board",
+      "dimensionsOrViewBox": [
+        940,
+        1030
+      ],
+      "bytes": 278015,
+      "sha256": "3b87baa5d2c35339dca4607d6c4f001acfad7195ca40633148c794148942b82e",
+      "alpha": false,
+      "canonicalStatus": "REFERENCE ONLY",
+      "recommendedUsage": "Quality review only",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": false,
+      "runtime": false,
+      "replacementFor": []
+    },
+    {
+      "path": "06_qa/silhouette-overlay.png",
+      "type": "png",
+      "role": "reference board",
+      "dimensionsOrViewBox": [
+        760,
+        850
+      ],
+      "bytes": 59729,
+      "sha256": "a534354d57c59973ab7b99507754d2b87cbe02a8567b61ef93fabf1590d0d548",
+      "alpha": false,
+      "canonicalStatus": "REFERENCE ONLY",
+      "recommendedUsage": "Quality review only",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": false,
+      "runtime": false,
+      "replacementFor": []
+    },
+    {
+      "path": "06_qa/wordmark-sizes.png",
+      "type": "png",
+      "role": "reference board",
+      "dimensionsOrViewBox": [
+        1000,
+        1380
+      ],
+      "bytes": 83840,
+      "sha256": "f6946c4d01f0414e7231568df96d180cf586a65387d0169fc5954b7a654f991f",
+      "alpha": false,
+      "canonicalStatus": "REFERENCE ONLY",
+      "recommendedUsage": "Quality review only",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": false,
+      "runtime": false,
+      "replacementFor": []
+    },
+    {
+      "path": "BRANDOPOLIS_CANONICAL_BRAND_ASSET_BOARD.png",
+      "type": "png",
+      "role": "reference",
+      "dimensionsOrViewBox": [
+        940,
+        1030
+      ],
+      "bytes": 278015,
+      "sha256": "3b87baa5d2c35339dca4607d6c4f001acfad7195ca40633148c794148942b82e",
+      "alpha": false,
+      "canonicalStatus": "REFERENCE ONLY",
+      "recommendedUsage": "Quality review only",
+      "backgroundCompatibility": "light/dark per usage matrix",
+      "smallSizeSafe": false,
+      "premium": false,
+      "runtime": false,
+      "replacementFor": []
+    }
+  ],
+  "status": "CANONICAL / APPROVED / READY FOR REPOSITORY RECONCILIATION",
+  "geometryApproval": "Visual approval received; vector master is the authority. Historical raster IoU is a traceability measurement."
+}

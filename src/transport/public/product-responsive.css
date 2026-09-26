@@ -1,0 +1,647 @@
+/* Responsive layer, desktop-first: one block per breakpoint from widest to narrowest, then motion.
+   Inside each block rules keep their original relative order. */
+
+/* Wide desktop */
+@media (min-width: 1500px) {
+  .layout {
+    grid-template-columns: minmax(0px, 1fr) 290px;
+  }
+  #decision {
+    padding: 32px;
+  }
+  .impact-pair {
+    grid-template-columns: minmax(0px, 1fr) 132px minmax(0px, 1fr);
+  }
+  .impact-link {
+    text-wrap-mode: wrap;
+    text-align: center;
+  }
+}
+
+/* Desktop ≤1500 */
+@media (max-width: 1500px) {
+  .impact-pair {
+    grid-template-columns: minmax(0px, 1fr) 118px minmax(0px, 1fr);
+  }
+  .impact-link {
+    text-wrap-mode: wrap;
+    text-align: center;
+  }
+  .home-heading {
+    display: block;
+  }
+  .home-heading > button {
+    margin-top: 8px;
+  }
+  #decision .home-heading h2 {
+    max-width: none;
+  }
+}
+
+/* Compact desktop ≤1400 */
+@media (max-width: 1400px) {
+  #context > p {
+    grid-column: 1 / -1;
+  }
+  .layout {
+    grid-template-columns: minmax(0px, 1fr) 248px;
+    gap: 18px;
+  }
+  #context {
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .workspace-head h1 {
+    font-size: 13px;
+  }
+  .workspace-head {
+    gap: 12px;
+  }
+  #decision {
+    padding: 24px;
+  }
+}
+
+/* Tablet and drawer navigation ≤1279 */
+@media (max-width: 1279px) {
+  #menu, #journey #close-menu {
+    display: inline-flex;
+  }
+  #menu {
+    order: -1;
+    background: none;
+    color: var(--text-primary);
+    box-shadow: none;
+    min-width: 44px;
+    padding: 8px 12px;
+  }
+  #journey.open {
+    transform: translateX(0px);
+  }
+  .welcome {
+    margin: 32px;
+    grid-template-columns: minmax(0px, 1fr) minmax(0px, 1fr);
+  }
+  .access-art {
+    display: none;
+  }
+  .how {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  /* Tablet heroes carry the lead further into the photograph: a slightly longer ivory veil keeps AA. */
+  .hero::before {
+    background: linear-gradient(90deg,color-mix(in srgb,var(--bp-brand-ivory) 94%,transparent) 0%,color-mix(in srgb,var(--bp-brand-ivory) 86%,transparent) 44%,transparent 72%);
+  }
+  .hero-copy {
+    max-width: 540px;
+  }
+  .pillars {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .pillars li:nth-child(3) {
+    border-left: 0px;
+    padding-left: 0px;
+  }
+  #workspace {
+    padding: 24px;
+  }
+  .app .brand {
+    width: auto;
+  }
+  .app .product-heading {
+    padding-left: 20px;
+  }
+  .layout {
+    grid-template-columns: minmax(0px, 1fr) 260px;
+  }
+  #journey {
+    transform: translateX(-100%);
+    top: 0px;
+    width: 280px;
+    background-image: initial;
+    background-color: rgb(248, 245, 238);
+  }
+  .workspace-head h1 {
+    font-size: 15px;
+  }
+  body.app footer {
+    padding-left: 24px;
+  }
+  #workspace[aria-busy="true"]::before {
+    left: 0px;
+  }
+}
+
+/* Single column ≤1000 */
+@media (max-width: 1000px) {
+  .layout {
+    grid-template-columns: minmax(0px, 1fr);
+  }
+  #context {
+    position: static;
+  }
+  .context-cover {
+    padding-top: 20px;
+    padding-right: 24px;
+    padding-left: 24px;
+  }
+  .context-lineage {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 24px;
+  }
+  .context-updated, .context-note {
+    display: none;
+  }
+  .context-lineage li {
+    padding-bottom: 12px;
+  }
+  .context-details {
+    padding: 10px 24px;
+  }
+  .context-lineage li::before {
+    display: none;
+  }
+  .brand-control {
+    flex: 1 1 0%;
+  }
+  .app .product-heading > span:first-child {
+    display: none;
+  }
+  .app .product-heading {
+    border: 0px;
+    padding: 0px;
+  }
+}
+
+/* Portrait tablet: the photograph's subject sits closer to the copy; keep the copy on the veiled side. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .hero-copy {
+    max-width: 470px;
+  }
+  .hero::before {
+    background: linear-gradient(90deg,color-mix(in srgb,var(--bp-brand-ivory) 95%,transparent) 0%,color-mix(in srgb,var(--bp-brand-ivory) 90%,transparent) 52%,transparent 80%);
+  }
+}
+
+/* Mobile ≤767 */
+@media (max-width: 767px) {
+  .public-nav a:not(.cta) {
+    display: none;
+  }
+  #notice {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    max-width: none;
+  }
+  .hero {
+    min-height: auto;
+  }
+  .hero-art img {
+    object-position: 72% 100%;
+  }
+  .hero-copy {
+    padding: 40px 20px 24px;
+  }
+  .pillars {
+    margin: 220px 16px 24px;
+    grid-template-columns: 1fr 1fr;
+    padding: 16px;
+  }
+  .how {
+    margin-top: 56px;
+    margin-bottom: 56px;
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+  .welcome {
+    display: block;
+    margin: 24px 16px;
+  }
+  .welcome form, #pilot-entry {
+    margin: 20px 16px 24px;
+    padding: 22px;
+  }
+  .new-brand {
+    display: block;
+  }
+  .workspace-head label, .new-brand input {
+    width: 100%;
+    max-width: none;
+  }
+  .new-brand button {
+    margin-top: 12px;
+    width: 100%;
+  }
+  .current {
+    font-size: 21px;
+    padding: 16px;
+  }
+  .review-options, .kpis, .blueprint-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .review-options {
+    grid-template-columns: 1fr;
+  }
+  .form-footer .actions {
+    width: 100%;
+  }
+  :root {
+    --shell-height: 70px;
+  }
+  header {
+    min-height: 64px;
+    padding: 10px 16px;
+    gap: 12px;
+  }
+  .brand img {
+    width: auto;
+    height: 36px;
+  }
+  .app .product-heading {
+    display: none;
+  }
+  .app .brand {
+    margin-right: auto;
+    width: auto;
+  }
+  #logout {
+    color: var(--text-primary);
+    box-shadow: none;
+    min-height: 44px;
+  }
+  #menu {
+    padding: 8px;
+    min-height: 44px;
+  }
+  body.app::after {
+    background-image: linear-gradient(180deg,color-mix(in srgb,var(--bp-brand-ivory) 55%,transparent),color-mix(in srgb,var(--bp-brand-ivory) 80%,transparent)),url('/brand/web/workspace-atmosphere-mobile.webp');
+  }
+  .demo {
+    font-size: 9.5px;
+    padding: 5px;
+    letter-spacing: 0.03em;
+  }
+  .public-nav {
+    gap: 10px;
+  }
+  .public-nav a.cta {
+    padding-right: 14px;
+    padding-left: 14px;
+    font-size: 11px;
+  }
+  .public-nav a[href="/login"] {
+    display: inline-flex;
+    font-size: 12px;
+  }
+  .app .public-nav {
+    display: none;
+  }
+  #workspace {
+    padding: 18px 14px 32px;
+  }
+  .brand-control label {
+    font-size: 9.5px;
+  }
+  .layout {
+    gap: 16px;
+  }
+  #decision h2 {
+    font-size: 29px;
+    max-width: 24ch;
+  }
+  #decision[data-view="home"] > h2 {
+    font-size: 34px;
+  }
+  .decision-meta {
+    font-size: 10px;
+    column-gap: 8px;
+  }
+  .human-decision {
+    padding: 18px;
+  }
+  .human-decision .current {
+    font-size: 22px;
+  }
+  .knowledge {
+    padding-right: 12px;
+    padding-bottom: 12px;
+    padding-left: 12px;
+  }
+  .knowledge > summary {
+    font-size: 11px;
+  }
+  .recommendation {
+    padding: 16px;
+  }
+  .review {
+    padding-right: 16px;
+    padding-bottom: 16px;
+    padding-left: 16px;
+  }
+  .review > h3 {
+    padding: 16px;
+    margin-right: -16px;
+    margin-bottom: 14px;
+    margin-left: -16px;
+  }
+  .impact-steps {
+    font-size: 10px;
+  }
+  .review-options {
+    grid-template-columns: 1fr;
+  }
+  .review-options .option-card {
+    min-height: 80px;
+  }
+  .decision-form {
+    padding: 16px;
+  }
+  .decision-connections {
+    font-size: 11px;
+  }
+  .decision-connections > .label {
+    flex-basis: 100%;
+    margin-top: 4px;
+  }
+  .actions button {
+    width: auto;
+    flex: 1 1 auto;
+  }
+  .actions .tertiary {
+    flex-basis: 100%;
+    justify-content: flex-start;
+    padding-left: 0px;
+  }
+  .form-footer .actions button {
+    width: 100%;
+  }
+  .kpis {
+    grid-template-columns: 1fr 1fr;
+  }
+  .kpis span {
+    font-size: 11px;
+  }
+  .attention-section > h3 {
+    font-size: 22px;
+  }
+  .strategy-cards {
+    grid-template-columns: 1fr;
+  }
+  .section-heading > span {
+    max-width: 85px;
+    text-align: right;
+  }
+  .section-heading h3 {
+    font-size: 23px;
+  }
+  .context-lineage {
+    display: block;
+  }
+  .context-details {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .context-lineage li {
+    padding-bottom: 18px;
+  }
+  .context-lineage li::before {
+    display: block;
+  }
+  .context-cover h3 {
+    font-size: 24px;
+  }
+  .blueprint-grid {
+    grid-template-columns: 1fr;
+  }
+  .learning-steps > details {
+    padding: 12px 14px;
+  }
+  .learning-steps summary {
+    font-size: 12px;
+  }
+  .access-copy {
+    padding: 28px 24px 0px;
+  }
+  .access-logo {
+    width: 220px;
+    margin-bottom: 28px;
+  }
+  .access-copy h1 {
+    font-size: 32px;
+  }
+  dialog {
+    padding: 24px;
+  }
+  dialog h2 {
+    font-size: 29px;
+  }
+  body.app footer {
+    padding: 20px 16px;
+  }
+  .workspace-head {
+    gap: 10px;
+    flex-wrap: nowrap;
+    display: flex;
+  }
+  .brand-control {
+    padding: 6px 10px;
+    min-width: 0px;
+    flex: 1 1 0%;
+    max-width: none;
+  }
+  .brand-control select {
+    font-size: 13px;
+    min-height: 44px;
+  }
+  /* Icon-only on phones; the visible label stays as the accessible name. */
+  #new-brand {
+    padding: 0px;
+    min-height: 48px;
+    width: 48px;
+    flex-shrink: 0;
+  }
+  #new-brand .button-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  #new-brand span[aria-hidden] {
+    font-size: 20px;
+  }
+  .decision-tabs {
+    gap: 18px;
+    margin-bottom: 20px;
+    -webkit-mask-image: linear-gradient(90deg, #000 86%, transparent);
+    mask-image: linear-gradient(90deg, #000 86%, transparent);
+    padding-right: 28px;
+  }
+  .decision-tabs button {
+    font-size: 12px;
+    padding-inline: 8px;
+  }
+  #decision .decision-heading h2 {
+    font-size: 28px;
+  }
+  .knowledge-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .knowledge-grid section {
+    padding: 18px;
+  }
+  .recommendation[role="tabpanel"] {
+    padding: 18px;
+  }
+  .impact-pair {
+    grid-template-columns: 1fr;
+  }
+  .impact-link {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .impact-link::before {
+    left: 50%;
+    right: auto;
+    top: 0px;
+    bottom: 6px;
+    border-top: 0px;
+    border-left: 1px solid rgb(193, 165, 117);
+  }
+  .impact-link::after {
+    right: auto;
+    left: calc(50% - 4px);
+    top: auto;
+    bottom: 0px;
+    border-left: 4.5px solid transparent;
+    border-right: 4.5px solid transparent;
+    border-top: 7px solid rgb(193, 165, 117);
+    border-bottom: 0px;
+  }
+  .history .history-item {
+    grid-template-columns: 32px minmax(0px, 1fr);
+    gap: 10px;
+    padding-bottom: 20px;
+  }
+  .version-marker {
+    width: 32px;
+    height: 32px;
+    font-size: 10px;
+  }
+  .history-item::before {
+    left: 15px;
+    top: 32px;
+  }
+  .history-item > article {
+    padding: 16px;
+  }
+  .history-item h4 {
+    font-size: 20px;
+  }
+  .history-meta {
+    column-gap: 6px;
+  }
+  .history-intro h3 {
+    font-size: 24px;
+  }
+  #decision .home-heading h2 {
+    font-size: 32px;
+  }
+  .home-heading .view-lead {
+    line-height: 1.6;
+  }
+  .home-heading > button {
+    width: 100%;
+    margin-top: 16px;
+  }
+  .attention-section {
+    padding: 18px;
+  }
+  .attention-section .section-heading {
+    display: block;
+  }
+  .attention-section .section-heading > span {
+    display: block;
+    text-align: left;
+    max-width: none;
+    margin-top: 8px;
+  }
+  .attention-row {
+    display: block;
+  }
+  .attention-row button {
+    margin-top: 12px;
+    min-height: 44px;
+  }
+  .learning-summary > button, .context-next button {
+    min-height: 44px;
+  }
+  .strategy-card {
+    display: grid;
+    grid-template-columns: 26px minmax(0px, 1fr);
+    column-gap: 12px;
+    padding: 16px;
+  }
+  .strategy-index {
+    grid-row: 1 / 4;
+    margin-top: 3px;
+    font-size: 17px;
+  }
+  .strategy-card > h3, .strategy-card > p, .strategy-card-footer {
+    grid-column: 2;
+  }
+  .strategy-card > p {
+    min-height: 0px;
+    line-height: 1.5;
+  }
+  .strategy-card-footer {
+    margin: 0px;
+    padding-top: 8px;
+  }
+  .learning-summary {
+    grid-template-columns: 1fr;
+    padding: 18px;
+    gap: 12px;
+  }
+  .learning-summary > button {
+    grid-column: auto;
+    width: 100%;
+  }
+  .learning-counts {
+    justify-content: flex-start;
+    gap: 32px;
+  }
+  .context-next {
+    display: block;
+    padding: 18px;
+  }
+  .context-next button {
+    margin-top: 16px;
+    width: 100%;
+  }
+  .empty-state {
+    padding: 20px;
+  }
+  .review-current p:last-child {
+    font-size: 18px;
+  }
+  #decision {
+    padding: 20px 18px;
+    border-radius: 12px;
+    min-height: 0px;
+  }
+}
+
+/* Reduced motion: nonessential animation and smooth scrolling are removed; states stay equivalent. */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

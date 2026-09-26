@@ -1,0 +1,1 @@
+Original official SVG, ICO and manifest are preserved byte for byte from the approved UI Kit. SVG is recommended for scalable logos; WebP exports are supplementary. Premium PNG-derived WebP artwork is also faithful to the approved kit.

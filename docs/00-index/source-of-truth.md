@@ -24,3 +24,7 @@ El hardening brief entregado el 2026-09-24 especifica las correcciones de estado
 Dominio `docs/04`, schemas, config, AI, seguridad y ADR concretan lo anterior. ADRs de ORM/auth/provider/deployment no son decisiones de producto. Datos de concurso IEBS/TecPrize antiguos son **historical material** y no gobiernan secuencia ni estado actual.
 
 Jerarquía operativa al disponer del Patch: Master + Patch aprobados → Bible reconciliada → Gates originales aportados → Red Team → documentos técnicos → ADR → narrativa histórica → nuevas recomendaciones. Contradicción real se registra y resuelve con fuente/versión, no por preferencia del agente.
+
+
+## Resolución humana · 2026-09-24 · Sprint 01
+El usuario autoriza implementar M1 sobre los contratos canónicos presentes y corregir drift documental inequívoco. ASSUMPTION_IN_USE es relación/flag de dependencia de una Decision vigente sobre una Hypothesis no validada, nunca status. Las referencias anteriores al Patch independiente describen la limitación histórica de cotejo, no un gate de entrada a M1. No se ha localizado ni se afirma haber cotejado ese archivo. Esta resolución sustituye instrucciones anteriores de esperar ese cotejo para iniciar M1; no cambia Bible, invariantes ni alcance.

@@ -1,0 +1,135 @@
+[
+  {
+    "legacyAsset": "public/brand/symbols/brandopolis-symbol-black.png",
+    "status": "DEPRECATED",
+    "reason": "Flat raster based on prior polygonal master.",
+    "replacement": "02_runtime/symbol/brandopolis-symbol-flat-color.svg",
+    "usage": "Use 02_runtime/symbol/brandopolis-symbol-flat-color.svg at the corresponding browser, application or brand surface; see BRAND_ASSET_USAGE_MATRIX.md."
+  },
+  {
+    "legacyAsset": "public/brand/symbols/brandopolis-symbol-emerald.png",
+    "status": "DEPRECATED",
+    "reason": "Flat raster based on prior polygonal master.",
+    "replacement": "02_runtime/symbol/brandopolis-symbol-flat-color.svg",
+    "usage": "Use 02_runtime/symbol/brandopolis-symbol-flat-color.svg at the corresponding browser, application or brand surface; see BRAND_ASSET_USAGE_MATRIX.md."
+  },
+  {
+    "legacyAsset": "public/brand/symbols/brandopolis-symbol.svg",
+    "status": "DEPRECATED",
+    "reason": "Polygonal B geometry is not the approved premium silhouette at quality.",
+    "replacement": "02_runtime/symbol/brandopolis-symbol-flat-color.svg",
+    "usage": "Use 02_runtime/symbol/brandopolis-symbol-flat-color.svg at the corresponding browser, application or brand surface; see BRAND_ASSET_USAGE_MATRIX.md."
+  },
+  {
+    "legacyAsset": "public/brand/symbols/brandopolis-symbol-gold.png",
+    "status": "DEPRECATED",
+    "reason": "Flat raster based on prior polygonal master.",
+    "replacement": "02_runtime/symbol/brandopolis-symbol-flat-color.svg",
+    "usage": "Use 02_runtime/symbol/brandopolis-symbol-flat-color.svg at the corresponding browser, application or brand surface; see BRAND_ASSET_USAGE_MATRIX.md."
+  },
+  {
+    "legacyAsset": "public/brand/symbols/brandopolis-symbol-white.png",
+    "status": "DEPRECATED",
+    "reason": "Flat raster based on prior polygonal master.",
+    "replacement": "02_runtime/symbol/brandopolis-symbol-flat-color.svg",
+    "usage": "Use 02_runtime/symbol/brandopolis-symbol-flat-color.svg at the corresponding browser, application or brand surface; see BRAND_ASSET_USAGE_MATRIX.md."
+  },
+  {
+    "legacyAsset": "public/brand/symbols/brandopolis-symbol-flat.png",
+    "status": "DEPRECATED",
+    "reason": "Flat raster based on prior polygonal master.",
+    "replacement": "02_runtime/symbol/brandopolis-symbol-flat-color.svg",
+    "usage": "Use 02_runtime/symbol/brandopolis-symbol-flat-color.svg at the corresponding browser, application or brand surface; see BRAND_ASSET_USAGE_MATRIX.md."
+  },
+  {
+    "legacyAsset": "public/brand/logo/brandopolis-logo-horizontal.svg",
+    "status": "DEPRECATED",
+    "reason": "Outlined wordmark preserved, but legacy B is polygonal.",
+    "replacement": "02_runtime/logo/brandopolis-logo-horizontal-color.svg",
+    "usage": "Use 02_runtime/logo/brandopolis-logo-horizontal-color.svg at the corresponding browser, application or brand surface; see BRAND_ASSET_USAGE_MATRIX.md."
+  },
+  {
+    "legacyAsset": "public/brand/ui/app-icon-512.png",
+    "status": "DEPRECATED",
+    "reason": "Derived from older and inconsistent micro/app symbol assets.",
+    "replacement": "02_runtime/app-icons/app-icon-512.png",
+    "usage": "Use 02_runtime/app-icons/app-icon-512.png at the corresponding browser, application or brand surface; see BRAND_ASSET_USAGE_MATRIX.md."
+  },
+  {
+    "legacyAsset": "public/brand/ui/icon-128.png",
+    "status": "DEPRECATED",
+    "reason": "Derived from older and inconsistent micro/app symbol assets.",
+    "replacement": "02_runtime/app-icons/app-icon-128.png",
+    "usage": "Use 02_runtime/app-icons/app-icon-128.png at the corresponding browser, application or brand surface; see BRAND_ASSET_USAGE_MATRIX.md."
+  },
+  {
+    "legacyAsset": "public/brand/ui/favicon.ico",
+    "status": "DEPRECATED",
+    "reason": "Derived from older and inconsistent micro/app symbol assets.",
+    "replacement": "02_runtime/favicon/favicon.ico",
+    "usage": "Use 02_runtime/favicon/favicon.ico at the corresponding browser, application or brand surface; see BRAND_ASSET_USAGE_MATRIX.md."
+  },
+  {
+    "legacyAsset": "public/brand/ui/icon-16.png",
+    "status": "DEPRECATED",
+    "reason": "Derived from older and inconsistent micro/app symbol assets.",
+    "replacement": "02_runtime/favicon/favicon-16.png",
+    "usage": "Use 02_runtime/favicon/favicon-16.png at the corresponding browser, application or brand surface; see BRAND_ASSET_USAGE_MATRIX.md."
+  },
+  {
+    "legacyAsset": "public/brand/ui/icon-256.png",
+    "status": "DEPRECATED",
+    "reason": "Derived from older and inconsistent micro/app symbol assets.",
+    "replacement": "02_runtime/app-icons/app-icon-256.png",
+    "usage": "Use 02_runtime/app-icons/app-icon-256.png at the corresponding browser, application or brand surface; see BRAND_ASSET_USAGE_MATRIX.md."
+  },
+  {
+    "legacyAsset": "public/brand/ui/icon-32.png",
+    "status": "DEPRECATED",
+    "reason": "Derived from older and inconsistent micro/app symbol assets.",
+    "replacement": "02_runtime/favicon/favicon-32.png",
+    "usage": "Use 02_runtime/favicon/favicon-32.png at the corresponding browser, application or brand surface; see BRAND_ASSET_USAGE_MATRIX.md."
+  },
+  {
+    "legacyAsset": "public/brand/ui/app-icon-192.png",
+    "status": "DEPRECATED",
+    "reason": "Derived from older and inconsistent micro/app symbol assets.",
+    "replacement": "02_runtime/app-icons/app-icon-192.png",
+    "usage": "Use 02_runtime/app-icons/app-icon-192.png at the corresponding browser, application or brand surface; see BRAND_ASSET_USAGE_MATRIX.md."
+  },
+  {
+    "legacyAsset": "public/brand/ui/icon-48.png",
+    "status": "DEPRECATED",
+    "reason": "Derived from older and inconsistent micro/app symbol assets.",
+    "replacement": "02_runtime/favicon/favicon-48.png",
+    "usage": "Use 02_runtime/favicon/favicon-48.png at the corresponding browser, application or brand surface; see BRAND_ASSET_USAGE_MATRIX.md."
+  },
+  {
+    "legacyAsset": "public/brand/ui/icon-64.png",
+    "status": "DEPRECATED",
+    "reason": "Derived from older and inconsistent micro/app symbol assets.",
+    "replacement": "02_runtime/favicon/favicon-64.png",
+    "usage": "Use 02_runtime/favicon/favicon-64.png at the corresponding browser, application or brand surface; see BRAND_ASSET_USAGE_MATRIX.md."
+  },
+  {
+    "legacyAsset": "public/brand/ui/site.webmanifest",
+    "status": "DEPRECATED",
+    "reason": "References prior icon generation.",
+    "replacement": "02_runtime/manifest/site.webmanifest",
+    "usage": "Use 02_runtime/manifest/site.webmanifest at the corresponding browser, application or brand surface; see BRAND_ASSET_USAGE_MATRIX.md."
+  },
+  {
+    "legacyAsset": "public/brand/ui/icon-512.png",
+    "status": "DEPRECATED",
+    "reason": "Derived from older and inconsistent micro/app symbol assets.",
+    "replacement": "02_runtime/app-icons/app-icon-512.png",
+    "usage": "Use 02_runtime/app-icons/app-icon-512.png at the corresponding browser, application or brand surface; see BRAND_ASSET_USAGE_MATRIX.md."
+  },
+  {
+    "legacyAsset": "public/brand/ui/apple-touch-icon.png",
+    "status": "DEPRECATED",
+    "reason": "Derived from older and inconsistent micro/app symbol assets.",
+    "replacement": "02_runtime/app-icons/app-icon-180.png",
+    "usage": "Use 02_runtime/app-icons/app-icon-180.png at the corresponding browser, application or brand surface; see BRAND_ASSET_USAGE_MATRIX.md."
+  }
+]

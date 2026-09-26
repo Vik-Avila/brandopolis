@@ -1,0 +1,294 @@
+/* Base layer: reset, typography, controls, status badges, feedback and shared page chrome.
+   Loaded after tokens.css and before public.css and product-*.css (see index.html). */
+
+:root {
+  /* Editorial serif for strategic questions, decisions and section titles; Inter/system for interface text
+     (design/brandopolis-ui/docs/02_DESIGN_SYSTEM.md). No font files are shipped. */
+  --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  --font-ui: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 100px;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  margin: 0px;
+  font: 15px / 1.6 var(--font-ui);
+  color: var(--text-primary);
+  background: var(--surface-page);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0px;
+  z-index: -2;
+  background: radial-gradient(ellipse at 12% 8%,var(--bp-emerald-wash),transparent 40%),radial-gradient(ellipse at 88% 12%,var(--bp-gold-wash),transparent 35%);
+}
+
+/* Typography */
+
+h1, h2 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+
+h1, h2, h3 {
+  line-height: 1.15;
+}
+
+h1 {
+  font-size: clamp(30px, 3vw, 44px);
+  margin: 8px 0px 16px;
+}
+
+h2 {
+  font-size: clamp(24px, 2.2vw, 32px);
+  margin: 12px 0px 16px;
+}
+
+h3 {
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+
+p {
+  overflow-wrap: anywhere;
+}
+
+a {
+  color: var(--bp-brand-emerald);
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--bp-brand-emerald);
+  margin: 0px 0px 6px;
+}
+
+.hint {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Controls: primary (human commitment) → secondary (review/modify) → tertiary (reference/history). */
+
+button, input, textarea, select {
+  font: inherit;
+}
+
+button, .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  cursor: pointer;
+  background: var(--action-primary);
+  color: var(--text-inverse);
+  border: 1px solid transparent;
+  border-radius: var(--bp-radius-md);
+  padding: 10px 18px;
+  font-weight: 650;
+  text-decoration: none;
+  box-shadow: var(--bp-shadow-sm);
+  transition: background 160ms, border-color 160ms, box-shadow 160ms;
+  letter-spacing: -0.01em;
+}
+
+button:hover, .button:hover {
+  background: var(--action-primary-hover);
+}
+
+button:active:not(:disabled), .button:active {
+  box-shadow: rgba(0, 0, 0, 0.133) 0px 2px 3px inset;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+button.secondary, .button.secondary {
+  color: var(--text-primary);
+  background: var(--surface-glass-elevated);
+  border-color: var(--border-strong);
+  box-shadow: none;
+}
+
+button.secondary:hover, .button.secondary:hover {
+  background: var(--surface-card);
+}
+
+button.tertiary {
+  background: none;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 10px 8px;
+}
+
+button.tertiary:hover {
+  background: none;
+  color: var(--bp-brand-emerald);
+}
+
+main {
+  flex: 1 0 auto;
+}
+
+input, textarea, select {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid rgb(132, 133, 127);
+  border-radius: var(--bp-radius-md);
+  background: var(--surface-card);
+  color: var(--text-primary);
+}
+
+
+select {
+  appearance: none;
+  padding-right: 40px;
+  text-overflow: ellipsis;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-secondary) 50%), linear-gradient(135deg, var(--text-secondary) 50%, transparent 50%);
+  background-position: calc(100% - 20px) 50%, calc(100% - 15px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+form label {
+  margin: 18px 0px 8px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+/* Status badges. Meaning is carried by text and marker, never by colour alone. */
+
+.demo, .badge {
+  line-height: 1.4;
+  border: 1px solid var(--border-default);
+  display: inline-block;
+  background: var(--status-approved-bg);
+  color: var(--status-approved-text);
+  font-weight: 600;
+}
+
+.demo {
+  white-space: nowrap;
+}
+
+.badge {
+  border-radius: 4px;
+  font-size: 11px;
+  letter-spacing: 0.015em;
+  padding: 4px 7px;
+  white-space: normal;
+}
+
+.badge::before {
+  content: "·";
+  font-weight: 800;
+  margin-right: 5px;
+}
+
+.badge.warn {
+  color: var(--status-review-text);
+  background: var(--status-review-bg);
+  border-color: var(--bp-review-border);
+}
+
+.badge.warn::before {
+  content: "!";
+}
+
+.badge.muted {
+  color: var(--status-superseded-text);
+  background: var(--status-superseded-bg);
+}
+
+/* Feedback and page chrome */
+
+#notice {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 60;
+  max-width: 440px;
+  padding: 14px 18px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--bp-radius-lg);
+  background: var(--status-approved-bg);
+  color: var(--status-approved-text);
+  box-shadow: var(--bp-shadow-md);
+  pointer-events: none;
+}
+
+#notice:empty {
+  padding: 0px;
+  border: 0px;
+  box-shadow: none;
+}
+
+#notice.error {
+  background: var(--status-rejected-bg);
+  color: var(--status-rejected-text);
+}
+
+footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  padding: 24px 32px;
+  font-size: 13px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-glass);
+}
+
+.skip {
+  position: absolute;
+  top: -100px;
+  padding: 16px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+  z-index: 100;
+}
+
+.skip:focus {
+  top: 0px;
+}
+
+[hidden] {
+  display: none !important;
+}

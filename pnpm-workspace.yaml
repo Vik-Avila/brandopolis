@@ -1,0 +1,10 @@
+# Build scripts allowed at install. embedded-postgres platform packages hydrate their binaries in postinstall;
+# every platform the lockfile resolves for developer machines is listed (Windows, Linux and macOS, x64 and arm64).
+allowBuilds:
+  embedded-postgres: true
+  '@embedded-postgres/windows-x64': true
+  '@embedded-postgres/linux-x64': true
+  '@embedded-postgres/linux-arm64': true
+  '@embedded-postgres/darwin-x64': true
+  '@embedded-postgres/darwin-arm64': true
+  esbuild: true

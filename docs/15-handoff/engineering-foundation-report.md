@@ -7,17 +7,17 @@ Depends on: Master Context + hardening brief
 
 # BRANDOPOLIS FINAL ENGINEERING FOUNDATION REPORT
 
-## Readiness Verdict
+## Readiness Verdict histórico — previo a autorización Sprint 01
 
 **READY WITH BLOCKER** para signoff final y entrega a código: todas las correcciones explícitas disponibles se aplicaron, pero el Final Contract Patch independiente no está disponible. El repo permite preparar M1; no se declara `READY FOR ENGINEERING / NO CONCEPTUAL BLOCKERS` hasta cotejar ese archivo.
 
-## Conceptual Blockers
+## Limitación histórica de cotejo — no gate M1
 
 Único: cotejar y aplicar `BRANDOPOLIS_FINAL_CONTRACT_PATCH_BEFORE_CODEX.md`. El Master está íntegro y la Product Bible operativa reconciliada; no se atribuyen decisiones al Patch sin leerlo.
 
 ## Technical Decisions Still Open
 
-Drizzle/Prisma, auth, proveedor IA inicial, research provider, entorno de despliegue; pricing/WTP en piloto.
+Auth final (Drizzle resuelto en ADR-0011), proveedor IA inicial, research provider, entorno de despliegue; pricing/WTP en piloto.
 
 ## Files Modified and Added
 
@@ -27,7 +27,7 @@ Inventario exacto relativo al ZIP anterior en [hardening-change-inventory.md](ha
 
 StrategicQuestion OPEN→IN_ANALYSIS→READY_FOR_DECISION→DECIDED→REOPENED; Hypothesis sin status ASSUMPTION_IN_USE; Experiment INCONCLUSIVE; BrandDomainHealth COMPLETE/PARTIAL/OPEN/NEEDS_REVIEW; INFORMATIVE; Evidence quality/relevance/freshness; Recommendation openQuestions/failureConditions; EvaluatorResult frente a ConsistencySeverity; Telemetry workspaceId nullable y envelope completo; ADR accepted/open.
 
-## QA Results
+## QA Results históricos de Foundation
 
 [QA report](qa-report.md): Markdown 135 JSON 27 schemas 21 requirements 15 golden cases 13 errors 0. No tests productivos ejecutados.
 
@@ -65,3 +65,10 @@ StrategicQuestion OPEN→IN_ANALYSIS→READY_FOR_DECISION→DECIDED→REOPENED; 
 ## Local Repository Instructions
 
 Descomprimir una carpeta `brandopolis/`, seguir `LOCAL_HANDOFF.md`, ejecutar `python3 scripts/foundation_check.py`, iniciar Git y trabajar secuencialmente en M1.
+
+
+## Resolución humana · 2026-09-24 · Sprint 01
+El usuario autoriza implementar M1 sobre los contratos canónicos presentes y corregir drift documental inequívoco. ASSUMPTION_IN_USE es relación/flag de dependencia de una Decision vigente sobre una Hypothesis no validada, nunca status. Las referencias anteriores al Patch independiente describen la limitación histórica de cotejo, no un gate de entrada a M1. No se ha localizado ni se afirma haber cotejado ese archivo. Esta resolución sustituye instrucciones anteriores de esperar ese cotejo para iniciar M1; no cambia Bible, invariantes ni alcance.
+
+## Estado operativo actual
+M1 y shell local implementados; ver [evidencia de implementación](m1-implementation.md). La tabla QG anterior conserva la evidencia de la entrega original; la resolución humana posterior permite ingeniería sin atribuir lectura al Patch independiente.

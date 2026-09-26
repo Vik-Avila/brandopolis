@@ -7,3 +7,24 @@ coverage/
 !.env.example
 *.log
 .DS_Store
+
+.venv/
+.local/
+test-results/
+.pnpm-store/
+playwright-report/
+
+# Editors, OS and tool caches
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+__pycache__/
+*.pyc
+.pytest_cache/
+.eslintcache
+*.tsbuildinfo
+# Playwright extras (traces, blob reports, browser cache)
+blob-report/
+playwright/.cache/
+*.trace.zip

@@ -1,0 +1,282 @@
+/* Public layer: gateway (/), access (/login) and request access (/request-access).
+   Strategic glass is most expressive here; the product shell keeps it subtle (product-shell.css). */
+
+.public-nav {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  font-size: 14px;
+}
+
+.public-nav a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.public-nav a:hover {
+  color: var(--bp-brand-emerald);
+}
+
+.public-nav a.cta {
+  white-space: nowrap;
+  color: var(--text-inverse);
+  background: var(--action-primary);
+  padding: 0px 18px;
+  border-radius: var(--bp-radius-pill);
+  font-weight: 650;
+}
+
+.public-nav a.cta:hover {
+  background: var(--action-primary-hover);
+  color: var(--text-inverse);
+}
+
+/* Gateway hero */
+
+.hero {
+  position: relative;
+  min-height: calc(-76px + 100vh);
+  display: grid;
+  grid-template-rows: 1fr auto;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.hero-art {
+  position: absolute;
+  inset: 0px;
+  z-index: -2;
+}
+
+.hero-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 70% 50%;
+  display: block;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0px;
+  z-index: -1;
+  background: linear-gradient(90deg,color-mix(in srgb,var(--bp-brand-ivory) 94%,transparent) 0%,color-mix(in srgb,var(--bp-brand-ivory) 82%,transparent) 36%,transparent 62%);
+}
+
+.hero-copy {
+  align-self: center;
+  max-width: 640px;
+  padding: 72px 0px 48px 7vw;
+}
+
+.hero-copy .eyebrow {
+  width: fit-content;
+}
+
+.hero-copy h1 {
+  font-size: clamp(44px, 5.4vw, 80px);
+  line-height: 1.02;
+  margin: 12px 0px 24px;
+  color: var(--bp-brand-charcoal);
+}
+
+.hero-copy h1 em {
+  font-style: italic;
+  color: var(--bp-divider-gold);
+}
+
+.lead {
+  font-size: clamp(16px, 1.3vw, 19px);
+  color: var(--text-secondary);
+  max-width: 520px;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+
+.pillars {
+  list-style: none;
+  margin: 0px 7vw 40px;
+  padding: 18px 24px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  background: var(--surface-glass-elevated);
+  border: 1px solid var(--border-glass-strong);
+  border-radius: var(--bp-radius-xl);
+  -webkit-backdrop-filter: blur(var(--blur-glass));
+  backdrop-filter: blur(var(--blur-glass));
+  box-shadow: var(--shadow-glass),inset 0 1px 0 var(--highlight-glass);
+}
+
+.pillars li {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  padding-left: 14px;
+  border-left: 1px solid var(--bp-divider-gold);
+}
+
+.pillars li:first-child {
+  border-left: 0px;
+  padding-left: 0px;
+}
+
+.pillars span {
+  color: var(--text-secondary);
+}
+
+/* How it works + Brandopolis Flow video (poster first; motion is an enhancement) */
+
+.how {
+  display: grid;
+  grid-template-columns: minmax(0px, 1fr) minmax(0px, 1.1fr);
+  gap: 56px;
+  align-items: center;
+  max-width: 1280px;
+  margin: 88px auto;
+  padding: 0px 32px;
+}
+
+.steps {
+  padding-left: 20px;
+  display: grid;
+  gap: 14px;
+  color: var(--text-secondary);
+}
+
+.steps strong {
+  color: var(--text-primary);
+}
+
+.principle {
+  font-family: var(--font-display);
+  font-size: 22px;
+  color: var(--bp-brand-emerald);
+  margin-top: 24px;
+}
+
+.how-art {
+  border-radius: var(--bp-radius-2xl);
+  overflow: hidden;
+  border: 1px solid var(--border-glass-strong);
+  box-shadow: var(--shadow-glass-elevated);
+  aspect-ratio: 16 / 9;
+  background: var(--surface-muted) url('/brand/web/flow-loop-poster.webp') center/cover;
+}
+
+.flow-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.how-media {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
+.how-media .how-art {
+  width: 100%;
+}
+
+#motion-toggle {
+  font-size: 13px;
+}
+
+/* Access (login / request access) */
+
+.welcome {
+  max-width: 1160px;
+  margin: 6vh auto;
+  padding: 0px;
+  border: 1px solid var(--border-glass-strong);
+  background: var(--surface-glass-hero);
+  box-shadow: var(--shadow-glass-elevated);
+  display: grid;
+  grid-template-columns: minmax(0px, 0.9fr) minmax(0px, 1fr) minmax(0px, 1fr);
+  overflow: hidden;
+  -webkit-backdrop-filter: blur(var(--blur-glass));
+  backdrop-filter: blur(var(--blur-glass));
+  border-radius: 18px;
+}
+
+.access-art {
+  background: var(--surface-muted) url('/brand/web/access-panel.webp') center/cover;
+  min-height: 520px;
+}
+
+.access-logo {
+  display: block;
+  width: 240px;
+  max-width: 100%;
+  height: auto;
+  margin: 0px 0px 36px;
+}
+
+.access-copy {
+  padding: 40px 32px;
+}
+
+.access-copy h1 {
+  font-size: 34px;
+  line-height: 1.15;
+}
+
+.access-copy > .eyebrow {
+  font-size: 10px;
+}
+
+.access-copy > p {
+  font-size: 14px;
+}
+
+.welcome form, #pilot-entry {
+  align-self: center;
+  margin: 32px;
+  padding: 32px;
+  background: var(--surface-glass-modal);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--bp-radius-xl);
+  box-shadow: var(--bp-shadow-md);
+}
+
+.welcome form {
+  border-radius: 12px;
+}
+
+.welcome form button, #pilot-entry .button {
+  width: 100%;
+}
+
+.welcome form button {
+  font-size: 13px;
+}
+
+.welcome .hint {
+  font-size: 11px;
+}
+
+#request-access-view.welcome {
+  grid-template-columns: minmax(0px, 0.9fr) minmax(0px, 2fr);
+}
+
+#request-access-view .access-copy {
+  max-width: 620px;
+  align-self: center;
+}
+
+#gateway + #login {
+  margin-top: 24px;
+  margin-bottom: 88px;
+}

@@ -1,0 +1,479 @@
+/* Shared header (public and product) and the authenticated shell: navigation, brand selector,
+   dialogs, busy/booting states and notice semantics. Glass stays subtle here. */
+
+:root {
+  --line: #dddcd3;
+  --human: #073D2D;
+  --assistance: #4c6157;
+  --attention: #7A5A20;
+  --product-radius: 16px;
+  --product-shadow: 0 8px 28px #073d2d08,0 1px 3px #073d2d06;
+  --shell-height: 84px;
+  --sidebar-width: 236px;
+  --layer-dialog: 70;
+}
+
+/* Header */
+
+header {
+  display: flex;
+  align-items: center;
+  min-height: 76px;
+  position: sticky;
+  top: 0px;
+  z-index: 30;
+  -webkit-backdrop-filter: blur(var(--blur-glass));
+  backdrop-filter: blur(var(--blur-glass));
+  height: var(--shell-height);
+  padding: 14px 28px;
+  gap: 24px;
+  background: rgba(255, 252, 246, 0.93);
+  box-shadow: rgba(255, 255, 255, 0.533) 0px 1px 0px;
+  border-bottom: 1px solid rgb(222, 219, 210);
+}
+
+.brand {
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+}
+
+.brand img {
+  max-width: 100%;
+  display: block;
+  width: 220px;
+  height: auto;
+  max-height: 54px;
+  object-fit: contain;
+}
+
+.product-heading {
+  display: none;
+}
+
+.demo {
+  border-radius: 5px;
+  background: rgb(241, 238, 230);
+  color: rgb(76, 81, 77);
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  padding: 6px 8px;
+}
+
+#menu, #journey #close-menu {
+  display: none;
+}
+
+/* Authenticated shell */
+
+body.app::before {
+  background: radial-gradient(at 70% 0%, rgba(226, 212, 183, 0.267), transparent 65%);
+}
+
+body.app::after {
+  content: "";
+  position: fixed;
+  inset: 0px;
+  z-index: -1;
+  background: linear-gradient(180deg,color-mix(in srgb,var(--bp-brand-ivory) 55%,transparent),color-mix(in srgb,var(--bp-brand-ivory) 80%,transparent)),url('/brand/web/workspace-atmosphere-desktop.webp') center/cover no-repeat;
+  pointer-events: none;
+  opacity: 0.3;
+}
+
+body.app .public-nav {
+  display: none;
+}
+
+.app .brand {
+  margin: 0px;
+  width: calc(var(--sidebar-width) - 28px);
+  flex-shrink: 0;
+}
+
+.app .product-heading {
+  display: flex;
+  flex: 1 1 0%;
+  min-width: 0px;
+  gap: 8px;
+  flex-direction: column;
+  border-left: 1px solid var(--line);
+  padding-left: 24px;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+
+.app .product-heading > span:first-child {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+#header-context {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#logout {
+  font-size: 12px;
+  min-height: 38px;
+  padding: 8px 12px;
+  background: transparent;
+  border-color: var(--line);
+}
+
+#workspace {
+  margin: auto;
+  padding: 24px 28px 52px calc(var(--sidebar-width) + 28px);
+  max-width: 1800px;
+}
+
+.workspace-head {
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 0px;
+  justify-content: space-between;
+  padding-bottom: 20px;
+  display: flex;
+}
+
+.workspace-intro {
+  flex: 1 1 0%;
+  min-width: 0px;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.workspace-intro .eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+}
+
+.workspace-head h1 {
+  font: 500 16px / 1.5 ui-sans-serif, system-ui, sans-serif;
+  color: rgb(76, 81, 77);
+  letter-spacing: 0px;
+  margin: 0px;
+}
+
+.workspace-head label {
+  width: 260px;
+  flex-shrink: 0;
+}
+
+.brand-control {
+  padding: 8px 12px 8px 16px;
+  border: 1px solid rgba(201, 174, 130, 0.5);
+  border-radius: 12px;
+  box-shadow: rgb(255, 255, 255) 0px 1px inset;
+  max-width: 360px;
+  min-width: 250px;
+  background: rgb(255, 253, 247);
+}
+
+.brand-control label {
+  width: auto;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgb(102, 106, 101);
+}
+
+.brand-control select {
+  width: 100%;
+  padding: 0px 28px 0px 0px;
+  background-position: calc(100% - 10px) 50%, calc(100% - 5px) 50%;
+  border: 0px;
+  background-color: transparent;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  min-height: 34px;
+  font-size: 14px;
+}
+
+#new-brand {
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgb(201, 200, 190);
+  min-height: 42px;
+  padding: 10px 13px;
+}
+
+#new-brand span[aria-hidden] {
+  font-size: 17px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0px, 1fr) 270px;
+  gap: 22px;
+  align-items: start;
+}
+
+/* Strategic navigation (fixed sidebar ≥1280px, modal drawer below) */
+
+#journey {
+  position: fixed;
+  left: 0px;
+  bottom: 0px;
+  overflow-y: auto;
+  z-index: 20;
+  top: var(--shell-height);
+  width: var(--sidebar-width);
+  background: linear-gradient(rgba(247, 244, 237, 0.98), rgba(241, 238, 229, 0.95));
+  padding: 24px 16px;
+  border-right: 1px solid rgb(217, 215, 205);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+#journey.open {
+  z-index: 50;
+}
+
+#journey button {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
+  font-size: 13px;
+  min-height: 44px;
+  border-radius: 7px;
+  padding: 10px 12px;
+  margin: 4px 0px;
+  font-weight: 500;
+  color: rgb(68, 78, 71);
+  gap: 8px;
+  transition: background-color var(--bp-motion-normal) var(--bp-ease), color var(--bp-motion-normal) var(--bp-ease), box-shadow var(--bp-motion-normal) var(--bp-ease);
+}
+
+#journey button span {
+  margin-right: 4px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: rgb(90, 97, 91);
+}
+
+#journey button:hover {
+  background: rgb(233, 235, 227);
+  color: var(--bp-brand-emerald-deep);
+  border-color: transparent;
+}
+
+/* Current place: a raised card with an emerald edge. Solid emerald stays reserved for human commitment. */
+#journey button[aria-current] {
+  background: var(--surface-card);
+  color: var(--human);
+  border-color: rgba(201, 174, 130, 0.45);
+  box-shadow: inset 3px 0 0 var(--bp-brand-emerald), 0 6px 16px rgba(7, 61, 45, 0.07);
+  font-weight: 650;
+}
+
+#journey button[aria-current] span {
+  color: var(--bp-brand-emerald);
+}
+
+#journey .needs-attention::after {
+  content: "!";
+  display: grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  font-size: 10px;
+  margin-left: auto;
+  color: rgb(98, 71, 25);
+  background: rgb(239, 224, 189);
+  border-radius: 50%;
+  font-weight: 750;
+}
+
+#journey #home {
+  margin-bottom: 20px;
+}
+
+.nav-group {
+  text-transform: uppercase;
+  font-weight: 700;
+  margin: 27px 12px 10px;
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  letter-spacing: 0.15em;
+}
+
+.nav-principle {
+  margin: 38px 12px 16px;
+  padding-top: 20px;
+  border-top: 1px solid rgb(217, 215, 205);
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.nav-principle img {
+  opacity: 0.85;
+}
+
+.nav-principle p {
+  font: italic 15px / 1.6 var(--font-display);
+  margin: 0px;
+  color: rgb(93, 101, 93);
+}
+
+.nav-principle strong {
+  color: rgb(7, 61, 45);
+  font-weight: 400;
+}
+
+#nav-backdrop {
+  position: fixed;
+  inset: 0px;
+  background: var(--bp-glass-backdrop-dark);
+  z-index: 40;
+}
+
+body.app footer {
+  padding-left: calc(var(--sidebar-width) + 28px);
+  font-size: 12px;
+}
+
+/* Subtle view entry: short, no overshoot. Removed entirely under prefers-reduced-motion. */
+#decision > *, #context > * {
+  animation: view-enter var(--bp-motion-slow) var(--bp-ease) both;
+}
+
+@keyframes view-enter {
+  from { opacity: 0; transform: translateY(6px); }
+}
+
+/* Dialogs */
+
+dialog[open] {
+  animation: dialog-enter var(--bp-motion-normal) var(--bp-ease);
+}
+
+@keyframes dialog-enter {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+}
+
+dialog {
+  border: 1px solid rgb(214, 206, 185);
+  border-radius: 18px;
+  background: rgb(255, 253, 248);
+  color: rgb(22, 27, 25);
+  padding: 32px;
+  max-width: 540px;
+  width: calc(100% - 32px);
+  max-height: calc(100dvh - 40px);
+  box-shadow: rgba(7, 61, 45, 0.2) 0px 24px 90px;
+  z-index: var(--layer-dialog);
+}
+
+dialog::backdrop {
+  background: rgba(10, 36, 27, 0.7);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+}
+
+dialog h2 {
+  font-size: 30px;
+}
+
+dialog > p:not(.eyebrow) {
+  font-size: 13px;
+  color: rgb(96, 107, 89);
+}
+
+.new-brand {
+  align-items: center;
+  gap: 12px;
+  display: block;
+  padding: 0px;
+}
+
+.new-brand input {
+  max-width: none;
+}
+
+.new-brand label {
+  margin: 18px 0px 8px;
+}
+
+.new-brand .intake {
+  margin: 16px 0px;
+}
+
+/* Busy and booting states */
+
+/* Booting hides the page only while the session probe runs (app.js removes the class).
+   If scripts or the probe fail, the page reveals itself after 4s instead of staying blank.
+   The !important keeps this fallback alive under the reduced-motion override. */
+body.booting main {
+  visibility: hidden;
+  animation: boot-reveal 0s 4s forwards !important;
+}
+
+body.booting::after {
+  content: "Preparando tu espacio estratégico…";
+  position: fixed;
+  inset: 40% 0px auto;
+  text-align: center;
+  font: 500 20px / 1.5 var(--font-display);
+  color: rgb(82, 96, 70);
+  animation: boot-dismiss 0s 4s forwards !important;
+}
+
+@keyframes boot-reveal {
+  to { visibility: visible; }
+}
+
+@keyframes boot-dismiss {
+  to { visibility: hidden; }
+}
+
+#workspace[aria-busy="true"]::before {
+  content: "";
+  position: fixed;
+  top: var(--shell-height);
+  left: var(--sidebar-width);
+  right: 0px;
+  height: 2px;
+  z-index: 35;
+  background: linear-gradient(90deg, rgb(201, 174, 130), rgb(11, 104, 71), rgb(201, 174, 130)) 0% 0% / 200% 100%;
+  animation: 1.2s linear 0s infinite normal none running working;
+}
+
+@keyframes working {
+  100% { background-position: 200% 0px; }
+}
+
+/* Status notices dismiss themselves after 7s (app.js); errors stay until the next action. */
+body.app #notice {
+  max-width: 380px;
+}
+
+/* Actionable notices distinguish human corrections from technical failures. */
+
+#notice[data-kind="validation"],
+#notice[data-kind="session"] {
+  background: var(--status-review-bg);
+  color: var(--status-review-text);
+  border-color: var(--status-review-text);
+}
+
+#notice[data-kind="assistance"] {
+  background: var(--evidence-bg);
+  color: var(--text-primary);
+  border-style: dashed;
+  border-color: var(--border-default);
+}

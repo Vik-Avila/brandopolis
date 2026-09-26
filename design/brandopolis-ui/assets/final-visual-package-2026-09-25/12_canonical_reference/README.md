@@ -1,0 +1,2 @@
+VISUAL AUTHORITY
+The supplied seven-screen mockup is the North Star for composition, UI atmosphere, sophistication, color balance, product density, restrained glass and mobile continuity. The approved source artworks supplied with the UI Kit are authoritative for logo geometry, colors, Ribbon B and Flow. brandopolis-brand-board.png is a derived arrangement of those unchanged original artworks, because no separate standalone brand-board image was supplied in this turn; it does not redraw the identity. These references guide visuals only and do not authorize product features.
