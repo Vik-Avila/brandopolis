@@ -124,6 +124,8 @@ Verified on the handoff machine (Windows 11): Node **24.19.0**, pnpm **12.4.2**,
 
 ## Clone procedure
 
+**Windows:** clone into a short path (for example `C:\devrandopolis`). Some design files have ~127-character repository paths and the classic 260-character path limit applies; alternatively enable `git config --global core.longpaths true` before cloning. Line endings are handled by `.gitattributes` (hashed brand and kit files are checked out byte-exact).
+
 ```bash
 git clone --branch handoff/phase10b-final-2026-09-25 https://github.com/Vik-Avila/brandopolis.git
 ```
@@ -139,6 +141,9 @@ To pin the exact handoff state instead: `git checkout brandopolis-mvp-handoff-re
 ```bash
 corepack enable
 ```
+
+On Windows `corepack enable` writes to `C:\Program Files
+odejs` and needs an elevated terminal. Without admin rights use `npm install -g pnpm@12.4.2` instead. Check with `pnpm --version` (must print `12.4.2`).
 
 ```bash
 pnpm install --frozen-lockfile
