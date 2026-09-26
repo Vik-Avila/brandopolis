@@ -10,6 +10,7 @@ import { connect } from '../src/persistence/database.js';
 import { Engine, hash } from '../src/application/engine.js';
 import { schema,validate,transition,reviewOrder, type CommitCommand } from '../src/domain/contracts.js';
 import { createApp,cookieMaxAge } from '../src/transport/http.js';
+import { loadAsset } from '../src/transport/assets.js';
 import type { AddressInfo } from 'node:net';
 import * as t from '../src/persistence/schema.js';
 import { ModelGateway, DemoProvider } from '../src/domain/analysis.js';
@@ -92,6 +93,17 @@ describe('PostgreSQL M1',()=>{
     expect(after.reviews).toEqual(before.reviews);expect(after.reviews).toMatchObject([{triggerVersionId:c2.versionId,status:'COMPLETED',reviewedBy:s.who.userId}]);
     expect(after.impacts).toEqual(before.impacts);
     expect((await connection.db.select().from(t.telemetry).where(eq(t.telemetry.brandId,s.brand.id))).length).toBe(telemetryBefore);
+  });
+  it('media assets declare their length and answer a single byte range for video playback',async()=>{
+    const server=createApp(engine,loadAsset);await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));
+    const url=`http://127.0.0.1:${(server.address() as AddressInfo).port}/brand/web/flow-loop.mp4`,size=loadAsset('/brand/web/flow-loop.mp4')!.content.length;
+    try {
+      const full=await fetch(url);expect(full.status).toBe(200);expect(full.headers.get('accept-ranges')).toBe('bytes');expect(Number(full.headers.get('content-length'))).toBe(size);
+      const head=await fetch(url,{headers:{Range:'bytes=0-99'}});expect(head.status).toBe(206);expect(head.headers.get('content-range')).toBe(`bytes 0-99/${size}`);expect((await head.arrayBuffer()).byteLength).toBe(100);
+      const tail=await fetch(url,{headers:{Range:'bytes=-10'}});expect(tail.status).toBe(206);expect(tail.headers.get('content-range')).toBe(`bytes ${size-10}-${size-1}/${size}`);
+      const invalid=await fetch(url,{headers:{Range:`bytes=${size}-`}});expect(invalid.status).toBe(416);
+      const script=await fetch(url.replace('/brand/web/flow-loop.mp4','/app.js'),{headers:{Range:'bytes=0-9'}});expect(script.status).toBe(200);expect(script.headers.get('accept-ranges')).toBeNull();
+    } finally {await new Promise<void>(r=>server.close(()=>r()));}
   });
   it('RC readiness is minimal and expired local demo sessions retain their identity without escalation',async()=>{
     expect(await readiness(connection.pool)).toBe('READY');

@@ -1,11 +1,68 @@
-/* Responsive adaptations in original cascade order, followed by motion preferences. */
+/* Responsive layer, desktop-first: one block per breakpoint from widest to narrowest, then motion.
+   Inside each block rules keep their original relative order. */
 
+/* Wide desktop */
+@media (min-width: 1500px) {
+  .layout {
+    grid-template-columns: minmax(0px, 1fr) 290px;
+  }
+  #decision {
+    padding: 32px;
+  }
+  .impact-pair {
+    grid-template-columns: minmax(0px, 1fr) 112px minmax(0px, 1fr);
+  }
+  .impact-link {
+    text-wrap-mode: wrap;
+    text-align: center;
+  }
+}
+
+/* Desktop ≤1500 */
+@media (max-width: 1500px) {
+  .impact-pair {
+    grid-template-columns: minmax(0px, 1fr) 90px minmax(0px, 1fr);
+  }
+  .impact-link {
+    text-wrap-mode: wrap;
+    text-align: center;
+  }
+  .home-heading {
+    display: block;
+  }
+  .home-heading > button {
+    margin-top: 8px;
+  }
+  #decision .home-heading h2 {
+    max-width: none;
+  }
+}
+
+/* Compact desktop ≤1400 */
 @media (max-width: 1400px) {
   #context > p {
     grid-column: 1 / -1;
   }
+  .layout {
+    grid-template-columns: minmax(0px, 1fr) 248px;
+    gap: 18px;
+  }
+  #context {
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .workspace-head h1 {
+    font-size: 13px;
+  }
+  .workspace-head {
+    gap: 12px;
+  }
+  #decision {
+    padding: 24px;
+  }
 }
 
+/* Tablet and drawer navigation ≤1279 */
 @media (max-width: 1279px) {
   #menu, #journey #close-menu {
     display: inline-flex;
@@ -39,8 +96,85 @@
     border-left: 0px;
     padding-left: 0px;
   }
+  #workspace {
+    padding: 24px;
+  }
+  .app .brand {
+    width: auto;
+  }
+  .app .product-heading {
+    padding-left: 20px;
+  }
+  .layout {
+    grid-template-columns: minmax(0px, 1fr) 260px;
+  }
+  #journey {
+    transform: translateX(-100%);
+    top: 0px;
+    width: 280px;
+    background-image: initial;
+    background-color: rgb(248, 245, 238);
+  }
+  .workspace-head h1 {
+    font-size: 15px;
+  }
+  body.app footer {
+    padding-left: 24px;
+  }
+  #workspace[aria-busy="true"]::before {
+    left: 0px;
+  }
 }
 
+/* Single column ≤1000 */
+@media (max-width: 1000px) {
+  .layout {
+    grid-template-columns: minmax(0px, 1fr);
+  }
+  #context {
+    position: static;
+  }
+  .context-cover {
+    padding-top: 20px;
+    padding-right: 24px;
+    padding-left: 24px;
+  }
+  .context-lineage {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 24px;
+  }
+  .context-updated, .context-note {
+    display: none;
+  }
+  .context-lineage li {
+    padding-bottom: 12px;
+  }
+  .context-details {
+    padding: 10px 24px;
+  }
+  .context-lineage li::before {
+    display: none;
+  }
+  .brand-control {
+    flex: 1 1 0%;
+  }
+  .app .product-heading > span:first-child {
+    display: none;
+  }
+  .app .product-heading {
+    border: 0px;
+    padding: 0px;
+  }
+  .workspace-head h1 {
+    display: block;
+  }
+  .workspace-intro {
+    display: none;
+  }
+}
+
+/* Mobile ≤767 */
 @media (max-width: 767px) {
   .public-nav a:not(.cta) {
     display: none;
@@ -94,147 +228,15 @@
     font-size: 21px;
     padding: 16px;
   }
-  .impact-arrow {
-    transform: rotate(90deg);
-    justify-self: center;
-  }
   .review-options, .kpis, .blueprint-grid {
     grid-template-columns: 1fr 1fr;
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition: none !important;
-    animation: auto ease 0s 1 normal none running none !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-@media (max-width: 767px) {
-  .review-options, .summary-grid {
+  .review-options {
     grid-template-columns: 1fr;
   }
   .form-footer .actions {
     width: 100%;
   }
-}
-
-@media (min-width: 1500px) {
-  .layout {
-    grid-template-columns: minmax(0px, 1fr) 290px;
-  }
-  #decision {
-    padding: 32px;
-  }
-  .impact-pair {
-    grid-template-columns: minmax(0px, 1fr) 112px minmax(0px, 1fr);
-  }
-  .impact-link {
-    text-wrap-mode: wrap;
-    text-align: center;
-  }
-}
-
-@media (max-width: 1400px) {
-  .layout {
-    grid-template-columns: minmax(0px, 1fr) 248px;
-    gap: 18px;
-  }
-  #context {
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
-  }
-  .workspace-head h1 {
-    font-size: 13px;
-  }
-  .workspace-head {
-    gap: 12px;
-  }
-  #decision {
-    padding: 24px;
-  }
-}
-
-@media (max-width: 1279px) {
-  #workspace {
-    padding: 24px;
-  }
-  .app .brand {
-    width: auto;
-  }
-  .app .product-heading {
-    padding-left: 20px;
-  }
-  .layout {
-    grid-template-columns: minmax(0px, 1fr) 260px;
-  }
-  #journey {
-    transform: translateX(-100%);
-    top: 0px;
-    width: 280px;
-    background-image: initial;
-    background-color: rgb(248, 245, 238);
-  }
-  .workspace-head h1 {
-    font-size: 15px;
-  }
-  body.app footer {
-    padding-left: 24px;
-  }
-}
-
-@media (max-width: 1000px) {
-  .layout {
-    grid-template-columns: minmax(0px, 1fr);
-  }
-  #context {
-    position: static;
-  }
-  .context-cover {
-    padding-top: 20px;
-    padding-right: 24px;
-    padding-left: 24px;
-  }
-  .context-lineage {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px 24px;
-  }
-  .context-updated, .context-note {
-    display: none;
-  }
-  .context-lineage li {
-    padding-bottom: 12px;
-  }
-  .context-details {
-    padding: 10px 24px;
-  }
-  .context-lineage li::before {
-    display: none;
-  }
-  .brand-control {
-    flex: 1 1 0%;
-  }
-  .app .product-heading > span:first-child {
-    display: none;
-  }
-  .app .product-heading {
-    border: 0px;
-    padding: 0px;
-  }
-  .summary-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-  .workspace-head h1 {
-    display: block;
-  }
-  .workspace-intro {
-    display: none;
-  }
-}
-
-@media (max-width: 767px) {
   :root {
     --shell-height: 70px;
   }
@@ -367,16 +369,6 @@
   .attention-section > h3 {
     font-size: 22px;
   }
-  .row-card {
-    grid-template-columns: 1fr;
-  }
-  .row-card button {
-    min-height: 44px;
-    justify-self: start;
-  }
-  .summary-grid {
-    grid-template-columns: 1fr;
-  }
   .strategy-cards {
     grid-template-columns: 1fr;
   }
@@ -438,42 +430,6 @@
   body.app footer {
     padding: 20px 16px;
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, ::before, ::after {
-    animation: auto ease 0s 1 normal none running none !important;
-    transition: none !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-@media (max-width: 1500px) {
-  .impact-pair {
-    grid-template-columns: minmax(0px, 1fr) 90px minmax(0px, 1fr);
-  }
-  .impact-link {
-    text-wrap-mode: wrap;
-    text-align: center;
-  }
-  .home-heading {
-    display: block;
-  }
-  .home-heading > button {
-    margin-top: 8px;
-  }
-  .home-heading h2 {
-    max-width: none !important;
-  }
-}
-
-@media (max-width: 1279px) {
-  #workspace[aria-busy="true"]::before {
-    left: 0px;
-  }
-}
-
-@media (max-width: 767px) {
   .workspace-head {
     gap: 10px;
     flex-wrap: nowrap;
@@ -503,8 +459,8 @@
   .decision-tabs button {
     font-size: 10px;
   }
-  .decision-heading h2 {
-    font-size: 28px !important;
+  #decision .decision-heading h2 {
+    font-size: 28px;
   }
   .knowledge-grid {
     grid-template-columns: 1fr;
@@ -552,8 +508,8 @@
   .history-intro h3 {
     font-size: 24px;
   }
-  .home-heading h2 {
-    font-size: 32px !important;
+  #decision .home-heading h2 {
+    font-size: 32px;
   }
   .home-heading .view-lead {
     line-height: 1.6;
@@ -637,11 +593,11 @@
   }
 }
 
+/* Reduced motion: nonessential animation and smooth scrolling are removed; states stay equivalent. */
 @media (prefers-reduced-motion: reduce) {
-  #workspace[aria-busy="true"]::before {
-    animation-duration: auto;
-    animation-timing-function: ease;
-    animation-iteration-count: 1;
-    animation-name: none;
+  *, ::before, ::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
   }
 }

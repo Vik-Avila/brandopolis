@@ -60,7 +60,16 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         const media=path.startsWith('/brand/')||path==='/favicon.ico'||path==='/site.webmanifest',document=asset.type.startsWith('text/html');
         const cache=media?'public, max-age=86400':document?'no-store':'no-cache';
         if(asset.etag&&!document&&req.headers['if-none-match']===asset.etag){res.writeHead(304,{'Cache-Control':cache,ETag:asset.etag});res.end();return;}
-        res.writeHead(200,{'Content-Type':asset.type,'Cache-Control':cache,...(asset.etag&&!document?{ETag:asset.etag}:{})});res.end(asset.content);return;
+        const body=typeof asset.content==='string'?Buffer.from(asset.content):asset.content;
+        const headers={'Content-Type':asset.type,'Cache-Control':cache,'Content-Length':String(body.length),...(media?{'Accept-Ranges':'bytes'}:{}),...(asset.etag&&!document?{ETag:asset.etag}:{})};
+        // Media honours a single byte range: Safari/iOS only plays MP4 video from servers that answer 206.
+        const range=media&&req.headers.range?/^bytes=(\d*)-(\d*)$/.exec(req.headers.range):null;
+        if(range&&(range[1]||range[2])){
+          const size=body.length,start=range[1]===''?Math.max(0,size-Number(range[2])):Number(range[1]),end=range[1]===''||range[2]===''?size-1:Math.min(Number(range[2]),size-1);
+          if(start>end||start>=size){res.writeHead(416,{'Content-Range':`bytes */${size}`});res.end();return;}
+          res.writeHead(206,{...headers,'Content-Length':String(end-start+1),'Content-Range':`bytes ${start}-${end}/${size}`});res.end(body.subarray(start,end+1));return;
+        }
+        res.writeHead(200,headers);res.end(body);return;
       }
       const bearer=req.headers.authorization?.startsWith('Bearer ')?req.headers.authorization.slice(7):undefined;
       const cookieName=pilot?'__Host-brandopolis_session':'brandopolis_session';

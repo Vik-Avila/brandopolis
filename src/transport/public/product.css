@@ -1,7 +1,0 @@
-/* Product presentation entrypoint. Import order preserves the existing cascade.
-   Primitives and shell → decisions → context → product views → responsive behavior. */
-@import url("/product-shell.css");
-@import url("/product-decision.css");
-@import url("/product-context.css");
-@import url("/product-views.css");
-@import url("/product-responsive.css");

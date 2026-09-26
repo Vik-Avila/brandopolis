@@ -2,3 +2,5 @@
 # Keep them exactly as committed: no line-ending conversion (core.autocrlf would otherwise rewrite SVG/JSON/manifest bytes).
 design/brandopolis-ui/brand-master/final-canonical-2026-09-25/** -text
 public/brand/** -text
+# Runtime frontend is served byte-for-byte (ETag = content hash): keep LF on every OS.
+src/transport/public/** text eol=lf

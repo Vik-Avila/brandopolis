@@ -9,10 +9,6 @@
   min-width: 0px;
 }
 
-.dependency-arrow {
-  color: var(--text-secondary);
-}
-
 .learning-steps {
   counter-reset: step 0;
 }
@@ -75,73 +71,6 @@
 .attention-section > h3 {
   font: 500 23px / 1.25 Georgia, serif;
   margin: 9px 0px 16px;
-}
-
-.row-card {
-  display: grid;
-  grid-template-columns: minmax(0px, 1fr) auto;
-  gap: 16px;
-  align-items: center;
-  border: 1px solid var(--border-default);
-  background: rgb(255, 253, 249);
-  border-radius: 8px;
-  border-color: rgb(230, 222, 204);
-  padding: 14px;
-  margin: 8px 0px;
-}
-
-.row-card h3 {
-  margin: 0px 0px 4px;
-  font-size: 13px;
-}
-
-.row-card p {
-  margin: 0px;
-  color: var(--text-secondary);
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.row-card button {
-  font-size: 10px;
-  min-height: 38px;
-  padding: 8px 10px;
-  white-space: nowrap;
-}
-
-.open-section {
-  padding: 2px 0px 16px;
-}
-
-.open-section h3 {
-  font-size: 14px;
-}
-
-.open-section > .hint {
-  font-size: 12px;
-}
-
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0px, 1fr));
-  gap: 10px;
-  margin: 0px 0px 16px;
-}
-
-.summary-grid > div {
-  border: 1px solid var(--border-default);
-  border-radius: 10px;
-  padding: 16px;
-  background: rgb(253, 251, 246);
-}
-
-.summary-grid h3 {
-  margin: 0px 0px 6px;
-  font-size: 12px;
-}
-
-.summary-grid p {
-  font-size: 11px;
 }
 
 .section-heading {
@@ -347,10 +276,10 @@
   justify-content: space-between;
 }
 
-.home-heading h2 {
-  font-size: 34px !important;
-  max-width: 24ch !important;
-  margin-bottom: 12px !important;
+#decision .home-heading h2 {
+  font-size: 34px;
+  max-width: 24ch;
+  margin-bottom: 12px;
 }
 
 .home-heading > .button, .home-heading > button {
@@ -558,4 +487,3 @@
   font-size: 11px;
   white-space: nowrap;
 }
-

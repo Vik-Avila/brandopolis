@@ -30,22 +30,6 @@
   margin-top: 8px;
 }
 
-.impact-pair h4 {
-  margin: 4px 0px 6px;
-  font-size: 16px;
-}
-
-.impact-pair p {
-  margin: 6px 0px 0px;
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-.impact-arrow {
-  align-self: center;
-  font-size: 22px;
-  color: var(--text-secondary);
-}
 
 .review-options > div {
   padding: 14px;
@@ -62,11 +46,6 @@ details {
   border-top: 1px solid var(--border-default);
   padding-top: 16px;
   margin-top: 28px;
-}
-
-.history-item.is-current::after {
-  background: var(--bp-brand-emerald);
-  border-color: var(--bp-brand-emerald);
 }
 
 .empty {
@@ -420,11 +399,14 @@ details[open] > summary::after {
 }
 
 .impact-pair article h4 {
+  margin: 4px 0px 6px;
   font-size: 14px;
 }
 
 .impact-pair article p {
+  margin: 6px 0px 0px;
   font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .impact-link::before, .impact-link::after {
@@ -457,14 +439,8 @@ details[open] > summary::after {
   margin-top: 28px;
 }
 
-.history > summary {
-  font-size: 13px;
-}
-
 .history-item {
   position: relative;
-  border-bottom: 0px;
-  padding: 8px 0px 20px 32px;
 }
 
 .history-item p {
@@ -480,11 +456,6 @@ details[open] > summary::after {
   align-items: center;
   color: var(--text-muted);
   font-size: 10px;
-}
-
-.history-item.is-current {
-  background: linear-gradient(90deg, rgb(240, 245, 239), transparent);
-  border-radius: 8px;
 }
 
 .new-brand .actions {
@@ -711,16 +682,15 @@ details[open] > summary::after {
   text-transform: uppercase;
 }
 
-.impact-before p {
+.impact-pair article .impact-before p {
   color: rgb(108, 110, 96);
-  font-size: 11px;
 }
 
 .impact-after {
   margin-top: 12px;
 }
 
-.impact-after p {
+.impact-pair article .impact-after p {
   font-weight: 600;
   color: rgb(51, 75, 51);
 }
@@ -790,19 +760,6 @@ details[open] > summary::after {
   gap: 18px;
   padding: 0px 0px 26px;
   background: transparent;
-}
-
-.history-item::after {
-  content: "";
-  position: absolute;
-  border-radius: 50%;
-  background: var(--surface-card);
-  border: 2px solid var(--status-superseded-text);
-  width: 10px;
-  height: 10px;
-  left: 6px;
-  top: 14px;
-  display: none;
 }
 
 .history-item::before {

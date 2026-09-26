@@ -1,15 +1,18 @@
 // Presentation-only keyboard and focus behavior. Native dialog provides background inertness.
-export function containDialogFocus(dialog){
- dialog.addEventListener('keydown',event=>{
-  if(event.key!=='Tab')return;
-  const controls=[...dialog.querySelectorAll('button,input,textarea,select,summary,a[href],[tabindex="0"]')].filter(el=>!el.disabled&&el.checkVisibility());
+// checkVisibility() is missing before Safari 17.4; rendered boxes are an equivalent test here.
+const visible=el=>el.checkVisibility?el.checkVisibility():el.getClientRects().length>0;
+// Tab / Shift+Tab cycle inside a container while isActive(). Used by the brand dialog and the navigation drawer.
+export function trapFocus(container,isActive=()=>true){
+ container.addEventListener('keydown',event=>{
+  if(event.key!=='Tab'||!isActive())return;
+  const controls=[...container.querySelectorAll('button,input,textarea,select,summary,a[href],[tabindex="0"]')].filter(el=>!el.disabled&&visible(el));
   const first=controls[0],last=controls.at(-1);
   if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}
   else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}
  });
 }
 export function decisionTabs(surface,active,onSelect,versionCount){
- const overview=document.createElement('section');overview.id='decision-overview';
+ const overview=document.createElement('section');
  const knowledge=surface.querySelector('.knowledge'),recommendation=surface.querySelector('.recommendation'),history=surface.querySelector('.history');
  const emptyHistory=!history?surface.querySelector('.empty-state'):null;
  const heading=surface.querySelector('.decision-heading');
