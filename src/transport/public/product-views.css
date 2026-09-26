@@ -47,14 +47,14 @@
 
 .kpis strong {
   display: block;
-  font: 500 32px / 1.1 Georgia, serif;
+  font: 500 32px / 1.1 var(--font-display);
   margin-bottom: 6px;
   color: rgb(21, 62, 43);
 }
 
 .kpis span {
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.4;
   display: block;
 }
@@ -63,13 +63,23 @@
   color: rgb(122, 90, 32);
 }
 
+.kpis li.is-zero {
+  background: transparent;
+  box-shadow: none;
+  border-style: dashed;
+}
+
+.kpis li.is-zero strong {
+  color: var(--text-muted);
+}
+
 .attention-section > .eyebrow {
   font-size: 9px;
   color: rgb(121, 96, 58);
 }
 
 .attention-section > h3 {
-  font: 500 23px / 1.25 Georgia, serif;
+  font: 500 23px / 1.25 var(--font-display);
   margin: 9px 0px 16px;
 }
 
@@ -82,12 +92,12 @@
 }
 
 .section-heading h3 {
-  font: 500 24px / 1.2 Georgia, serif;
+  font: 500 24px / 1.2 var(--font-display);
   margin: 6px 0px;
 }
 
 .section-heading > span {
-  font-size: 10px;
+  font-size: 11px;
   color: rgb(105, 113, 95);
 }
 
@@ -114,6 +124,9 @@
 }
 
 .blueprint-grid .analysis-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   border: 1px solid var(--border-default);
   background: rgb(248, 247, 240);
   border-radius: 12px;
@@ -122,7 +135,7 @@
 }
 
 .blueprint-pillar .eyebrow {
-  font-size: 8px;
+  font-size: 10px;
   color: rgb(122, 102, 68);
 }
 
@@ -135,7 +148,7 @@
   background: transparent;
   border: 0px;
   padding: 0px;
-  font: 500 20px / 1.35 Georgia, serif;
+  font: 500 20px / 1.35 var(--font-display);
   min-height: 3em;
 }
 
@@ -144,7 +157,12 @@
 }
 
 .blueprint-grid button {
-  font-size: 11px;
+  font-size: 12px;
+  margin-top: auto;
+}
+
+.blueprint-grid .current {
+  align-self: stretch;
 }
 
 .dependency-path {
@@ -159,7 +177,7 @@
   border-bottom: 1px solid rgb(225, 227, 216);
 }
 
-.dependency-path > span:last-child::before {
+.dependency-path > span:nth-child(3)::before {
   content: "→";
   margin-right: 10px;
   color: rgb(145, 118, 77);
@@ -223,7 +241,9 @@
 .learning-cycle span {
   flex: 1 1 0%;
   padding: 14px;
-  font-size: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
   border-right: 1px solid rgb(215, 221, 204);
 }
 
@@ -258,9 +278,43 @@
   font-size: 15px;
 }
 
+.practice-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  padding: 0px;
+  margin: 20px 0px 28px;
+}
+
+.practice-summary li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid rgb(215, 221, 204);
+  border-radius: 10px;
+  background: var(--surface-card);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.practice-summary strong {
+  font: 500 22px / 1 var(--font-display);
+  color: var(--human);
+}
+
+#decision[data-view="practice"] > .analysis-item h3 {
+  margin: 4px 0px;
+}
+
+#decision[data-view="practice"] > .analysis-item p:last-child {
+  margin: 0px;
+}
+
 #decision[data-view="practice"] > .analysis-item {
-  padding: 16px 20px;
-  margin-top: 14px;
+  padding: 12px 18px;
+  margin-top: 10px;
   border-width: 1px 1px 1px 3px;
   border-style: solid;
   border-color: rgb(215, 221, 204) rgb(215, 221, 204) rgb(215, 221, 204) rgb(162, 181, 151);
@@ -293,8 +347,8 @@
 }
 
 .kpis strong small {
-  font: 400 12px / 1 ui-sans-serif, system-ui;
-  color: rgb(112, 121, 101);
+  font: 400 12px / 1 var(--font-ui);
+  color: var(--text-muted);
 }
 
 .kpis {
@@ -390,8 +444,8 @@
 }
 
 .strategy-index {
-  font: 500 20px / 1 Georgia, serif;
-  color: rgb(139, 115, 77);
+  font: 500 20px / 1 var(--font-display);
+  color: rgb(122, 98, 56);
   margin-bottom: 8px;
 }
 
@@ -429,7 +483,7 @@
 }
 
 .learning-summary h3 {
-  font: 500 23px / 1.2 Georgia, serif;
+  font: 500 23px / 1.2 var(--font-display);
   margin: 8px 0px;
 }
 
@@ -447,7 +501,7 @@
 
 .learning-counts strong {
   display: block;
-  font: 500 26px / 1.3 Georgia, serif;
+  font: 500 26px / 1.3 var(--font-display);
   color: rgb(36, 70, 42);
 }
 
@@ -470,7 +524,7 @@
 }
 
 .context-next h3 {
-  font: 500 23px / 1.2 Georgia, serif;
+  font: 500 23px / 1.2 var(--font-display);
   margin: 8px 0px;
 }
 

@@ -2,7 +2,7 @@ import { test,expect,type Page,type APIRequestContext } from '@playwright/test';
 import { readFileSync,mkdirSync } from 'node:fs';
 // Phase10A evidence: real Chromium and DEMO state created through the real API.
 // Baseline and final are separate. Práctica uses a viewport capture because its personal history is unbounded.
-const phase=process.env.PHASE10A_CAPTURE??'final';if(!['baseline','final'].includes(phase))throw new Error('Invalid capture phase');const shots=process.env.EVIDENCE_DIR??'design/brandopolis-ui/reference/phase10a/'+phase;mkdirSync(shots,{recursive:true});
+const phase=process.env.PHASE10A_CAPTURE??'final';if(!['baseline','final'].includes(phase))throw new Error('Invalid capture phase');const shots=process.env.EVIDENCE_DIR??'test-results/phase10a/'+phase;mkdirSync(shots,{recursive:true});
 const session=()=>JSON.parse(readFileSync(process.env.BRANDOPOLIS_SESSION_FILE??'.local/demo-session.json','utf8')) as {token:string;userId:string};
 async function seed(request:APIRequestContext) {
   const {token,userId}=session(),auth={Authorization:`Bearer ${token}`};

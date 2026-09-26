@@ -10,7 +10,7 @@
     padding: 32px;
   }
   .impact-pair {
-    grid-template-columns: minmax(0px, 1fr) 112px minmax(0px, 1fr);
+    grid-template-columns: minmax(0px, 1fr) 132px minmax(0px, 1fr);
   }
   .impact-link {
     text-wrap-mode: wrap;
@@ -21,7 +21,7 @@
 /* Desktop ≤1500 */
 @media (max-width: 1500px) {
   .impact-pair {
-    grid-template-columns: minmax(0px, 1fr) 90px minmax(0px, 1fr);
+    grid-template-columns: minmax(0px, 1fr) 118px minmax(0px, 1fr);
   }
   .impact-link {
     text-wrap-mode: wrap;
@@ -88,6 +88,13 @@
   .how {
     grid-template-columns: 1fr;
     gap: 32px;
+  }
+  /* Tablet heroes carry the lead further into the photograph: a slightly longer ivory veil keeps AA. */
+  .hero::before {
+    background: linear-gradient(90deg,color-mix(in srgb,var(--bp-brand-ivory) 94%,transparent) 0%,color-mix(in srgb,var(--bp-brand-ivory) 86%,transparent) 44%,transparent 72%);
+  }
+  .hero-copy {
+    max-width: 540px;
   }
   .pillars {
     grid-template-columns: repeat(2, 1fr);
@@ -166,11 +173,15 @@
     border: 0px;
     padding: 0px;
   }
-  .workspace-head h1 {
-    display: block;
+}
+
+/* Portrait tablet: the photograph's subject sits closer to the copy; keep the copy on the veiled side. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .hero-copy {
+    max-width: 470px;
   }
-  .workspace-intro {
-    display: none;
+  .hero::before {
+    background: linear-gradient(90deg,color-mix(in srgb,var(--bp-brand-ivory) 95%,transparent) 0%,color-mix(in srgb,var(--bp-brand-ivory) 90%,transparent) 52%,transparent 80%);
   }
 }
 
@@ -189,7 +200,7 @@
     min-height: auto;
   }
   .hero-art img {
-    object-position: 60% 100%;
+    object-position: 72% 100%;
   }
   .hero-copy {
     padding: 40px 20px 24px;
@@ -259,11 +270,14 @@
   #logout {
     color: var(--text-primary);
     box-shadow: none;
-    min-height: 40px;
+    min-height: 44px;
   }
   #menu {
     padding: 8px;
-    min-height: 40px;
+    min-height: 44px;
+  }
+  body.app::after {
+    background-image: linear-gradient(180deg,color-mix(in srgb,var(--bp-brand-ivory) 55%,transparent),color-mix(in srgb,var(--bp-brand-ivory) 80%,transparent)),url('/brand/web/workspace-atmosphere-mobile.webp');
   }
   .demo {
     font-size: 8px;
@@ -289,7 +303,7 @@
     padding: 18px 14px 32px;
   }
   .brand-control label {
-    font-size: 8px;
+    font-size: 9.5px;
   }
   .layout {
     gap: 16px;
@@ -334,7 +348,7 @@
     margin-left: -16px;
   }
   .impact-steps {
-    font-size: 8px;
+    font-size: 10px;
   }
   .review-options {
     grid-template-columns: 1fr;
@@ -346,7 +360,7 @@
     padding: 16px;
   }
   .decision-connections {
-    font-size: 10px;
+    font-size: 11px;
   }
   .actions button {
     width: auto;
@@ -436,28 +450,40 @@
     display: flex;
   }
   .brand-control {
-    padding: 7px 10px;
+    padding: 6px 10px;
     min-width: 0px;
     flex: 1 1 0%;
-    max-width: calc(100% - 105px);
+    max-width: none;
   }
   .brand-control select {
-    font-size: 12px;
-    min-height: 30px;
+    font-size: 13px;
+    min-height: 36px;
   }
+  /* Icon-only on phones; the visible label stays as the accessible name. */
   #new-brand {
-    padding: 9px 10px;
-    min-height: 44px;
-    width: 95px;
-    text-wrap-mode: wrap;
-    font-size: 10px;
+    padding: 0px;
+    min-height: 48px;
+    width: 48px;
+    flex-shrink: 0;
+  }
+  #new-brand .button-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  #new-brand span[aria-hidden] {
+    font-size: 20px;
   }
   .decision-tabs {
     gap: 18px;
     margin-bottom: 20px;
   }
   .decision-tabs button {
-    font-size: 10px;
+    font-size: 12px;
+    padding-inline: 8px;
   }
   #decision .decision-heading h2 {
     font-size: 28px;
@@ -479,8 +505,23 @@
     padding-top: 12px;
     padding-bottom: 12px;
   }
-  .impact-link > span {
-    transform: rotate(90deg);
+  .impact-link::before {
+    left: 50%;
+    right: auto;
+    top: 0px;
+    bottom: 6px;
+    border-top: 0px;
+    border-left: 1px solid rgb(193, 165, 117);
+  }
+  .impact-link::after {
+    right: auto;
+    left: calc(50% - 4px);
+    top: auto;
+    bottom: 0px;
+    border-left: 4.5px solid transparent;
+    border-right: 4.5px solid transparent;
+    border-top: 7px solid rgb(193, 165, 117);
+    border-bottom: 0px;
   }
   .history .history-item {
     grid-template-columns: 32px minmax(0px, 1fr);
@@ -535,6 +576,9 @@
   }
   .attention-row button {
     margin-top: 12px;
+    min-height: 44px;
+  }
+  .learning-summary > button, .context-next button {
     min-height: 44px;
   }
   .strategy-card {
