@@ -1,7 +1,9 @@
 # Phase 10A — estado de entrega, 2026-09-25
 
-IMPLEMENTATION: EN CURSO — cambios finales conservados, falta validación del runtime actualizado.
+IMPLEMENTATION: COMPLETA — conservada y validada en Phase 10B (commit `1efff76` en `handoff/phase10b-final-2026-09-25`).
 FOUNDER VISUAL ACCEPTANCE: PENDING.
+
+> **Estado posterior (Phase 10B, 2026-09-25):** este documento registra la intervención 10A tal como quedó en disco. Phase 10B la preservó, la validó en una instancia DEMO limpia (typecheck, lint, Vitest, E2E 25/25, evidencia 2/2) y la completó: CSS reorganizado (`base.css`, `public.css`, `product-*.css`, sin `@import`), pulido de producto, accesibilidad y handoff. Estado vigente: [FINAL_MVP_HANDOFF_2026-09-25](FINAL_MVP_HANDOFF_2026-09-25.md). Las secciones «Bloqueo de entorno» y «Próximos pasos» siguientes son históricas y quedaron resueltas.
 
 ## Estado verificable
 
@@ -40,7 +42,7 @@ Identidad premium horizontal derivada del master aprobado, topbar contextual, na
 
 La matriz ejercitada fue 1600×1000, 1440×900, 1280×800, 768×1024, 390×844 y 360×800. La evidencia anterior a los ajustes finales no sustituye la regresión final.
 
-Capturas: `design/brandopolis-ui/reference/phase10a/baseline/`, `iteration-1/`, `final/` y `encoding-proof/`. La carpeta `final/` representa la última captura realizada, anterior al último ajuste de densidad; se debe regenerar antes de entregar. Incluye workspace, cuatro decisiones, evidencia, opciones, impacto, revisión, historia, contexto, aprendizaje, práctica, blueprint y accesos.
+Capturas: las series `baseline/`, `iteration-1/` y `final/` (~32 MB) no se versionaron; se conserva `encoding-proof/` y el conjunto final curado vive en `design/brandopolis-ui/reference/phase10b/`. La carpeta `final/` representa la última captura realizada, anterior al último ajuste de densidad; se debe regenerar antes de entregar. Incluye workspace, cuatro decisiones, evidencia, opciones, impacto, revisión, historia, contexto, aprendizaje, práctica, blueprint y accesos.
 
 ## Bloqueo de entorno
 
@@ -54,11 +56,11 @@ La revisión automática de permisos rechazó la operación de identificación d
 4. Commit y push de la rama actual; verificar árbol limpio y SHA remoto. No merge.
 5. Dejar MVP intencionalmente activo mediante `pnpm competition:start`. Confirmar URL, proceso y health; mantener aceptación visual pendiente.
 
-En este equipo, usar la versión fijada: `$env:COREPACK_HOME=Join-Path $PWD '.local/corepack'; corepack pnpm competition:start`. El equivalente directo usado es `node node_modules/tsx/dist/cli.mjs scripts/competition-start.ts`.
+Nota histórica de la máquina del fundador (no necesaria en otro equipo): se usó corepack con `COREPACK_HOME` local. Procedimiento portable: [NEXT_DEVELOPER_START_HERE](NEXT_DEVELOPER_START_HERE.md).
 
-URL conocida: `http://127.0.0.1:3000/?brand=ff433eef-7f85-4032-bad8-a06d8ab8032f&module=Primary%20Customer`. No se acredita LOCAL MVP READY para los cambios finales.
+La URL exacta de la marca DEMO es local a cada base de datos; `pnpm competition:start` la imprime.
 
-Acceso privado local: `(Get-Content .local/demo-session.json -Raw | ConvertFrom-Json).token | Set-Clipboard`. No imprimir ni compartir el token. Antes del cierre, renovar la sesión DEMO conservando identidad y marcas.
+Acceso privado local: copiar el campo `token` de `.local/demo-session.json` (ver NEXT_DEVELOPER_START_HERE). No compartir el token.
 
 ## Higiene y aceptación
 

@@ -1,5 +1,12 @@
 # Brandopolis
 
+> **New developer? Start at [docs/15-handoff/NEXT_DEVELOPER_START_HERE.md](docs/15-handoff/NEXT_DEVELOPER_START_HERE.md).**
+> Handoff branch `handoff/phase10b-final-2026-09-25`, tag `brandopolis-mvp-handoff-ready-2026-09-25`. GitHub `main` still holds only the original Foundation docs — clone the handoff branch.
+>
+> Quick start (Node 24, pnpm 12.4.2 via `corepack enable`, Chrome for browser tests):
+> `pnpm install --frozen-lockfile` → `pnpm competition:start` → open the printed URL → paste the token from `.local/demo-session.json`.
+> Final state and QA: [FINAL_MVP_HANDOFF_2026-09-25.md](docs/15-handoff/FINAL_MVP_HANDOFF_2026-09-25.md).
+
 ## What It Is
 
 SaaS B2B AI-native de decisiones estratégicas conectadas para marcas. **AI proposes. Humans decide. Brandopolis remembers. People learn by building.** MVP fases 1–9 cerradas para piloto; siguiente fase: testers reales (Fase 10). Dominio público **brandopolis.ai**; piloto previsto en **https://pilot.brandopolis.ai**.
@@ -34,7 +41,7 @@ User/Workspace/Brand; Customer + Positioning HARD; cambiar Customer con optimist
 
 ## Current Status
 
-Fases 1–9 cerradas para MVP ([cierre](docs/15-handoff/MVP_PHASES_1_TO_9_CLOSURE.md)). DEMO local determinista para el concurso ([guía](docs/15-handoff/COMPETITION_DEMO_GUIDE.md)); PILOT con OIDC, espacio por tester, IA opcional con aviso y topes, telemetría y feedback, listo para configuración externa ([checklist](docs/15-handoff/LIVE_PILOT_LAUNCH_CHECKLIST.md)); frontend canónico MVP con Brand Master aprobado ([cierre frontend](docs/15-handoff/FINAL_FRONTEND_CANONICAL_CLOSURE.md)). Fase 10 (testers reales) iniciada con configuración externa pendiente ([inicio](docs/15-handoff/PHASE10_FOUNDER_PILOT_START.md)). Pendiente externo: hosting, proveedor OIDC y credencial de IA. No hay clientes ni ingresos validados; no es producción. Ver [estado de sesión](SESSION_STATE.md) y [alcance diferido](docs/15-handoff/POST_MVP_DEFERRED_SCOPE.md).
+Fases 1–9 cerradas para MVP ([cierre](docs/15-handoff/MVP_PHASES_1_TO_9_CLOSURE.md)). DEMO local determinista para el concurso ([guía](docs/15-handoff/COMPETITION_DEMO_GUIDE.md)); PILOT con OIDC, espacio por tester, IA opcional con aviso y topes, telemetría y feedback, listo para configuración externa ([checklist](docs/15-handoff/LIVE_PILOT_LAUNCH_CHECKLIST.md)); frontend canónico MVP con Brand Master aprobado ([cierre frontend](docs/15-handoff/FINAL_FRONTEND_CANONICAL_CLOSURE.md)). Fase 10 (testers reales) iniciada con configuración externa pendiente ([inicio](docs/15-handoff/PHASE10_FOUNDER_PILOT_START.md)). Pulido final de producto y handoff (Fases 10A/10B) completos; aceptación visual del fundador pendiente ([handoff final](docs/15-handoff/FINAL_MVP_HANDOFF_2026-09-25.md)). Pendiente externo: hosting, proveedor OIDC y credencial de IA. No hay clientes ni ingresos validados; no es producción. Ver [estado de sesión](SESSION_STATE.md) y [alcance diferido](docs/15-handoff/POST_MVP_DEFERRED_SCOPE.md).
 
 ## Open Technical Decisions
 
@@ -48,6 +55,10 @@ Drizzle elegido en ADR-0011. Autenticación PILOT por OIDC neutral (ADR-0013) y 
 
 `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm test:e2e`, `pnpm test:pilot:e2e`, `pnpm test:visual`, `pnpm competition:test-boot` (con `pnpm competition:start --isolated` en marcha) y `pnpm pilot:validate-config` / `pnpm pilot:preflight` para PILOT.
 `python3 scripts/foundation_check.py` (Windows: `py -3 scripts/foundation_check.py`). Valida schemas con `jsonschema` si instalado; la distribución de Foundation incluye `requirements-foundation.txt` para instalarlo. Recomendado: `python3 -m pip install -r requirements-foundation.txt` antes de QA.
+
+## Frontend
+
+HTML/CSS/JS nativo sin build: `src/transport/public/` (vistas puras en `product-views.js`, foco/teclado en `product-interactions.js`, operaciones en `app.js`; CSS por capas base → public → product-* → responsive). [Sistema de diseño implementado](design/brandopolis-ui/PRODUCT_DESIGN_SYSTEM.md), [mapa de assets](design/brandopolis-ui/FRONTEND_ASSET_MAPPING.md). Reiniciar el servidor tras editar assets (se cachean en memoria).
 
 ## Start Here — Codex
 

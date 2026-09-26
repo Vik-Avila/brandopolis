@@ -26,13 +26,17 @@ Only the files below are served; the server uses an exact allowlist (`src/transp
 
 Removed from runtime (deprecated per `BRAND_ASSET_REPLACEMENT_MAP.json`, still in Git history and design reference folders): polygonal symbol PNGs (black, emerald, flat, gold, white), legacy `ui/icon-*` set, legacy `flow/*` images and the unused `/brand/flow.webp` route. The previous logo, symbol, favicon, apple-touch, app icons and manifest files at the same paths were replaced by canonical bytes.
 
-## Phase 10A premium identity
+## Premium horizontal identity
 
 The prominent desktop/tablet header and access views use `/brand/logo-premium.webp`, derived from the approved premium horizontal PNG without redrawing. Runtime file: `public/brand/logo/brandopolis-logo-premium-660.webp`, 660×151, 17,790 bytes. Header width 220 CSS px; access width 240 CSS px. Mobile compact header retains the approved flat symbol.
 
 Source SHA-256: `28877e609f4e051ed4eff4906a81170b02d17cbe769efdd093d9fa5d227150ad`.
 Derivative SHA-256: `0dbb6a7aac540e40ee96137bdeee13d180cde98d779cba5f1a6fccf5438653a6`.
 `tests/brand-runtime.test.ts` verifies both hashes and prominent HTML usages. The immutable Brand Master files remain unchanged.
+
+## Code assets
+
+Served in this order from `index.html` (no `@import`, no bundler): `/tokens.css`, `/base.css`, `/public.css`, `/product-shell.css`, `/product-decision.css`, `/product-context.css`, `/product-views.css`, `/product-responsive.css`; scripts `/app.js` (module) with `modulepreload` of `/product-views.js` and `/product-interactions.js`. Responsibilities: [PRODUCT_DESIGN_SYSTEM.md](PRODUCT_DESIGN_SYSTEM.md).
 
 ## Atmosphere and motion — final visual package
 
@@ -45,10 +49,10 @@ Derivative SHA-256: `0dbb6a7aac540e40ee96137bdeee13d180cde98d779cba5f1a6fccf5438
 | `/brand/web/flow-loop-poster.webp` | `09_motion/brandopolis-flow-poster.webp` | same | all | `poster` + CSS background (one download) | — | Mapping from `11_manifest/motion-poster-map.json` |
 | `/brand/web/access-panel.webp` | `04_product_desktop/request-access-panel.webp` | Login, request access | ≥ 1280 px | CSS background (not fetched when hidden) | — | Moderate intensity for access |
 | `/brand/web/workspace-atmosphere-desktop.webp` | `04_product_desktop/workspace-strategic-depth.webp` | Signed-in shell | ≥ 768 px | CSS background only with `body.app` | — | Subtle shell atmosphere |
-| `/brand/web/workspace-atmosphere-mobile.webp` | `05_product_mobile/workspace-system@mobile.webp` | Signed-in shell | < 768 px | same | — | |
+| `/brand/web/workspace-atmosphere-mobile.webp` | `05_product_mobile/workspace-system@mobile.webp` | Signed-in shell | < 768 px | CSS background (`product-responsive.css`, phone block) | — | Used since Phase 10B (previously mapped but not referenced) |
 | `/brand/web/og.webp` | `08_social_support/master-open-graph.webp` (1200×630) | Open Graph `https://brandopolis.ai/brand/web/og.webp` | — | Not loaded by the page | — | Approved social asset showing the premium Ribbon B; the Brand Master has no 1200×630 asset |
 
-Caching: identity and brand media `public, max-age=86400`; `index.html` `no-store`; scripts and styles `no-cache` with a strong ETag (304 revalidation). Files are read once per process.
+Caching: identity and brand media `public, max-age=86400`, `Content-Length`, `Accept-Ranges: bytes` and single-range `206` responses (Safari/iOS video); `index.html` `no-store`; scripts and styles `no-cache` with a strong ETag (304 revalidation). Files are read once per process.
 
 ## Deliberately not used at runtime
 

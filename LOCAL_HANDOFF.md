@@ -1,6 +1,6 @@
 # Brandopolis Competition MVP · ejecución local
 
-Requisitos: Node **24.x**, pnpm **12.4.2**, Python **3.10+** para Foundation. Chrome para E2E. No se requiere Docker ni proveedor IA. PostgreSQL 17 se ejecuta como proceso local mediante una dependencia de desarrollo fijada; no se instala un servicio del sistema.
+Requisitos: Node **24.x** (`.nvmrc`), pnpm **12.4.2** (`corepack enable`), Python **3.10+** para Foundation. Google Chrome para E2E. OpenSSL sólo para `test:pilot:e2e`. No se requiere Docker ni proveedor IA. PostgreSQL 17 se ejecuta como proceso local mediante una dependencia de desarrollo fijada; no se instala un servicio del sistema.
 
 ## Instalación
 
@@ -63,7 +63,7 @@ Sin build frontend: shell HTML/CSS/JS nativo y servidor TypeScript mediante tsx.
 
 `pnpm db:generate` genera SQL desde Drizzle. Constraints/triggers especializados en migraciones custom versionadas. `pnpm db:migrate` aplica todo en orden de forma repetible. No usar drizzle-kit push ni editar DB manualmente para demostrar comportamiento.
 
-Trabajar en codex/ui-kit-integration. Los checkpoints dd0afdc y 8e1b621 se conservan. Ver [evidencia M1](docs/15-handoff/m1-implementation.md), [Competition MVP](docs/15-handoff/competition-mvp-implementation.md) y [SESSION_STATE](SESSION_STATE.md). Sin merge ni deploy autorizado. Patch independiente no cotejado; por resolución humana 2026-09-24 esa limitación histórica no bloquea M1 ni autoriza inventar su contenido.
+Rama de trabajo actual: `handoff/phase10b-final-2026-09-25` (ver [NEXT_DEVELOPER_START_HERE](docs/15-handoff/NEXT_DEVELOPER_START_HERE.md)). Históricamente se trabajó en codex/ui-kit-integration (checkpoints dd0afdc y 8e1b621 conservados). Ver [evidencia M1](docs/15-handoff/m1-implementation.md), [Competition MVP](docs/15-handoff/competition-mvp-implementation.md) y [SESSION_STATE](SESSION_STATE.md). Sin merge ni deploy autorizado. Patch independiente no cotejado; por resolución humana 2026-09-24 esa limitación histórica no bloquea M1 ni autoriza inventar su contenido.
 
 ## Demostración Competition MVP
 

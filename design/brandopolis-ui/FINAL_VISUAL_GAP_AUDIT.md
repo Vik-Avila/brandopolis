@@ -8,7 +8,7 @@ Depends On: Final visual package 2026-09-25; Brand Master final-canonical-2026-0
 ---
 # Final visual gap audit — real frontend vs. canonical mockup
 
-Final pass after the Brand Master reconciliation. Evidence: real Chromium screenshots in `reference/screenshots/`. Categories: **MATCH**, **ACCEPTED MVP VARIATION**, **OUT OF MVP / POST-MVP**, **EXTERNAL CONFIGURATION**.
+Updated in Phase 10B (final polish) against the running product. Evidence: curated real-Chromium set in `reference/phase10b/` (plus the earlier `reference/screenshots/`). Categories: **RESOLVED/MATCH**, **ACCEPTED MVP LIMITATION**, **POST-MVP**, **EXTERNAL CONFIGURATION**, **FOUNDER FINAL REVIEW REQUIRED**. The whole visual result is **FOUNDER FINAL REVIEW REQUIRED** until the founder accepts it.
 
 | Area (mockup screen) | Status | Notes |
 |---|---|---|
@@ -20,14 +20,20 @@ Final pass after the Brand Master reconciliation. Evidence: real Chromium screen
 | 2 · Workspace — «Tu estrategia hoy», KPI tiles, attention cards, summary grid | **MATCH** | Real persisted data only. |
 | 2 · Workspace — grouped sidebar | **MATCH** | Every item opens an implemented view; desktop no longer shows the drawer close control. |
 | 2 · Workspace — search, notifications, avatar menu, «Nueva decisión», decorative «Tu marca» card | **OUT OF MVP / POST-MVP** | No such capabilities. Brand selector + context aside cover brand switching. |
-| 3 · Decision card — question → why it matters → review state → committed decision with rationale → evidence and hypotheses → AI proposal → learning moment → history | **MATCH** | History last; «Por qué es importante» visible. Recommendation is a dashed secondary panel with secondary buttons; only human commits use solid primary buttons and the solid emerald rule. |
-| 3 · Decision card — tabs | **ACCEPTED MVP VARIATION** | Same information as ordered sections and disclosures (keyboard/screen-reader simple). |
-| 4 · Change Impact — Decisión que cambió → Dependencia estricta → Decisión afectada → Requiere revisión → Revisión humana | **MATCH** | Flow chips + impact pair with the dependency connector; review card with tinted header; no upstream/downstream wording; no automatic rewrite implied. |
-| 4 · Guided Review — Mantener sin cambios / Modificar / Confirmar revisión | **MATCH** | Selectable option cards (`aria-pressed`), single lock note, confirm right-aligned. |
-| 5 · History — vertical timeline | **MATCH** | Version, date, actor (never raw IDs), «Por qué», Actual/Sustituida, «Sustituida por vN», review note on the decision (review is not a version status). |
+| 3 · Decision card — question → human decision → why it matters → review state → connections; evidence/hypotheses, options and history in tabs | **RESOLVED** | Human decision first; under review it keeps authorship with an attention tone («· en revisión»). AI/DEMO proposal dashed; the human choice is a separate solid area. Connections show direction («Depende de / Afecta a»). |
+| 3 · Decision card — tabs | **RESOLVED** | Local tabs «Decisión / Evidencia e hipótesis / Opciones / Historial» with ARIA tabs, arrows/Home/End, animated indicator; scroll hint on phones. |
+| 4 · Change Impact — Decisión que cambió → Dependencia estricta → Decisión afectada → Requiere revisión → Revisión humana | **RESOLVED** | Impact pair with a labelled champagne connector (downward on phones), affected card emphasised; text path hidden once the diagram is open; no upstream/downstream wording; no automatic rewrite implied. |
+| 4 · Guided Review — Mantener sin cambios / Modificar / Confirmar revisión | **RESOLVED** | «What changed» line first, explicit selected marker, confirm disabled until a choice (editing = Modificar), focus lands on the choice. |
+| 5 · History — vertical timeline | **RESOLVED** | Version, date, actor (never raw IDs), criterion, «Vigente»/«Sustituida», continuity note; superseded versions read as memory, not disabled rows. |
 | 6/7 · Mobile workspace and navigation | **MATCH** | Canonical symbol header, ghost menu, drawer with focus trap/return; bottom tab bar: **ACCEPTED MVP VARIATION** (drawer). |
-| Blueprint | **MATCH** | Decisions grid, connections as chips with one vocabulary, open hypotheses, accepted learnings — from persistent state. Visual graph, export, synthesis: **OUT OF MVP / POST-MVP**. |
+| Blueprint | **RESOLVED** | Four pillars with aligned actions, connections as edges (outline chips; dashed when suggested) with the affected target flagged, open hypotheses, accepted learnings — persistent state only. Visual graph, export, synthesis: **POST-MVP**. |
 | Experiments / Signals / Learning | **MATCH** | Numbered steps, status-toned badges, compact dates; no autonomous-learning claims. |
 | Motion | **MATCH** | Single Flow loop, visible-only, pause control, poster for reduced motion. |
 | Strategic Glassmorphism intensity | **MATCH** | Public expressive → access moderate → shell subtle → decision near-solid. |
 | Live AI proposals, real OIDC login, hosting | **EXTERNAL CONFIGURATION** | See `docs/15-handoff/LIVE_PILOT_LAUNCH_CHECKLIST.md`. |
+| Contexto vigente rail | **RESOLVED** | Persistent memory with the Decision in view marked; collapsed summary on phones and Home. |
+| Status vocabulary | **RESOLVED** | One source (`stateBadge`); «Vigente» is display-only. |
+| Ambient imagery inside the product (decision/impact/review ambients from the package) | **ACCEPTED MVP LIMITATION** | Product stays near-solid for dense strategic content; only the shell atmosphere is used. Candidate for founder review. |
+| Inter / Inter Display | **ACCEPTED MVP LIMITATION** | Not self-hosted (CSP same-origin, kit ships no fonts); system UI fallback. |
+| Empty states richer than one line; custom select menus | **POST-MVP** | Current: honest one-line empty states; native selects with a styled chevron. |
+| Overall visual acceptance | **FOUNDER FINAL REVIEW REQUIRED** | See `docs/15-handoff/FINAL_MVP_HANDOFF_2026-09-25.md`. |

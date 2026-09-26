@@ -1,5 +1,19 @@
 # Session State
 
+Current phase: **PHASE 10B — FINAL PRODUCT POLISH + DEVELOPER HANDOFF** — COMPLETE (2026-09-25). Founder final visual review: **PENDING**.
+
+Branch: `handoff/phase10b-final-2026-09-25` (from 7be0b67). Tag: `brandopolis-mvp-handoff-ready-2026-09-25`. Verified code: 80ef75b. Not merged to `main` (GitHub `main` holds only the Foundation import). Start here: [NEXT_DEVELOPER_START_HERE](docs/15-handoff/NEXT_DEVELOPER_START_HERE.md); record: [FINAL_MVP_HANDOFF](docs/15-handoff/FINAL_MVP_HANDOFF_2026-09-25.md).
+
+Engineering foundation: CLOSED (unchanged). MVP product: IMPLEMENTED. Final product polish (10A + 10B): COMPLETE. External production configuration: NOT PERFORMED.
+
+Final gate (2026-09-25, verified code 80ef75b): typecheck/lint PASS; pnpm test 63/63; demo-encoding node test 1/1; test:e2e 25/25; test:visual 10 pass + 1 skip (historic encoding proof precondition absent); test:pilot:e2e 10/10; Phase10A evidence 2/2; Foundation, UI validator, Brand Master validator PASS; pnpm audit --prod clean (1 moderate dev-only esbuild via drizzle-kit); git diff --check clean. Independent final design and WCAG 2.2 AA reviews: no AA failure.
+
+Findings: migration 0003 backfills mojibake questions only for brands existing when it runs (root cause of historic DEMO mojibake; fresh/PILOT DBs unaffected; repair via scripts/demo-encoding.mjs). The founder's :3000 DEMO process predates the final assets (served from memory) and must be restarted to show the final UI.
+
+Next: founder visual review of the local DEMO, then LIVE_PILOT_LAUNCH_CHECKLIST. No feature work until real pilot evidence exists.
+
+---
+
 Current phase: **PHASE 10 — REAL TESTERS / FOUNDER PILOT** — STARTED, EXTERNAL CONFIGURATION PENDING ([start](docs/15-handoff/PHASE10_FOUNDER_PILOT_START.md)). Branch: pilot/phase10-real-testers-2026-09-25 from tag brandopolis-mvp-phases-1-9-final-2026-09-25 (d22e3c6).
 
 Not live: testers, hosting, OIDC provider, Anthropic provider, production. No feature development until real pilot evidence exists or a deployment blocker requires code.
