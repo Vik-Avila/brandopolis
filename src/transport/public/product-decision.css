@@ -119,6 +119,11 @@ details {
   box-shadow: inset 0 0 0 3.5px var(--surface-card);
 }
 
+#review-choice-hint {
+  margin: -4px 0px 12px;
+  font-size: 12px;
+}
+
 #review-choice-title:focus-visible {
   outline-offset: 6px;
 }
@@ -210,6 +215,18 @@ details {
   border-radius: 10px;
   padding: 22px 24px;
   margin: 18px 0px;
+}
+
+.human-decision.is-under-review {
+  background: rgb(250, 246, 236);
+  border-top-color: rgb(226, 212, 183);
+  border-right-color: rgb(226, 212, 183);
+  border-bottom-color: rgb(226, 212, 183);
+  border-left-color: rgb(173, 135, 81);
+}
+
+.human-decision.is-under-review .eyebrow {
+  color: var(--status-review-text);
 }
 
 .human-decision .eyebrow {
@@ -367,7 +384,7 @@ details[open] > summary::after {
 .recommendation .option.is-proposed {
   border-color: rgb(201, 174, 130);
   border-left-width: 3px;
-  border-left-style: dashed;
+  border-left-style: solid;
   background: rgb(255, 252, 246);
 }
 
@@ -468,6 +485,10 @@ details[open] > summary::after {
   font-size: 11px;
   gap: 4px;
   color: rgb(102, 91, 71);
+}
+
+.review:has(.impact-pair) .impact-steps {
+  display: none;
 }
 
 .impact-steps li:last-child {

@@ -187,9 +187,10 @@ body.app .public-nav {
 
 .brand-control select {
   width: 100%;
-  padding: 0px 20px 0px 0px;
+  padding: 0px 28px 0px 0px;
+  background-position: calc(100% - 10px) 50%, calc(100% - 5px) 50%;
   border: 0px;
-  background: transparent;
+  background-color: transparent;
   font-weight: 650;
   text-overflow: ellipsis;
   min-height: 34px;
@@ -343,7 +344,7 @@ body.app .public-nav {
 
 body.app footer {
   padding-left: calc(var(--sidebar-width) + 28px);
-  font-size: 10px;
+  font-size: 12px;
 }
 
 /* Subtle view entry: short, no overshoot. Removed entirely under prefers-reduced-motion. */
@@ -456,12 +457,9 @@ body.booting::after {
   100% { background-position: 200% 0px; }
 }
 
-/* Notices sit over the strategic canvas, never over the navigation or Contexto vigente. */
-@media (min-width: 1280px) {
-  body.app #notice {
-    right: auto;
-    left: calc(var(--sidebar-width) + 28px);
-  }
+/* Status notices dismiss themselves after 7s (app.js); errors stay until the next action. */
+body.app #notice {
+  max-width: 380px;
 }
 
 /* Actionable notices distinguish human corrections from technical failures. */

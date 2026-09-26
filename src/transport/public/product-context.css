@@ -120,6 +120,25 @@
   margin-top: 7px;
 }
 
+/* The Decision currently in view: continuity between the canvas and persistent memory. */
+.context-lineage li[aria-current] strong {
+  color: var(--bp-brand-emerald);
+}
+
+.context-lineage li[aria-current] .context-number {
+  color: var(--bp-brand-emerald);
+  font-weight: 700;
+}
+
+.context-lineage li[aria-current]::after {
+  content: "";
+  position: absolute;
+  left: -20px;
+  top: 0px;
+  bottom: 14px;
+  border-left: 2px solid var(--bp-brand-emerald);
+}
+
 .context-lineage .badge {
   margin-top: 6px;
 }

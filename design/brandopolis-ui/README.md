@@ -6,7 +6,7 @@ Related: Main Engineering Repository
 Depends On: Engineering Foundation
 
 ---
-# Brandopolis UI Kit â€” FINAL CANONICAL
+# Brandopolis UI Kit — FINAL CANONICAL
 
 > **THIS PACKAGE DOES NOT REDEFINE BRANDOPOLIS DOMAIN OR APPLICATION ARCHITECTURE.**
 > **DO NOT COPY ROOT FILES OVER THE MAIN REPOSITORY.**

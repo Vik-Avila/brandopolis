@@ -86,7 +86,7 @@ test('Phase10A responsive shell and new-brand dialog keyboard containment',async
   for(let i=0;i<12;i++){await page.keyboard.press('Shift+Tab');expect(await page.evaluate(()=>!!document.activeElement?.closest('#brand-dialog')),`${width} reverse focus contained`).toBe(true);}
   await page.keyboard.press('Escape');await expect(page.locator('#brand-dialog')).toBeHidden();await expect(page.locator('#new-brand')).toBeFocused();
   await expect(page.locator('#decision')).toContainText('Requiere revisión');await page.getByRole('button',{name:'Ver impacto',exact:true}).click();await sound(page,`${width} impact`);
-  await page.getByRole('button',{name:'Iniciar revisión humana',exact:true}).click();await expect(page.getByLabel('Decisión propuesta')).toBeVisible();await sound(page,`${width} guided review`);await page.getByRole('button',{name:'Cancelar',exact:true}).click();
+  await page.getByRole('button',{name:'Iniciar revisión humana',exact:true}).click();await expect(page.getByLabel('Tu decisión',{exact:true})).toBeVisible();await sound(page,`${width} guided review`);await page.getByRole('button',{name:'Cancelar',exact:true}).click();
   for(const module of ['Primary Customer','Value Mechanism','Core Message']){await signIn(page,seeded.brand.id,module);await sound(page,`${width} ${module}`);}
   await signIn(page,seeded.brand.id);await page.getByText(/Historial · \d versiones/).click();await sound(page,`${width} history`);
   for(const [label,id] of [['workspace','#home'],['context','#brand-context'],['learning','#learning-loop'],['blueprint','#blueprint']]){await signIn(page,seeded.brand.id);await nav(page,id);await sound(page,`${width} ${label}`);if([768,1280,1600].includes(width)&&label==='workspace')await shot(page,`workspace-${width}`);}

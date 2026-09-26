@@ -149,7 +149,6 @@
   border: 0px;
   padding: 0px;
   font: 500 20px / 1.35 var(--font-display);
-  min-height: 3em;
 }
 
 .blueprint-grid p {
@@ -177,6 +176,20 @@
   border-bottom: 1px solid rgb(225, 227, 216);
 }
 
+.dependency-path .edge {
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--bp-radius-pill);
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.dependency-path .edge.is-soft {
+  border-style: dashed;
+}
+
 .dependency-path > span:nth-child(3)::before {
   content: "→";
   margin-right: 10px;
@@ -198,6 +211,19 @@
 #capture-context button {
   margin-top: 16px;
   font-size: 12px;
+}
+
+.add-context {
+  margin-top: 32px;
+}
+
+.add-context > h3 {
+  font: 500 24px / 1.2 var(--font-display);
+  margin: 0px;
+}
+
+.add-context #capture-context {
+  margin-top: 14px;
 }
 
 .memory-group {
@@ -228,28 +254,8 @@
   border-left: 3px solid rgb(11, 104, 71);
 }
 
-.learning-cycle {
-  display: flex;
-  gap: 0px;
-  margin: 24px 0px;
-  border: 1px solid rgb(215, 221, 204);
-  border-radius: 10px;
-  background: rgb(241, 244, 235);
-  overflow: hidden;
-}
 
-.learning-cycle span {
-  flex: 1 1 0%;
-  padding: 14px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  border-right: 1px solid rgb(215, 221, 204);
-}
 
-.learning-cycle span:last-child {
-  border: 0px;
-}
 
 .learning-steps > details {
   padding: 14px 20px;

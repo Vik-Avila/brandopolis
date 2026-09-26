@@ -362,6 +362,10 @@
   .decision-connections {
     font-size: 11px;
   }
+  .decision-connections > .label {
+    flex-basis: 100%;
+    margin-top: 4px;
+  }
   .actions button {
     width: auto;
     flex: 1 1 auto;
@@ -411,13 +415,6 @@
   }
   .blueprint-grid {
     grid-template-columns: 1fr;
-  }
-  .learning-cycle {
-    flex-direction: column;
-  }
-  .learning-cycle span {
-    border-right: 0px;
-    border-bottom: 1px solid rgb(215, 221, 204);
   }
   .learning-steps > details {
     padding: 12px 14px;
@@ -480,6 +477,9 @@
   .decision-tabs {
     gap: 18px;
     margin-bottom: 20px;
+    -webkit-mask-image: linear-gradient(90deg, #000 86%, transparent);
+    mask-image: linear-gradient(90deg, #000 86%, transparent);
+    padding-right: 28px;
   }
   .decision-tabs button {
     font-size: 12px;
