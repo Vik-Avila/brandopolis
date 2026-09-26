@@ -1,0 +1,561 @@
+/* Strategic command center, blueprint, context capture and learning cycle. */
+
+.kpis li.attention {
+  background: var(--status-review-bg);
+  border-color: var(--bp-review-border);
+}
+
+.dependency-path span {
+  min-width: 0px;
+}
+
+.dependency-arrow {
+  color: var(--text-secondary);
+}
+
+.learning-steps {
+  counter-reset: step 0;
+}
+
+.learning-steps > details > summary::before {
+  counter-increment: step 1;
+  content: counter(step);
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-right: 10px;
+  border-radius: 50%;
+  background: var(--status-approved-bg);
+  color: var(--status-approved-text);
+  font-size: 13px;
+}
+
+#decision[data-view="home"] {
+  background: transparent;
+  border: 0px;
+  box-shadow: none;
+  padding: 0px;
+}
+
+#decision[data-view="home"] > h2 {
+  font-size: 38px;
+  margin-bottom: 8px;
+}
+
+.view-lead {
+  font-size: 13px;
+  color: rgb(98, 105, 93);
+  margin: 0px 0px 24px;
+}
+
+.kpis strong {
+  display: block;
+  font: 500 32px / 1.1 Georgia, serif;
+  margin-bottom: 6px;
+  color: rgb(21, 62, 43);
+}
+
+.kpis span {
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1.4;
+  display: block;
+}
+
+.kpis .attention strong {
+  color: rgb(122, 90, 32);
+}
+
+.attention-section > .eyebrow {
+  font-size: 9px;
+  color: rgb(121, 96, 58);
+}
+
+.attention-section > h3 {
+  font: 500 23px / 1.25 Georgia, serif;
+  margin: 9px 0px 16px;
+}
+
+.row-card {
+  display: grid;
+  grid-template-columns: minmax(0px, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  border: 1px solid var(--border-default);
+  background: rgb(255, 253, 249);
+  border-radius: 8px;
+  border-color: rgb(230, 222, 204);
+  padding: 14px;
+  margin: 8px 0px;
+}
+
+.row-card h3 {
+  margin: 0px 0px 4px;
+  font-size: 13px;
+}
+
+.row-card p {
+  margin: 0px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.row-card button {
+  font-size: 10px;
+  min-height: 38px;
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+
+.open-section {
+  padding: 2px 0px 16px;
+}
+
+.open-section h3 {
+  font-size: 14px;
+}
+
+.open-section > .hint {
+  font-size: 12px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0px, 1fr));
+  gap: 10px;
+  margin: 0px 0px 16px;
+}
+
+.summary-grid > div {
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  padding: 16px;
+  background: rgb(253, 251, 246);
+}
+
+.summary-grid h3 {
+  margin: 0px 0px 6px;
+  font-size: 12px;
+}
+
+.summary-grid p {
+  font-size: 11px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.section-heading h3 {
+  font: 500 24px / 1.2 Georgia, serif;
+  margin: 6px 0px;
+}
+
+.section-heading > span {
+  font-size: 10px;
+  color: rgb(105, 113, 95);
+}
+
+.section-heading .eyebrow {
+  font-size: 9px;
+}
+
+.strategy-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.strategy-card-footer button {
+  font-size: 11px;
+  min-height: 44px;
+}
+
+.blueprint-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0px, 1fr));
+  margin: 18px 0px;
+  gap: 14px;
+}
+
+.blueprint-grid .analysis-item {
+  border: 1px solid var(--border-default);
+  background: rgb(248, 247, 240);
+  border-radius: 12px;
+  padding: 20px;
+  border-top: 3px solid rgb(201, 174, 130);
+}
+
+.blueprint-pillar .eyebrow {
+  font-size: 8px;
+  color: rgb(122, 102, 68);
+}
+
+.blueprint-pillar h3 {
+  font-size: 15px;
+}
+
+.blueprint-grid .current {
+  margin: 12px 0px 6px;
+  background: transparent;
+  border: 0px;
+  padding: 0px;
+  font: 500 20px / 1.35 Georgia, serif;
+  min-height: 3em;
+}
+
+.blueprint-grid p {
+  font-size: 12px;
+}
+
+.blueprint-grid button {
+  font-size: 11px;
+}
+
+.dependency-path {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  color: var(--text-secondary);
+  font-weight: 650;
+  font-size: 11px;
+  padding: 12px 0px;
+  border-bottom: 1px solid rgb(225, 227, 216);
+}
+
+.dependency-path > span:last-child::before {
+  content: "→";
+  margin-right: 10px;
+  color: rgb(145, 118, 77);
+}
+
+#capture-context {
+  padding: 22px;
+  background: rgb(244, 245, 237);
+  border: 1px solid rgb(216, 221, 207);
+  border-radius: 12px;
+  margin: 24px 0px;
+}
+
+#capture-context > label:first-child {
+  margin-top: 0px;
+}
+
+#capture-context button {
+  margin-top: 16px;
+  font-size: 12px;
+}
+
+.memory-group {
+  margin-top: 16px;
+  padding: 20px;
+  border: 1px solid rgb(222, 223, 213);
+  border-radius: 10px;
+  background: rgb(250, 251, 246);
+}
+
+.memory-group h3 {
+  font-size: 14px;
+  margin: 0px 0px 12px;
+}
+
+.memory-group p {
+  font-size: 13px;
+}
+
+.memory-2 {
+  background: rgb(250, 245, 233);
+  border-style: dashed;
+  border-color: rgb(201, 174, 130);
+}
+
+.memory-3 {
+  background: rgb(241, 247, 244);
+  border-left: 3px solid rgb(11, 104, 71);
+}
+
+.learning-cycle {
+  display: flex;
+  gap: 0px;
+  margin: 24px 0px;
+  border: 1px solid rgb(215, 221, 204);
+  border-radius: 10px;
+  background: rgb(241, 244, 235);
+  overflow: hidden;
+}
+
+.learning-cycle span {
+  flex: 1 1 0%;
+  padding: 14px;
+  font-size: 10px;
+  border-right: 1px solid rgb(215, 221, 204);
+}
+
+.learning-cycle span:last-child {
+  border: 0px;
+}
+
+.learning-steps > details {
+  padding: 14px 20px;
+  margin: 12px 0px;
+  border: 1px solid rgb(219, 223, 210);
+  border-radius: 10px;
+  background: rgb(251, 252, 248);
+}
+
+.learning-steps form {
+  padding: 0px 0px 10px;
+}
+
+.learning-steps form button {
+  margin-top: 18px;
+  font-size: 12px;
+}
+
+.analysis-item {
+  padding: 18px 0px;
+  border-bottom: 1px solid var(--border-default);
+  font-size: 13px;
+}
+
+.analysis-item h3 {
+  font-size: 15px;
+}
+
+#decision[data-view="practice"] > .analysis-item {
+  padding: 16px 20px;
+  margin-top: 14px;
+  border-width: 1px 1px 1px 3px;
+  border-style: solid;
+  border-color: rgb(215, 221, 204) rgb(215, 221, 204) rgb(215, 221, 204) rgb(162, 181, 151);
+  border-image: none;
+  border-radius: 10px;
+  background: rgb(247, 249, 243);
+}
+
+.home-heading {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  justify-content: space-between;
+}
+
+.home-heading h2 {
+  font-size: 34px !important;
+  max-width: 24ch !important;
+  margin-bottom: 12px !important;
+}
+
+.home-heading > .button, .home-heading > button {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.home-heading .view-lead {
+  font-size: 12px;
+  margin-bottom: 0px;
+}
+
+.kpis strong small {
+  font: 400 12px / 1 ui-sans-serif, system-ui;
+  color: rgb(112, 121, 101);
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0px, 1fr));
+  padding: 0px;
+  list-style: none;
+  gap: 10px;
+  margin: 24px 0px 20px;
+}
+
+.kpis li {
+  background: rgb(255, 253, 249);
+  border: 1px solid rgb(222, 221, 211);
+  border-radius: 10px;
+  box-shadow: rgba(7, 61, 45, 0.016) 0px 2px 5px;
+  padding: 16px 18px;
+}
+
+.attention-section {
+  border-width: 1px 1px 1px 3px;
+  border-style: solid;
+  border-color: rgb(213, 188, 141) rgb(213, 188, 141) rgb(213, 188, 141) rgb(176, 139, 83);
+  border-image: none;
+  background: rgb(255, 252, 245);
+  border-radius: 12px;
+  box-shadow: var(--product-shadow);
+  padding: 20px 22px;
+  margin-bottom: 0px;
+}
+
+.attention-section .section-heading {
+  margin-bottom: 14px;
+}
+
+.attention-section .section-heading h3 {
+  font-size: 25px;
+}
+
+.attention-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0px;
+  border-top: 1px solid rgb(228, 220, 201);
+}
+
+.attention-row h3 {
+  font-size: 13px;
+  margin: 0px 0px 5px;
+}
+
+.attention-row p {
+  font-size: 11px;
+  color: rgb(106, 98, 78);
+  margin: 0px;
+}
+
+.attention-row button {
+  font-size: 10px;
+  min-height: 40px;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.clear-state {
+  border-left: 2px solid rgb(201, 174, 130);
+  padding: 4px 18px;
+}
+
+.clear-state p {
+  font-size: 13px;
+  color: rgb(96, 108, 84);
+  margin: 8px 0px;
+}
+
+.clear-state .eyebrow {
+  font-size: 9px;
+}
+
+.strategy-map {
+  margin: 24px 0px;
+}
+
+.strategy-card {
+  background: rgb(255, 253, 249);
+  border: 1px solid rgb(216, 221, 207);
+  border-radius: 12px;
+  box-shadow: var(--product-shadow);
+  position: relative;
+  padding: 18px;
+}
+
+.strategy-index {
+  font: 500 20px / 1 Georgia, serif;
+  color: rgb(139, 115, 77);
+  margin-bottom: 8px;
+}
+
+.strategy-card h3 {
+  font-size: 13px;
+  margin: 0px 0px 8px;
+}
+
+.strategy-card > p {
+  line-height: 1.6;
+  min-height: 3.2em;
+  font-size: 12px;
+  margin: 0px 0px 12px;
+}
+
+.strategy-card-footer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgb(230, 228, 218);
+  margin-top: 10px;
+  padding-top: 6px;
+}
+
+.learning-summary {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  padding: 22px;
+  border: 1px solid rgb(217, 223, 208);
+  border-radius: 12px;
+  background: rgb(248, 250, 242);
+  margin-bottom: 16px;
+}
+
+.learning-summary h3 {
+  font: 500 23px / 1.2 Georgia, serif;
+  margin: 8px 0px;
+}
+
+.learning-summary .eyebrow {
+  font-size: 9px;
+}
+
+.learning-counts {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  font-size: 10px;
+  color: rgb(104, 116, 91);
+}
+
+.learning-counts strong {
+  display: block;
+  font: 500 26px / 1.3 Georgia, serif;
+  color: rgb(36, 70, 42);
+}
+
+.learning-summary > button {
+  grid-column: 1 / -1;
+  justify-self: start;
+  font-size: 11px;
+  min-height: 40px;
+}
+
+.context-next {
+  background: rgb(234, 240, 229);
+  border: 1px solid rgb(210, 221, 201);
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 22px;
+}
+
+.context-next h3 {
+  font: 500 23px / 1.2 Georgia, serif;
+  margin: 8px 0px;
+}
+
+.context-next .eyebrow {
+  font-size: 9px;
+}
+
+.context-next p {
+  font-size: 12px;
+  margin: 8px 0px 0px;
+}
+
+.context-next button {
+  font-size: 11px;
+  white-space: nowrap;
+}
+

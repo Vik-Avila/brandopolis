@@ -1,5 +1,5 @@
 import { describe,it,expect } from 'vitest';
-import { readFileSync,existsSync } from 'node:fs';
+import { readFileSync,existsSync,statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { runtimeAssets,loadAsset } from '../src/transport/assets.js';
 // Runtime identity must be the approved Brand Master, byte for byte; legacy polygonal assets must not be served.
@@ -16,6 +16,16 @@ const canonical:Record<string,string>={
   '/site.webmanifest':`${master}/02_runtime/manifest/site.webmanifest`
 };
 describe('canonical brand runtime',()=>{
+  it('prominent identity uses the approved material derivative without serving the oversized master',()=>{
+    expect(sha(`${master}/03_premium/brandopolis-logo-horizontal-premium.png`)).toBe('28877e609f4e051ed4eff4906a81170b02d17cbe769efdd093d9fa5d227150ad');
+    const file=runtimeAssets['/brand/logo-premium.webp'][0];
+    expect(sha(file)).toBe('0dbb6a7aac540e40ee96137bdeee13d180cde98d779cba5f1a6fccf5438653a6');
+    expect(statSync(file).size).toBeLessThan(25000);
+    const html=readFileSync('src/transport/public/index.html','utf8');
+    expect(html).toContain('src="/brand/logo-premium.webp" alt="Brandopolis" width="660" height="151"');
+    expect(html).toContain('srcset="/brand/symbol.svg"');
+    expect(html).not.toContain('src="/brand/logo.svg"');
+  });
   it('every identity route serves a byte-identical copy of the Brand Master',()=>{
     for(const [route,source] of Object.entries(canonical)){
       const served=runtimeAssets[route as keyof typeof runtimeAssets];expect(served,route).toBeDefined();

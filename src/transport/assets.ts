@@ -6,11 +6,20 @@ import { createHash } from 'node:crypto';
 export const runtimeAssets={
   '/':['src/transport/public/index.html','text/html; charset=utf-8'],
   '/app.js':['src/transport/public/app.js','text/javascript; charset=utf-8'],
+  '/product-views.js':['src/transport/public/product-views.js','text/javascript; charset=utf-8'],
+  '/product-interactions.js':['src/transport/public/product-interactions.js','text/javascript; charset=utf-8'],
   '/style.css':['src/transport/public/style.css','text/css; charset=utf-8'],
+  '/product.css':['src/transport/public/product.css','text/css; charset=utf-8'],
+  '/product-shell.css':['src/transport/public/product-shell.css','text/css; charset=utf-8'],
+  '/product-decision.css':['src/transport/public/product-decision.css','text/css; charset=utf-8'],
+  '/product-context.css':['src/transport/public/product-context.css','text/css; charset=utf-8'],
+  '/product-views.css':['src/transport/public/product-views.css','text/css; charset=utf-8'],
+  '/product-responsive.css':['src/transport/public/product-responsive.css','text/css; charset=utf-8'],
   '/tokens.css':['design/brandopolis-ui/tokens/brandopolis.tokens.css','text/css; charset=utf-8'],
   // Identity: byte-identical copies of the canonical Brand Master (design/brandopolis-ui/brand-master/
   // final-canonical-2026-09-25); tests/brand-runtime.test.ts fails on any drift.
   '/brand/logo.svg':['public/brand/logo/brandopolis-logo-horizontal.svg','image/svg+xml'],
+  '/brand/logo-premium.webp':['public/brand/logo/brandopolis-logo-premium-660.webp','image/webp'],
   '/brand/symbol.svg':['public/brand/symbols/brandopolis-symbol.svg','image/svg+xml'],
   '/favicon.ico':['public/brand/ui/favicon.ico','image/x-icon'],
   '/brand/favicon-32.png':['public/brand/ui/favicon-32.png','image/png'],

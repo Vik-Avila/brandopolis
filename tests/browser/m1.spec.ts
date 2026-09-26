@@ -5,11 +5,13 @@ import { test,expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 test('human connected proof survives reload without console errors or overflow',async({page},testInfo)=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
-  const session=JSON.parse(readFileSync('.local/demo-session.json','utf8'));
+  const session=JSON.parse(readFileSync(process.env.BRANDOPOLIS_SESSION_FILE??'.local/demo-session.json','utf8'));
   await page.goto('/');
   await page.getByLabel('Token de sesión local').fill(session.token);
   await page.getByRole('button',{name:'Entrar al espacio estratégico'}).click();
-  await expect(page.getByRole('heading',{name:'Una decisión conecta con la siguiente.'})).toBeVisible();
+  await expect(page.locator('#workspace')).toBeVisible();
+  await expect(page.getByLabel('Marca activa')).toBeVisible();
+  await expect(page.locator('#new-brand')).toBeVisible();
   if(await page.getByRole('button',{name:'Abrir navegación',exact:true}).isVisible()) {
     const menu=page.locator('#menu');
     await menu.click();await expect(menu).toHaveAttribute('aria-expanded','true');
@@ -17,7 +19,7 @@ test('human connected proof survives reload without console errors or overflow',
     await page.keyboard.press('Escape');await expect(menu).toBeFocused();await expect(menu).toHaveAttribute('aria-expanded','false');
     await menu.click();await page.locator('#nav-backdrop').click({position:{x:(page.viewportSize()?.width??390)-10,y:150}});await expect(menu).toHaveAttribute('aria-expanded','false');
   }
-  await page.getByLabel('Nueva marca',{exact:true}).fill(`Browser DEMO ${testInfo.project.name} ${Date.now()}`);
+  await page.locator('#new-brand').click();await expect(page.locator('#brand-dialog')).toBeVisible();await page.getByLabel('Nueva marca',{exact:true}).fill(`Browser DEMO ${testInfo.project.name} ${Date.now()}`);
   await page.getByRole('button',{name:'Crear marca',exact:true}).click();
   await expect(page.locator('#decision')).toContainText('Por decidir');
   await navigate(page,'Contexto estratégico');
@@ -73,9 +75,9 @@ test('human connected proof survives reload without console errors or overflow',
   await expect(page.getByLabel('Token de sesión local')).toBeVisible();
 });
 test('two human tabs cannot silently overwrite a newer version',async({page,context})=>{
-  const session=JSON.parse(readFileSync('.local/demo-session.json','utf8'));
+  const session=JSON.parse(readFileSync(process.env.BRANDOPOLIS_SESSION_FILE??'.local/demo-session.json','utf8'));
   await page.goto('/');await page.getByLabel('Token de sesión local').fill(session.token);await page.getByRole('button',{name:'Entrar al espacio estratégico'}).click();
-  await page.getByLabel('Nueva marca',{exact:true}).fill(`Concurrency DEMO ${Date.now()}`);await page.getByRole('button',{name:'Crear marca',exact:true}).click();await expect(page.locator('#decision')).toContainText('Por decidir');
+  await page.locator('#new-brand').click();await expect(page.locator('#brand-dialog')).toBeVisible();await page.getByLabel('Nueva marca',{exact:true}).fill(`Concurrency DEMO ${Date.now()}`);await page.getByRole('button',{name:'Crear marca',exact:true}).click();await expect(page.locator('#decision')).toContainText('Por decidir');
   await page.getByRole('button',{name:'Preparar decisión',exact:true}).click();await page.getByLabel('Decisión propuesta').fill('Original');await page.getByLabel('¿Por qué eliges esta opción?').fill('Original rationale');await page.getByRole('button',{name:'Aprobar decisión',exact:true}).click();await expect(page.locator('#decision .current')).toHaveText('Original');
   const second=await context.newPage();await second.goto(page.url());await expect(second.locator('#decision .current')).toHaveText('Original');
   await page.getByRole('button',{name:'Preparar nueva versión',exact:true}).click();await second.getByRole('button',{name:'Preparar nueva versión',exact:true}).click();
@@ -87,17 +89,17 @@ test('two human tabs cannot silently overwrite a newer version',async({page,cont
   await second.close();
 });
 test('DEMO recommendation can be rejected and then explicitly approved',async({page},info)=>{
- const session=JSON.parse(readFileSync('.local/demo-session.json','utf8'));
+ const session=JSON.parse(readFileSync(process.env.BRANDOPOLIS_SESSION_FILE??'.local/demo-session.json','utf8'));
  await page.goto('/');await page.getByLabel('Token de sesión local').fill(session.token);await page.getByRole('button',{name:'Entrar al espacio estratégico'}).click();
- await page.getByLabel('Nueva marca',{exact:true}).fill(`Analysis DEMO ${info.project.name} ${Date.now()}`);await page.getByRole('button',{name:'Crear marca',exact:true}).click();await expect(page.locator('#decision')).toContainText('Por decidir');
- await page.getByRole('button',{name:'Comparar opciones DEMO',exact:true}).click();await expect(page.getByRole('heading',{name:'Compara antes de decidir'})).toBeVisible();
+ await page.locator('#new-brand').click();await expect(page.locator('#brand-dialog')).toBeVisible();await page.getByLabel('Nueva marca',{exact:true}).fill(`Analysis DEMO ${info.project.name} ${Date.now()}`);await page.getByRole('button',{name:'Crear marca',exact:true}).click();await expect(page.locator('#decision')).toContainText('Por decidir');
+ await page.getByRole('tab',{name:'Opciones',exact:true}).click();await page.getByRole('button',{name:'Comparar opciones DEMO',exact:true}).click();await expect(page.getByRole('heading',{name:'Compara antes de decidir'})).toBeVisible();
  await page.getByLabel('Motivo para rechazar').fill('Necesito otro enfoque');await page.getByRole('button',{name:'Rechazar recomendación',exact:true}).click();await expect(page.getByRole('status')).toContainText('Recomendación rechazada');await expect(page.locator('#decision')).toContainText('Por decidir');
- await page.getByRole('button',{name:'Comparar opciones DEMO',exact:true}).click();await page.getByRole('button',{name:'Usar recomendación',exact:true}).click();await page.getByLabel('¿Por qué eliges esta opción?').fill('Elección humana para probar la demostración');await page.getByRole('button',{name:'Aprobar decisión',exact:true}).click();
+ await page.getByRole('tab',{name:'Opciones',exact:true}).click();await page.getByRole('button',{name:'Comparar opciones DEMO',exact:true}).click();await page.getByRole('button',{name:'Usar recomendación',exact:true}).click();await page.getByLabel('¿Por qué eliges esta opción?').fill('Elección humana para probar la demostración');await page.getByRole('button',{name:'Aprobar decisión',exact:true}).click();
  await expect(page.locator('#decision .current')).toHaveText('Agencias con varias marcas');await page.reload();await expect(page.locator('#decision .current')).toHaveText('Agencias con varias marcas');expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  for(const [module,choice] of [['02 Modelo de valor','Suscripción por marca activa'],['03 Posicionamiento','Continuidad para agencias'],['04 Mensaje principal','Decisiones conectadas']]) {
    await navigate(page,module);await page.getByRole('button',{name:'Preparar decisión',exact:true}).click();await page.getByLabel('Decisión propuesta').fill(choice);await page.getByLabel('¿Por qué eliges esta opción?').fill('Criterio humano DEMO');await page.getByRole('button',{name:'Aprobar decisión',exact:true}).click();await expect(page.locator('#decision .current')).toHaveText(choice);
  }
- await navigate(page,'01 Cliente principal');await page.getByRole('button',{name:'Comparar opciones DEMO',exact:true}).click();await page.getByRole('button',{name:'Modificar recomendación',exact:true}).click();await page.getByLabel('Decisión propuesta').fill('Equipos internos');await page.getByLabel('¿Por qué eliges esta opción?').fill('Nueva prioridad humana DEMO');await page.getByRole('button',{name:'Aprobar decisión',exact:true}).click();await expect(page.locator('#decision .current')).toHaveText('Equipos internos');
+ await navigate(page,'01 Cliente principal');await page.getByRole('tab',{name:'Opciones',exact:true}).click();await page.getByRole('button',{name:'Comparar opciones DEMO',exact:true}).click();await page.getByRole('button',{name:'Modificar recomendación',exact:true}).click();await page.getByLabel('Decisión propuesta').fill('Equipos internos');await page.getByLabel('¿Por qué eliges esta opción?').fill('Nueva prioridad humana DEMO');await page.getByRole('button',{name:'Aprobar decisión',exact:true}).click();await expect(page.locator('#decision .current')).toHaveText('Equipos internos');
  await navigate(page,'Qué necesita atención');await expect(page.locator('#decision')).toContainText('Tu estrategia hoy');await page.getByRole('button',{name:'Abrir posicionamiento',exact:true}).click();await expect(page.locator('#decision')).toContainText('Requiere revisión');await expect(page.locator('#decision .current')).toHaveText('Continuidad para agencias');
  await page.getByRole('button',{name:'Iniciar revisión humana',exact:true}).click();await page.getByRole('button',{name:'Modificar',exact:true}).click();await page.getByLabel('Decisión propuesta').fill('Continuidad para equipos internos');await page.getByLabel('¿Por qué eliges esta opción?').fill('Alineación humana con cliente');await page.getByRole('button',{name:'Confirmar revisión',exact:true}).click();await expect(page.locator('#decision .current')).toHaveText('Continuidad para equipos internos');
  await navigate(page,'Contexto estratégico');await page.getByLabel('Tipo de aportación').selectOption('hypothesis');await page.getByLabel('Contenido',{exact:true}).fill('Las agencias volverán a revisar sus decisiones');await page.getByRole('button',{name:'Guardar contexto',exact:true}).click();await expect(page.locator('#decision')).toContainText('Las agencias volverán a revisar sus decisiones');
@@ -109,23 +111,23 @@ test('DEMO recommendation can be rejected and then explicitly approved',async({p
  await navigate(page,'Contexto estratégico');await expect(page.locator('#decision')).toContainText('Posible interés recurrente');await navigate(page,'Qué necesita atención');await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:`test-results/home-${info.project.name}.png`,fullPage:true});
 });
 test('intake and brand switch preserve isolated context and human draft',async({page},info)=>{
- const session=JSON.parse(readFileSync('.local/demo-session.json','utf8'));
+ const session=JSON.parse(readFileSync(process.env.BRANDOPOLIS_SESSION_FILE??'.local/demo-session.json','utf8'));
  await page.goto('/');await page.getByLabel('Token de sesión local').fill(session.token);await page.getByRole('button',{name:'Entrar al espacio estratégico'}).click();
- await page.getByLabel('Nueva marca',{exact:true}).fill(`Intake A ${info.project.name} ${Date.now()}`);await page.getByText('¿Qué estás construyendo?',{exact:true}).click();await page.getByLabel('Cuéntanos tu idea inicial (opcional)').fill('Contexto exclusivo A');await page.getByRole('button',{name:'Crear marca',exact:true}).click();await expect(page.getByRole('status')).toContainText('Marca creada');const a=await page.getByLabel('Marca activa').inputValue();
+ await page.locator('#new-brand').click();await expect(page.locator('#brand-dialog')).toBeVisible();await page.getByLabel('Nueva marca',{exact:true}).fill(`Intake A ${info.project.name} ${Date.now()}`);await page.getByText('¿Qué estás construyendo?',{exact:true}).click();await page.getByLabel('Cuéntanos tu idea inicial (opcional)').fill('Contexto exclusivo A');await page.getByRole('button',{name:'Crear marca',exact:true}).click();await expect(page.getByRole('status')).toContainText('Marca creada');const a=await page.getByLabel('Marca activa').inputValue();
  await navigate(page,'Contexto estratégico');await expect(page.locator('#decision')).toContainText('Contexto exclusivo A');
- await page.getByLabel('Nueva marca',{exact:true}).fill(`Intake B ${info.project.name} ${Date.now()}`);await page.getByRole('button',{name:'Crear marca',exact:true}).click();await expect(page.getByRole('status')).toContainText('Marca creada');await expect(page.getByLabel('Marca activa')).not.toHaveValue(a);const b=await page.getByLabel('Marca activa').inputValue();
+ await page.locator('#new-brand').click();await expect(page.locator('#brand-dialog')).toBeVisible();await page.getByLabel('Nueva marca',{exact:true}).fill(`Intake B ${info.project.name} ${Date.now()}`);await page.getByRole('button',{name:'Crear marca',exact:true}).click();await expect(page.getByRole('status')).toContainText('Marca creada');await expect(page.getByLabel('Marca activa')).not.toHaveValue(a);const b=await page.getByLabel('Marca activa').inputValue();
  await navigate(page,'Contexto estratégico');await expect(page.locator('#decision')).not.toContainText('Contexto exclusivo A');await page.getByLabel('Marca activa').selectOption(a);await page.getByRole('button',{name:'Preparar decisión',exact:true}).click();await page.getByLabel('Decisión propuesta').fill('Borrador exclusivo A');await page.getByLabel('Marca activa').selectOption(b);await expect(page.locator('#decision')).not.toContainText('Borrador exclusivo A');await page.getByLabel('Marca activa').selectOption(a);await page.getByRole('button',{name:'Ver borrador conservado',exact:true}).click();await expect(page.getByRole('status')).toContainText('Borrador exclusivo A');
 });
 test('RC handles double submit, offline mutation and expired session without raw errors',async({page},info)=>{
- const session=JSON.parse(readFileSync('.local/demo-session.json','utf8'));
- await page.goto('/');await page.getByLabel('Token de sesión local').fill(session.token);await page.getByRole('button',{name:'Entrar al espacio estratégico'}).click();await expect(page.getByLabel('Nueva marca',{exact:true})).toBeVisible();
+ const session=JSON.parse(readFileSync(process.env.BRANDOPOLIS_SESSION_FILE??'.local/demo-session.json','utf8'));
+ await page.goto('/');await page.getByLabel('Token de sesión local').fill(session.token);await page.getByRole('button',{name:'Entrar al espacio estratégico'}).click();await expect(page.locator('#new-brand')).toBeVisible();
  let requests=0,release!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve;});
  await page.route('**/api/brands',async route=>{if(route.request().method()==='POST'){requests++;await gate;}await route.continue();});
- await page.getByLabel('Nueva marca',{exact:true}).fill(`RC double ${info.project.name} ${Date.now()}`);
+ await page.locator('#new-brand').click();await expect(page.locator('#brand-dialog')).toBeVisible();await page.getByLabel('Nueva marca',{exact:true}).fill(`RC double ${info.project.name} ${Date.now()}`);
  await page.locator('#create-brand').evaluate((form:HTMLFormElement)=>{form.requestSubmit();form.requestSubmit();});
  await expect.poll(()=>requests).toBe(1);await expect(page.getByRole('button',{name:'Crear marca',exact:true})).toBeDisabled();await expect(page.getByRole('status')).toContainText('Procesando');release();await expect(page.getByRole('status')).toContainText('Marca creada');expect(requests).toBe(1);await page.unroute('**/api/brands');
  await page.getByRole('button',{name:'Preparar decisión',exact:true}).click();await page.getByLabel('Decisión propuesta').fill('Borrador ante desconexión');await page.getByLabel('¿Por qué eliges esta opción?').fill('Conservar criterio humano');
  await page.route('**/api/decisions/commit',route=>route.abort('failed'));await page.getByRole('button',{name:'Aprobar decisión',exact:true}).click();await expect(page.getByRole('status')).toContainText('No recibimos confirmación');await expect(page.getByLabel('Decisión propuesta')).toHaveValue('Borrador ante desconexión');await expect(page.getByRole('button',{name:'Aprobar decisión',exact:true})).toBeEnabled();await page.unroute('**/api/decisions/commit');
  await page.getByRole('button',{name:'Aprobar decisión',exact:true}).click();await expect(page.locator('#decision .current')).toHaveText('Borrador ante desconexión');
- await page.route('**/api/recommendations/generate',route=>route.fulfill({status:401,contentType:'application/json',body:JSON.stringify({code:'UNAUTHORIZED',message:'technical private details'})}));await page.getByRole('button',{name:'Comparar opciones DEMO',exact:true}).click();await expect(page.getByLabel('Token de sesión local')).toBeVisible();await expect(page.getByRole('status')).toContainText('Tu sesión DEMO');await expect(page.locator('body')).not.toContainText('technical private details');
+ await page.route('**/api/recommendations/generate',route=>route.fulfill({status:401,contentType:'application/json',body:JSON.stringify({code:'UNAUTHORIZED',message:'technical private details'})}));await page.getByRole('tab',{name:'Opciones',exact:true}).click();await page.getByRole('button',{name:'Comparar opciones DEMO',exact:true}).click();await expect(page.getByLabel('Token de sesión local')).toBeVisible();await expect(page.getByRole('status')).toContainText('Tu sesión DEMO');await expect(page.locator('body')).not.toContainText('technical private details');
 });

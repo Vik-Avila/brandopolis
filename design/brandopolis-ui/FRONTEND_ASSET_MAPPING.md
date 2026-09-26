@@ -16,7 +16,7 @@ Only the files below are served; the server uses an exact allowlist (`src/transp
 
 | Runtime route | Runtime file | Brand Master source | Surface | Notes |
 |---|---|---|---|---|
-| `/brand/logo.svg` | `public/brand/logo/brandopolis-logo-horizontal.svg` | `01_master/brandopolis-logo-horizontal-master.svg` | Public navbar, product header (≥ 768 px) | Vector; 58 px tall (viewBox 3.4:1), eager |
+| `/brand/logo.svg` | `public/brand/logo/brandopolis-logo-horizontal.svg` | `01_master/brandopolis-logo-horizontal-master.svg` | Reserved flat variant; not used in prominent headers | Canonical vector retained |
 | `/brand/symbol.svg` | `public/brand/symbols/brandopolis-symbol.svg` | `01_master/brandopolis-symbol-master.svg` (= `02_runtime/symbol/brandopolis-symbol-flat-color.svg`) | Mobile header (< 768 px, `<picture>` source), footer mark | Vector |
 | `/favicon.ico` | `public/brand/ui/favicon.ico` | `02_runtime/favicon/favicon.ico` (16–256) | Browser tab | cached 1 day |
 | `/brand/favicon-32.png` | `public/brand/ui/favicon-32.png` | `02_runtime/favicon/favicon-32.png` | `<link rel=icon sizes=32x32>` | |
@@ -25,6 +25,14 @@ Only the files below are served; the server uses an exact allowlist (`src/transp
 | `/brand/app-icon-192.png`, `/brand/app-icon-512.png` | `public/brand/ui/app-icon-{192,512}.png` | `02_runtime/app-icons/app-icon-{192,512}.png` | PWA icons (paths exactly as the canonical manifest requires) | |
 
 Removed from runtime (deprecated per `BRAND_ASSET_REPLACEMENT_MAP.json`, still in Git history and design reference folders): polygonal symbol PNGs (black, emerald, flat, gold, white), legacy `ui/icon-*` set, legacy `flow/*` images and the unused `/brand/flow.webp` route. The previous logo, symbol, favicon, apple-touch, app icons and manifest files at the same paths were replaced by canonical bytes.
+
+## Phase 10A premium identity
+
+The prominent desktop/tablet header and access views use `/brand/logo-premium.webp`, derived from the approved premium horizontal PNG without redrawing. Runtime file: `public/brand/logo/brandopolis-logo-premium-660.webp`, 660×151, 17,790 bytes. Header width 220 CSS px; access width 240 CSS px. Mobile compact header retains the approved flat symbol.
+
+Source SHA-256: `28877e609f4e051ed4eff4906a81170b02d17cbe769efdd093d9fa5d227150ad`.
+Derivative SHA-256: `0dbb6a7aac540e40ee96137bdeee13d180cde98d779cba5f1a6fccf5438653a6`.
+`tests/brand-runtime.test.ts` verifies both hashes and prominent HTML usages. The immutable Brand Master files remain unchanged.
 
 ## Atmosphere and motion — final visual package
 
@@ -44,4 +52,4 @@ Caching: identity and brand media `public, max-age=86400`; `index.html` `no-stor
 
 ## Deliberately not used at runtime
 
-Premium Brand Master renders (512–4096) and the premium horizontal raster (vector preferred everywhere the logo appears), mono and micro variants (not needed on current surfaces), hero variants B/C and XL, `glass-ambient-hero`, `champagne-light-sweep` and `strategic-pulse` motion (one motion only; product stays calm), other product ambients (dense decision content stays near-solid), `06_glassmorphism_overlays` (glass is CSS), social cards other than OG, preview and QA boards, manifests, canonical reference images and archives.
+Full-resolution premium Brand Master renders (the horizontal source has the optimized derivative documented above), mono and micro variants (not needed on current surfaces), hero variants B/C and XL, `glass-ambient-hero`, `champagne-light-sweep` and `strategic-pulse` motion (one motion only; product stays calm), other product ambients (dense decision content stays near-solid), `06_glassmorphism_overlays` (glass is CSS), social cards other than OG, preview and QA boards, manifests, canonical reference images and archives.

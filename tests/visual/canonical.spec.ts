@@ -3,7 +3,7 @@ import { readFileSync,mkdirSync } from 'node:fs';
 // Canonical post-integration evidence: real Chromium, real DEMO server, state created through the real API.
 // Canonical evidence is rewritten only on purpose (UPDATE_CANONICAL_SCREENSHOTS=1); otherwise results go to test-results.
 const shots=process.env.UPDATE_CANONICAL_SCREENSHOTS==='1'?'design/brandopolis-ui/reference/screenshots':'test-results/visual';mkdirSync(shots,{recursive:true});
-const session=()=>JSON.parse(readFileSync('.local/demo-session.json','utf8')) as {token:string;userId:string};
+const session=()=>JSON.parse(readFileSync(process.env.BRANDOPOLIS_SESSION_FILE??'.local/demo-session.json','utf8')) as {token:string;userId:string};
 async function seed(request:APIRequestContext) {
   const {token,userId}=session(),auth={Authorization:`Bearer ${token}`};
   const post=async(path:string,data:unknown)=>{const r=await request.post(path,{headers:auth,data});expect(r.ok(),path).toBe(true);return r.json();};
@@ -24,7 +24,7 @@ async function signIn(page:Page,brandId:string,module='Primary Customer') {
   if(await page.locator('#workspace').isHidden()){
     await page.goto('/login');await ready();await page.getByLabel('Token de sesión local').fill(session().token);
     await page.getByRole('button',{name:'Entrar al espacio estratégico'}).click();
-    await expect(page.getByRole('heading',{name:'Una decisión conecta con la siguiente.'})).toBeVisible();
+    await expect(page.locator('#workspace')).toBeVisible();
     await page.goto(target);await ready();
   }
   await expect(page.locator('#decision h2')).toBeVisible();

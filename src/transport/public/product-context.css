@@ -1,0 +1,134 @@
+/* Current strategic context and lineage. */
+
+#context > section {
+  border-bottom: 1px solid var(--border-default);
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+}
+
+#context {
+  min-width: 0px;
+  align-self: start;
+  position: sticky;
+  top: calc(var(--shell-height) + 20px);
+  padding: 0px;
+  display: block;
+  background: rgba(255, 252, 247, 0.93);
+  border: 1px solid rgb(221, 216, 202);
+  border-radius: var(--product-radius);
+  overflow: hidden;
+  box-shadow: var(--product-shadow);
+  font-size: 12px;
+  backdrop-filter: blur(12px);
+}
+
+.context-cover {
+  padding: 24px 22px 20px;
+  background: linear-gradient(130deg, rgb(242, 237, 223), rgb(250, 247, 237));
+  border-bottom: 1px solid rgb(223, 216, 199);
+}
+
+.context-cover .eyebrow {
+  font-size: 9px;
+  color: rgb(121, 96, 58);
+}
+
+.context-cover h3 {
+  font: 500 25px / 1.2 Georgia, serif;
+  margin: 10px 0px;
+}
+
+.context-cover > p:last-child {
+  font-size: 11px;
+  color: rgb(96, 104, 93);
+  margin: 0px;
+  overflow-wrap: anywhere;
+}
+
+.context-details {
+  margin: 0px;
+  border: 0px;
+  padding: 12px 20px;
+}
+
+.context-details > summary {
+  font-size: 11px;
+}
+
+.context-lineage {
+  list-style: none;
+  margin: 12px 0px 0px;
+  padding: 0px;
+}
+
+.context-lineage li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 10px;
+  padding: 0px 0px 22px;
+}
+
+.context-lineage li::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 22px;
+  bottom: 3px;
+  width: 1px;
+  background: rgb(213, 216, 204);
+}
+
+.context-lineage li:last-child::before {
+  display: none;
+}
+
+.context-number {
+  font-size: 9px;
+  line-height: 20px;
+  color: rgb(108, 119, 95);
+  font-variant-numeric: tabular-nums;
+}
+
+.context-lineage strong {
+  font-size: 11px;
+}
+
+.context-lineage p {
+  font-size: 12px;
+  line-height: 1.55;
+  margin: 5px 0px;
+}
+
+.context-version {
+  display: block;
+  font-size: 9px;
+  color: rgb(106, 113, 101);
+  margin-top: 7px;
+}
+
+.context-lineage .badge {
+  margin-top: 6px;
+}
+
+.context-updated {
+  margin: 0px 20px;
+  padding: 16px 0px;
+  border-top: 1px solid rgb(226, 222, 212);
+  font-size: 10px;
+  color: rgb(107, 113, 100);
+}
+
+.context-updated strong {
+  font-weight: 500;
+  color: rgb(70, 81, 63);
+}
+
+.context-note {
+  margin: 0px;
+  padding: 16px 20px;
+  background: rgb(240, 241, 232);
+  font-size: 10px;
+  color: rgb(95, 103, 89);
+}
+
