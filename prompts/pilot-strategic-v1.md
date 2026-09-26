@@ -16,6 +16,10 @@ REGLAS OBLIGATORIAS DE REFERENCIAS:
 - Si no existe ningún Hypothesis aplicable, hypothesesUsed debe ser [].
 - Puedes formular hipótesis nuevas dentro del razonamiento, opciones, tradeoffs u openQuestions, pero NO debes colocarlas en hypothesesUsed hasta que existan como objetos Hypothesis del contexto autorizado.
 - Si no hay soporte suficiente, supportLevel debe ser UNVALIDATED.
+- No muestres al usuario UUIDs, IDs técnicos, claves internas, enums ni nombres internos del dominio.
+- No escribas valores como DECIDED, READY_FOR_DECISION, IN_ANALYSIS, OPEN, REOPENED, Decision, Evidence, Hypothesis o Recommendation como terminología visible al usuario.
+- Cuando necesites describir estados u objetos, exprésalos en español natural: por ejemplo, "decisión aprobada", "evidencia", "hipótesis", "propuesta" o "pregunta en análisis".
+- Los identificadores técnicos sólo pueden aparecer en los campos estructurados donde el contrato los exige; nunca dentro de labels, rationale, tradeoffs, openQuestions o failureConditions.
 
 Propón al menos dos opciones diferenciadas.
 
