@@ -19,14 +19,14 @@ Setup and daily commands: [NEXT_DEVELOPER_START_HERE](NEXT_DEVELOPER_START_HERE.
 | Automated QA | PASS (see [Tests](#tests)) |
 | Responsive QA | PASS at 1600×1000, 1440×900, 1280×800, 768×1024, 390×844 (+360×800) |
 | Accessibility QA | No WCAG 2.2 AA failure found by independent review; P2/P3 findings fixed or listed below |
-| Clean-clone rehearsal | See [Clean clone](#clean-clone-rehearsal) |
+| Clean-clone rehearsal | **PASS** (fresh GitHub clone, fresh dependencies/DB/session; see [record](#rehearsal-record)) |
 | External production configuration | NOT PERFORMED (hosting, DB, OIDC, DNS, AI key, request-access destination) |
 | Founder final visual review | **PENDING** |
 
 ## Branch, tag, SHA
 
 - Branch: `handoff/phase10b-final-2026-09-25` (from `7be0b67`, Phase 10 start). Not merged into `main` (GitHub `main` holds only the Foundation import).
-- Verified code commit: `80ef75b2deeed502cec3e872e78f9694a111cb98` (last commit that changes runtime code or tests). Later commits on the branch are documentation and curated evidence only.
+- Verified code commit: `770458fbd40074ea99c2afcd5327870f3433dd8a` (last commit that changes runtime code). Later commits are documentation only.
 - Tag: `brandopolis-mvp-handoff-ready-2026-09-25` (annotated) on the final documentation commit: `git rev-parse "brandopolis-mvp-handoff-ready-2026-09-25^{commit}"`.
 
 Commits in this handoff:
@@ -36,7 +36,10 @@ Commits in this handoff:
 3. `c5eeca0` design: complete Brandopolis final product polish and accessibility pass
 4. `61ac8b8` fix: close final design review gaps
 5. `80ef75b` fix: close final accessibility review findings
-6. docs/evidence commits (handoff documentation, curated screenshots, rehearsal record)
+6. `b089e37` docs: prepare next developer handoff
+7. `e76f1db` fix: make hashed UI kit assets byte-exact on Windows checkouts (found by the rehearsal)
+8. `770458f` fix: keep the human decision field's accessible name unique (found by the rehearsal)
+9. docs: record the clean-clone rehearsal (tagged)
 
 ## Product design state
 
@@ -80,7 +83,7 @@ Runtime assets are an exact allowlist; largest file 199,784 B (mobile hero); pre
 
 ## Tests
 
-Final runs on the verified code (`80ef75b`), Windows 11, Node 24.19.0, pnpm 12.4.2, Chrome stable:
+Final runs on the founder working copy at `80ef75b` and again in the clean clone at `770458f` (see rehearsal), Windows 11, Node 24.19.0, pnpm 12.4.2, Chrome stable:
 
 | Command | Result |
 |---|---|
@@ -107,7 +110,7 @@ Real Chromium through Playwright on public (gateway, login, request access) and 
 
 ## Clean clone rehearsal
 
-Recorded in [the rehearsal section below](#rehearsal-record) after it runs against the pushed branch.
+**PASS** — see [Rehearsal record](#rehearsal-record).
 
 ## External configuration (remaining, not performed)
 
@@ -136,4 +139,30 @@ The repository alone (plus separately supplied external credentials for PILOT) i
 
 ## Rehearsal record
 
-_Filled in after the clean-clone rehearsal (next commit)._
+**Method.** `git clone --branch handoff/phase10b-final-2026-09-25 https://github.com/Vik-Avila/brandopolis.git` from GitHub into a new empty directory (`C:\Users\HP\bp-rehearsal-10b`, removed afterwards); no reuse of `node_modules`, `.local`, sessions, databases or generated artifacts; only the repository docs were followed. The founder's DEMO occupied the default ports (3000/55432), so the documented isolated profile (3001/55434) was used; for `test:pilot:e2e` the clone's default connection file pointed at its own isolated cluster (on a fresh machine `competition:start` creates the default cluster).
+
+**Commands.** `pnpm install --frozen-lockfile` · `python -m venv .venv` · `.venv/Scripts/python.exe -m pip install -r requirements-foundation.txt` · Foundation / UI / Brand validators · `pnpm competition:start --isolated` · `pnpm competition:check --isolated` · `pnpm typecheck` · `pnpm lint` · `pnpm test` · `node --test tests/demo-encoding.node.mjs` · `pnpm test:e2e` (×5) · `pnpm test:visual` · Phase10A evidence · `pnpm test:pilot:e2e` · `pnpm competition:test-boot`.
+
+**Results (final code `770458f`).**
+
+| Step | Result |
+|---|---|
+| Clone / install | PASS (pnpm 12.4.2, fresh `node_modules`) |
+| Foundation / UI validator / Brand Master validator | PASS / PASS (after fix 1) / PASS |
+| `competition:start --isolated` | Fresh PostgreSQL 17 cluster, 9 migrations, DEMO session and seeded brand |
+| `competition:check --isolated` | PASS (runtime, DB + 9 migrations, session, server) |
+| typecheck / lint | PASS / PASS |
+| Vitest | 63/63; encoding node test 1/1 |
+| `test:e2e` | 25/25 in 3 consecutive runs after fix 2 |
+| `test:visual` | 10 passed, 1 skipped (historic backup precondition) |
+| Phase10A evidence | 2/2 |
+| `test:pilot:e2e` | 10/10 |
+| `competition:test-boot` | 1/1 |
+| Working tree after all suites | Clean (0 changes) |
+
+**Browser (real Chrome, 1440×900 and 390×844).** Public gateway loads with 0 broken images and no overflow; token login works; the four strategic questions render exactly «¿Quién debe ser nuestro cliente prioritario?», «¿Cómo creamos y capturamos valor para ese cliente?», «¿Qué posición estratégica queremos ocupar frente a las alternativas?» and «¿Qué idea principal queremos que comprenda y recuerde el cliente?»; 0 mojibake sequences; 0 console errors. The core Decision flow (prepare, approve, change Customer, Needs Review, impact, Guided Review, history, context, learning, practice, Blueprint) is exercised by the E2E suite.
+
+**Found and fixed by the rehearsal.**
+1. With `core.autocrlf=true` (Git for Windows default), four hashed UI kit text files were checked out as CRLF and the UI validator failed → pinned `-text` in `.gitattributes`.
+2. The human decision field and the Options «human choice» group shared the accessible name «Tu decisión» → intermittent E2E failure → the group is now «Decisión humana».
+3. Windows notes added to the start-here doc: clone into a short path (MAX_PATH) or enable `core.longpaths`; `corepack enable` needs an elevated terminal (`npm install -g pnpm@12.4.2` otherwise); the Pilot browser suite needs the default local cluster.
