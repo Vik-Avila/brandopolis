@@ -230,7 +230,7 @@ details {
 }
 
 .human-decision .eyebrow {
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.12em;
 }
 
@@ -335,6 +335,7 @@ summary {
 
 summary::after {
   content: "＋";
+  content: "＋" / "";
   margin-left: auto;
   font-size: 16px;
   font-weight: 400;
@@ -343,6 +344,7 @@ summary::after {
 
 details[open] > summary::after {
   content: "−";
+  content: "−" / "";
 }
 
 .knowledge-grid .hypothesis-panel {
@@ -352,7 +354,7 @@ details[open] > summary::after {
 }
 
 .knowledge-grid .eyebrow {
-  font-size: 8px;
+  font-size: 10px;
   color: rgb(84, 102, 83);
   letter-spacing: 0.1em;
 }
@@ -794,7 +796,7 @@ details[open] > summary::after {
 }
 
 .review-current .eyebrow {
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .review-origin {
@@ -821,7 +823,7 @@ details[open] > summary::after {
 }
 
 .impact-before > span, .impact-after > span {
-  font-size: 9px;
+  font-size: 10px;
   color: rgb(113, 105, 79);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -895,7 +897,7 @@ details[open] > summary::after {
 }
 
 .history-intro .eyebrow {
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .history[role="tabpanel"] {

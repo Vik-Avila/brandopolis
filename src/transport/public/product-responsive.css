@@ -280,7 +280,7 @@
     background-image: linear-gradient(180deg,color-mix(in srgb,var(--bp-brand-ivory) 55%,transparent),color-mix(in srgb,var(--bp-brand-ivory) 80%,transparent)),url('/brand/web/workspace-atmosphere-mobile.webp');
   }
   .demo {
-    font-size: 8px;
+    font-size: 9.5px;
     padding: 5px;
     letter-spacing: 0.03em;
   }
@@ -454,7 +454,7 @@
   }
   .brand-control select {
     font-size: 13px;
-    min-height: 36px;
+    min-height: 44px;
   }
   /* Icon-only on phones; the visible label stays as the accessible name. */
   #new-brand {

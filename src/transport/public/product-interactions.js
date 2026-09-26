@@ -23,7 +23,7 @@ export function decisionTabs(surface,active,onSelect,versionCount){
   const button=document.createElement('button');button.type='button';button.id=`tab-${key}`;button.textContent=label;button.setAttribute('role','tab');button.setAttribute('aria-controls',`panel-${key}`);button.dataset.tab=key;
   panel.id=`panel-${key}`;panel.setAttribute('role','tabpanel');panel.setAttribute('aria-labelledby',button.id);panel.tabIndex=0;
   if(panel.tagName==='DETAILS')panel.open=true;
-  button.addEventListener('click',()=>{select(key);onSelect(key);});nav.append(button);surface.append(panel);
+  button.addEventListener('click',()=>{select(key);onSelect(key);button.scrollIntoView({inline:'nearest',block:'nearest'});});nav.append(button);surface.append(panel);
  }
  heading.after(nav);
  function select(key){for(const [id,,panel] of entries){const button=nav.querySelector(`[data-tab="${id}"]`),chosen=key===id;button.setAttribute('aria-selected',String(chosen));button.tabIndex=chosen?0:-1;panel.hidden=!chosen;}}
