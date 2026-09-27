@@ -548,3 +548,243 @@
   font-size: 11px;
   white-space: nowrap;
 }
+
+/* Entrepreneur Learning MVP — selective glassmorphism */
+.learning-dashboard {
+  display: grid;
+  gap: 20px;
+}
+
+.learning-hero,
+.learning-card,
+.learning-evidence-item,
+.learning-next {
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow: 0 14px 34px rgba(18, 48, 35, 0.08);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.learning-hero {
+  padding: 22px;
+  border-radius: 18px;
+}
+
+.learning-hero h2 {
+  margin: 6px 0 8px;
+  font-size: 30px;
+}
+
+.learning-hero p:last-child {
+  margin-bottom: 0;
+  max-width: 62ch;
+}
+
+.learning-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.learning-card {
+  padding: 16px;
+  border-radius: 15px;
+}
+
+.learning-card h3 {
+  margin: 8px 0 4px;
+  font-size: 16px;
+}
+
+.learning-card p {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.learning-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: rgba(7, 61, 45, 0.08);
+  color: rgb(7, 61, 45);
+  font-size: 14px;
+}
+
+.learning-evidence {
+  display: grid;
+  gap: 10px;
+}
+
+.learning-evidence-item {
+  padding: 16px;
+  border-radius: 14px;
+}
+
+.learning-evidence-item h3 {
+  margin: 5px 0;
+  font-size: 15px;
+}
+
+.learning-evidence-item p:last-child {
+  margin-bottom: 0;
+  font-size: 13px;
+}
+
+.learning-next {
+  padding: 18px 20px;
+  border-radius: 16px;
+  border-left: 3px solid rgba(7, 61, 45, 0.40);
+}
+
+.learning-next h3 {
+  margin: 5px 0;
+}
+
+.learning-next p:last-child {
+  margin-bottom: 0;
+  max-width: 60ch;
+}
+
+.learning-moment {
+  margin-top: 18px;
+  border-top: 1px solid var(--border-default);
+  padding-top: 14px;
+}
+
+.learning-moment > summary {
+  font-weight: 650;
+}
+
+.learning-moment-body {
+  padding-top: 8px;
+}
+
+.learning-moment-body > p {
+  max-width: 62ch;
+}
+
+.learning-moment-body details {
+  margin-top: 8px;
+}
+
+@media (max-width: 760px) {
+  .learning-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .learning-hero h2 {
+    font-size: 26px;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .learning-hero,
+  .learning-card,
+  .learning-evidence-item,
+  .learning-next {
+    background: rgb(249, 250, 246);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+
+/* BRANDOPOLIS: FEATURED LEARNING NAV */
+#journey #practice {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.15rem;
+  margin-top: 0.45rem;
+  padding: 0.75rem 0.85rem 0.75rem 1rem;
+  overflow: hidden;
+
+  border: 1px solid rgba(14, 108, 82, 0.22);
+  border-left: 3px solid rgba(14, 108, 82, 0.72);
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.70),
+      rgba(232, 242, 236, 0.52)
+    );
+
+  box-shadow:
+    0 8px 24px rgba(35, 57, 47, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.80);
+
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+#journey #practice::before {
+  content: "";
+  position: absolute;
+  width: 42px;
+  height: 42px;
+  right: -18px;
+  top: -20px;
+  border-radius: 999px;
+  background: rgba(17, 116, 87, 0.055);
+  pointer-events: none;
+}
+
+#journey #practice:hover {
+  transform: translateY(-1px);
+  border-color: rgba(14, 108, 82, 0.34);
+  border-left-color: rgba(14, 108, 82, 0.88);
+
+  box-shadow:
+    0 10px 28px rgba(35, 57, 47, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.90);
+}
+
+#journey #practice .practice-title {
+  position: relative;
+  z-index: 1;
+  font-weight: 700;
+  color: #153b30;
+}
+
+#journey #practice .practice-subtitle {
+  position: relative;
+  z-index: 1;
+  font-size: 0.67rem;
+  line-height: 1.2;
+  letter-spacing: 0.035em;
+  color: rgba(32, 82, 66, 0.72);
+}
+
+#journey #practice[aria-current="page"] {
+  border-color: rgba(10, 105, 76, 0.44);
+  border-left-color: #0b7657;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(245, 252, 248, 0.92),
+      rgba(221, 239, 229, 0.72)
+    );
+
+  box-shadow:
+    0 12px 32px rgba(26, 84, 65, 0.11),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  #journey #practice {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: #f4f8f5;
+  }
+}

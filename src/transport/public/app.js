@@ -187,7 +187,7 @@ async function showHome(){
  bindStrategyLinks();
  $('#attention-learning').addEventListener('click',()=>run(showLearning));$('#attention-context').addEventListener('click',()=>run(showBrandContext));
 }
-function mountLearningMoment(question){const m=user.learningMoments?.[question.module];if(m)$('#decision').insertAdjacentHTML('beforeend',`<details><summary>Un momento para afinar tu criterio</summary><p class="eyebrow">${escape(capabilityLabel(m.capability))}</p><h4>Por qué importa</h4><p>${escape(m.why)}</p><h4>Qué observar</h4><p>${escape(m.observe)}</p><h4>En tu negocio</h4><p>${escape(m.apply)}</p><h4>Cuidado con</h4><p>${escape(m.caution)}</p></details>`);}
+function mountLearningMoment(question){const m=user.learningMoments?.[question.module];if(m)$('#decision').insertAdjacentHTML('beforeend',`<details class="learning-moment"><summary>Qué estás aprendiendo aquí</summary><div class="learning-moment-body"><p class="eyebrow">${escape(capabilityLabel(m.capability))}</p><p>${escape(m.why)}</p><p><strong>Prueba esto:</strong> ${escape(m.apply)}</p><details><summary>Ver una pista más</summary><p><strong>Observa:</strong> ${escape(m.observe)}</p><p><strong>Cuidado:</strong> ${escape(m.caution)}</p></details></div></details>`);}
 $('#learning-loop').addEventListener('click',()=>run(showLearning));
 async function showLearning(){
  if(!enterView('#learning-loop','Experimentos y aprendizajes'))return;context=await api(`/api/context?brandId=${encodeURIComponent(brandId)}`);renderContext();
@@ -203,7 +203,7 @@ async function showLearning(){
 }
 function experimentPlan(id){const p=context.experimentPlans.find(p=>p.experimentId===id);if(!p)return '';const dates=[['Creado',p.createdAt],['Inicio',p.startedAt],['Cierre',p.completedAt]].filter(([,v])=>v).map(([k,v])=>`${k}: ${escape(fmt(v))}`).join(' · ');return `<p><strong>Objetivo:</strong> ${escape(p.objective)}<br><strong>Criterio de éxito:</strong> ${escape(p.successCriteria)}</p>${dates?`<p class="hint">${dates}</p>`:''}`;}
 $('#practice').addEventListener('click',()=>run(async()=>{
- enterView('#practice','Mi práctica estratégica');
+ enterView('#practice','Mi aprendizaje');
  const events=await api('/api/practice');let limit=12;
  const paint=()=>{$('#decision').innerHTML=practiceHtml(events,limit);$('#more-practice')?.addEventListener('click',()=>{limit+=12;paint();focusView($('#decision .analysis-item:nth-last-of-type(12)')??$('#more-practice'));});};paint();
 }));

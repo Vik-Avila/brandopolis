@@ -344,7 +344,13 @@ export class Engine {
       await this.syncDependencies(tx,s);
       await this.audit(tx,s,{operation:'COMMIT_DECISION',idempotencyKey:command.idempotencyKey,decisionId:decision.id,previousVersion:previous?.id??null,newVersion:version.id,rationale:command.rationale,sourceRecommendationId:command.sourceRecommendationId});
       await this.event(tx,s,'decision_created');
-      const capability={id:id(),userId:s.userId,capability:learningMoments[question.module]?.capability??'Problem Framing',behavior:'Explicitó una elección y su criterio en una decisión humana.',decisionId:decision.id,occurredAt:version.approvedAt.toISOString()};
+      const capabilityBehaviorByModule:Record<string,string>={
+        'Primary Customer':'Identificaste y priorizaste el segmento de cliente que consideras más relevante para tu marca.',
+        'Value Mechanism':'Relacionaste lo que ofreces con una necesidad concreta del cliente que quieres atender.',
+        'Positioning':'Articulaste una diferencia que puede ayudarte a ser elegido frente a otras alternativas.',
+        'Core Message':'Priorizaste una idea central para comunicar con mayor claridad el valor de tu marca.'
+      };
+      const capability={id:id(),userId:s.userId,capability:learningMoments[question.module]?.capability??'Problem Framing',behavior:capabilityBehaviorByModule[question.module]??'Tomaste una decisión estratégica y explicaste el criterio que utilizaste.',decisionId:decision.id,occurredAt:version.approvedAt.toISOString()};
       validate('capability-event',capability);
       await tx.insert(t.capabilityEvents).values({id:capability.id,userId:s.userId,payload:capability});
       if(previous) {

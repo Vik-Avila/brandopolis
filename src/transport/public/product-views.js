@@ -13,9 +13,109 @@ export function stateBadge(version,review){return `<span class="badge ${review?'
 const capabilityLabels={'Customer Understanding':'Comprensión del cliente','Business Model Thinking':'Modelo de negocio','Strategic Differentiation':'Diferenciación estratégica','Message Prioritization':'Priorización del mensaje','Problem Framing':'Encuadre del problema'};
 export const capabilityLabel=key=>capabilityLabels[key]??key;
 const plural=(n,one,many)=>`${n} ${n===1?one:many}`;
+
+const legacyCapabilityBehavior='Explicitó una elección y su criterio en una decisión humana.';
+const personalizedCapabilityBehavior={
+ 'Customer Understanding':'Identificaste y priorizaste el segmento de cliente que consideras más relevante para tu marca.',
+ 'Business Model Thinking':'Relacionaste lo que ofreces con una necesidad concreta del cliente que quieres atender.',
+ 'Strategic Differentiation':'Articulaste una diferencia que puede ayudarte a ser elegido frente a otras alternativas.',
+ 'Message Prioritization':'Priorizaste una idea central para comunicar con mayor claridad el valor de tu marca.',
+ 'Problem Framing':'Definiste con mayor claridad qué problema estratégico necesitabas resolver.'
+};
+const capabilityBehavior=event=>
+ event.behavior===legacyCapabilityBehavior
+  ?personalizedCapabilityBehavior[event.capability]??'Tomaste una decisión estratégica y explicaste el criterio que utilizaste.'
+  :event.behavior;
 export function practiceHtml(events,limit){
- const counts=[...events.reduce((m,e)=>m.set(e.capability,(m.get(e.capability)??0)+1),new Map())];
- return `<p class="eyebrow">Mi práctica estratégica · personal</p><h2>Tu criterio se construye al decidir.</h2><p>Registro personal de conductas observadas. No es una calificación ni una certificación de competencia.</p>${counts.length?`<ul class="practice-summary" aria-label="Capacidades practicadas">${counts.map(([key,n])=>`<li><strong>${n}</strong><span>${escape(capabilityLabel(key))}</span></li>`).join('')}</ul>`:''}<div class="section-heading"><h3>Momentos de práctica</h3><span>${Math.min(limit,events.length)} de ${events.length} registros</span></div>${events.length?events.slice(0,limit).map(e=>`<article class="analysis-item"><p class="eyebrow">${escape(fmt(e.occurredAt))}</p><h3>${escape(capabilityLabel(e.capability))}</h3><p>${escape(e.behavior)}</p></article>`).join(''):'<section class="empty-state"><h3>El primer paso es una decisión con criterio.</h3><p>Al elegir y explicar tu decisión, tendrás aquí un registro para volver sobre tu práctica.</p></section>'}${events.length>limit?'<button class="secondary" id="more-practice">Ver más momentos</button>':''}`;}
+ const counts=[...events.reduce((map,event)=>{
+  map.set(event.capability,(map.get(event.capability)??0)+1);
+  return map;
+ },new Map())];
+
+ const latestByCapability=[...events.reduce((map,event)=>{
+  const current=map.get(event.capability);
+  if(!current||new Date(event.occurredAt)>new Date(current.occurredAt))map.set(event.capability,event);
+  return map;
+ },new Map()).values()];
+
+ const leastPracticed=counts.reduce(
+  (current,item)=>!current||item[1]<current[1]?item:current,
+  null
+ );
+
+ const challengeByCapability={
+  'Customer Understanding':'Busca una señal real que confirme que ese segmento vive el problema que estás priorizando.',
+  'Business Model Thinking':'Comprueba si el valor que propones resuelve una necesidad por la que alguien estaría dispuesto a actuar o pagar.',
+  'Strategic Differentiation':'Compara tu propuesta con una alternativa real y detecta qué diferencia importa de verdad para tu cliente.',
+  'Message Prioritization':'Prueba tu mensaje con alguien de tu audiencia y observa qué idea recuerda primero.',
+  'Problem Framing':'Busca una evidencia que te ayude a distinguir el problema real de una posible suposición.'
+ };
+
+ return `<section class="learning-dashboard">
+  <section class="learning-hero">
+   <p class="eyebrow">Mi aprendizaje</p>
+   <h2>Aprendes mientras construyes tu marca.</h2>
+   <p>Cada decisión te ayuda a practicar una capacidad estratégica. Aquí puedes ver qué has ejercitado y qué conviene practicar después.</p>
+  </section>
+
+  ${counts.length?`
+  <section class="learning-capabilities">
+   <div class="section-heading">
+    <div>
+     <p class="eyebrow">Tu progreso</p>
+     <h3>Capacidades que estás practicando</h3>
+    </div>
+   </div>
+
+   <div class="learning-grid">
+    ${counts.map(([key,count])=>`
+     <article class="learning-card">
+      <span class="learning-icon" aria-hidden="true">✦</span>
+      <h3>${escape(capabilityLabel(key))}</h3>
+      <p>${count===1?'La has practicado 1 vez.':`La has practicado ${count} veces.`}</p>
+      <span class="badge">En práctica</span>
+     </article>
+    `).join('')}
+   </div>
+  </section>`:''}
+
+  <section class="learning-evidence">
+   <div class="section-heading">
+    <div>
+     <p class="eyebrow">Evidencia de práctica</p>
+     <h3>Lo que has ejercitado</h3>
+    </div>
+    ${latestByCapability.length?`<span>${latestByCapability.length} capacidades</span>`:''}
+   </div>
+
+   ${latestByCapability.length
+    ?latestByCapability.slice(0,limit).map(event=>{
+      const count=counts.find(([key])=>key===event.capability)?.[1]??1;
+      return `
+      <article class="learning-evidence-item">
+       <div class="learning-evidence-meta">
+        <p class="eyebrow">${count===1?'Primera práctica':`${count} prácticas acumuladas`}</p>
+        <span>${escape(fmt(event.occurredAt))}</span>
+       </div>
+       <h3>${escape(capabilityLabel(event.capability))}</h3>
+       <p>${escape(capabilityBehavior(event))}</p>
+       ${count>1?'<p class="learning-repeat">Has vuelto a practicar esta capacidad al revisar o tomar una nueva decisión.</p>':''}
+      </article>`;
+     }).join('')
+    :`<section class="empty-state">
+      <h3>Tu aprendizaje empieza con una decisión.</h3>
+      <p>Elige una opción, explica por qué y Brandopolis empezará a registrar las capacidades que practicas.</p>
+     </section>`}
+  </section>
+
+  ${leastPracticed?`
+  <section class="learning-next">
+   <p class="eyebrow">Tu siguiente reto</p>
+   <h3>${escape(capabilityLabel(leastPracticed[0]))}</h3>
+   <p>${escape(challengeByCapability[leastPracticed[0]]??'Busca una evidencia concreta que confirme o cuestione lo que hoy estás suponiendo.')}</p>
+  </section>`:''}
+ </section>`;
+}
 export function strategyMap(context){return `<section class="strategy-map"><div class="section-heading"><div><p class="eyebrow">Decisiones conectadas</p><h3>La estructura de tu marca</h3></div><span>${context.decisions.length} decisiones registradas</span></div><div class="strategy-cards">${context.questions.map((q,index)=>{const {version,review}=decisionState(context,q);return `<article class="strategy-card"><div class="strategy-index">${String(index+1).padStart(2,'0')}</div><h3>${escape(labels[q.module])}</h3><p>${escape(version?.selectedOption??'Todavía no has tomado esta decisión.')}</p><div class="strategy-card-footer">${stateBadge(version,review)}<button class="tertiary" data-strategy-module="${escape(q.module)}" aria-label="Abrir decisión de ${escape(labels[q.module].toLowerCase())}">Abrir →</button></div></article>`;}).join('')}</div></section>`;}
 export function impactPair(context,review,question,version){
  const trigger=context.versions.find(v=>v.id===review.triggerVersionId),decision=context.decisions.find(d=>d.id===trigger?.decisionId),source=context.questions.find(q=>q.id===decision?.questionId);
