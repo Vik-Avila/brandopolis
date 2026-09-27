@@ -477,3 +477,76 @@ body.app #notice {
   border-style: dashed;
   border-color: var(--border-default);
 }
+
+
+/* BRANDOPOLIS: LONG-RUNNING AI ACTIVITY
+   Persistent progress for operations whose latency matters.
+   Short confirmations remain in #notice. */
+.ai-activity {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: min(880px, calc(100% - 48px));
+  margin: 0 auto 18px;
+  padding: 14px 18px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 16px;
+  background: rgba(7,61,45,.96);
+  color: #fff;
+  box-shadow: 0 14px 34px rgba(7,61,45,.18);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: opacity .18s ease, transform .18s ease;
+  z-index: 12;
+}
+
+.ai-activity[hidden] {
+  display: none;
+}
+
+.ai-activity-mark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.12);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.ai-activity strong {
+  display: block;
+  color: #fff;
+  font-size: .96rem;
+  letter-spacing: -.01em;
+}
+
+.ai-activity p {
+  margin: 3px 0 0;
+  color: rgba(255,255,255,.78);
+  font-size: .84rem;
+}
+
+.ai-activity.is-active .ai-activity-mark {
+  animation: brandopolis-ai-pulse 1.6s ease-in-out infinite;
+}
+
+.ai-activity.is-complete {
+  background: rgba(7,61,45,.92);
+}
+
+@keyframes brandopolis-ai-pulse {
+  0%,100% { transform: scale(1); opacity: .72; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-activity,
+  .ai-activity-mark {
+    transition: none;
+    animation: none !important;
+  }
+}

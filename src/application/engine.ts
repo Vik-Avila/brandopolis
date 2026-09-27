@@ -133,26 +133,274 @@ export class Engine {
     const read=async(table:typeof t.userInputs|typeof t.evidence|typeof t.hypotheses|typeof t.openQuestions|typeof t.experiments|typeof t.signals|typeof t.learnings)=> (await tx.select().from(table).where(inScope(table,s)).orderBy(asc(table.id))).map(r=>r.payload);
     return {experiments:await read(t.experiments),signals:await read(t.signals),learnings:await read(t.learnings),userInputs:await read(t.userInputs),evidence:await read(t.evidence),hypotheses:await read(t.hypotheses),openQuestions:await read(t.openQuestions)};
   }
-  async captureContext(token:string,brandId:string,kind:string,input:Record<string,unknown>) {
+  async captureContext(token:string,brandId:string,kind:string,input:Record<string,unknown>,idempotencyKey?:string) {
     const tables={'user-input':t.userInputs,evidence:t.evidence,hypothesis:t.hypotheses,'open-question':t.openQuestions};
-    if(!Object.hasOwn(tables,kind)||!input||Array.isArray(input)||JSON.stringify(input).length>16000) throw new AppError('INVALID','Invalid context entity');
+
+    if(!Object.hasOwn(tables,kind)||!input||Array.isArray(input)||JSON.stringify(input).length>16000)
+      throw new AppError('INVALID','Invalid context entity');
+
+    if(idempotencyKey!==undefined&&(!idempotencyKey.trim()||idempotencyKey.length>200))
+      throw new AppError('INVALID','Invalid idempotency key');
+
+    const fingerprint=idempotencyKey
+      ?hash(JSON.stringify([kind,input]))
+      :null;
+
     return this.db.transaction(async tx=>{
       const s=await this.scope(tx,token,brandId),now=new Date();
-      const payload={...input,id:id(),brandId,...(kind==='user-input'?{createdBy:s.userId,createdAt:now.toISOString()}:{}),...(kind==='hypothesis'?{status:'UNTESTED',evidenceReferences:[]}:{}),...(kind==='open-question'?{status:'OPEN'}:{})};
-      validate(kind,payload);
-      if(Object.values(payload).some(v=>typeof v==='string'&&!v.trim())) throw new AppError('INVALID','Empty context content');
-      if(kind==='open-question'&&input.relatedHypothesisId) {
-        const [hypothesis]=await tx.select().from(t.hypotheses).where(and(inScope(t.hypotheses,s),eq(t.hypotheses.id,String(input.relatedHypothesisId))));
-        if(!hypothesis) throw new AppError('NOT_FOUND','Hypothesis not available');
+
+      if(idempotencyKey&&fingerprint){
+        const replayKey=and(
+          inScope(t.idempotency,s),
+          eq(t.idempotency.actorUserId,s.userId),
+          eq(t.idempotency.command,'CAPTURE_CONTEXT'),
+          eq(t.idempotency.key,idempotencyKey)
+        );
+
+        const [prior]=await tx.select().from(t.idempotency).where(replayKey);
+
+        if(prior){
+          if(prior.fingerprint!==fingerprint)
+            throw new AppError('CONFLICT','Idempotency key reused with different context');
+
+          return prior.result as Record<string,unknown>;
+        }
       }
-      await tx.insert(tables[kind as keyof typeof tables]).values({id:payload.id,workspaceId:s.workspaceId,brandId,payload,createdBy:s.userId,createdAt:now});
-      await tx.update(t.recommendations).set({resolution:'STALE'}).where(and(inScope(t.recommendations,s),eq(t.recommendations.resolution,'GENERATED')));
-      await this.audit(tx,s,{operation:`CONTEXT_${kind.toUpperCase()}_CAPTURED`,idempotencyKey:payload.id,rationale:kind==='evidence'?'Human source assessment recorded; not independent verification':undefined});
-      if(kind==='evidence')await this.event(tx,s,'evidence_added');
-      if(kind==='user-input')await this.event(tx,s,'meaningful_context_supplied');
+
+      const payload={
+        ...input,
+        id:id(),
+        brandId,
+        ...(kind==='user-input'
+          ?{createdBy:s.userId,createdAt:now.toISOString()}
+          :{}),
+        ...(kind==='hypothesis'
+          ?{status:'UNTESTED',evidenceReferences:[]}
+          :{}),
+        ...(kind==='open-question'
+          ?{status:'OPEN'}
+          :{})
+      };
+
+      validate(kind,payload);
+
+      if(Object.values(payload).some(v=>typeof v==='string'&&!v.trim()))
+        throw new AppError('INVALID','Empty context content');
+
+      if(kind==='open-question'&&input.relatedHypothesisId){
+        const [hypothesis]=await tx.select()
+          .from(t.hypotheses)
+          .where(and(
+            inScope(t.hypotheses,s),
+            eq(t.hypotheses.id,String(input.relatedHypothesisId))
+          ));
+
+        if(!hypothesis)
+          throw new AppError('NOT_FOUND','Hypothesis not available');
+      }
+
+      await tx.insert(tables[kind as keyof typeof tables]).values({
+        id:payload.id,
+        workspaceId:s.workspaceId,
+        brandId,
+        payload,
+        createdBy:s.userId,
+        createdAt:now
+      });
+
+      await tx.update(t.recommendations)
+        .set({resolution:'STALE'})
+        .where(and(
+          inScope(t.recommendations,s),
+          eq(t.recommendations.resolution,'GENERATED')
+        ));
+
+      await this.audit(tx,s,{
+        operation:`CONTEXT_${kind.toUpperCase()}_CAPTURED`,
+        idempotencyKey:idempotencyKey??String(payload.id),
+        rationale:kind==='evidence'
+          ?'Human source assessment recorded; not independent verification'
+          :undefined
+      });
+
+      if(
+        kind==='evidence'
+        && String(input.provenance??'').toLowerCase().includes('entorno competitivo')
+      ){
+        const capability={
+          id:id(),
+          userId:s.userId,
+          capability:'Strategic Differentiation',
+          behavior:'Evaluaste un hallazgo competitivo y decidiste incorporarlo como evidencia relevante para el contexto estratégico de la marca.',
+          decisionId:null,
+          occurredAt:now.toISOString()
+        };
+
+        validate('capability-event',capability);
+
+        await tx.insert(t.capabilityEvents).values({
+          id:capability.id,
+          userId:s.userId,
+          payload:capability
+        });
+      }
+
+      if(kind==='evidence')
+        await this.event(tx,s,'evidence_added');
+
+      if(kind==='user-input')
+        await this.event(tx,s,'meaningful_context_supplied');
+
+      if(idempotencyKey&&fingerprint){
+        await tx.insert(t.idempotency).values({
+          workspaceId:s.workspaceId,
+          brandId,
+          actorUserId:s.userId,
+          command:'CAPTURE_CONTEXT',
+          key:idempotencyKey,
+          fingerprint,
+          result:payload
+        });
+      }
+
       return payload;
     });
   }
+
+  async rejectCompetitiveFinding(token:string,brandId:string,claim:string) {
+    if(!claim.trim()||claim.length>16000)
+      throw new AppError('INVALID','Invalid competitive finding');
+
+    const fingerprint=hash(claim);
+    const key=`competitive-reject:${fingerprint}`;
+
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId);
+      const replayKey=and(
+        inScope(t.idempotency,s),
+        eq(t.idempotency.actorUserId,s.userId),
+        eq(t.idempotency.command,'REJECT_COMPETITIVE_FINDING'),
+        eq(t.idempotency.key,key)
+      );
+
+      const [prior]=await tx.select()
+        .from(t.idempotency)
+        .where(replayKey);
+
+      if(prior){
+        if(prior.fingerprint!==fingerprint)
+          throw new AppError('CONFLICT','Competitive finding rejection conflict');
+
+        return prior.result as Record<string,unknown>;
+      }
+
+      const now=new Date();
+      const result={claim,status:'REJECTED'};
+
+      const capability={
+        id:id(),
+        userId:s.userId,
+        capability:'Strategic Differentiation',
+        behavior:'Evaluaste un hallazgo competitivo y decidiste no incorporarlo al contexto estratégico de la marca.',
+        decisionId:null,
+        occurredAt:now.toISOString()
+      };
+
+      validate('capability-event',capability);
+
+      await tx.insert(t.capabilityEvents).values({
+        id:capability.id,
+        userId:s.userId,
+        payload:capability
+      });
+
+      await this.audit(tx,s,{
+        operation:'COMPETITIVE_FINDING_REJECTED',
+        idempotencyKey:key
+      });
+
+      await tx.insert(t.idempotency).values({
+        workspaceId:s.workspaceId,
+        brandId,
+        actorUserId:s.userId,
+        command:'REJECT_COMPETITIVE_FINDING',
+        key,
+        fingerprint,
+        result
+      });
+
+      return result;
+    });
+  }
+
+  async competitiveRejections(token:string,brandId:string) {
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId,false);
+
+      const rows=await tx.select()
+        .from(t.idempotency)
+        .where(and(
+          inScope(t.idempotency,s),
+          eq(t.idempotency.actorUserId,s.userId),
+          eq(t.idempotency.command,'REJECT_COMPETITIVE_FINDING')
+        ));
+
+      const claims=rows
+        .map(row=>(row.result as Record<string,unknown>)?.claim)
+        .filter((claim):claim is string=>typeof claim==='string');
+
+      return {claims};
+    });
+  }
+
+
+  async completeCompetitiveResearchRequest(token:string,brandId:string) {
+    const prefix='Entorno competitivo — investigación pendiente:';
+
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId);
+      const rows=await tx.select()
+        .from(t.openQuestions)
+        .where(inScope(t.openQuestions,s));
+
+      const pending=rows.filter(row=>{
+        const payload=row.payload as Record<string,unknown>;
+        return payload.status==='OPEN'
+          && String(payload.text??'').startsWith(prefix);
+      });
+
+      if(!pending.length)return {answered:0};
+
+      for(const row of pending){
+        const current=row.payload as Record<string,unknown>;
+        const next={...current,status:'ANSWERED'};
+
+        validate('open-question',next);
+
+        await tx.update(t.openQuestions)
+          .set({payload:next})
+          .where(and(
+            inScope(t.openQuestions,s),
+            eq(t.openQuestions.id,row.id)
+          ));
+      }
+
+      await tx.update(t.recommendations)
+        .set({resolution:'STALE'})
+        .where(and(
+          inScope(t.recommendations,s),
+          eq(t.recommendations.resolution,'GENERATED')
+        ));
+
+      await this.audit(tx,s,{
+        operation:'COMPETITIVE_RESEARCH_REQUEST_ANSWERED',
+        idempotencyKey:`competitive-research-answered:${brandId}`
+      });
+
+      return {answered:pending.length};
+    });
+  }
+
   private async openReviews(tx:Transaction,s:Scope,decisionId:string) {
     return tx.select().from(t.reviews).where(and(inScope(t.reviews,s),eq(t.reviews.downstreamDecisionId,decisionId),ne(t.reviews.status,'COMPLETED')));
   }

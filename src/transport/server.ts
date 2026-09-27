@@ -5,6 +5,7 @@ import { connect } from '../persistence/database.js';
 import { readiness,dataClassViolation } from '../persistence/readiness.js';
 import { Engine } from '../application/engine.js';
 import { createApp } from './http.js';
+import { DemoCompetitiveResearch } from './competitive-research.js';
 import { databaseUrl } from '../../scripts/local-db.js';
 import { runtimeAssets,loadAsset } from './assets.js';
 export { runtimeAssets };
@@ -14,7 +15,13 @@ export async function startServer(url=databaseUrl(),port=3000) {
   const {db,pool}=connect(url),state=await readiness(pool);
   if(state!=='READY'){await pool.end();throw new Error(state==='MIGRATIONS_REQUIRED'?'Faltan migraciones o no coinciden. Ejecuta pnpm competition:start.':'PostgreSQL local no está disponible. Ejecuta pnpm competition:start o pnpm db:start.');}
   const violation=await dataClassViolation(pool,'DEMO');if(violation){await pool.end();throw new Error('Esta base contiene datos PILOT; la demo sólo usa su base DEMO local.');}
-  const server=createApp(new Engine(db),loadAsset,()=>readiness(pool));
+  const server=createApp(
+    new Engine(db),
+    loadAsset,
+    ()=>readiness(pool),
+    undefined,
+    new DemoCompetitiveResearch()
+  );
   try {await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(port,'127.0.0.1',()=>{server.removeListener('error',reject);resolve();});});}
   catch {await pool.end();throw new Error(`El puerto ${port} está ocupado. Cierra la instancia anterior o usa pnpm competition:start --isolated.`);}
   console.log(`Brandopolis Competition MVP DEMO: http://127.0.0.1:${port}`);

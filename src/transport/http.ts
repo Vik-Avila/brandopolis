@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import type { Engine } from '../application/engine.js';
 import { AppError, type CommitCommand } from '../domain/contracts.js';
 import type { PilotBoundary } from './pilot-auth.js';
+import type { CompetitiveResearchService } from './competitive-research.js';
 import { randomUUID,createHash } from 'node:crypto';
 
 async function body(req:IncomingMessage):Promise<Record<string,unknown>> {
@@ -27,7 +28,7 @@ export class RateLimiter implements Limiter {
   }
 }
 export const pilotLimits={all:[600,60000],auth:[20,60000],ai:[20,600000],feedback:[20,600000]} as const;
-export function createApp(engine:Engine,assets?:(path:string)=>{content:string|Buffer;type:string;etag?:string}|undefined,health?:()=>Promise<string>,pilot?:PilotBoundary) {
+export function createApp(engine:Engine,assets?:(path:string)=>{content:string|Buffer;type:string;etag?:string}|undefined,health?:()=>Promise<string>,pilot?:PilotBoundary,competitiveResearch?:CompetitiveResearchService) {
   const limiter=pilot?.limiter??new RateLimiter();
   return createServer(async(req,res)=>{
     const requestId=randomUUID();
@@ -87,11 +88,11 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(req.method==='POST'&&path==='/api/logout'){if(token)await pilot.logout(token);res.setHeader('Set-Cookie',`${cookieName}=; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`);return send(res,200,{authenticated:false});}
         await pilot.authorize(token);
         const subject=createHash('sha256').update(token).digest('hex');
-        if(req.method==='POST'&&path==='/api/recommendations/generate'){
+        if(req.method==='POST'&&(path==='/api/recommendations/generate'||path==='/api/competitive/research')){
           if(limited('ai:'+subject,pilotLimits.ai))return;
           const gate=await pilot.aiGate?.(token)??'OK';
           if(gate==='CONSENT_REQUIRED')return send(res,428,{code:'AI_CONSENT_REQUIRED',message:'Confirm the AI data notice first.'});
-          if(gate==='CAP_REACHED'){res.setHeader('Retry-After','3600');return send(res,429,{code:'AI_CAP_REACHED',message:'Daily AI proposal limit reached.'});}
+          if(gate==='CAP_REACHED'){res.setHeader('Retry-After','3600');return send(res,429,{code:'AI_CAP_REACHED',message:'Daily AI request limit reached.'});}
         }
         if(req.method==='POST'&&path==='/api/ai-notice/accept'){const input=await body(req);return send(res,200,await pilot.acceptAiNotice!(token,string(input.version)));}
         if(req.method==='POST'&&path==='/api/feedback'&&limited('feedback:'+subject,pilotLimits.feedback))return;
@@ -109,8 +110,76 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(path==='/api/logout') {if(pilot)await pilot.logout(token);res.setHeader('Set-Cookie',`${cookieName}=; ${pilot?'Secure; ':''}HttpOnly; SameSite=Strict; Path=/; Max-Age=0`);return send(res,200,{authenticated:false});}
         if(pilot&&path==='/api/feedback')return send(res,201,await pilot.feedback(token,input));
         if(path==='/api/brands') return send(res,201,await engine.createBrand(token,string(input.name),input.initialContext===undefined?undefined:string(input.initialContext)));
-        if(path==='/api/context/capture') return send(res,201,await engine.captureContext(token,string(input.brandId),string(input.kind),input.entity as Record<string,unknown>));
+        if(path==='/api/context/capture') return send(res,201,await engine.captureContext(
+          token,
+          string(input.brandId),
+          string(input.kind),
+          input.entity as Record<string,unknown>,
+          input.idempotencyKey===undefined?undefined:string(input.idempotencyKey)
+        ));
         if(path==='/api/context/assemble') return send(res,200,await engine.assembleContext(token,string(input.brandId),string(input.questionId),input.budget===undefined?undefined:Number(input.budget)));
+
+        if(path==='/api/competitive/research') {
+          if(!competitiveResearch)throw new AppError('UNAVAILABLE','Competitive research unavailable');
+
+          const researchBrandId=string(input.brandId);
+
+          const [researchContext,brands]=await Promise.all([
+            engine.context(token,researchBrandId),
+            engine.listBrands(token)
+          ]);
+
+          const brand=brands.find(item=>item.id===researchBrandId);
+          if(!brand)throw new AppError('NOT_FOUND','Brand unavailable');
+
+          const userPrefix='Entorno competitivo — referencias aportadas por el usuario:';
+
+          const competitiveReferences=researchContext.userInputs
+            .filter(item=>String(item.statement??'').startsWith(userPrefix))
+            .map(item=>String(item.statement).slice(userPrefix.length).trim())
+            .filter(Boolean);
+
+          const marketContext=[
+            ...researchContext.userInputs.map(item=>String(item.statement??'')),
+            ...researchContext.evidence.map(item=>String(item.claim??'')),
+            ...researchContext.hypotheses
+              .filter(item=>item.status!=='REJECTED')
+              .map(item=>`Hipótesis: ${String(item.statement??'')}`),
+            ...researchContext.versions.map(item=>`Decisión: ${String(item.selectedOption??'')}`)
+          ].filter(Boolean);
+
+          const result=await competitiveResearch.research({
+            brandId:researchBrandId,
+            brandName:brand.name,
+            marketContext,
+            competitiveReferences
+          });
+
+          await engine.completeCompetitiveResearchRequest(
+              token,
+              string(input.brandId)
+            );
+
+            if(pilot)console.log(JSON.stringify({
+            event:'competitive_research',
+            requestId,
+            outcome:'OK',
+            provider:result.provider,
+            findings:result.findings.length
+          }));
+
+          return send(res,200,result);
+        }
+        if(path==='/api/competitive/reject') return send(
+          res,
+          200,
+          await engine.rejectCompetitiveFinding(
+            token,
+            string(input.brandId),
+            string(input.claim)
+          )
+        );
+
         if(path==='/api/recommendations/generate') {
           const result=await engine.analyze(token,string(input.brandId),string(input.questionId));
           // Outcome only; no prompt, context or proposal text.
@@ -128,6 +197,14 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(path==='/api/impacts/shown') return send(res,200,await engine.showImpact(token,string(input.brandId)));
       }
       if(req.method==='GET') {
+        if(path==='/api/competitive/rejections') return send(
+          res,
+          200,
+          await engine.competitiveRejections(
+            token,
+            string(url.searchParams.get('brandId'))
+          )
+        );
         if(path==='/api/me') return send(res,200,await engine.me(token));
         if(path==='/api/practice') return send(res,200,await engine.practice(token));
         if(path==='/api/blueprint') return send(res,200,await engine.blueprint(token,string(url.searchParams.get('brandId'))));

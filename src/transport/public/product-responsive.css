@@ -645,3 +645,29 @@
     scroll-behavior: auto !important;
   }
 }
+
+
+/* BRANDOPOLIS: mobile AI activity stays visible without consuming
+   the strategic workspace header. */
+@media (max-width: 760px) {
+  .ai-activity {
+    position: fixed;
+    left: 14px;
+    right: 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom));
+    width: auto;
+    margin: 0;
+    padding: 13px 15px;
+    border-radius: 15px;
+    box-shadow: 0 18px 44px rgba(7,61,45,.28);
+    z-index: 1000;
+  }
+
+  .ai-activity strong {
+    font-size: .91rem;
+  }
+
+  .ai-activity p {
+    font-size: .8rem;
+  }
+}
