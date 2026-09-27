@@ -429,4 +429,156 @@ describe('PostgreSQL M1',()=>{
       expect((await request(`/api/context?brandId=${brand.id}`)).data.versions).toHaveLength(4);
     } finally {await new Promise<void>((resolve,reject)=>server.close(e=>e?reject(e):resolve()));}
   });
+
+  it('competitive research preserves human review, idempotency and learning',async()=>{
+    const s=await setup(),other=await setup();
+
+    const request=await engine.captureContext(
+      s.who.token,
+      s.brand.id,
+      'open-question',
+      {
+        text:'Entorno competitivo — investigación pendiente: complementar referencias mediante fuentes públicas.',
+        relatedHypothesisId:null
+      }
+    );
+
+    expect(request.status).toBe('OPEN');
+
+    const completed=await engine.completeCompetitiveResearchRequest(
+      s.who.token,
+      s.brand.id
+    );
+
+    expect(completed).toEqual({answered:1});
+
+    const replayCompleted=await engine.completeCompetitiveResearchRequest(
+      s.who.token,
+      s.brand.id
+    );
+
+    expect(replayCompleted).toEqual({answered:0});
+
+    let ctx=await s.context();
+
+    expect(
+      ctx.openQuestions.find(q=>q.id===request.id)
+    ).toMatchObject({
+      status:'ANSWERED'
+    });
+
+    expect(
+      ctx.audit.filter(
+        a=>a.operation==='COMPETITIVE_RESEARCH_REQUEST_ANSWERED'
+      )
+    ).toHaveLength(1);
+
+    const acceptedClaim=
+      'Entorno competitivo — Alternativas: una solución sustituta compite por la misma necesidad.';
+
+    const evidence={
+      claim:acceptedClaim,
+      source:'https://example.com/competitive-source',
+      sourceDate:'2026-09-27',
+      provenance:'Entorno competitivo · BRANDOPOLIS_DEMO · DEMO',
+      sourceQuality:'MEDIUM',
+      relevance:'DIRECT',
+      freshness:'CURRENT',
+      limitations:['Fixture DEMO para prueba automatizada.'],
+      external:true
+    };
+
+    const acceptKey='competitive-finding:integration-stable-accept';
+
+    const firstAccepted=await engine.captureContext(
+      s.who.token,
+      s.brand.id,
+      'evidence',
+      evidence,
+      acceptKey
+    );
+
+    const replayAccepted=await engine.captureContext(
+      s.who.token,
+      s.brand.id,
+      'evidence',
+      evidence,
+      acceptKey
+    );
+
+    expect(replayAccepted).toEqual(firstAccepted);
+
+    ctx=await s.context();
+
+    expect(
+      ctx.evidence.filter(e=>e.claim===acceptedClaim)
+    ).toHaveLength(1);
+
+    const rejectedClaim=
+      'Entorno competitivo — Señal débil: hallazgo que el usuario decide no incorporar.';
+
+    const firstRejected=await engine.rejectCompetitiveFinding(
+      s.who.token,
+      s.brand.id,
+      rejectedClaim
+    );
+
+    const replayRejected=await engine.rejectCompetitiveFinding(
+      s.who.token,
+      s.brand.id,
+      rejectedClaim
+    );
+
+    expect(replayRejected).toEqual(firstRejected);
+    expect(firstRejected).toEqual({
+      claim:rejectedClaim,
+      status:'REJECTED'
+    });
+
+    const rejections=await engine.competitiveRejections(
+      s.who.token,
+      s.brand.id
+    );
+
+    expect(rejections.claims).toEqual([rejectedClaim]);
+
+    ctx=await s.context();
+
+    expect(
+      ctx.evidence.some(e=>e.claim===rejectedClaim)
+    ).toBe(false);
+
+    expect(
+      ctx.audit.filter(a=>a.operation==='COMPETITIVE_FINDING_REJECTED')
+    ).toHaveLength(1);
+
+    const practice=await engine.practice(s.who.token);
+    const competitivePractice=practice.filter(
+      event=>event.capability==='Strategic Differentiation'
+    );
+
+    expect(competitivePractice).toHaveLength(2);
+
+    expect(
+      competitivePractice.some(event=>
+        String(event.behavior).includes('incorporarlo como evidencia')
+      )
+    ).toBe(true);
+
+    expect(
+      competitivePractice.some(event=>
+        String(event.behavior).includes('no incorporarlo')
+      )
+    ).toBe(true);
+
+    await expect(
+      engine.competitiveRejections(
+        other.who.token,
+        s.brand.id
+      )
+    ).rejects.toMatchObject({
+      code:'NOT_FOUND'
+    });
+  });
+
 });

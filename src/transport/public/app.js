@@ -6,6 +6,51 @@ let user,brandId,context,selected=Object.hasOwn(labels,new URL(location.href).se
 let pilotMode=false,aiNotice=null;
 let noticeTimer;
 const notice=(text,error=false,kind)=>{const n=$('#notice');clearTimeout(noticeTimer);n.textContent=text;n.className=error?'error':'';n.dataset.kind=kind??(error?'technical':'status');if(text&&!error)noticeTimer=setTimeout(()=>{if(n.textContent===text)n.textContent='';},10000);};
+
+let activityTimer;
+let competitiveResearchResult=null;
+let competitiveRejectedClaims=new Set();
+let competitiveResearchBrandId=null;
+const activityStart=(title,detail)=>{
+ const box=$('#ai-activity');
+ if(!box)return;
+ clearTimeout(activityTimer);
+ notice('');
+ box.hidden=false;
+ box.classList.remove('is-complete','is-error');
+ box.classList.add('is-active');
+ $('.ai-activity-mark').textContent='✦';
+ $('#ai-activity-title').textContent=title;
+ $('#ai-activity-detail').textContent=detail;
+};
+
+const activityStep=(title,detail)=>{
+ const box=$('#ai-activity');
+ if(!box||box.hidden)return;
+ $('#ai-activity-title').textContent=title;
+ $('#ai-activity-detail').textContent=detail;
+};
+
+const activityDone=(title,detail)=>{
+ const box=$('#ai-activity');
+ if(!box)return;
+ clearTimeout(activityTimer);
+ box.hidden=false;
+ box.classList.remove('is-active','is-error');
+ box.classList.add('is-complete');
+ $('.ai-activity-mark').textContent='✓';
+ $('#ai-activity-title').textContent=title;
+ $('#ai-activity-detail').textContent=detail;
+ activityTimer=setTimeout(()=>{box.hidden=true;box.classList.remove('is-complete');},5000);
+};
+
+const activityFail=()=>{
+ const box=$('#ai-activity');
+ if(!box)return;
+ clearTimeout(activityTimer);
+ box.hidden=true;
+ box.classList.remove('is-active','is-complete','is-error');
+};
 async function api(path,input) {
   let response,data;
   try {
@@ -92,7 +137,73 @@ function render() {
 }
 $('#login-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{await api('/api/session',{token:$('#token').value});$('#token').value='';await authenticated();notice('Workspace disponible.');},event.submitter);});
 $('#logout').addEventListener('click',event=>run(async()=>{await api('/api/logout',{});location.reload();},event.currentTarget));
-$('#create-brand').addEventListener('submit',event=>{event.preventDefault();run(async()=>{preserveDraft();const brand=await api('/api/brands',{name:$('#brand-name').value,initialContext:$('#initial-context').value.trim()||undefined});$('#brand-name').value='';$('#initial-context').value='';$('#brand-dialog').close();await loadBrands(brand.id);notice('Marca creada. Comienza con tu cliente principal.');},event.submitter);});
+$('#create-brand').addEventListener('submit',event=>{event.preventDefault();run(async()=>{
+ preserveDraft();
+
+ const stage=$('#brand-stage').value;
+ const initialContext=$('#initial-context').value.trim();
+ const goal=$('#brand-goal').value.trim();
+ const competitiveReferences=$('#competitive-references').value.trim();
+ const competitiveResearch=$('#competitive-research').checked;
+
+ const brand=await api('/api/brands',{
+  name:$('#brand-name').value,
+  initialContext:initialContext?`Qué está construyendo: ${initialContext}`:undefined
+ });
+
+ const captures=[
+  {
+   kind:'user-input',
+   entity:{
+    statement:`Punto de partida declarado: ${stage==='existing'?'Mi marca ya existe.':'Tengo una idea.'}`
+   }
+  },
+  ...(goal?[{
+   kind:'user-input',
+   entity:{
+    statement:`Objetivo inmediato: ${goal}`
+   }
+  }]:[]),
+  ...(competitiveReferences?[{
+   kind:'user-input',
+   entity:{
+    statement:`Entorno competitivo — referencias aportadas por el usuario: ${competitiveReferences}`
+   }
+  }]:[]),
+  ...(competitiveResearch?[{
+   kind:'open-question',
+   entity:{
+    text:'Entorno competitivo — investigación pendiente: complementar el aporte del usuario e identificar competidores, alternativas y patrones relevantes mediante fuentes públicas.',
+    relatedHypothesisId:null
+   }
+  }]:[])
+ ];
+
+ for(const capture of captures){
+  await api('/api/context/capture',{
+   brandId:brand.id,
+   kind:capture.kind,
+   entity:capture.entity
+  });
+ }
+
+ $('#brand-name').value='';
+ $('#brand-stage').value='idea';
+ $('#initial-context').value='';
+ $('#brand-goal').value='';
+ $('#competitive-references').value='';
+ $('#competitive-research').checked=false;
+
+ $('#brand-dialog').close();
+ await loadBrands(brand.id);
+
+ if(competitiveResearch){
+  await showCompetitiveContext();
+  await startCompetitiveResearch(brand.id);
+ }else{
+  notice('Marca creada. Tu contexto inicial quedó guardado. Comienza con tu cliente principal.');
+ }
+},event.submitter);});
 $('#new-brand').addEventListener('click',()=>{$('#brand-dialog').showModal();$('#brand-name').focus();});
 $('#cancel-brand').addEventListener('click',()=>$('#brand-dialog').close());
 $('#brand-dialog').addEventListener('close',()=>$('#new-brand').focus());
@@ -150,11 +261,379 @@ Promise.all([api('/api/mode'),api('/api/session-state')]).then(async([mode,state
  if(state.authenticated)await authenticated();else document.body.classList.remove('booting');
 }).catch(error=>{if(error.code!=='UNAUTHORIZED')notice(error.message,true);}).finally(()=>document.body.classList.remove('booting'));
 $('#brand-context').addEventListener('click',()=>run(showBrandContext));
+$('#competitive-context').addEventListener('click',()=>run(showCompetitiveContext));
 // Entering a non-Decision view: title, active navigation, drawer closed, draft preserved. False without a brand.
 function enterView(selector,title){setTitle(title);setNavActive(selector);closeMenu(false);preserveDraft();draft=null;return !!brandId;}
+
+
+function competitiveFindingClaim(finding){
+ return `Entorno competitivo — ${finding.subject}: ${finding.observation}`;
+}
+
+function competitiveFindingRejected(finding){
+ return competitiveRejectedClaims.has(competitiveFindingClaim(finding));
+}
+
+function competitiveFindingAccepted(finding){
+ const claim=competitiveFindingClaim(finding);
+ const evidence=context?.evidence??[];
+
+ return evidence.some(item=>{
+  const savedClaim=item?.claim??item?.payload?.claim;
+  return savedClaim===claim;
+ });
+}
+
+async function competitiveFindingIdempotencyKey(finding){
+ const claim=competitiveFindingClaim(finding);
+ const bytes=new TextEncoder().encode(claim);
+ const digest=await crypto.subtle.digest('SHA-256',bytes);
+
+ const hex=[...new Uint8Array(digest)]
+  .map(byte=>byte.toString(16).padStart(2,'0'))
+  .join('');
+
+ return `competitive-finding:${hex}`;
+}
+
+function competitiveFindingHtml(finding,index){
+ const accepted=competitiveFindingAccepted(finding);
+ const sources=(finding.sources??[]).map(source=>`
+  <li>
+   <a href="${escape(source.url)}" target="_blank" rel="noopener noreferrer">${escape(source.title)}</a>
+   ${source.pageAge?`<span class="hint"> · ${escape(source.pageAge)}</span>`:''}
+  </li>
+ `).join('');
+
+ const limitations=(finding.limitations??[]).map(item=>`<li>${escape(item)}</li>`).join('');
+
+ return `
+  <article class="analysis-item competitive-finding" data-finding-index="${index}">
+   <div class="competitive-finding-head">
+    <div>
+     <span class="badge ${accepted?'':'warn'}">${accepted?'✓ Incorporado al contexto':'Hallazgo candidato'}</span>
+     <h4>${escape(finding.subject)}</h4>
+    </div>
+   </div>
+
+   <p>${escape(finding.observation)}</p>
+
+   <p class="eyebrow">Por qué podría importar</p>
+   <p>${escape(finding.strategicRelevance)}</p>
+
+   <details>
+    <summary>Fuentes y límites</summary>
+    <p class="eyebrow">Fuentes revisadas</p>
+    <ul>${sources||'<li>Sin fuentes visibles.</li>'}</ul>
+    <p class="eyebrow">Limitaciones</p>
+    <ul>${limitations||'<li>Requiere revisión humana.</li>'}</ul>
+   </details>
+
+   ${accepted
+    ?'<div class="actions"><span class="hint">Este hallazgo ya forma parte del contexto estratégico.</span></div>'
+    :`<div class="actions">
+       <button class="secondary" data-competitive-accept="${index}">Incorporar al contexto</button>
+       <button class="tertiary" data-competitive-reject="${index}">Descartar</button>
+      </div>`
+   }
+  </article>
+ `;
+}
+
+async function startCompetitiveResearch(targetBrandId=brandId){
+ if(!targetBrandId)return;
+
+ competitiveResearchResult=null;
+ competitiveResearchBrandId=targetBrandId;
+
+ activityStart(
+  'Brandopolis está investigando tu entorno competitivo…',
+  pilotMode
+   ?'Buscando y revisando fuentes públicas relevantes.'
+   :'Preparando hallazgos DEMO para validar la experiencia.'
+ );
+
+ let result;
+
+ try{
+  result=await api('/api/competitive/research',{brandId:targetBrandId},45000);
+ }catch(error){
+  activityFail();
+
+  if(error.code==='AI_CONSENT_REQUIRED'&&aiNotice){
+   showCompetitiveResearchNotice(targetBrandId);
+   return;
+  }
+
+  notice(
+   'No se pudo completar la investigación competitiva. Tu contexto permanece guardado.',
+   true,
+   'assistance'
+  );
+  return;
+ }
+
+ competitiveResearchResult=result;
+ competitiveResearchBrandId=targetBrandId;
+
+ activityStep(
+  'Investigación terminada.',
+  'Preparando los hallazgos para tu revisión…'
+ );
+
+ if(brandId===targetBrandId){
+  await showCompetitiveContext();
+ }
+
+ activityDone(
+  'Investigación competitiva preparada',
+  `${result.findings.length} hallazgo${result.findings.length===1?'':'s'} listo${result.findings.length===1?'':'s'} para revisar.`
+ );
+}
+
+function showCompetitiveResearchNotice(targetBrandId){
+ const section=document.createElement('section');
+ section.className='analysis-item';
+ section.setAttribute('aria-labelledby','competitive-ai-notice-title');
+
+ section.innerHTML=`
+  <h3 id="competitive-ai-notice-title">Antes de investigar con IA</h3>
+  <p>${escape(aiNotice.text)}</p>
+  <div class="actions">
+   <button id="competitive-ai-notice-accept">Entiendo y acepto</button>
+   <button id="competitive-ai-notice-decline" class="secondary">Ahora no</button>
+  </div>
+ `;
+
+ ($('#decision h2')??$('#decision').firstChild).after(section);
+
+ $('#competitive-ai-notice-decline').addEventListener('click',()=>{
+  section.remove();
+  notice('La investigación no se inició. Tu contexto permanece guardado.');
+ });
+
+ $('#competitive-ai-notice-accept').addEventListener('click',event=>run(async()=>{
+  await api('/api/ai-notice/accept',{version:aiNotice.version});
+  section.remove();
+  await startCompetitiveResearch(targetBrandId);
+ },event.currentTarget));
+
+ $('#competitive-ai-notice-accept').focus();
+}
+
+function bindCompetitiveResearchActions(){
+ document.querySelectorAll('[data-competitive-accept]').forEach(button=>{
+  button.addEventListener('click',event=>run(async()=>{
+   const index=Number(button.dataset.competitiveAccept);
+   const finding=competitiveResearchResult?.findings?.[index];
+   if(!finding||competitiveResearchBrandId!==brandId)return;
+
+   const firstSource=finding.sources?.[0];
+   const originalText=button.textContent;
+   const idempotencyKey=await competitiveFindingIdempotencyKey(finding);
+
+   button.disabled=true;
+   button.textContent='Incorporando…';
+
+   try{
+    await api('/api/context/capture',{
+     brandId,
+     kind:'evidence',
+     idempotencyKey,
+     entity:{
+      claim:competitiveFindingClaim(finding),
+      source:firstSource?.url??'Investigación competitiva asistida por IA',
+      sourceDate:new Date(competitiveResearchResult.searchedAt).toISOString().slice(0,10),
+      provenance:`Entorno competitivo · ${competitiveResearchResult.provider}${pilotMode?' · investigación asistida por IA':' · DEMO'}`,
+      sourceQuality:'MEDIUM',
+      relevance:'DIRECT',
+      freshness:'CURRENT',
+      limitations:finding.limitations?.length
+       ?finding.limitations
+       :['Hallazgo asistido por IA; requiere revisión humana.'],
+      external:true
+     }
+    });
+   }catch(error){
+    button.disabled=false;
+    button.textContent=originalText;
+    throw error;
+   }
+
+   button.textContent='Incorporado';
+   notice('Hallazgo incorporado al contexto. No cambia automáticamente ninguna decisión.');
+   await showCompetitiveContext();
+  },event.currentTarget));
+ });
+
+ document.querySelectorAll('[data-competitive-reject]').forEach(button=>{
+  button.addEventListener('click',event=>run(async()=>{
+   const index=Number(button.dataset.competitiveReject);
+   const finding=competitiveResearchResult?.findings?.[index];
+
+   if(!finding||competitiveResearchBrandId!==brandId)return;
+
+   const originalText=button.textContent;
+
+   button.disabled=true;
+   button.textContent='Descartando…';
+
+   try{
+    await api('/api/competitive/reject',{
+     brandId,
+     claim:competitiveFindingClaim(finding)
+    });
+   }catch(error){
+    button.disabled=false;
+    button.textContent=originalText;
+    throw error;
+   }
+
+   notice('Hallazgo descartado. No se incorporó al contexto estratégico.');
+   await showCompetitiveContext();
+  },event.currentTarget));
+ });
+
+ $('#run-competitive-research')?.addEventListener('click',event=>run(
+  ()=>startCompetitiveResearch(brandId),
+  event.currentTarget
+ ));
+}
+
+async function showCompetitiveContext(){
+ if(!enterView('#competitive-context','Entorno competitivo'))return;
+
+ context=await api(`/api/context?brandId=${encodeURIComponent(brandId)}`);
+
+ const rejected=await api(
+  `/api/competitive/rejections?brandId=${encodeURIComponent(brandId)}`
+ );
+
+ competitiveRejectedClaims=new Set(rejected.claims??[]);
+
+ renderContext();
+
+ const userPrefix='Entorno competitivo — referencias aportadas por el usuario:';
+ const researchPrefix='Entorno competitivo — investigación pendiente:';
+
+ const userReferences=context.userInputs
+  .filter(item=>String(item.statement??'').startsWith(userPrefix))
+  .map(item=>String(item.statement).slice(userPrefix.length).trim());
+
+ const researchedEvidence=context.evidence.filter(item=>{
+  const provenance=String(item.provenance??'').toLowerCase();
+  const claim=String(item.claim??'').toLowerCase();
+
+  return provenance.includes('entorno competitivo')
+   || claim.startsWith('entorno competitivo —');
+ });
+
+ const pendingResearch=context.openQuestions.filter(item=>
+  item.status==='OPEN'
+  && String(item.text??'').startsWith(researchPrefix)
+ );
+
+ const activeResult=competitiveResearchBrandId===brandId
+  ?competitiveResearchResult
+  :null;
+
+ const pendingFindings=activeResult?.findings
+  ?activeResult.findings.filter(
+    finding=>!competitiveFindingAccepted(finding)
+      && !competitiveFindingRejected(finding)
+   )
+  :[];
+
+ const incorporatedFindings=activeResult?.findings
+  ?activeResult.findings.filter(competitiveFindingAccepted).length
+  :0;
+
+ const rejectedFindings=activeResult?.findings
+  ?activeResult.findings.filter(competitiveFindingRejected).length
+  :0;
+
+ const userSection=userReferences.length
+  ?userReferences.map(text=>`
+    <article class="analysis-item">
+      <span class="badge">Aporte humano</span>
+      <p>${escape(text)}</p>
+      <p class="hint">Declarado por ti. Forma parte del contexto de la marca, pero no constituye evidencia externa.</p>
+    </article>
+   `).join('')
+  :'<p class="hint">Aún no has registrado competidores, alternativas o marcas de referencia.</p>';
+
+ const evidenceSection=researchedEvidence.length
+  ?researchedEvidence.map(item=>`
+    <article class="analysis-item">
+      <span class="badge">Incorporado al contexto</span>
+      <p>${escape(item.claim)}</p>
+      <p class="hint">${escape(item.source)} · ${escape(item.sourceDate)}<br>${escape(item.provenance)}<br>Límites: ${escape((item.limitations??[]).join('; ')||'No declarados')}</p>
+    </article>
+   `).join('')
+  :'<p class="hint">Todavía no has incorporado hallazgos externos al contexto competitivo.</p>';
+
+ const candidateSection=activeResult?.findings?.length
+  ?`
+    <div class="competitive-research-summary">
+      <span class="badge warn">${pilotMode?'Investigación IA':'DEMO de investigación'}</span>
+      <p>${pendingFindings.length} hallazgo${pendingFindings.length===1?'':'s'} por revisar.${incorporatedFindings?` ${incorporatedFindings} ya incorporado${incorporatedFindings===1?'':'s'} al contexto.`:''}${rejectedFindings?` ${rejectedFindings} descartado${rejectedFindings===1?'':'s'}.`:''}${!incorporatedFindings&&!rejectedFindings?' Ninguno forma parte de tu contexto hasta que tú lo incorpores.':''}</p>
+    </div>
+
+    <div id="competitive-candidates">
+      ${activeResult.findings.map(
+       (finding,index)=>competitiveFindingRejected(finding)
+        ?''
+        :competitiveFindingHtml(finding,index)
+      ).join('')}
+    </div>
+   `
+  :`
+    <div class="clear-state">
+      <span class="eyebrow">${pendingResearch.length?'Investigación solicitada':'Investigación disponible'}</span>
+      <p>${pendingResearch.length
+       ?'Tu solicitud está registrada. Puedes iniciar ahora la investigación para complementar lo que ya conoces.'
+       :'Puedes buscar señales externas para complementar tu contexto competitivo.'}</p>
+      <button id="run-competitive-research" class="secondary">
+       ${pilotMode?'Investigar con IA':'Probar investigación DEMO'}
+      </button>
+    </div>
+   `;
+
+ $('#decision').innerHTML=`
+  <div class="home-heading">
+   <div>
+    <p class="eyebrow">Contexto de mercado</p>
+    <h2>Entorno competitivo</h2>
+    <p class="view-lead">Combina lo que tú conoces con señales externas para decidir con mayor contexto.</p>
+   </div>
+  </div>
+
+  <section class="memory-group">
+   <p class="eyebrow">Tus referencias</p>
+   <h3>Lo que ya conoces</h3>
+   ${userSection}
+  </section>
+
+  <section class="memory-group">
+   <p class="eyebrow">Investigación externa</p>
+   <h3>Hallazgos para revisar</h3>
+   ${candidateSection}
+  </section>
+
+  <section class="memory-group">
+   <p class="eyebrow">Memoria estratégica</p>
+   <h3>Hallazgos incorporados</h3>
+   ${evidenceSection}
+  </section>
+
+  <p class="hint">La investigación no cambia automáticamente tu estrategia. Tú decides qué hallazgos forman parte del Brand Context.</p>
+ `;
+
+ bindCompetitiveResearchActions();
+}
 async function showBrandContext(){
  if(!enterView('#brand-context','Contexto estratégico'))return;context=await api(`/api/context?brandId=${encodeURIComponent(brandId)}`);renderContext();
- const groups=[['Aprendizajes aceptados',context.learnings.filter(l=>l.status==='ACCEPTED')],['Aportaciones humanas',context.userInputs],['Hipótesis por validar',context.hypotheses],['Evidencia registrada',context.evidence],['Preguntas abiertas',context.openQuestions]];
+ const groups=[['Aprendizajes aceptados',context.learnings.filter(l=>l.status==='ACCEPTED')],['Aportaciones humanas',context.userInputs],['Hipótesis por validar',context.hypotheses],['Evidencia registrada',context.evidence],['Preguntas abiertas',context.openQuestions.filter(q=>q.status==='OPEN')]];
  $('#decision').innerHTML=`<p class="eyebrow">Contexto estratégico</p><h2>¿Qué sabes y qué falta comprobar?</h2><ul class="kpis" aria-label="Memoria de marca"><li><strong>${context.evidence.length}</strong><span>Fuentes registradas</span></li><li><strong>${context.hypotheses.length}</strong><span>Hipótesis explícitas</span></li><li><strong>${context.userInputs.length}</strong><span>Aportaciones humanas</span></li><li><strong>${context.learnings.filter(l=>l.status==='ACCEPTED').length}</strong><span>Aprendizajes aceptados</span></li></ul><p>Tus aportaciones orientan la estrategia. Las hipótesis siguen sin validar hasta que exista una revisión respaldada.</p>${currentStrategySummary()}${groups.map(([title,rows],index)=>`<section class="memory-group memory-${index}"><h3>${title}</h3>${rows.length?rows.map(r=>`<p>${escape(r.statement??r.claim??r.text??r.interpretation)}</p>${r.source?`<p class="hint">${escape(r.source)} · ${escape(r.sourceDate)} · ${escape(r.provenance)}<br>Limitaciones: ${escape(r.limitations.join('; ')||'No declaradas')}</p>`:''}`).join(''):'<p class="hint">Aún no hay registros.</p>'}</section>`).join('')}<section class="add-context" aria-labelledby="add-context-title"><h3 id="add-context-title">Añadir contexto</h3><form id="capture-context"><label for="context-kind">Tipo de aportación</label><select id="context-kind"><option value="user-input">Aportación humana</option><option value="hypothesis">Hipótesis por validar</option><option value="open-question">Pregunta abierta</option><option value="evidence">Evidencia</option></select><label for="context-statement">Contenido</label><textarea id="context-statement" maxlength="6000" required></textarea><fieldset id="evidence-fields" hidden><legend>Evaluación humana de la fuente</legend><label for="evidence-source">Fuente</label><input id="evidence-source" maxlength="1000"><label for="evidence-date">Fecha de la fuente</label><input id="evidence-date" type="date"><label for="evidence-provenance">Cómo se obtuvo</label><input id="evidence-provenance" maxlength="1000"><label for="evidence-quality">Calidad de la fuente</label><select id="evidence-quality"><option value="LOW">Baja</option><option value="MEDIUM">Media</option><option value="HIGH">Alta</option></select><label for="evidence-relevance">Relevancia</label><select id="evidence-relevance"><option value="INDIRECT">Indirecta</option><option value="DIRECT">Directa</option></select><label for="evidence-freshness">Vigencia</label><select id="evidence-freshness"><option value="HISTORICAL">Histórica</option><option value="AGING">Envejeciendo</option><option value="CURRENT">Actual</option></select><label for="evidence-limitations">Limitaciones</label><input id="evidence-limitations" maxlength="1000"><label><input id="evidence-external" type="checkbox" checked> Fuente externa</label><p class="hint">Tu evaluación queda registrada. El sistema no certifica la veracidad de la fuente.</p></fieldset><button type="submit">Guardar contexto</button></form></section>`;
  $('#context-kind').addEventListener('change',()=>{const evidence=$('#context-kind').value==='evidence';$('#evidence-fields').hidden=!evidence;for(const name of ['source','date','provenance','limitations'])$(`#evidence-${name}`).required=evidence;});
  $('#capture-context').addEventListener('submit',event=>{event.preventDefault();run(async()=>{const kind=$('#context-kind').value,text=$('#context-statement').value;let entity=kind==='open-question'?{text,relatedHypothesisId:null}:{statement:text};if(kind==='evidence')entity={claim:text,source:$('#evidence-source').value,sourceDate:$('#evidence-date').value,provenance:$('#evidence-provenance').value,sourceQuality:$('#evidence-quality').value,relevance:$('#evidence-relevance').value,freshness:$('#evidence-freshness').value,limitations:[$('#evidence-limitations').value],external:$('#evidence-external').checked};await api('/api/context/capture',{brandId,kind,entity});await showBrandContext();notice('Contexto guardado. Las recomendaciones anteriores deberán actualizarse.');},event.submitter);});
@@ -166,7 +645,31 @@ function mountRecommendation(q,d,v,reviews,locked){
  const row=context.recommendations?.find(r=>r.questionId===q.id&&r.resolution==='GENERATED'),rec=row?.payload,analysis=context.analyses?.find(a=>a.recommendationId===rec?.id);
  const list=rows=>`<ul>${rows.map(text=>`<li>${escape(text)}</li>`).join('')}</ul>`;
  $('#decision').insertAdjacentHTML('beforeend',`<section class="recommendation" aria-label="Propuesta de asistencia"><p class="eyebrow">Asistencia estratégica · ${pilotMode?'Piloto':'DEMO'}</p><p class="hint">${pilotMode?'El contexto de esta marca se comparte con el proveedor IA configurado al solicitar una propuesta. Puede no estar disponible; siempre puedes decidir con tu propio criterio. No incluyas secretos ni datos personales innecesarios.':'Opciones fijas de demostración. No son análisis de IA en vivo ni evidencia de mercado.'}</p><button id="generate-recommendation" class="secondary" ${locked?'disabled':''}>${pilotMode?'Solicitar propuesta IA':'Comparar opciones DEMO'}</button>${rec?`<h3>Compara antes de decidir</h3><span class="badge warn">Sin validar · revisión humana necesaria</span>${rec.options.map(o=>`<article class="option ${o.id===rec.recommendedOptionId?'is-proposed':''}"><h4>${escape(o.label)}${o.id===rec.recommendedOptionId?(pilotMode?' · propuesta IA':' · propuesta DEMO'):''}</h4><p>${escape(o.rationale)}</p>${list(o.tradeoffs)}</article>`).join('')}<p>${escape(rec.rationale)}</p><h4>Renuncias y condiciones de fallo</h4>${list([...rec.tradeoffs,...rec.failureConditions])}<h4>Preguntas abiertas</h4>${list(rec.openQuestions)}<p class="hint">Evidencias: ${rec.evidenceReferences.length}. Hipótesis utilizadas: ${rec.hypothesesUsed.length}. Ámbitos: ${escape(rec.affectedDomains.map(x=>labels[x]??x).join(', '))}.</p><details><summary>Evaluación y límites</summary>${list(analysis?.evaluation?.issues.map(i=>i.reason)??[])}</details><div class="human-choice" role="group" aria-labelledby="human-choice-title"><p class="eyebrow" id="human-choice-title">Decisión humana</p><p class="hint">La propuesta no cambia tu estrategia. Úsala o ajústala como punto de partida, o recházala con un motivo.</p><div class="actions">${rec.recommendedOptionId?'<button id="use-recommendation" class="secondary">Usar propuesta sugerida</button>':''}<button id="modify-recommendation" class="secondary">${rec.recommendedOptionId?'Modificar propuesta':'Construir mi decisión'}</button></div><form id="reject-recommendation"><label for="reject-reason">Motivo para rechazar</label><div class="reject-row"><input id="reject-reason" maxlength="1000" required><button class="secondary" type="submit">Rechazar recomendación</button></div></form></div>`:''}</section>`);
- $('#generate-recommendation').addEventListener('click',event=>run(async()=>{let result;try{result=await api('/api/recommendations/generate',{brandId,questionId:q.id});}catch(error){if(error.code==='AI_CONSENT_REQUIRED'&&aiNotice){showAiNotice(q.id);return;}throw error;}if(result.error){notice('No se pudo generar una propuesta válida. Puedes continuar con tu decisión humana.',true,'assistance');return;}await refresh();notice(pilotMode?'Propuesta lista para revisión humana. Aún no cambió ninguna decisión.':'Opciones DEMO listas para revisión. Aún no cambió ninguna decisión.');},event.currentTarget));
+ $('#generate-recommendation').addEventListener('click',event=>run(async()=>{
+ activityStart(
+  pilotMode?'Brandopolis está preparando opciones…':'Preparando opciones DEMO…',
+  pilotMode?'Analizando tu contexto estratégico.':'Preparando alternativas de demostración.'
+ );
+ let result;
+ try{
+  result=await api('/api/recommendations/generate',{brandId,questionId:q.id});
+ }catch(error){
+  activityFail();
+  if(error.code==='AI_CONSENT_REQUIRED'&&aiNotice){showAiNotice(q.id);return;}
+  throw error;
+ }
+ if(result.error){
+  activityFail();
+  notice('No se pudo generar una propuesta válida. Puedes continuar con tu decisión humana.',true,'assistance');
+  return;
+ }
+ activityStep('Opciones listas.','Actualizando tu espacio estratégico…');
+ await refresh();
+ activityDone(
+  pilotMode?'Opciones preparadas':'Opciones DEMO preparadas',
+  'Ya puedes compararlas antes de decidir.'
+ );
+},event.currentTarget));
  const prepare=async(edit)=>{let receipt;if(reviews.length)receipt=await api('/api/reviews/start',{brandId,decisionId:d.id});activeDecisionTab='overview';draft={questionId:q.id,sourceRecommendationId:rec.id,expectedActiveVersion:v?.id??null,selectedOption:rec.options.find(o=>o.id===rec.recommendedOptionId)?.label??'',rationale:'',idempotencyKey:crypto.randomUUID(),reviewToken:receipt?.reviewToken};await api('/api/questions/prepare',{brandId,questionId:q.id,expectedActiveVersion:draft.expectedActiveVersion});render();$('#option').readOnly=!edit;(edit?$('#option'):$('#rationale')).focus();};
  $('#use-recommendation')?.addEventListener('click',e=>run(()=>prepare(false),e.currentTarget));$('#modify-recommendation')?.addEventListener('click',e=>run(()=>prepare(true),e.currentTarget));
  $('#reject-recommendation')?.addEventListener('submit',event=>{event.preventDefault();run(async()=>{await api('/api/recommendations/reject',{brandId,recommendationId:rec.id,rationale:$('#reject-reason').value});await refresh();notice('Recomendación rechazada. Tu estrategia permanece como la aprobaste.');},event.submitter);});
@@ -259,5 +762,24 @@ function showAiNotice(questionId){
  section.innerHTML=`<h3 id="ai-notice-title">Antes de pedir una propuesta IA</h3><p>${escape(aiNotice.text)}</p><button id="ai-notice-accept">Entiendo y acepto</button> <button id="ai-notice-decline" class="secondary">Ahora no</button>`;
  ($('#decision h2')??$('#decision').firstChild).after(section);$('#ai-notice-accept').focus();
  $('#ai-notice-decline').addEventListener('click',()=>{section.remove();notice('Puedes continuar con tu decisión humana sin propuesta IA.');focusView($('#generate-recommendation'));});
- $('#ai-notice-accept').addEventListener('click',event=>run(async()=>{await api('/api/ai-notice/accept',{version:aiNotice.version});section.remove();const result=await api('/api/recommendations/generate',{brandId,questionId});if(result.error){notice('No se pudo generar una propuesta válida. Puedes continuar con tu decisión humana.',true,'assistance');return;}await refresh();notice('Propuesta lista para revisión humana. Aún no cambió ninguna decisión.');},event.currentTarget));
+ $('#ai-notice-accept').addEventListener('click',event=>run(async()=>{
+ await api('/api/ai-notice/accept',{version:aiNotice.version});
+ section.remove();
+ activityStart('Brandopolis está preparando opciones…','Analizando tu contexto estratégico.');
+ let result;
+ try{
+  result=await api('/api/recommendations/generate',{brandId,questionId});
+ }catch(error){
+  activityFail();
+  throw error;
+ }
+ if(result.error){
+  activityFail();
+  notice('No se pudo generar una propuesta válida. Puedes continuar con tu decisión humana.',true,'assistance');
+  return;
+ }
+ activityStep('Opciones listas.','Actualizando tu espacio estratégico…');
+ await refresh();
+ activityDone('Opciones preparadas','Ya puedes compararlas antes de decidir.');
+},event.currentTarget));
 }
