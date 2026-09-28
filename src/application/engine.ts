@@ -61,6 +61,597 @@ export class Engine {
       return rows.filter(b=>grants.some(g=>g.brandId===b.id));
     });
   }
+  async documentUploadScope(token:string,brandId:string) {
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId,false);
+      return {
+        workspaceId:s.workspaceId,
+        brandId:s.brandId,
+        userId:s.userId
+      };
+    });
+  }
+
+  async registerSourceDocument(
+    token:string,
+    brandId:string,
+    input:{
+      id:string;
+      originalName:string;
+      mediaType:string;
+      bytes:number;
+      sha256:string;
+      storageKey:string;
+    }
+  ) {
+    if(
+      !input.id ||
+      !input.originalName.trim() ||
+      input.originalName.length>255 ||
+      !input.mediaType.trim() ||
+      input.mediaType.length>160 ||
+      !Number.isSafeInteger(input.bytes) ||
+      input.bytes<=0 ||
+      input.bytes>20*1024*1024 ||
+      !/^[a-f0-9]{64}$/i.test(input.sha256) ||
+      !input.storageKey.trim() ||
+      input.storageKey.length>1000
+    ) throw new AppError('INVALID','Invalid source document');
+
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId);
+      const now=new Date();
+
+      const row={
+        id:input.id,
+        workspaceId:s.workspaceId,
+        brandId:s.brandId,
+        originalName:input.originalName.trim(),
+        mediaType:input.mediaType.trim(),
+        bytes:input.bytes,
+        sha256:input.sha256.toLowerCase(),
+        storageKey:input.storageKey,
+        status:'UPLOADED',
+        uploadedBy:s.userId,
+        uploadedAt:now
+      };
+
+      await tx.insert(t.sourceDocuments).values(row);
+
+      await this.audit(tx,s,{
+        operation:'SOURCE_DOCUMENT_UPLOADED',
+        idempotencyKey:row.id,
+        rationale:'User-supplied private source document registered'
+      });
+
+      await this.event(tx,s,'source_document_uploaded');
+
+      return {
+        id:row.id,
+        brandId:row.brandId,
+        originalName:row.originalName,
+        mediaType:row.mediaType,
+        bytes:row.bytes,
+        sha256:row.sha256,
+        status:row.status,
+        uploadedBy:row.uploadedBy,
+        uploadedAt:row.uploadedAt.toISOString()
+      };
+    });
+  }
+
+  async sourceDocument(
+    token:string,
+    brandId:string,
+    documentId:string
+  ) {
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId,false);
+
+      const [document]=await tx
+        .select()
+        .from(t.sourceDocuments)
+        .where(and(
+          inScope(t.sourceDocuments,s),
+          eq(t.sourceDocuments.id,documentId)
+        ));
+
+      if(!document)
+        throw new AppError('NOT_FOUND','Source document not available');
+
+      return document;
+    });
+  }
+
+  async persistDocumentExtraction(
+    token:string,
+    brandId:string,
+    documentId:string,
+    input:{
+      extractorVersion:string;
+      content:string;
+      metadata:Record<string,unknown>;
+    }
+  ) {
+    if(
+      !input.extractorVersion ||
+      input.extractorVersion.length>120 ||
+      typeof input.content!=='string' ||
+      !input.content.trim() ||
+      input.content.length>2_000_000
+    ) throw new AppError('INVALID','Invalid document extraction');
+
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId);
+
+      const [document]=await tx
+        .select()
+        .from(t.sourceDocuments)
+        .where(and(
+          inScope(t.sourceDocuments,s),
+          eq(t.sourceDocuments.id,documentId)
+        ));
+
+      if(!document)
+        throw new AppError('NOT_FOUND','Source document not available');
+
+      const previous=await tx
+        .select()
+        .from(t.documentExtractions)
+        .where(and(
+          inScope(t.documentExtractions,s),
+          eq(t.documentExtractions.documentId,documentId)
+        ))
+        .orderBy(asc(t.documentExtractions.createdAt));
+
+      const reusable=previous.find(row=>{
+        if(row.status!=='COMPLETE')return false;
+
+        const metadata=row.metadata??{};
+
+        return (
+          metadata.sourceSha256===document.sha256 &&
+          metadata.extractorVersion===input.extractorVersion
+        );
+      });
+
+      if(reusable){
+        return {
+          id:reusable.id,
+          documentId:reusable.documentId,
+          status:reusable.status,
+          provider:reusable.provider,
+          model:reusable.model,
+          metadata:reusable.metadata,
+          createdAt:reusable.createdAt.toISOString(),
+          reused:true
+        };
+      }
+
+      const now=new Date();
+      const extractionId=id();
+
+      const metadata={
+        ...input.metadata,
+        sourceSha256:document.sha256,
+        extractorVersion:input.extractorVersion
+      };
+
+      await tx.insert(t.documentExtractions).values({
+        id:extractionId,
+        workspaceId:s.workspaceId,
+        brandId:s.brandId,
+        documentId,
+        status:'COMPLETE',
+        provider:'LOCAL',
+        model:input.extractorVersion,
+        content:input.content,
+        metadata,
+        createdAt:now
+      });
+
+      await tx
+        .update(t.sourceDocuments)
+        .set({status:'EXTRACTED'})
+        .where(and(
+          inScope(t.sourceDocuments,s),
+          eq(t.sourceDocuments.id,documentId)
+        ));
+
+      await this.audit(tx,s,{
+        operation:'SOURCE_DOCUMENT_EXTRACTED',
+        idempotencyKey:extractionId,
+        rationale:`Local deterministic extraction ${input.extractorVersion}`
+      });
+
+      await this.event(tx,s,'source_document_extracted');
+
+      return {
+        id:extractionId,
+        documentId,
+        status:'COMPLETE',
+        provider:'LOCAL',
+        model:input.extractorVersion,
+        metadata,
+        createdAt:now.toISOString(),
+        reused:false
+      };
+    });
+  }
+
+  async documentExtractionForClaims(
+    token:string,
+    brandId:string,
+    documentId:string
+  ) {
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId,false);
+
+      const [document]=await tx
+        .select()
+        .from(t.sourceDocuments)
+        .where(and(
+          inScope(t.sourceDocuments,s),
+          eq(t.sourceDocuments.id,documentId)
+        ));
+
+      if(!document)
+        throw new AppError('NOT_FOUND','Source document not available');
+
+      const extractions=await tx
+        .select()
+        .from(t.documentExtractions)
+        .where(and(
+          inScope(t.documentExtractions,s),
+          eq(t.documentExtractions.documentId,documentId),
+          eq(t.documentExtractions.status,'COMPLETE')
+        ))
+        .orderBy(asc(t.documentExtractions.createdAt));
+
+      const extraction=extractions.at(-1);
+
+      if(!extraction?.content)
+        throw new AppError('CONFLICT','Document must be processed first');
+
+      return {
+        document,
+        extraction
+      };
+    });
+  }
+
+  async existingDocumentClaims(
+    token:string,
+    brandId:string,
+    documentId:string,
+    extractionId:string,
+    generatorVersion:string
+  ) {
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId,false);
+
+      const rows=await tx
+        .select()
+        .from(t.documentClaims)
+        .where(and(
+          inScope(t.documentClaims,s),
+          eq(t.documentClaims.documentId,documentId),
+          eq(t.documentClaims.extractionId,extractionId)
+        ))
+        .orderBy(asc(t.documentClaims.createdAt));
+
+      return rows.filter(row=>{
+        const location=row.location??{};
+        return location.generatorVersion===generatorVersion;
+      });
+    });
+  }
+
+  async persistDocumentClaims(
+    token:string,
+    brandId:string,
+    documentId:string,
+    extractionId:string,
+    input:{
+      provider:string;
+      model:string;
+      generatorVersion:string;
+      claims:Array<{
+        claimType:string;
+        statement:string;
+        location:Record<string,unknown>;
+        confidence:string;
+      }>;
+    }
+  ) {
+    if(
+      !input.provider ||
+      !input.model ||
+      !input.generatorVersion ||
+      !Array.isArray(input.claims) ||
+      !input.claims.length ||
+      input.claims.length>15
+    ) throw new AppError('INVALID','Invalid document claims');
+
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId);
+
+      const [extraction]=await tx
+        .select()
+        .from(t.documentExtractions)
+        .where(and(
+          inScope(t.documentExtractions,s),
+          eq(t.documentExtractions.documentId,documentId),
+          eq(t.documentExtractions.id,extractionId),
+          eq(t.documentExtractions.status,'COMPLETE')
+        ));
+
+      if(!extraction)
+        throw new AppError('NOT_FOUND','Document extraction unavailable');
+
+      const previous=await tx
+        .select()
+        .from(t.documentClaims)
+        .where(and(
+          inScope(t.documentClaims,s),
+          eq(t.documentClaims.documentId,documentId),
+          eq(t.documentClaims.extractionId,extractionId)
+        ));
+
+      const reusable=previous.filter(row=>{
+        const location=row.location??{};
+        return location.generatorVersion===input.generatorVersion;
+      });
+
+      if(reusable.length){
+        return {
+          claims:reusable,
+          reused:true
+        };
+      }
+
+      const now=new Date();
+
+      const rows=input.claims.map(claim=>({
+        id:id(),
+        workspaceId:s.workspaceId,
+        brandId:s.brandId,
+        documentId,
+        extractionId,
+        claimType:claim.claimType,
+        statement:claim.statement,
+        location:{
+          ...claim.location,
+          provider:input.provider,
+          model:input.model,
+          generatorVersion:input.generatorVersion
+        },
+        confidence:claim.confidence,
+        reviewStatus:'CANDIDATE',
+        createdAt:now
+      }));
+
+      await tx.insert(t.documentClaims).values(rows);
+
+      await this.audit(tx,s,{
+        operation:'DOCUMENT_CLAIMS_GENERATED',
+        idempotencyKey:`${extractionId}:${input.generatorVersion}`,
+        rationale:`AI-assisted document claims · ${input.provider} · ${input.model}`
+      });
+
+      await this.event(tx,s,'document_claims_generated');
+
+      return {
+        claims:rows,
+        reused:false
+      };
+    });
+  }
+
+  async reviewDocumentClaim(
+    token:string,
+    brandId:string,
+    claimId:string,
+    action:'ACCEPT'|'REJECT',
+    reviewedStatement?:string
+  ) {
+    if(!claimId.trim())
+      throw new AppError('INVALID','Invalid document claim');
+
+    if(!['ACCEPT','REJECT'].includes(action))
+      throw new AppError('INVALID','Invalid document claim review action');
+
+    const edited=reviewedStatement?.trim();
+
+    if(reviewedStatement!==undefined&&(!edited||edited.length>16000))
+      throw new AppError('INVALID','Invalid reviewed statement');
+
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId);
+
+      const [claim]=await tx
+        .select()
+        .from(t.documentClaims)
+        .where(and(
+          inScope(t.documentClaims,s),
+          eq(t.documentClaims.id,claimId)
+        ))
+        .for('update');
+
+      if(!claim)
+        throw new AppError('NOT_FOUND','Document claim unavailable');
+
+      /*
+       * A reviewed claim is immutable. Repeating the same human action
+       * returns the persisted result instead of creating duplicate context.
+       */
+      if(claim.reviewStatus!=='CANDIDATE'){
+        const sameAction=
+          (action==='ACCEPT'&&claim.reviewStatus==='ACCEPTED') ||
+          (action==='REJECT'&&claim.reviewStatus==='REJECTED');
+
+        const sameStatement=
+          action==='REJECT' ||
+          (claim.reviewedStatement??claim.statement)===(edited??claim.statement);
+
+        if(sameAction&&sameStatement)
+          return {
+            claim,
+            reused:true
+          };
+
+        throw new AppError('CONFLICT','Document claim already reviewed');
+      }
+
+      const now=new Date();
+      const finalStatement=edited??claim.statement;
+
+      if(action==='REJECT'){
+        const [reviewed]=await tx
+          .update(t.documentClaims)
+          .set({
+            reviewStatus:'REJECTED',
+            reviewedStatement:null,
+            reviewedBy:s.userId,
+            reviewedAt:now,
+            contextKind:null,
+            contextEntityId:null,
+            location:{
+              ...(claim.location??{}),
+              provenance:'USER_DOCUMENT'
+            }
+          })
+          .where(and(
+            inScope(t.documentClaims,s),
+            eq(t.documentClaims.id,claim.id)
+          ))
+          .returning();
+
+        await this.audit(tx,s,{
+          operation:'DOCUMENT_CLAIM_REJECTED',
+          idempotencyKey:`document-claim:${claim.id}:reject`,
+          rationale:'Human reviewed AI-extracted document claim and did not incorporate it'
+        });
+
+        await this.event(tx,s,'document_claim_rejected');
+
+        return {
+          claim:reviewed,
+          context:null,
+          reused:false
+        };
+      }
+
+      const contextKind=
+        claim.claimType==='HYPOTHESIS'
+          ?'hypothesis'
+          :claim.claimType==='OPEN_QUESTION'
+            ?'open-question'
+            :'user-input';
+
+      const entity=
+        contextKind==='open-question'
+          ?{
+              text:finalStatement,
+              relatedHypothesisId:null
+            }
+          :{
+              statement:finalStatement
+            };
+
+      const contextEntity=await this.createContextEntity(
+        tx,
+        s,
+        brandId,
+        contextKind,
+        entity
+      );
+
+      const [reviewed]=await tx
+        .update(t.documentClaims)
+        .set({
+          reviewStatus:'ACCEPTED',
+          reviewedStatement:finalStatement,
+          reviewedBy:s.userId,
+          reviewedAt:now,
+          contextKind,
+          contextEntityId:String(contextEntity.id),
+          location:{
+            ...(claim.location??{}),
+            provenance:'USER_DOCUMENT',
+            originalStatement:claim.statement
+          }
+        })
+        .where(and(
+          inScope(t.documentClaims,s),
+          eq(t.documentClaims.id,claim.id)
+        ))
+        .returning();
+
+      await this.audit(tx,s,{
+        operation:
+          finalStatement===claim.statement
+            ?'DOCUMENT_CLAIM_ACCEPTED'
+            :'DOCUMENT_CLAIM_MODIFIED_AND_ACCEPTED',
+        idempotencyKey:`document-claim:${claim.id}:accept`,
+        rationale:`Human-reviewed document claim incorporated as ${contextKind}`
+      });
+
+      await this.event(
+        tx,
+        s,
+        finalStatement===claim.statement
+          ?'document_claim_accepted'
+          :'document_claim_modified_and_accepted'
+      );
+
+      return {
+        claim:reviewed,
+        context:contextEntity,
+        reused:false
+      };
+    });
+  }
+
+  async listDocumentClaims(
+    token:string,
+    brandId:string
+  ) {
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId,false);
+
+      return tx
+        .select()
+        .from(t.documentClaims)
+        .where(inScope(t.documentClaims,s))
+        .orderBy(asc(t.documentClaims.createdAt));
+    });
+  }
+
+  async listSourceDocuments(token:string,brandId:string) {
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId,false);
+
+      const rows=await tx
+        .select()
+        .from(t.sourceDocuments)
+        .where(inScope(t.sourceDocuments,s))
+        .orderBy(asc(t.sourceDocuments.uploadedAt));
+
+      return rows.map(row=>({
+        id:row.id,
+        brandId:row.brandId,
+        originalName:row.originalName,
+        mediaType:row.mediaType,
+        bytes:row.bytes,
+        sha256:row.sha256,
+        status:row.status,
+        uploadedBy:row.uploadedBy,
+        uploadedAt:row.uploadedAt.toISOString()
+      }));
+    });
+  }
+
   async createBrand(token:string,name:string,initialContext?:string) {
     if(typeof name!=='string'||!name.trim()||name.length>160) throw new AppError('INVALID','Brand name required');
     if(initialContext!==undefined&&(typeof initialContext!=='string'||initialContext.length>6000))throw new AppError('INVALID','Invalid initial context');
@@ -133,12 +724,88 @@ export class Engine {
     const read=async(table:typeof t.userInputs|typeof t.evidence|typeof t.hypotheses|typeof t.openQuestions|typeof t.experiments|typeof t.signals|typeof t.learnings)=> (await tx.select().from(table).where(inScope(table,s)).orderBy(asc(table.id))).map(r=>r.payload);
     return {experiments:await read(t.experiments),signals:await read(t.signals),learnings:await read(t.learnings),userInputs:await read(t.userInputs),evidence:await read(t.evidence),hypotheses:await read(t.hypotheses),openQuestions:await read(t.openQuestions)};
   }
+  private async createContextEntity(
+    tx:Transaction,
+    s:Scope,
+    brandId:string,
+    kind:string,
+    input:Record<string,unknown>
+  ) {
+    const tables={
+      'user-input':t.userInputs,
+      evidence:t.evidence,
+      hypothesis:t.hypotheses,
+      'open-question':t.openQuestions
+    };
+
+    if(
+      !Object.hasOwn(tables,kind) ||
+      !input ||
+      Array.isArray(input) ||
+      JSON.stringify(input).length>16000
+    ) throw new AppError('INVALID','Invalid context entity');
+
+    const now=new Date();
+
+    const payload={
+      ...input,
+      id:id(),
+      brandId,
+      ...(kind==='user-input'
+        ?{createdBy:s.userId,createdAt:now.toISOString()}
+        :{}),
+      ...(kind==='hypothesis'
+        ?{status:'UNTESTED',evidenceReferences:[]}
+        :{}),
+      ...(kind==='open-question'
+        ?{status:'OPEN'}
+        :{})
+    };
+
+    validate(kind,payload);
+
+    if(Object.values(payload).some(v=>typeof v==='string'&&!v.trim()))
+      throw new AppError('INVALID','Empty context content');
+
+    if(kind==='open-question'&&input.relatedHypothesisId){
+      const [hypothesis]=await tx
+        .select()
+        .from(t.hypotheses)
+        .where(and(
+          inScope(t.hypotheses,s),
+          eq(t.hypotheses.id,String(input.relatedHypothesisId))
+        ));
+
+      if(!hypothesis)
+        throw new AppError('NOT_FOUND','Hypothesis not available');
+    }
+
+    await tx.insert(tables[kind as keyof typeof tables]).values({
+      id:payload.id,
+      workspaceId:s.workspaceId,
+      brandId,
+      payload,
+      createdBy:s.userId,
+      createdAt:now
+    });
+
+    await tx.update(t.recommendations)
+      .set({resolution:'STALE'})
+      .where(and(
+        inScope(t.recommendations,s),
+        eq(t.recommendations.resolution,'GENERATED')
+      ));
+
+    if(kind==='evidence')
+      await this.event(tx,s,'evidence_added');
+
+    if(kind==='user-input')
+      await this.event(tx,s,'meaningful_context_supplied');
+
+    return payload;
+  }
+
   async captureContext(token:string,brandId:string,kind:string,input:Record<string,unknown>,idempotencyKey?:string) {
-    const tables={'user-input':t.userInputs,evidence:t.evidence,hypothesis:t.hypotheses,'open-question':t.openQuestions};
-
-    if(!Object.hasOwn(tables,kind)||!input||Array.isArray(input)||JSON.stringify(input).length>16000)
-      throw new AppError('INVALID','Invalid context entity');
-
     if(idempotencyKey!==undefined&&(!idempotencyKey.trim()||idempotencyKey.length>200))
       throw new AppError('INVALID','Invalid idempotency key');
 
@@ -147,7 +814,7 @@ export class Engine {
       :null;
 
     return this.db.transaction(async tx=>{
-      const s=await this.scope(tx,token,brandId),now=new Date();
+      const s=await this.scope(tx,token,brandId);
 
       if(idempotencyKey&&fingerprint){
         const replayKey=and(
@@ -167,53 +834,13 @@ export class Engine {
         }
       }
 
-      const payload={
-        ...input,
-        id:id(),
+      const payload=await this.createContextEntity(
+        tx,
+        s,
         brandId,
-        ...(kind==='user-input'
-          ?{createdBy:s.userId,createdAt:now.toISOString()}
-          :{}),
-        ...(kind==='hypothesis'
-          ?{status:'UNTESTED',evidenceReferences:[]}
-          :{}),
-        ...(kind==='open-question'
-          ?{status:'OPEN'}
-          :{})
-      };
-
-      validate(kind,payload);
-
-      if(Object.values(payload).some(v=>typeof v==='string'&&!v.trim()))
-        throw new AppError('INVALID','Empty context content');
-
-      if(kind==='open-question'&&input.relatedHypothesisId){
-        const [hypothesis]=await tx.select()
-          .from(t.hypotheses)
-          .where(and(
-            inScope(t.hypotheses,s),
-            eq(t.hypotheses.id,String(input.relatedHypothesisId))
-          ));
-
-        if(!hypothesis)
-          throw new AppError('NOT_FOUND','Hypothesis not available');
-      }
-
-      await tx.insert(tables[kind as keyof typeof tables]).values({
-        id:payload.id,
-        workspaceId:s.workspaceId,
-        brandId,
-        payload,
-        createdBy:s.userId,
-        createdAt:now
-      });
-
-      await tx.update(t.recommendations)
-        .set({resolution:'STALE'})
-        .where(and(
-          inScope(t.recommendations,s),
-          eq(t.recommendations.resolution,'GENERATED')
-        ));
+        kind,
+        input
+      );
 
       await this.audit(tx,s,{
         operation:`CONTEXT_${kind.toUpperCase()}_CAPTURED`,
@@ -227,6 +854,8 @@ export class Engine {
         kind==='evidence'
         && String(input.provenance??'').toLowerCase().includes('entorno competitivo')
       ){
+        const now=new Date();
+
         const capability={
           id:id(),
           userId:s.userId,
@@ -244,12 +873,6 @@ export class Engine {
           payload:capability
         });
       }
-
-      if(kind==='evidence')
-        await this.event(tx,s,'evidence_added');
-
-      if(kind==='user-input')
-        await this.event(tx,s,'meaningful_context_supplied');
 
       if(idempotencyKey&&fingerprint){
         await tx.insert(t.idempotency).values({

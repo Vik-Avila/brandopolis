@@ -187,11 +187,16 @@ export class AnthropicCompetitiveResearch implements CompetitiveResearchService 
       'Separate source-observed facts from interpretation.',
       'A competitor can be a direct competitor, substitute or relevant alternative.',
       'The human user decides whether any finding becomes Brand Context.',
+      'All user-facing output must be written in clear, professional Mexican Spanish (es-MX), except proper names, brand names, URLs and source titles that should remain faithful to the original source.',
+      'Do not use English classification labels such as direct competitor, substitute, market pattern, observation or interpretation in user-facing text.',
+      'Do not prefix fields with words such as Interpretation:, Observation:, Finding: or similar labels; the interface already provides those labels.',
+      'Keep findings concise, executive and easy to scan.',
       'Return only valid JSON. No markdown.'
     ].join(' ');
 
     const user=[
-      'Research the competitive environment for the following brand.',
+      'Investiga el entorno competitivo de la siguiente marca.',
+      'IMPORTANTE: responde todo el contenido destinado al usuario en español de México (es-MX).',
       '',
       `Brand name: ${input.brandName}`,
       '',
@@ -212,16 +217,22 @@ export class AnthropicCompetitiveResearch implements CompetitiveResearchService 
       '- Prefer current public sources.',
       '- Open relevant source pages when search snippets are insufficient.',
       '',
-      'Return 3 to 6 concise findings.',
+      'Devuelve entre 3 y 6 hallazgos concisos y ejecutivos.',
+      'Cada subject debe ser únicamente el nombre limpio del competidor, alternativa, marca de referencia o patrón de mercado; no agregues clasificaciones entre paréntesis.',
+      'observation debe contener únicamente señales o hechos observables en las fuentes revisadas, sin mezclar interpretación.',
+      'strategicRelevance debe explicar de forma breve por qué el hallazgo podría importar a esta marca y debe presentarse claramente como interpretación, pero sin anteponer la palabra Interpretation o Interpretación.',
+      'Si una relación entre entidades no está confirmada, exprésala como señal o posibilidad por verificar y declara la limitación.',
+      'Evita describir el proceso de búsqueda. No escribas frases como search result previews show, the model found o similares.',
+      'Procura que observation no exceda aproximadamente 90 palabras y strategicRelevance no exceda aproximadamente 70 palabras.',
       '',
       'Return exactly this JSON shape:',
       '{',
       '  "findings": [',
       '    {',
-      '      "subject": "competitor, alternative, or market pattern",',
-      '      "observation": "what the reviewed sources actually indicate",',
-      '      "strategicRelevance": "why this could matter to the brand; clearly framed as interpretation",',
-      '      "limitations": ["important caveat"],',
+      '      "subject": "nombre limpio del competidor, alternativa, marca de referencia o patrón de mercado",',
+      '      "observation": "hechos o señales observables que indican las fuentes revisadas, en español",',
+      '      "strategicRelevance": "por qué podría importar a la marca; interpretación breve y claramente separada de los hechos",',
+      '      "limitations": ["limitación o incertidumbre importante, en español"],',
       '      "sources": [',
       '        {',
       '          "title": "source title",',
@@ -260,7 +271,7 @@ export class AnthropicCompetitiveResearch implements CompetitiveResearchService 
         role:'user',
         content:user
       }]
-    },{timeout:45000});
+    },{timeout:120000});
 
     const text=message.content
       .flatMap(block=>block.type==='text'?[block.text]:[])

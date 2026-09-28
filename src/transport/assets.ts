@@ -36,6 +36,7 @@ export const runtimeAssets={
   '/brand/web/flow-loop.mp4':['public/brand/web/flow-loop.mp4','video/mp4'],
   '/brand/web/flow-loop-poster.webp':['public/brand/web/flow-loop-poster.webp','image/webp'],
   '/brand/web/workspace-atmosphere-desktop.webp':['public/brand/web/workspace-atmosphere-desktop.webp','image/webp'],
+  '/brand/web/workspace-atmosphere-clean.webp':['public/brand/web/workspace-atmosphere-clean.webp','image/webp'],
   '/brand/web/workspace-atmosphere-mobile.webp':['public/brand/web/workspace-atmosphere-mobile.webp','image/webp'],
   '/brand/web/access-panel.webp':['public/brand/web/access-panel.webp','image/webp'],
   '/brand/web/og.webp':['public/brand/web/og.webp','image/webp']

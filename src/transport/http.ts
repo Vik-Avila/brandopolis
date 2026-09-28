@@ -3,7 +3,11 @@ import type { Engine } from '../application/engine.js';
 import { AppError, type CommitCommand } from '../domain/contracts.js';
 import type { PilotBoundary } from './pilot-auth.js';
 import type { CompetitiveResearchService } from './competitive-research.js';
+import type { DocumentClaimsService } from './document-claims.js';
 import { randomUUID,createHash } from 'node:crypto';
+import { open,mkdir,rename,rm } from 'node:fs/promises';
+import { resolve,sep } from 'node:path';
+import { extractDocument } from '../documents/extractor.js';
 
 async function body(req:IncomingMessage):Promise<Record<string,unknown>> {
   if(!req.headers['content-type']?.startsWith('application/json')) throw new AppError('INVALID','JSON required');
@@ -14,6 +18,99 @@ async function body(req:IncomingMessage):Promise<Record<string,unknown>> {
 function string(value:unknown):string {if(typeof value!=='string'||!value) throw new AppError('INVALID','String required');return value;}
 export function cookieMaxAge(expiresAt:Date,now=Date.now()) {return Math.max(0,Math.floor((expiresAt.getTime()-now)/1000));}
 function send(res:ServerResponse,status:number,data:unknown) {res.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(data));}
+
+const documentMimeTypes=new Set([
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'text/plain'
+]);
+
+const documentMaxBytes=20*1024*1024;
+
+function requestHeader(req:IncomingMessage,name:string):string|undefined {
+  const value=req.headers[name];
+  return Array.isArray(value)?value[0]:value;
+}
+
+function sourceFileName(value:string|undefined):string {
+  if(!value)throw new AppError('INVALID','File name required');
+
+  let decoded:string;
+
+  try {
+    decoded=decodeURIComponent(value);
+  } catch {
+    throw new AppError('INVALID','Invalid file name');
+  }
+
+  const clean=decoded
+    .trim()
+    .replace(/[\/\\]/g,'_');
+
+  if(
+    !clean ||
+    clean.length>255 ||
+    /[\u0000-\u001f\u007f]/.test(clean)
+  ) throw new AppError('INVALID','Invalid file name');
+
+  return clean;
+}
+
+function documentStorageRoot():string {
+  return process.env.BRANDOPOLIS_DOCUMENT_ROOT?.trim()
+    || '/home/wwwbrando/.brandopolis/documents';
+}
+
+function resolveDocumentStoragePath(storageKey:string):string {
+  const root=resolve(documentStorageRoot());
+  const target=resolve(root,storageKey);
+
+  if(
+    target!==root &&
+    !target.startsWith(root+sep)
+  ) throw new AppError('INVALID','Invalid document storage key');
+
+  return target;
+}
+
+const documentExtractorVersion='local-v1';
+
+
+async function receiveSourceDocument(
+  req:IncomingMessage,
+  target:string
+):Promise<{bytes:number;sha256:string}> {
+  const handle=await open(target,'wx',0o600);
+  const digest=createHash('sha256');
+  let bytes=0;
+
+  try {
+    for await(const chunk of req) {
+      const buffer=Buffer.isBuffer(chunk)?chunk:Buffer.from(chunk);
+      bytes+=buffer.length;
+
+      if(bytes>documentMaxBytes)
+        throw new AppError('INVALID','Document too large');
+
+      digest.update(buffer);
+      await handle.write(buffer);
+    }
+
+    if(bytes===0)
+      throw new AppError('INVALID','Empty document');
+
+    await handle.sync();
+
+    return {
+      bytes,
+      sha256:digest.digest('hex')
+    };
+  } finally {
+    await handle.close();
+  }
+}
+
 // Single-node, in-memory fixed-window limiter for the PILOT process. Counters reset on restart and are
 // not shared across replicas; a multi-instance deployment needs a shared limiter at the proxy or store.
 export interface Limiter {allow(key:string,limit:number,windowMs:number):boolean}
@@ -28,7 +125,7 @@ export class RateLimiter implements Limiter {
   }
 }
 export const pilotLimits={all:[600,60000],auth:[20,60000],ai:[20,600000],feedback:[20,600000]} as const;
-export function createApp(engine:Engine,assets?:(path:string)=>{content:string|Buffer;type:string;etag?:string}|undefined,health?:()=>Promise<string>,pilot?:PilotBoundary,competitiveResearch?:CompetitiveResearchService) {
+export function createApp(engine:Engine,assets?:(path:string)=>{content:string|Buffer;type:string;etag?:string}|undefined,health?:()=>Promise<string>,pilot?:PilotBoundary,competitiveResearch?:CompetitiveResearchService,documentClaims?:DocumentClaimsService) {
   const limiter=pilot?.limiter??new RateLimiter();
   return createServer(async(req,res)=>{
     const requestId=randomUUID();
@@ -88,7 +185,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(req.method==='POST'&&path==='/api/logout'){if(token)await pilot.logout(token);res.setHeader('Set-Cookie',`${cookieName}=; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`);return send(res,200,{authenticated:false});}
         await pilot.authorize(token);
         const subject=createHash('sha256').update(token).digest('hex');
-        if(req.method==='POST'&&(path==='/api/recommendations/generate'||path==='/api/competitive/research')){
+        if(req.method==='POST'&&(path==='/api/recommendations/generate'||path==='/api/competitive/research'||path==='/api/documents/claims')){
           if(limited('ai:'+subject,pilotLimits.ai))return;
           const gate=await pilot.aiGate?.(token)??'OK';
           if(gate==='CONSENT_REQUIRED')return send(res,428,{code:'AI_CONSENT_REQUIRED',message:'Confirm the AI data notice first.'});
@@ -99,6 +196,116 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
       }
       if(req.method==='POST') {
         if(!pilot&&!bearer&&req.headers.origin!==`http://${req.headers.host}`) throw new AppError('FORBIDDEN','Same-origin human action required');
+
+        if(path==='/api/documents/extract'){
+          const input=await body(req);
+          const extractionBrandId=string(input.brandId);
+          const documentId=string(input.documentId);
+
+          const document=await engine.sourceDocument(
+            token,
+            extractionBrandId,
+            documentId
+          );
+
+          const extracted=await extractDocument({
+            filePath:resolveDocumentStoragePath(document.storageKey),
+            mediaType:document.mediaType,
+            originalName:document.originalName
+          });
+
+          const result=await engine.persistDocumentExtraction(
+            token,
+            extractionBrandId,
+            documentId,
+            {
+              extractorVersion:documentExtractorVersion,
+              content:extracted.text,
+              metadata:{
+                format:extracted.metadata.format,
+                pages:extracted.metadata.pages??null,
+                slides:extracted.metadata.slides??null,
+                characters:extracted.metadata.characters,
+                segments:extracted.segments.length,
+                truncated:extracted.metadata.truncated
+              }
+            }
+          );
+
+          return send(res,result.reused?200:201,result);
+        }
+
+        if(path==='/api/documents'){
+          const brandId=string(requestHeader(req,'x-brand-id'));
+          const originalName=sourceFileName(requestHeader(req,'x-file-name'));
+          const mediaType=String(requestHeader(req,'content-type')??'')
+            .split(';')[0]
+            .trim()
+            .toLowerCase();
+
+          if(!documentMimeTypes.has(mediaType))
+            throw new AppError('INVALID','Unsupported document type');
+
+          const declaredRaw=requestHeader(req,'content-length');
+
+          if(declaredRaw){
+            const declared=Number(declaredRaw);
+
+            if(
+              !Number.isSafeInteger(declared) ||
+              declared<=0 ||
+              declared>documentMaxBytes
+            ) throw new AppError('INVALID','Invalid document size');
+          }
+
+          const scope=await engine.documentUploadScope(token,brandId);
+          const documentId=randomUUID();
+          const root=resolve(documentStorageRoot());
+
+          const directory=resolve(
+            root,
+            scope.workspaceId,
+            scope.brandId,
+            documentId
+          );
+
+          const temporary=resolve(directory,'.upload');
+          const target=resolve(directory,'original');
+
+          await mkdir(directory,{recursive:true,mode:0o700});
+
+          try {
+            const received=await receiveSourceDocument(req,temporary);
+
+            await rename(temporary,target);
+
+            const storageKey=[
+              scope.workspaceId,
+              scope.brandId,
+              documentId,
+              'original'
+            ].join('/');
+
+            const result=await engine.registerSourceDocument(
+              token,
+              brandId,
+              {
+                id:documentId,
+                originalName,
+                mediaType,
+                bytes:received.bytes,
+                sha256:received.sha256,
+                storageKey
+              }
+            );
+
+            return send(res,201,result);
+          } catch(error) {
+            await rm(directory,{recursive:true,force:true});
+            throw error;
+          }
+        }
+
         const input=await body(req);
         if(path==='/api/session') {
           if(pilot)throw new AppError('FORBIDDEN','DEMO access disabled');
@@ -118,6 +325,93 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           input.idempotencyKey===undefined?undefined:string(input.idempotencyKey)
         ));
         if(path==='/api/context/assemble') return send(res,200,await engine.assembleContext(token,string(input.brandId),string(input.questionId),input.budget===undefined?undefined:Number(input.budget)));
+
+        if(path==='/api/document-claims/review') return send(
+          res,
+          200,
+          await engine.reviewDocumentClaim(
+            token,
+            string(input.brandId),
+            string(input.claimId),
+            string(input.action) as 'ACCEPT'|'REJECT',
+            input.reviewedStatement===undefined
+              ?undefined
+              :string(input.reviewedStatement)
+          )
+        );
+
+        if(path==='/api/documents/claims') {
+          if(!documentClaims)
+            throw new AppError('UNAVAILABLE','Document claims unavailable');
+
+          const claimsBrandId=string(input.brandId);
+          const documentId=string(input.documentId);
+
+          const {document,extraction}=
+            await engine.documentExtractionForClaims(
+              token,
+              claimsBrandId,
+              documentId
+            );
+
+          const existing=await engine.existingDocumentClaims(
+            token,
+            claimsBrandId,
+            documentId,
+            extraction.id,
+            'document-claims-v1'
+          );
+
+          if(existing.length){
+            return send(res,200,{
+              claims:existing,
+              reused:true,
+              provider:String(existing[0]?.location?.provider??''),
+              model:String(existing[0]?.location?.model??'')
+            });
+          }
+
+          const brands=await engine.listBrands(token);
+          const brand=brands.find(item=>item.id===claimsBrandId);
+
+          if(!brand)
+            throw new AppError('NOT_FOUND','Brand unavailable');
+
+          const generated=await documentClaims.generate({
+            brandName:brand.name,
+            documentName:document.originalName,
+            extractionId:extraction.id,
+            content:extraction.content!
+          });
+
+          const persisted=await engine.persistDocumentClaims(
+            token,
+            claimsBrandId,
+            documentId,
+            extraction.id,
+            generated
+          );
+
+          if(pilot)console.log(JSON.stringify({
+            event:'document_claims',
+            requestId,
+            outcome:'OK',
+            provider:generated.provider,
+            claims:persisted.claims.length,
+            reused:persisted.reused
+          }));
+
+          return send(
+            res,
+            persisted.reused?200:201,
+            {
+              claims:persisted.claims,
+              reused:persisted.reused,
+              provider:generated.provider,
+              model:generated.model
+            }
+          );
+        }
 
         if(path==='/api/competitive/research') {
           if(!competitiveResearch)throw new AppError('UNAVAILABLE','Competitive research unavailable');
@@ -205,6 +499,8 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
             string(url.searchParams.get('brandId'))
           )
         );
+        if(path==='/api/document-claims') return send(res,200,await engine.listDocumentClaims(token,string(url.searchParams.get('brandId'))));
+        if(path==='/api/documents') return send(res,200,await engine.listSourceDocuments(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/me') return send(res,200,await engine.me(token));
         if(path==='/api/practice') return send(res,200,await engine.practice(token));
         if(path==='/api/blueprint') return send(res,200,await engine.blueprint(token,string(url.searchParams.get('brandId'))));
@@ -215,7 +511,11 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
     } catch(error) {
       if(error instanceof AppError) {const status={UNAUTHORIZED:401,FORBIDDEN:403,CONFLICT:409,INVALID:400,NOT_FOUND:404,UNAVAILABLE:503}[error.code];send(res,status,{code:error.code,message:error.message});}
       else {
-        if(pilot)console.error(JSON.stringify({event:'http_error',requestId,kind:error instanceof Error?error.name:'unknown'}));
+        if(pilot)console.error(JSON.stringify({
+          event:'http_error',
+          requestId,
+          kind:error instanceof Error?error.name:'unknown'
+        }));
         send(res,503,{code:'UNAVAILABLE',message:'Operation unavailable; retry with the same idempotency key.'});
       }
     }

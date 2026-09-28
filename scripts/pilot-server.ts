@@ -5,6 +5,7 @@ import { Engine } from '../src/application/engine.js';
 import { ModelGateway } from '../src/domain/analysis.js';
 import { AnthropicProvider,UnavailableProvider,PILOT_PROMPT_VERSION } from '../src/transport/anthropic-provider.js';
 import { AnthropicCompetitiveResearch,CompetitiveResearchUnavailable } from '../src/transport/competitive-research.js';
+import { AnthropicDocumentClaims,DocumentClaimsUnavailable } from '../src/transport/document-claims.js';
 import { createApp } from '../src/transport/http.js';
 import { loadAsset } from '../src/transport/assets.js';
 import { pilotAuth,ConfigError,loadAiNotice } from '../src/transport/pilot-auth.js';
@@ -23,10 +24,21 @@ try {
   const competitiveResearch=settings.ai.enabled
     ?new AnthropicCompetitiveResearch(process.env.ANTHROPIC_API_KEY!.trim(),settings.ai.model!)
     :new CompetitiveResearchUnavailable();
+
+  const documentClaims=settings.ai.enabled
+    ?new AnthropicDocumentClaims(process.env.ANTHROPIC_API_KEY!.trim(),settings.ai.model!)
+    :new DocumentClaimsUnavailable();
   const ai={notice:settings.ai.enabled?loadAiNotice(settings.ai.noticeFile):null,capPerTester:settings.ai.dailyCapPerTester,capTotal:settings.ai.dailyCapTotal};
   const auth=await pilotAuth(connection.db,settings.origin,{trustProxy:settings.trustProxy,requestAccessUrl:settings.requestAccessUrl,ai}).catch(error=>{throw error instanceof ConfigError?error:new ConfigError('OIDC discovery failed: check OIDC_ISSUER, network egress and provider status (pnpm pilot:preflight).');});
   const engine=new Engine(connection.db,undefined,new ModelGateway(provider,PILOT_PROMPT_VERSION,settings.ai.timeoutMs));
-  const server=createApp(engine,loadAsset,()=>readiness(connection!.pool),auth,competitiveResearch);
+  const server=createApp(
+    engine,
+    loadAsset,
+    ()=>readiness(connection!.pool),
+    auth,
+    competitiveResearch,
+    documentClaims
+  );
   await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(settings.port,settings.bindHost,resolve);});
   console.log(JSON.stringify({event:'pilot_started',port:settings.port,ai:provider.name,model:provider.model,aiNotice:ai.notice?.version??null,trustProxy:settings.trustProxy}));
   let closing=false;

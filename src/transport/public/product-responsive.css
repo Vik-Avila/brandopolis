@@ -163,10 +163,7 @@
   .context-lineage li::before {
     display: none;
   }
-  .brand-control {
-    flex: 1 1 0%;
-  }
-  .app .product-heading > span:first-child {
+.app .product-heading > span:first-child {
     display: none;
   }
   .app .product-heading {
@@ -302,10 +299,7 @@
   #workspace {
     padding: 18px 14px 32px;
   }
-  .brand-control label {
-    font-size: 9.5px;
-  }
-  .layout {
+.layout {
     gap: 16px;
   }
   #decision h2 {
@@ -446,17 +440,7 @@
     flex-wrap: nowrap;
     display: flex;
   }
-  .brand-control {
-    padding: 6px 10px;
-    min-width: 0px;
-    flex: 1 1 0%;
-    max-width: none;
-  }
-  .brand-control select {
-    font-size: 13px;
-    min-height: 44px;
-  }
-  /* Icon-only on phones; the visible label stays as the accessible name. */
+/* Icon-only on phones; the visible label stays as the accessible name. */
   #new-brand {
     padding: 0px;
     min-height: 48px;
@@ -669,5 +653,138 @@
 
   .ai-activity p {
     font-size: .8rem;
+  }
+}
+
+/* Competitive research activity aligns with the primary content column. */
+@media (min-width: 1001px) and (max-width: 1400px) {
+  .ai-activity {
+    width: calc(100% - 266px);
+    max-width: none;
+    margin: 0 266px 18px 0;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1000px) {
+  .ai-activity {
+    width: 100%;
+    max-width: none;
+    margin: 0 0 18px;
+  }
+}
+
+/* BRANDOPOLIS: reconciled workspace responsive rules */
+
+@media (min-width: 1001px) and (max-width: 1400px) {
+  .layout {
+    grid-template-columns: minmax(0,1fr) 264px;
+    gap: 18px;
+  }
+
+  .primary-workspace > .ai-activity {
+    width: 100%;
+    max-width: none;
+    margin: 0 0 18px;
+  }
+}
+
+@media (min-width: 1401px) {
+  .primary-workspace > .ai-activity {
+    width: 100%;
+    max-width: none;
+    margin: 0 0 18px;
+  }
+}
+
+@media (max-width: 1000px) {
+  .context-rail {
+    margin-top: 4px;
+    padding: 7px;
+  }
+
+  .context-rail > #context {
+    position: static;
+  }
+}
+
+@media (max-width: 767px) {
+  .app header #new-brand {
+    margin-left: auto;
+    min-width: 40px;
+    padding: 8px 10px;
+  }
+
+  .app header #new-brand .button-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 1100px) {
+  .app header .header-brand-control {
+    grid-template-columns: minmax(135px, 190px);
+    margin-left: auto;
+  }
+
+  .app header .header-brand-control label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 767px) {
+  .app header .header-brand-control {
+    grid-template-columns: minmax(110px, 1fr);
+    max-width: 150px;
+  }
+
+  .app header .header-brand-control select {
+    height: 38px;
+    padding-left: 9px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 1280px) {
+  .app header {
+    grid-template-columns: auto minmax(180px, 1fr) auto auto;
+    column-gap: 14px;
+  }
+
+  .app header .header-brand-control {
+    grid-template-columns: minmax(150px, 200px);
+  }
+
+  .app header .header-brand-control label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .app header .header-brand-control select {
+    min-width: 150px;
+  }
+}
+
+@media (max-width: 900px) {
+  .app header {
+    display: flex;
+  }
+
+  .app header .header-brand-control {
+    margin-left: auto;
   }
 }

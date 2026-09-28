@@ -819,3 +819,441 @@
 .competitive-intake .hint {
   margin-top: 8px;
 }
+
+/* BRANDOPOLIS: competitive findings are evidence candidates, not AI reports. */
+.competitive-finding {
+  padding: 22px 0 24px;
+}
+
+.competitive-finding-head {
+  margin-bottom: 18px;
+}
+
+.competitive-finding-head h4 {
+  margin: 10px 0 0;
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.competitive-finding-section {
+  margin-top: 18px;
+}
+
+.competitive-finding-section .eyebrow {
+  margin-bottom: 6px;
+}
+
+.competitive-finding-section > p:last-child {
+  margin-top: 0;
+  line-height: 1.65;
+}
+
+.competitive-finding-sources {
+  margin-top: 20px;
+  padding-top: 2px;
+}
+
+.competitive-finding-sources summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.competitive-source-group {
+  margin-top: 16px;
+}
+
+.competitive-source-group ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.competitive-source-group li + li {
+  margin-top: 7px;
+}
+
+.competitive-source-group a {
+  overflow-wrap: anywhere;
+}
+
+.competitive-finding > .actions {
+  margin-top: 20px;
+}
+
+/* Competitive evidence disclosure: one integrated control. */
+.competitive-finding-sources > summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
+  margin-top: 2px;
+  padding: 14px 0 10px;
+  border-top: 1px solid var(--border-default);
+  color: var(--text-primary);
+}
+
+.competitive-finding-sources > summary::after {
+  content: "›";
+  margin-left: 3px;
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 500;
+  color: var(--human);
+  transform: translateY(-1px);
+}
+
+.competitive-finding-sources[open] > summary::after {
+  content: "⌄";
+  transform: translateY(-2px);
+}
+
+.competitive-finding-sources > summary:hover {
+  color: var(--human);
+}
+
+/* BRANDOPOLIS: evidence checkbox follows the same inline-choice pattern
+   as competitive onboarding. */
+#evidence-fields > label:has(#evidence-external) {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  margin: 16px 0 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#evidence-external {
+  appearance: auto;
+  -webkit-appearance: checkbox;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  accent-color: #073d2d;
+  flex: 0 0 18px;
+}
+
+/* BRANDOPOLIS: reusable private multi-document source corpus uploader. */
+.document-intake {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid rgba(177, 166, 139, .48);
+  border-radius: 12px;
+  background: rgba(252, 250, 244, .72);
+}
+
+.document-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  margin: 14px 0 8px;
+  padding: 9px 13px;
+  border: 1px solid rgba(7, 61, 45, .32);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .82);
+  color: var(--bp-brand-green, #073d2d);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.document-picker:hover {
+  border-color: rgba(7, 61, 45, .58);
+  background: rgba(244, 249, 245, .96);
+}
+
+.document-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.document-picker:has(+ .document-input:focus-visible) {
+  outline: 3px solid rgba(7, 61, 45, .18);
+  outline-offset: 3px;
+}
+
+.document-selection {
+  margin: 6px 0 4px;
+}
+
+.document-list {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.document-list li {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  margin: 0;
+  padding: 9px 11px;
+  border: 1px solid rgba(177, 166, 139, .38);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .72);
+}
+
+.document-list li.has-error {
+  border-color: rgba(157, 66, 55, .38);
+}
+
+.document-list strong,
+.document-list small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.document-list strong {
+  font-size: 13px;
+}
+
+.document-list small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.document-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 32px;
+  border-radius: 6px;
+  background: rgba(7, 61, 45, .08);
+  color: var(--bp-brand-green, #073d2d);
+}
+
+.context-documents {
+  margin-top: 14px;
+  padding: 20px;
+  border: 1px solid rgba(177, 166, 139, .46);
+  border-radius: 12px;
+  background: rgba(250, 248, 241, .78);
+}
+
+.context-documents h4 {
+  margin: 4px 0 6px;
+}
+
+.context-documents #upload-context-documents {
+  margin-top: 8px;
+}
+
+.context-entry-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.context-entry-divider::before,
+.context-entry-divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: rgba(177, 166, 139, .42);
+}
+
+/* Source Corpus: document upload and local analysis actions. */
+.document-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.context-documents .document-actions button {
+  margin: 0;
+}
+
+.context-documents #analyze-context-documents {
+  border-color: rgba(7, 61, 45, .24);
+}
+
+.context-documents #analyze-context-documents:disabled {
+  opacity: .48;
+  cursor: not-allowed;
+}
+
+/* Source Corpus: actionable state surfaced on the strategic home. */
+.document-attention {
+  margin: 22px 0 28px;
+  padding: 22px 24px;
+  border: 1px solid rgba(153, 116, 56, .24);
+  border-radius: 14px;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(251, 247, 236, .98),
+      rgba(247, 242, 226, .92)
+    );
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.document-attention > div {
+  min-width: 0;
+}
+
+.document-attention h3 {
+  margin: 4px 0 7px;
+}
+
+.document-attention p:last-child {
+  margin-bottom: 0;
+  max-width: 720px;
+}
+
+.document-attention > button {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.document-attention.is-ready {
+  border-color: rgba(7, 61, 45, .18);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(239, 246, 240, .98),
+      rgba(247, 248, 240, .92)
+    );
+}
+
+@media (max-width: 760px) {
+  .document-attention {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .document-attention > button {
+    width: 100%;
+  }
+}
+
+/* Source Corpus: local, visible progress for document claim generation. */
+.document-progress {
+  margin: 14px 0 4px;
+  padding: 14px 16px;
+  border: 1px solid rgba(7, 61, 45, .16);
+  border-radius: 12px;
+  background: rgba(244, 248, 242, .82);
+}
+
+.document-progress[hidden] {
+  display: none;
+}
+
+.document-progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 9px;
+}
+
+.document-progress-head strong {
+  color: #073d2d;
+}
+
+.document-progress-head span {
+  color: #315b4f;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.document-progress-track {
+  position: relative;
+  overflow: hidden;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(7, 61, 45, .10);
+}
+
+.document-progress-track > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: inherit;
+  background: #0b7959;
+  transition: width .28s ease;
+}
+
+.document-progress .hint {
+  margin: 9px 0 0;
+}
+
+.document-progress.is-complete {
+  background: rgba(235, 246, 238, .94);
+}
+
+.document-progress.is-error {
+  border-color: rgba(148, 50, 50, .25);
+  background: rgba(252, 240, 239, .94);
+}
+
+.document-progress.is-error .document-progress-head strong {
+  color: #8b302d;
+}
+
+/* Human review of AI-extracted document claims. */
+.document-claim-actions {
+  margin-top: 14px;
+}
+
+.document-claim-editor {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(7, 61, 45, .12);
+}
+
+.document-claim-editor[hidden],
+.document-claim-actions[hidden] {
+  display: none;
+}
+
+.document-claim-editor textarea {
+  width: 100%;
+  min-height: 110px;
+  margin-top: 8px;
+  resize: vertical;
+}
+
+.document-claim.is-accepted {
+  border-color: rgba(17, 113, 80, .22);
+  background: rgba(244, 249, 245, .72);
+}
+
+.document-claim.is-rejected {
+  opacity: .72;
+  background: rgba(248, 247, 243, .7);
+}
+
+.document-claim-original {
+  margin: 10px 0;
+}
+
+.document-claim-original summary {
+  cursor: pointer;
+  font-size: .9rem;
+}
+
+.document-claim-review-note {
+  margin-top: 12px;
+}

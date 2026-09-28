@@ -75,7 +75,7 @@ body.app::after {
   position: fixed;
   inset: 0px;
   z-index: -1;
-  background: linear-gradient(180deg,color-mix(in srgb,var(--bp-brand-ivory) 55%,transparent),color-mix(in srgb,var(--bp-brand-ivory) 80%,transparent)),url('/brand/web/workspace-atmosphere-desktop.webp') center/cover no-repeat;
+  background: linear-gradient(180deg,color-mix(in srgb,var(--bp-brand-ivory) 55%,transparent),color-mix(in srgb,var(--bp-brand-ivory) 80%,transparent)),url('/brand/web/workspace-atmosphere-clean.webp') center/cover no-repeat;
   pointer-events: none;
   opacity: 0.3;
 }
@@ -166,37 +166,6 @@ body.app .public-nav {
   width: 260px;
   flex-shrink: 0;
 }
-
-.brand-control {
-  padding: 8px 12px 8px 16px;
-  border: 1px solid rgba(201, 174, 130, 0.5);
-  border-radius: 12px;
-  box-shadow: rgb(255, 255, 255) 0px 1px inset;
-  max-width: 360px;
-  min-width: 250px;
-  background: rgb(255, 253, 247);
-}
-
-.brand-control label {
-  width: auto;
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgb(102, 106, 101);
-}
-
-.brand-control select {
-  width: 100%;
-  padding: 0px 28px 0px 0px;
-  background-position: calc(100% - 10px) 50%, calc(100% - 5px) 50%;
-  border: 0px;
-  background-color: transparent;
-  font-weight: 650;
-  text-overflow: ellipsis;
-  min-height: 34px;
-  font-size: 14px;
-}
-
 #new-brand {
   font-size: 12px;
   white-space: nowrap;
@@ -549,4 +518,157 @@ body.app #notice {
     transition: none;
     animation: none !important;
   }
+}
+
+/* BRANDOPOLIS: AI activity follows the primary strategic work column.
+   The memory rail remains visually independent. */
+@media (min-width: 1401px) {
+  .ai-activity {
+    width: calc(100% - 292px);
+    max-width: none;
+    margin: 0 292px 18px 0;
+  }
+}
+
+/* BRANDOPOLIS: width calculations include padding and border. */
+.ai-activity {
+  box-sizing: border-box;
+}
+
+/* BRANDOPOLIS: reconciled workspace composition 2026-09-27 */
+
+.app .workspace-head {
+  display: none;
+}
+
+.primary-workspace {
+  min-width: 0;
+}
+.primary-workspace > .ai-activity {
+  width: 100%;
+  max-width: none;
+  margin: 0 0 18px;
+  box-sizing: border-box;
+}
+
+/* Brandopolis authenticated header.
+   Active brand stays visually centered and the shell remains visible on scroll. */
+
+.app header {
+  display: grid;
+  grid-template-columns: auto minmax(220px, 1fr) auto minmax(320px, auto);
+  align-items: center;
+  column-gap: 24px;
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  background: rgba(250, 248, 242, .97);
+  backdrop-filter: blur(14px);
+  transition:
+    box-shadow .2s ease,
+    border-color .2s ease;
+}
+
+.app header .brand {
+  grid-column: 1;
+}
+
+.app header .product-heading {
+  grid-column: 2;
+}
+
+.app header .header-brand-control {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+
+  display: grid;
+  grid-template-columns: auto minmax(180px, 230px);
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.app header .header-brand-control label {
+  margin: 0;
+  color: #315b4f;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.app header .header-brand-control select {
+  width: 100%;
+  min-width: 190px;
+  height: 44px;
+  margin: 0;
+  padding: 0 38px 0 14px;
+  border: 1px solid rgba(7, 61, 45, .26);
+  border-radius: 10px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(235, 242, 234, .98),
+      rgba(244, 247, 239, .98)
+    );
+  color: #073d2d;
+  font-weight: 750;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, .8) inset,
+    0 4px 14px rgba(7, 61, 45, .07);
+}
+
+.app header .header-brand-control select:hover {
+  border-color: rgba(7, 61, 45, .42);
+}
+
+.app header .header-brand-control select:focus-visible {
+  outline: 3px solid rgba(7, 61, 45, .14);
+  outline-offset: 2px;
+}
+
+.app header .header-actions {
+  grid-column: 4;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  min-width: max-content;
+  margin-left: auto;
+}
+
+.app header #new-brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 8px 12px;
+  margin-left: 0;
+  background: rgba(255, 255, 255, .58);
+  border-color: var(--line);
+  border-radius: 9px;
+  box-shadow: none;
+}
+
+.app header #new-brand:hover {
+  background: rgba(242, 237, 223, .9);
+}
+
+.app header #new-brand span[aria-hidden] {
+  font-size: 16px;
+}
+
+.app header #new-brand,
+.app header #mode-badge,
+.app header #logout {
+  align-self: center;
+}
+
+.app header.is-scrolled {
+  box-shadow: 0 7px 24px rgba(31, 43, 36, .09);
+  border-bottom-color: rgba(7, 61, 45, .16);
 }

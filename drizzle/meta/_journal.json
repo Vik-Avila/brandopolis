@@ -64,6 +64,20 @@
       "when": 1790315629502,
       "tag": "0008_living_magus",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790570444585,
+      "tag": "0009_lumpy_the_phantom",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790577411767,
+      "tag": "0010_oval_domino",
+      "breakpoints": true
     }
   ]
 }

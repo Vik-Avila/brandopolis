@@ -1,6 +1,6 @@
 # Brandopolis — Technical Debt Register
 
-Última actualización: 2026-09-27
+Última actualización: 2026-09-28
 
 Este documento es un registro vivo de deuda técnica, decisiones temporales y evolución arquitectónica.
 
@@ -24,9 +24,13 @@ Este documento es un registro vivo de deuda técnica, decisiones temporales y ev
 | TD-012 | Automated Tests | RESUELTA 2026-09-27: integración + Playwright cubren onboarding, investigación DEMO, OPEN→ANSWERED, aceptar, descartar, reload, reconciliación, idempotencia, Evidence y capability events. | Mantener cobertura como regression suite al evolucionar el modelo competitivo. | Cerrada |
 | TD-013 | Playwright Runtime | E2E depende de `channel: chrome`. | Configuración portable usando Chromium/config por entorno. | Media |
 | TD-014 | AI Architecture | Competitive Research usa servicio separado del strategic gateway. | Unificar governance, telemetry, consent y resiliencia manteniendo responsabilidades separadas. | Media |
-| TD-015 | Research Provider | Falta prueba real controlada con web search/fetch en PILOT. | Validar una vez después de DEMO/tests sin retries pagados innecesarios. | Media |
+| TD-015 | Research Provider | RESUELTA 2026-09-27: proveedor Anthropic validado en PILOT con investigación real y web search/fetch. | Mantener smoke controlado y observabilidad sin introducir retries pagados innecesarios. | Cerrada |
 | TD-016 | Provenance | Parte de la semántica competitiva se codifica en prefijos textuales. | Metadata estructurada y versionada en Brand Context. | Media |
 | TD-017 | Source Grounding | Las URLs de findings se validan sintácticamente, pero aún no se vinculan programáticamente con páginas realmente recuperadas por search/fetch. | Conservar tool-use y vincular cada finding sólo con fuentes efectivamente observadas. | Alta |
+| TD-018 | Document Corpus Provenance | Los claims documentales aceptados conservan trazabilidad mediante `document_claims.contextEntityId`, pero las entidades canónicas `user-input`, `hypothesis` y `open-question` no transportan provenance documental directamente. | Incorporar una relación de provenance estructurada y consultable por Context Assembler/UI sin romper los contratos canónicos. | Alta |
+| TD-019 | Cross-document Synthesis | La extracción y generación de claims opera por documento para evitar reconciliaciones prematuras. Todavía no existe síntesis explícita de coincidencias, contradicciones y vacíos entre fuentes. | Capa posterior a revisión humana que compare documentos aceptados y genere candidatos de síntesis, nunca cambios automáticos de Brand Context. | Alta |
+| TD-020 | Document Validation | El upload aplica whitelist de tipos y límites, pero la validación profunda de contenido/formato debe endurecerse antes de ampliar el piloto. | Verificación por firma/magic bytes, consistencia extensión-MIME y manejo seguro de archivos malformados. | Media |
+| TD-021 | Claim Review History | La primera disposición humana de un document claim es inmutable; aún no existe reconsideración/versionado formal de una revisión aceptada o descartada. | Historial explícito de revisiones humanas con versiones, rationale y eventual reconsideración sin reescribir eventos previos. | Media |
 
 ## Principios arquitectónicos
 
@@ -61,6 +65,12 @@ Ambos caminos
 → Mi aprendizaje
 
 ## Deuda cerrada reciente
+
+### TD-015 — Research Provider — RESUELTA 2026-09-27
+
+Anthropic fue validado en PILOT con ejecución real del flujo de investigación competitiva,
+incluyendo web search/fetch y respuesta estructurada. La operación real confirmó el contrato
+de proveedor y permitió retirar la deuda de validación inicial.
 
 ### TD-012 — Automated Tests — RESUELTA 2026-09-27
 

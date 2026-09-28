@@ -39,7 +39,10 @@
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "drizzle-orm": "0.45.3",
+    "jszip": "^3.10.2",
+    "mammoth": "^1.13.0",
     "openid-client": "^6.8.8",
+    "pdfjs-dist": "^6.3.289",
     "pg": "^8.16.3",
     "tsx": "^4.23.15"
   },

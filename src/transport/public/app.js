@@ -51,10 +51,10 @@ const activityFail=()=>{
  box.hidden=true;
  box.classList.remove('is-active','is-complete','is-error');
 };
-async function api(path,input) {
+async function api(path,input,timeoutOverrideMs) {
   let response,data;
   try {
-    const timeoutMs=path==='/api/recommendations/generate'?45000:15000;
+    const timeoutMs=timeoutOverrideMs??(path==='/api/recommendations/generate'?45000:15000);
     response=await fetch(path,{method:input===undefined?'GET':'POST',headers:{'Content-Type':'application/json'},body:input===undefined?undefined:JSON.stringify(input),signal:AbortSignal.timeout(timeoutMs)});
     data=await response.json();
   } catch {
@@ -68,6 +68,476 @@ async function api(path,input) {
   }
   return data;
 }
+
+const documentMimeByExtension={
+ '.pdf':'application/pdf',
+ '.docx':'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+ '.pptx':'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+ '.txt':'text/plain'
+};
+
+const documentAllowedTypes=new Set(Object.values(documentMimeByExtension));
+const documentMaxBytes=20*1024*1024;
+
+function documentMime(file){
+ const type=(file.type||'').toLowerCase();
+ if(documentAllowedTypes.has(type))return type;
+ const lower=file.name.toLowerCase();
+ const extension=Object.keys(documentMimeByExtension).find(ext=>lower.endsWith(ext));
+ return extension?documentMimeByExtension[extension]:null;
+}
+
+function documentFileError(file){
+ const mediaType=documentMime(file);
+ if(!mediaType)return 'Formato no compatible. Usa PDF, DOCX, PPTX o TXT.';
+ if(file.size<=0)return 'El archivo está vacío.';
+ if(file.size>documentMaxBytes)return 'El archivo supera 20 MB.';
+ return null;
+}
+
+function documentSize(bytes){
+ if(bytes<1024)return `${bytes} B`;
+ if(bytes<1024*1024)return `${(bytes/1024).toFixed(1)} KB`;
+ return `${(bytes/(1024*1024)).toFixed(1)} MB`;
+}
+
+function selectedDocumentsHtml(files){
+ if(!files.length)return '<p class="hint">Aún no has seleccionado documentos.</p>';
+
+ return `
+  <ul class="document-list">
+   ${files.map(file=>{
+    const error=documentFileError(file);
+    return `<li class="${error?'has-error':''}">
+      <span class="document-icon" aria-hidden="true">▤</span>
+      <span>
+       <strong>${escape(file.name)}</strong>
+       <small>${escape(documentSize(file.size))}${error?` · ${escape(error)}`:' · listo para subir'}</small>
+      </span>
+     </li>`;
+   }).join('')}
+  </ul>
+ `;
+}
+
+function storedDocumentsHtml(documents){
+ if(!documents.length)
+  return '<p class="hint">Todavía no hay documentos asociados a esta marca.</p>';
+
+ return `
+  <ul class="document-list stored-documents">
+   ${documents.map(document=>`
+    <li>
+     <span class="document-icon" aria-hidden="true">▤</span>
+     <span>
+      <strong>${escape(document.originalName)}</strong>
+      <small>${escape(documentSize(document.bytes))} · ${
+       document.status==='EXTRACTED'
+        ?'Procesado · listo para generar hallazgos'
+        :'Guardado · pendiente de procesamiento'
+      }</small>
+     </span>
+    </li>
+   `).join('')}
+  </ul>
+ `;
+}
+
+function documentClaimsHtml(claims,documents){
+ if(!claims.length)
+  return '<p class="hint">Todavía no hay hallazgos generados a partir de los documentos.</p>';
+
+ const label={
+  FACT:'Hecho documental',
+  HYPOTHESIS:'Hipótesis',
+  DECISION:'Decisión declarada',
+  OPEN_QUESTION:'Pregunta abierta',
+  POSITIONING:'Posicionamiento',
+  AUDIENCE:'Audiencia',
+  OFFER:'Oferta',
+  PRICING:'Precio / condición comercial',
+  RISK:'Riesgo',
+  PRINCIPLE:'Principio'
+ };
+
+ return `
+  <div class="document-claims-list">
+   ${claims.map(claim=>{
+    const document=documents.find(item=>item.id===claim.documentId);
+    const location=claim.location??{};
+    const status=claim.reviewStatus??'CANDIDATE';
+    const accepted=status==='ACCEPTED';
+    const rejected=status==='REJECTED';
+    const finalStatement=claim.reviewedStatement??claim.statement;
+    const modified=accepted&&claim.reviewedStatement&&claim.reviewedStatement!==claim.statement;
+
+    return `
+     <article
+      class="analysis-item document-claim${accepted?' is-accepted':''}${rejected?' is-rejected':''}"
+      data-document-claim-id="${escape(claim.id)}"
+     >
+      <div class="competitive-finding-head">
+       <div>
+        <span class="badge ${accepted?'':'warn'}">
+         ${
+          accepted
+           ?'Incorporado al Brand Context'
+           :rejected
+            ?'Descartado'
+            :'Pendiente de revisión'
+         }
+        </span>
+        <p class="eyebrow">${escape(label[claim.claimType]??claim.claimType)}</p>
+       </div>
+      </div>
+
+      <p class="document-claim-statement">
+       <strong>${escape(finalStatement)}</strong>
+      </p>
+
+      ${
+       modified
+        ?`<details class="document-claim-original">
+            <summary>Ver hallazgo original</summary>
+            <p>${escape(claim.statement)}</p>
+          </details>`
+        :''
+      }
+
+      <p class="hint">
+       ${escape(document?.originalName??'Documento')}
+       ${location.label?` · ${escape(location.label)}`:''}
+       · Confianza de extracción: ${escape(claim.confidence)}
+      </p>
+
+      ${
+       location.evidence
+        ?`<p class="hint">Sustento: ${escape(location.evidence)}</p>`
+        :''
+      }
+
+      ${
+       status==='CANDIDATE'
+        ?`
+         <div class="actions document-claim-actions">
+          <button
+           type="button"
+           data-claim-action="accept"
+           data-claim-id="${escape(claim.id)}"
+          >Incorporar</button>
+
+          <button
+           type="button"
+           class="secondary"
+           data-claim-action="modify"
+           data-claim-id="${escape(claim.id)}"
+          >Modificar</button>
+
+          <button
+           type="button"
+           class="secondary"
+           data-claim-action="reject"
+           data-claim-id="${escape(claim.id)}"
+          >Descartar</button>
+         </div>
+
+         <div class="document-claim-editor" hidden>
+          <label for="claim-edit-${escape(claim.id)}">
+           Ajusta el hallazgo antes de incorporarlo
+          </label>
+          <textarea
+           id="claim-edit-${escape(claim.id)}"
+           maxlength="16000"
+          >${escape(claim.statement)}</textarea>
+
+          <div class="actions">
+           <button
+            type="button"
+            data-claim-action="save"
+            data-claim-id="${escape(claim.id)}"
+           >Guardar e incorporar</button>
+
+           <button
+            type="button"
+            class="secondary"
+            data-claim-action="cancel"
+            data-claim-id="${escape(claim.id)}"
+           >Cancelar</button>
+          </div>
+         </div>
+        `
+        :accepted
+         ?`<p class="hint document-claim-review-note">
+             Revisado por una persona${modified?' · texto ajustado antes de incorporarse':''}.
+            </p>`
+         :`<p class="hint document-claim-review-note">
+             Revisado por una persona · no forma parte del Brand Context.
+            </p>`
+      }
+     </article>
+    `;
+   }).join('')}
+  </div>
+ `;
+}
+
+function bindDocumentClaimActions(claims,documents){
+ const root=$('#document-claims-results');
+ if(!root)return;
+
+ /*
+  * Keep the latest state on the persistent root. The inner cards may be
+  * replaced in-place after each review without rebuilding the whole view.
+  */
+ root._documentClaimState={claims,documents};
+
+ if(root.dataset.claimActionsBound==='true')
+  return;
+
+ root.dataset.claimActionsBound='true';
+
+ root.addEventListener('click',event=>{
+  const button=event.target.closest('button[data-claim-action]');
+  if(!button||!root.contains(button))return;
+
+  const action=button.dataset.claimAction;
+  const claimId=button.dataset.claimId;
+  const article=button.closest('.document-claim');
+
+  if(!claimId||!article)return;
+
+  if(action==='modify'){
+   const editor=article.querySelector('.document-claim-editor');
+   const textarea=editor?.querySelector('textarea');
+
+   if(editor){
+    editor.hidden=false;
+    article.querySelector('.document-claim-actions')?.setAttribute('hidden','');
+   }
+
+   textarea?.focus({preventScroll:true});
+   return;
+  }
+
+  if(action==='cancel'){
+   const editor=article.querySelector('.document-claim-editor');
+
+   if(editor)editor.hidden=true;
+   article.querySelector('.document-claim-actions')?.removeAttribute('hidden');
+   button.closest('.document-claim')?.querySelector('[data-claim-action="modify"]')
+    ?.focus({preventScroll:true});
+   return;
+  }
+
+  if(!['accept','reject','save'].includes(action))
+   return;
+
+  run(async()=>{
+   const state=root._documentClaimState;
+   const currentClaims=state?.claims??[];
+   const currentDocuments=state?.documents??[];
+   const claim=currentClaims.find(item=>item.id===claimId);
+
+   if(!claim)
+    throw Object.assign(
+     new Error('El hallazgo ya no está disponible.'),
+     {code:'NOT_FOUND'}
+    );
+
+   let reviewedStatement;
+
+   if(action==='save'){
+    const textarea=article.querySelector('.document-claim-editor textarea');
+    reviewedStatement=textarea?.value.trim();
+
+    if(!reviewedStatement)
+     throw Object.assign(
+      new Error('El texto revisado no puede quedar vacío.'),
+      {code:'INVALID'}
+     );
+
+    const originalStatement=String(claim.statement??'').trim();
+    const substantialReduction=
+      originalStatement.length>=80 &&
+      reviewedStatement.length < originalStatement.length*.65;
+
+    if(
+      substantialReduction &&
+      !window.confirm(
+       'El texto revisado es considerablemente más corto que el hallazgo original. ¿Quieres incorporarlo así al Brand Context?'
+      )
+    ){
+     textarea?.focus({preventScroll:true});
+     return;
+    }
+   }
+
+   const result=await api('/api/document-claims/review',{
+    brandId,
+    claimId,
+    action:action==='reject'?'REJECT':'ACCEPT',
+    ...(reviewedStatement!==undefined?{reviewedStatement}:{})
+   });
+
+   const index=currentClaims.findIndex(item=>item.id===claimId);
+
+   if(index>=0)
+    currentClaims[index]=result.claim;
+
+   root.innerHTML=documentClaimsHtml(
+    currentClaims,
+    currentDocuments
+   );
+
+   /*
+    * Keep focus inside this persistent region so run() does not fall back
+    * to the page heading and move the viewport.
+    */
+   if(!root.hasAttribute('tabindex'))
+    root.tabIndex=-1;
+
+   root.focus({preventScroll:true});
+
+   if(result.context){
+    context=await api(`/api/context?brandId=${encodeURIComponent(brandId)}`);
+    renderContext();
+   }
+
+   notice(
+    action==='reject'
+     ?'Hallazgo descartado. No se incorporó al Brand Context.'
+     :action==='save'
+      ?'Hallazgo modificado e incorporado al Brand Context.'
+      :'Hallazgo incorporado al Brand Context.'
+   );
+  },button);
+ });
+}
+
+
+async function preserveViewAnchor(selector,action){
+ const before=document.querySelector(selector);
+ const beforeTop=before?.getBoundingClientRect().top??null;
+
+ const active=document.activeElement;
+ const activeId=
+  active instanceof HTMLElement && active.id
+   ?active.id
+   :null;
+
+ await action();
+
+ await new Promise(resolve=>requestAnimationFrame(()=>{
+  requestAnimationFrame(resolve);
+ }));
+
+ if(beforeTop!==null){
+  const after=document.querySelector(selector);
+
+  if(after){
+   const afterTop=after.getBoundingClientRect().top;
+
+   window.scrollBy({
+    top:afterTop-beforeTop,
+    behavior:'auto'
+   });
+  }
+ }
+
+ /*
+  * showBrandContext replaces the original control node.
+  * Restore focus to its replacement without moving the viewport.
+  * This also prevents run() from falling back to focusView(),
+  * which would scroll back to the view heading.
+  */
+ if(activeId){
+  const replacement=document.getElementById(activeId);
+
+  if(
+   replacement instanceof HTMLElement &&
+   !replacement.hasAttribute('disabled')
+  ){
+   replacement.focus({preventScroll:true});
+  }
+ }
+}
+
+function bindDocumentSelection(inputSelector,outputSelector){
+ const input=$(inputSelector),output=$(outputSelector);
+ if(!input||!output)return;
+
+ const render=()=>{
+  output.innerHTML=selectedDocumentsHtml([...input.files]);
+ };
+
+ input.addEventListener('change',render);
+ render();
+}
+
+async function uploadSourceDocument(targetBrandId,file){
+ const mediaType=documentMime(file);
+ const validation=documentFileError(file);
+
+ if(validation)
+  throw Object.assign(
+   new Error(`${file.name}: ${validation}`),
+   {code:'INVALID'}
+  );
+
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),120000);
+
+ try{
+  const response=await fetch('/api/documents',{
+   method:'POST',
+   credentials:'same-origin',
+   headers:{
+    'Content-Type':mediaType,
+    'X-Brand-Id':targetBrandId,
+    'X-File-Name':encodeURIComponent(file.name)
+   },
+   body:file,
+   signal:controller.signal
+  });
+
+  let data={};
+
+  try{
+   data=await response.json();
+  }catch{
+   data={};
+  }
+
+  if(!response.ok){
+   throw Object.assign(
+    new Error(data.message??'No se pudo guardar el documento.'),
+    {code:data.code}
+   );
+  }
+
+  return data;
+ }catch(error){
+  if(error?.name==='AbortError')
+   throw Object.assign(
+    new Error(`La carga de ${file.name} tardó demasiado.`),
+    {code:'UNAVAILABLE'}
+   );
+
+  throw error;
+ }finally{
+  clearTimeout(timer);
+ }
+}
+
+async function uploadSourceDocuments(targetBrandId,files){
+ const selected=[...files];
+
+ for(const file of selected)
+  await uploadSourceDocument(targetBrandId,file);
+
+ return selected.length;
+}
+
 let operationPending=false;
 function focusView(target){const el=target??$('#decision h2');if(!el)return;if(!el.hasAttribute('tabindex'))el.tabIndex=-1;el.focus({preventScroll:false});}
 const setTitle=text=>{document.title=text?`${text} · Brandopolis`:'Brandopolis · The Brand Operating System';if(document.body.classList.contains('app'))$('#header-context').textContent=text||'Tu espacio estratégico';};
@@ -84,7 +554,7 @@ async function run(action,button) {
 }
 async function loadBrands(preferred) {
   const brands=await api('/api/brands');
-  $('#brands').innerHTML=brands.map(b=>`<option value="${escape(b.id)}">${escape(b.name)} · ${escape(b.dataClass)}</option>`).join('');
+  $('#brands').innerHTML=brands.map(b=>`<option value="${escape(b.id)}">${escape(b.name)}</option>`).join('');
   brandId=brands.some(b=>b.id===preferred)?preferred:brands[0]?.id;
   if(brandId)$('#brands').value=brandId;
   activeDecisionTab='overview';draft=null;await refresh();
@@ -145,6 +615,16 @@ $('#create-brand').addEventListener('submit',event=>{event.preventDefault();run(
  const goal=$('#brand-goal').value.trim();
  const competitiveReferences=$('#competitive-references').value.trim();
  const competitiveResearch=$('#competitive-research').checked;
+ const brandDocuments=[...$('#brand-documents').files];
+
+ for(const file of brandDocuments){
+  const validation=documentFileError(file);
+  if(validation)
+   throw Object.assign(
+    new Error(`${file.name}: ${validation}`),
+    {code:'INVALID'}
+   );
+ }
 
  const brand=await api('/api/brands',{
   name:$('#brand-name').value,
@@ -187,12 +667,17 @@ $('#create-brand').addEventListener('submit',event=>{event.preventDefault();run(
   });
  }
 
+ if(brandDocuments.length)
+  await uploadSourceDocuments(brand.id,brandDocuments);
+
  $('#brand-name').value='';
  $('#brand-stage').value='idea';
  $('#initial-context').value='';
  $('#brand-goal').value='';
  $('#competitive-references').value='';
  $('#competitive-research').checked=false;
+ $('#brand-documents').value='';
+ $('#brand-document-selection').innerHTML=selectedDocumentsHtml([]);
 
  $('#brand-dialog').close();
  await loadBrands(brand.id);
@@ -201,9 +686,17 @@ $('#create-brand').addEventListener('submit',event=>{event.preventDefault();run(
   await showCompetitiveContext();
   await startCompetitiveResearch(brand.id);
  }else{
-  notice('Marca creada. Tu contexto inicial quedó guardado. Comienza con tu cliente principal.');
+  if(brandDocuments.length){
+   await showHome();
+   notice(
+    `Marca creada. ${brandDocuments.length} documento${brandDocuments.length===1?' quedó guardado':'s quedaron guardados'}. Revisa «Qué necesita atención» para continuar con su procesamiento.`
+   );
+  }else{
+   notice('Marca creada. Tu contexto inicial quedó guardado. Comienza con tu cliente principal.');
+  }
  }
 },event.submitter);});
+bindDocumentSelection('#brand-documents','#brand-document-selection');
 $('#new-brand').addEventListener('click',()=>{$('#brand-dialog').showModal();$('#brand-name').focus();});
 $('#cancel-brand').addEventListener('click',()=>$('#brand-dialog').close());
 $('#brand-dialog').addEventListener('close',()=>$('#new-brand').focus());
@@ -222,7 +715,7 @@ function impactReason(review){
  return `${label} cambió: versión ${context.versions.find(v=>v.id===trigger?.previousVersionId)?.sequence??'anterior'} → ${trigger?.sequence??'vigente'}. ${review.dependencyType==='HARD'?'Una dependencia estricta requiere confirmar que tu decisión sigue alineada.':'Revisa si este cambio afecta tu decisión.'}`;
 }
 function preserveDraft(){if(draft&&brandId)sessionStorage.setItem(`draft:${user.userId}:${brandId}:${selected}`,JSON.stringify(draft));}
-const narrow=matchMedia('(max-width:1279px)'),phone=matchMedia('(max-width:767px)');
+const narrow=matchMedia('(max-width:1279px)');
 function drawerBackground(inert){for(const selector of ['header','.skip','.workspace-head','#create-brand','#decision','#context','footer'])$(selector).inert=inert;}
 function closeMenu(returnFocus=true){const nav=$('#journey'),wasOpen=nav.classList.contains('open');nav.classList.remove('open');nav.removeAttribute('role');nav.removeAttribute('aria-modal');$('#nav-backdrop').hidden=true;$('#menu').setAttribute('aria-expanded','false');drawerBackground(false);nav.inert=narrow.matches;if(wasOpen&&returnFocus&&narrow.matches)$('#menu').focus();}
 $('#menu').addEventListener('click',()=>{$('#journey').inert=false;$('#journey').classList.add('open');$('#journey').setAttribute('role','dialog');$('#journey').setAttribute('aria-modal','true');$('#nav-backdrop').hidden=false;$('#menu').setAttribute('aria-expanded','true');drawerBackground(true);$('#close-menu').focus();});
@@ -316,17 +809,28 @@ function competitiveFindingHtml(finding,index){
     </div>
    </div>
 
-   <p>${escape(finding.observation)}</p>
+   <div class="competitive-finding-section">
+    <p class="eyebrow">Qué observamos</p>
+    <p>${escape(finding.observation)}</p>
+   </div>
 
-   <p class="eyebrow">Por qué podría importar</p>
-   <p>${escape(finding.strategicRelevance)}</p>
+   <div class="competitive-finding-section">
+    <p class="eyebrow">Por qué podría importar</p>
+    <p>${escape(finding.strategicRelevance)}</p>
+   </div>
 
-   <details>
+   <details class="competitive-finding-sources">
     <summary>Fuentes y límites</summary>
-    <p class="eyebrow">Fuentes revisadas</p>
-    <ul>${sources||'<li>Sin fuentes visibles.</li>'}</ul>
-    <p class="eyebrow">Limitaciones</p>
-    <ul>${limitations||'<li>Requiere revisión humana.</li>'}</ul>
+
+    <div class="competitive-source-group">
+     <p class="eyebrow">Fuentes revisadas</p>
+     <ul>${sources||'<li>Sin fuentes visibles.</li>'}</ul>
+    </div>
+
+    <div class="competitive-source-group">
+     <p class="eyebrow">Limitaciones</p>
+     <ul>${limitations||'<li>Requiere revisión humana.</li>'}</ul>
+    </div>
    </details>
 
    ${accepted
@@ -356,7 +860,7 @@ async function startCompetitiveResearch(targetBrandId=brandId){
  let result;
 
  try{
-  result=await api('/api/competitive/research',{brandId:targetBrandId},45000);
+  result=await api('/api/competitive/research',{brandId:targetBrandId},120000);
  }catch(error){
   activityFail();
 
@@ -632,9 +1136,205 @@ async function showCompetitiveContext(){
  bindCompetitiveResearchActions();
 }
 async function showBrandContext(){
- if(!enterView('#brand-context','Contexto estratégico'))return;context=await api(`/api/context?brandId=${encodeURIComponent(brandId)}`);renderContext();
+ if(!enterView('#brand-context','Contexto estratégico'))return;
+ const [nextContext,sourceDocuments,documentClaims]=await Promise.all([
+  api(`/api/context?brandId=${encodeURIComponent(brandId)}`),
+  api(`/api/documents?brandId=${encodeURIComponent(brandId)}`),
+  api(`/api/document-claims?brandId=${encodeURIComponent(brandId)}`)
+ ]);
+ context=nextContext;
+ renderContext();
  const groups=[['Aprendizajes aceptados',context.learnings.filter(l=>l.status==='ACCEPTED')],['Aportaciones humanas',context.userInputs],['Hipótesis por validar',context.hypotheses],['Evidencia registrada',context.evidence],['Preguntas abiertas',context.openQuestions.filter(q=>q.status==='OPEN')]];
- $('#decision').innerHTML=`<p class="eyebrow">Contexto estratégico</p><h2>¿Qué sabes y qué falta comprobar?</h2><ul class="kpis" aria-label="Memoria de marca"><li><strong>${context.evidence.length}</strong><span>Fuentes registradas</span></li><li><strong>${context.hypotheses.length}</strong><span>Hipótesis explícitas</span></li><li><strong>${context.userInputs.length}</strong><span>Aportaciones humanas</span></li><li><strong>${context.learnings.filter(l=>l.status==='ACCEPTED').length}</strong><span>Aprendizajes aceptados</span></li></ul><p>Tus aportaciones orientan la estrategia. Las hipótesis siguen sin validar hasta que exista una revisión respaldada.</p>${currentStrategySummary()}${groups.map(([title,rows],index)=>`<section class="memory-group memory-${index}"><h3>${title}</h3>${rows.length?rows.map(r=>`<p>${escape(r.statement??r.claim??r.text??r.interpretation)}</p>${r.source?`<p class="hint">${escape(r.source)} · ${escape(r.sourceDate)} · ${escape(r.provenance)}<br>Limitaciones: ${escape(r.limitations.join('; ')||'No declaradas')}</p>`:''}`).join(''):'<p class="hint">Aún no hay registros.</p>'}</section>`).join('')}<section class="add-context" aria-labelledby="add-context-title"><h3 id="add-context-title">Añadir contexto</h3><form id="capture-context"><label for="context-kind">Tipo de aportación</label><select id="context-kind"><option value="user-input">Aportación humana</option><option value="hypothesis">Hipótesis por validar</option><option value="open-question">Pregunta abierta</option><option value="evidence">Evidencia</option></select><label for="context-statement">Contenido</label><textarea id="context-statement" maxlength="6000" required></textarea><fieldset id="evidence-fields" hidden><legend>Evaluación humana de la fuente</legend><label for="evidence-source">Fuente</label><input id="evidence-source" maxlength="1000"><label for="evidence-date">Fecha de la fuente</label><input id="evidence-date" type="date"><label for="evidence-provenance">Cómo se obtuvo</label><input id="evidence-provenance" maxlength="1000"><label for="evidence-quality">Calidad de la fuente</label><select id="evidence-quality"><option value="LOW">Baja</option><option value="MEDIUM">Media</option><option value="HIGH">Alta</option></select><label for="evidence-relevance">Relevancia</label><select id="evidence-relevance"><option value="INDIRECT">Indirecta</option><option value="DIRECT">Directa</option></select><label for="evidence-freshness">Vigencia</label><select id="evidence-freshness"><option value="HISTORICAL">Histórica</option><option value="AGING">Envejeciendo</option><option value="CURRENT">Actual</option></select><label for="evidence-limitations">Limitaciones</label><input id="evidence-limitations" maxlength="1000"><label><input id="evidence-external" type="checkbox" checked> Fuente externa</label><p class="hint">Tu evaluación queda registrada. El sistema no certifica la veracidad de la fuente.</p></fieldset><button type="submit">Guardar contexto</button></form></section>`;
+ $('#decision').innerHTML=`<p class="eyebrow">Contexto estratégico</p><h2>¿Qué sabes y qué falta comprobar?</h2><ul class="kpis" aria-label="Memoria de marca"><li><strong>${context.evidence.length}</strong><span>Fuentes registradas</span></li><li><strong>${context.hypotheses.length}</strong><span>Hipótesis explícitas</span></li><li><strong>${context.userInputs.length}</strong><span>Aportaciones humanas</span></li><li><strong>${context.learnings.filter(l=>l.status==='ACCEPTED').length}</strong><span>Aprendizajes aceptados</span></li></ul><p>Tus aportaciones orientan la estrategia. Las hipótesis siguen sin validar hasta que exista una revisión respaldada.</p>${currentStrategySummary()}${groups.map(([title,rows],index)=>`<section class="memory-group memory-${index}"><h3>${title}</h3>${rows.length?rows.map(r=>`<p>${escape(r.statement??r.claim??r.text??r.interpretation)}</p>${r.source?`<p class="hint">${escape(r.source)} · ${escape(r.sourceDate)} · ${escape(r.provenance)}<br>Limitaciones: ${escape(r.limitations.join('; ')||'No declaradas')}</p>`:''}`).join(''):'<p class="hint">Aún no hay registros.</p>'}</section>`).join('')}<section class="add-context" aria-labelledby="add-context-title"><h3 id="add-context-title">Añadir contexto</h3><div class="context-documents"><p class="eyebrow">Documentos de la marca</p><h4>Agrega fuentes que Brandopolis deberá considerar</h4><p class="hint">Puedes incorporar varios documentos. Se conservarán por separado y todavía no modificarán el Brand Context.</p>${storedDocumentsHtml(sourceDocuments)}<label class="document-picker" for="context-documents"><span aria-hidden="true">＋</span><span>Agregar documentos</span></label><input id="context-documents" class="document-input" type="file" multiple accept=".pdf,.docx,.pptx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain"><div id="context-document-selection" class="document-selection" aria-live="polite"></div><div class="document-actions"><button id="upload-context-documents" type="button" class="secondary">Guardar documentos</button><button id="analyze-context-documents" type="button" class="secondary"${sourceDocuments.length?'':' disabled'}>Procesar documentos</button><button id="generate-document-claims" type="button"${sourceDocuments.some(document=>document.status==='EXTRACTED')?'':' disabled'}>Generar hallazgos</button></div><div id="document-claims-progress" class="document-progress" hidden aria-live="polite"><div class="document-progress-head"><strong id="document-progress-title">Preparando análisis…</strong><span id="document-progress-count">0%</span></div><div class="document-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="document-progress-fill"></span></div><p id="document-progress-detail" class="hint">Preparando documentos.</p></div><p class="hint">PDF, DOCX, PPTX o TXT · máximo 20 MB por archivo.</p><div class="document-findings"><p class="eyebrow">Hallazgos documentales</p><h4>Lo que Brandopolis detectó para tu revisión</h4><p class="hint">Estos hallazgos todavía no forman parte del Brand Context. Tú decidirás cuáles incorporar.</p><div id="document-claims-results">${documentClaimsHtml(documentClaims,sourceDocuments)}</div></div></div><div class="context-entry-divider"><span>o registra contexto manualmente</span></div><form id="capture-context"><label for="context-kind">Tipo de aportación</label><select id="context-kind"><option value="user-input">Aportación humana</option><option value="hypothesis">Hipótesis por validar</option><option value="open-question">Pregunta abierta</option><option value="evidence">Evidencia</option></select><label for="context-statement">Contenido</label><textarea id="context-statement" maxlength="6000" required></textarea><fieldset id="evidence-fields" hidden><legend>Evaluación humana de la fuente</legend><label for="evidence-source">Fuente</label><input id="evidence-source" maxlength="1000"><label for="evidence-date">Fecha de la fuente</label><input id="evidence-date" type="date"><label for="evidence-provenance">Cómo se obtuvo</label><input id="evidence-provenance" maxlength="1000"><label for="evidence-quality">Calidad de la fuente</label><select id="evidence-quality"><option value="LOW">Baja</option><option value="MEDIUM">Media</option><option value="HIGH">Alta</option></select><label for="evidence-relevance">Relevancia</label><select id="evidence-relevance"><option value="INDIRECT">Indirecta</option><option value="DIRECT">Directa</option></select><label for="evidence-freshness">Vigencia</label><select id="evidence-freshness"><option value="HISTORICAL">Histórica</option><option value="AGING">Envejeciendo</option><option value="CURRENT">Actual</option></select><label for="evidence-limitations">Limitaciones</label><input id="evidence-limitations" maxlength="1000"><label><input id="evidence-external" type="checkbox" checked> Fuente externa</label><p class="hint">Tu evaluación queda registrada. El sistema no certifica la veracidad de la fuente.</p></fieldset><button type="submit">Guardar contexto</button></form></section>`;
+ bindDocumentSelection('#context-documents','#context-document-selection');
+ bindDocumentClaimActions(documentClaims,sourceDocuments);
+
+ $('#generate-document-claims')?.addEventListener('click',event=>run(async()=>{
+  const processed=sourceDocuments.filter(
+   document=>document.status==='EXTRACTED'
+  );
+
+  if(!processed.length)
+   throw Object.assign(
+    new Error('Primero procesa al menos un documento.'),
+    {code:'INVALID'}
+   );
+
+  activityStart(
+   'Analizando tus documentos…',
+   'Brandopolis está identificando hechos, hipótesis, ofertas, riesgos y otros hallazgos para tu revisión.'
+  );
+
+  const progress=$('#document-claims-progress');
+  const progressTrack=progress?.querySelector('.document-progress-track');
+  const progressFill=$('#document-progress-fill');
+  const progressTitle=$('#document-progress-title');
+  const progressCount=$('#document-progress-count');
+  const progressDetail=$('#document-progress-detail');
+  const generateButton=$('#generate-document-claims');
+
+  if(progress){
+   progress.hidden=false;
+   progress.classList.remove('is-complete','is-error');
+  }
+
+  if(progressFill)progressFill.style.width='0%';
+  if(progressTrack)progressTrack.setAttribute('aria-valuenow','0');
+  if(progressCount)progressCount.textContent='0%';
+  if(progressTitle)progressTitle.textContent='Preparando análisis…';
+  if(progressDetail)progressDetail.textContent=`${processed.length} documento${processed.length===1?'':'s'} listo${processed.length===1?'':'s'} para revisar.`;
+
+  if(generateButton){
+   generateButton.disabled=true;
+   generateButton.textContent='Generando hallazgos…';
+  }
+
+  let created=0;
+  let reused=0;
+  let totalClaims=0;
+  const generatedClaims=[];
+
+  try{
+   for(let index=0;index<processed.length;index++){
+    const document=processed[index];
+    const before=Math.round((index/processed.length)*100);
+
+    if(progressFill)progressFill.style.width=`${before}%`;
+    if(progressTrack)progressTrack.setAttribute('aria-valuenow',String(before));
+    if(progressCount)progressCount.textContent=`${before}%`;
+    if(progressTitle)progressTitle.textContent=`Documento ${index+1} de ${processed.length}`;
+    if(progressDetail)progressDetail.textContent=document.originalName;
+
+    activityStep(
+     `Revisando documento ${index+1} de ${processed.length}…`,
+     document.originalName
+    );
+
+    const result=await api(
+     '/api/documents/claims',
+     {
+      brandId,
+      documentId:document.id
+     },
+     120000
+    );
+
+    totalClaims+=result.claims?.length??0;
+    generatedClaims.push(...(result.claims??[]));
+
+    if(result.reused)reused++;
+    else created++;
+
+    const completed=Math.round(((index+1)/processed.length)*100);
+
+    if(progressFill)progressFill.style.width=`${completed}%`;
+    if(progressTrack)progressTrack.setAttribute('aria-valuenow',String(completed));
+    if(progressCount)progressCount.textContent=`${completed}%`;
+   }
+
+   if(progress)progress.classList.add('is-complete');
+   if(progressTitle)progressTitle.textContent='Hallazgos preparados';
+   if(progressDetail)progressDetail.textContent=`${totalClaims} hallazgo${totalClaims===1?'':'s'} listo${totalClaims===1?'':'s'} para revisión humana.`;
+
+   activityDone(
+    'Hallazgos preparados',
+    `${totalClaims} hallazgo${totalClaims===1?'':'s'} listo${totalClaims===1?'':'s'} para revisión humana.`
+   );
+
+   await new Promise(resolve=>setTimeout(resolve,450));
+
+   const results=$('#document-claims-results');
+
+   if(results){
+    results.innerHTML=documentClaimsHtml(
+     generatedClaims,
+     sourceDocuments
+    );
+
+    bindDocumentClaimActions(
+     generatedClaims,
+     sourceDocuments
+    );
+   }
+
+   /*
+    * Do not rebuild Contexto estratégico here.
+    * Keeping the existing DOM preserves scroll, focus and the completed
+    * progress state exactly where the user initiated the operation.
+    */
+
+   if(generateButton){
+    generateButton.disabled=false;
+    generateButton.textContent='Generar hallazgos';
+   }
+
+   notice(
+    created
+     ?`Se generaron hallazgos para ${created} documento${created===1?'':'s'}${reused?` · ${reused} ya tenía${reused===1?'':'n'} hallazgos y se reutilizaron`:''}.`
+     :`Los hallazgos ya existían para ${reused} documento${reused===1?'':'s'}; no se volvió a llamar a la IA.`
+   );
+  }catch(error){
+   activityFail();
+
+   if(progress)progress.classList.add('is-error');
+   if(progressTitle)progressTitle.textContent='No se pudieron generar los hallazgos';
+   if(progressDetail)progressDetail.textContent='Revisa el mensaje de Brandopolis antes de volver a intentarlo.';
+
+   if(generateButton){
+    generateButton.disabled=false;
+    generateButton.textContent='Generar hallazgos';
+   }
+
+   throw error;
+  }
+ },event.currentTarget));
+
+ $('#analyze-context-documents').addEventListener('click',event=>run(async()=>{
+  if(!sourceDocuments.length)
+    throw Object.assign(
+      new Error('Esta marca todavía no tiene documentos para procesar.'),
+      {code:'INVALID'}
+    );
+
+  let created=0;
+  let reused=0;
+
+  for(const document of sourceDocuments){
+    const result=await api('/api/documents/extract',{
+      brandId,
+      documentId:document.id
+    });
+
+    if(result.reused)reused++;
+    else created++;
+  }
+
+  notice(
+    created
+      ?`${created} documento${created===1?' quedó procesado':'s quedaron procesados'}${reused?` · ${reused} reutilizado${reused===1?'':'s'}`:''}.`
+      :`Los ${reused} documento${reused===1?' ya estaba procesado':'s ya estaban procesados'}; se reutilizó la extracción existente.`
+  );
+
+  await preserveViewAnchor(
+   '.context-documents',
+   ()=>showBrandContext()
+  );
+ },event.currentTarget));
+
+ $('#upload-context-documents').addEventListener('click',event=>run(async()=>{
+  const files=[...$('#context-documents').files];
+
+  if(!files.length)
+   throw Object.assign(
+    new Error('Selecciona al menos un documento.'),
+    {code:'INVALID'}
+   );
+
+  const uploaded=await uploadSourceDocuments(brandId,files);
+  await showBrandContext();
+  notice(`${uploaded} documento${uploaded===1?' guardado':'s guardados'} como fuente${uploaded===1?'':'s'} de esta marca.`);
+ },event.currentTarget));
+
  $('#context-kind').addEventListener('change',()=>{const evidence=$('#context-kind').value==='evidence';$('#evidence-fields').hidden=!evidence;for(const name of ['source','date','provenance','limitations'])$(`#evidence-${name}`).required=evidence;});
  $('#capture-context').addEventListener('submit',event=>{event.preventDefault();run(async()=>{const kind=$('#context-kind').value,text=$('#context-statement').value;let entity=kind==='open-question'?{text,relatedHypothesisId:null}:{statement:text};if(kind==='evidence')entity={claim:text,source:$('#evidence-source').value,sourceDate:$('#evidence-date').value,provenance:$('#evidence-provenance').value,sourceQuality:$('#evidence-quality').value,relevance:$('#evidence-relevance').value,freshness:$('#evidence-freshness').value,limitations:[$('#evidence-limitations').value],external:$('#evidence-external').checked};await api('/api/context/capture',{brandId,kind,entity});await showBrandContext();notice('Contexto guardado. Las recomendaciones anteriores deberán actualizarse.');},event.submitter);});
 }
@@ -684,11 +1384,49 @@ async function showBlueprint(){
 }
 function currentStrategySummary(){return `<details><summary>Lo que decidiste y lo que requiere revisión</summary>${context.questions.map(q=>{const d=context.decisions.find(d=>d.questionId===q.id),v=context.versions.find(v=>v.id===d?.activeVersionId);return `<p><strong>${escape(labels[q.module])}</strong><br>${escape(v?.selectedOption??'Pregunta estratégica abierta')}${needsReview(context,d)?'<br><span class="badge warn">Requiere revisión humana</span>':''}</p>`;}).join('')}</details>`;}
 async function showHome(){
- if(!enterView('#home','Tu estrategia hoy'))return;context=await api(`/api/context?brandId=${encodeURIComponent(brandId)}`);renderContext();
- $('#decision').innerHTML=homeHtml(context);
- document.querySelectorAll('[data-attention-module]').forEach(b=>b.addEventListener('click',()=>openModule(b.dataset.attentionModule)));
+ if(!enterView('#home','Tu estrategia hoy'))return;
+
+ const [nextContext,sourceDocuments,documentClaims]=await Promise.all([
+  api(`/api/context?brandId=${encodeURIComponent(brandId)}`),
+  api(`/api/documents?brandId=${encodeURIComponent(brandId)}`),
+  api(`/api/document-claims?brandId=${encodeURIComponent(brandId)}`)
+ ]);
+
+ context=nextContext;
+ renderContext();
+
+ const documentState={
+  total:sourceDocuments.length,
+  pending:sourceDocuments.filter(document=>document.status!=='EXTRACTED').length,
+  processed:sourceDocuments.filter(document=>document.status==='EXTRACTED').length,
+  candidateClaims:documentClaims.filter(claim=>claim.reviewStatus==='CANDIDATE').length
+ };
+
+ $('#decision').innerHTML=homeHtml(context,documentState);
+
+ document.querySelectorAll('[data-attention-module]').forEach(
+  button=>button.addEventListener('click',()=>openModule(button.dataset.attentionModule))
+ );
+
  bindStrategyLinks();
- $('#attention-learning').addEventListener('click',()=>run(showLearning));$('#attention-context').addEventListener('click',()=>run(showBrandContext));
+
+ $('#attention-learning')?.addEventListener('click',()=>run(showLearning));
+ $('#attention-context')?.addEventListener('click',()=>run(showBrandContext));
+
+ $('#attention-documents')?.addEventListener('click',()=>run(async()=>{
+  await showBrandContext();
+
+  const target=$('.context-documents');
+
+  if(target){
+   target.scrollIntoView({
+    behavior:'smooth',
+    block:'center'
+   });
+  }
+
+  $('#analyze-context-documents')?.focus();
+ }));
 }
 function mountLearningMoment(question){const m=user.learningMoments?.[question.module];if(m)$('#decision').insertAdjacentHTML('beforeend',`<details class="learning-moment"><summary>Qué estás aprendiendo aquí</summary><div class="learning-moment-body"><p class="eyebrow">${escape(capabilityLabel(m.capability))}</p><p>${escape(m.why)}</p><p><strong>Prueba esto:</strong> ${escape(m.apply)}</p><details><summary>Ver una pista más</summary><p><strong>Observa:</strong> ${escape(m.observe)}</p><p><strong>Cuidado:</strong> ${escape(m.caution)}</p></details></div></details>`);}
 $('#learning-loop').addEventListener('click',()=>run(showLearning));
@@ -716,7 +1454,7 @@ function renderContext(){
   const versions=context.versions.filter(v=>context.decisions.some(d=>d.activeVersionId===v.id));
   const latest=versions.slice().sort((a,b)=>new Date(b.approvedAt)-new Date(a.approvedAt))[0];
   const pendingReview=context.questions.filter(q=>needsReview(context,context.decisions.find(d=>d.questionId===q.id))).length;
-  $('#context').innerHTML=`<div class="context-cover"><p class="eyebrow">Memoria estratégica</p><h3>Contexto vigente</h3><p>${escape($('#brands').selectedOptions[0]?.textContent?.replace(/ · (DEMO|PILOT)$/,''))}</p></div><details class="context-details"${phone.matches||$('#decision').dataset.view==='home'?'':' open'}><summary>Lo que ya decidiste <span class="context-count">${versions.length} de ${context.questions.length}${pendingReview?` · ${pendingReview} por revisar`:''}</span></summary><ol class="context-lineage">${context.questions.map((q,index)=>{const d=context.decisions.find(d=>d.questionId===q.id),v=context.versions.find(v=>v.id===d?.activeVersionId);return `<li${$('#decision').dataset.view==='decision'&&q.module===selected?' aria-current="step"':''}><span class="context-number">${String(index+1).padStart(2,'0')}</span><div><strong>${escape(labels[q.module]??q.module)}</strong><p>${v?escape(v.selectedOption):'Tu siguiente decisión comienza aquí.'}</p>${v?`<span class="context-version">v${v.sequence} · Decisión humana</span>`:''}${needsReview(context,d)?'<span class="badge warn">Requiere revisión</span>':''}</div></li>`;}).join('')}</ol></details>${latest?`<p class="context-updated">Última decisión<br><strong>${escape(fmt(latest.approvedAt))}</strong></p>`:''}<p class="hint context-note">Los cambios conservan su historia.<br>Nada se reescribe sin tu criterio.</p>`;
+  $('#context').innerHTML=`<div class="context-cover"><p class="eyebrow">Memoria estratégica</p><h3>Contexto vigente</h3><p>${escape($('#brands').selectedOptions[0]?.textContent?.replace(/ · (DEMO|PILOT)$/,''))}</p></div><details class="context-details" open><summary>Lo que ya decidiste <span class="context-count">${versions.length} de ${context.questions.length}${pendingReview?` · ${pendingReview} por revisar`:''}</span></summary><ol class="context-lineage">${context.questions.map((q,index)=>{const d=context.decisions.find(d=>d.questionId===q.id),v=context.versions.find(v=>v.id===d?.activeVersionId);return `<li${$('#decision').dataset.view==='decision'&&q.module===selected?' aria-current="step"':''}><span class="context-number">${String(index+1).padStart(2,'0')}</span><div><strong>${escape(labels[q.module]??q.module)}</strong><p>${v?escape(v.selectedOption):'Tu siguiente decisión comienza aquí.'}</p>${v?`<span class="context-version">v${v.sequence} · Decisión humana</span>`:''}${needsReview(context,d)?'<span class="badge warn">Requiere revisión</span>':''}</div></li>`;}).join('')}</ol></details>${latest?`<p class="context-updated">Última decisión<br><strong>${escape(fmt(latest.approvedAt))}</strong></p>`:''}<p class="hint context-note">Los cambios conservan su historia.<br>Nada se reescribe sin tu criterio.</p>`;
 }
 function updateShell(){
  const name=$('#brands').selectedOptions[0]?.textContent?.replace(/ · (DEMO|PILOT)$/,'')??'Tu espacio estratégico';
@@ -782,4 +1520,15 @@ function showAiNotice(questionId){
  await refresh();
  activityDone('Opciones preparadas','Ya puedes compararlas antes de decidir.');
 },event.currentTarget));
+}
+
+/* Keep active brand context visible through long strategic views. */
+{
+ const shellHeader=document.querySelector('.app header')??document.querySelector('header');
+ const syncStickyHeader=()=>{
+  if(!shellHeader)return;
+  shellHeader.classList.toggle('is-scrolled',window.scrollY>12);
+ };
+ window.addEventListener('scroll',syncStickyHeader,{passive:true});
+ syncStickyHeader();
 }

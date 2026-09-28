@@ -35,6 +35,95 @@ export const signals=pgTable('signals',{...contextColumns(),experimentId:text().
 export const learnings=pgTable('learnings',contextColumns(),t=>[unique().on(t.workspaceId,t.brandId,t.id),foreignKey({columns:[t.workspaceId,t.brandId],foreignColumns:[brands.workspaceId,brands.id]})]);
 export const learningSignals=pgTable('learning_signals',{...scope(),learningId:text().notNull(),signalId:text().notNull()},t=>[primaryKey({columns:[t.workspaceId,t.brandId,t.learningId,t.signalId]}),foreignKey({columns:[t.workspaceId,t.brandId,t.learningId],foreignColumns:[learnings.workspaceId,learnings.brandId,learnings.id]}),foreignKey({columns:[t.workspaceId,t.brandId,t.signalId],foreignColumns:[signals.workspaceId,signals.brandId,signals.id]}),index().on(t.workspaceId,t.brandId,t.signalId)]);
 // Personal evidence only. Never joined into a Brand Context or model request.
+export const sourceDocuments=pgTable('source_documents',{
+  id:text().primaryKey(),
+  ...scope(),
+  originalName:text().notNull(),
+  mediaType:text().notNull(),
+  bytes:integer().notNull(),
+  sha256:text().notNull(),
+  storageKey:text().notNull(),
+  status:text().notNull().default('UPLOADED'),
+  uploadedBy:text().notNull().references(()=>users.id),
+  uploadedAt:timestamp({withTimezone:true}).notNull()
+},t=>[
+  unique().on(t.workspaceId,t.brandId,t.id),
+  foreignKey({
+    columns:[t.workspaceId,t.brandId],
+    foreignColumns:[brands.workspaceId,brands.id]
+  }),
+  index().on(t.workspaceId,t.brandId,t.uploadedAt),
+  index().on(t.workspaceId,t.brandId,t.sha256)
+]);
+
+export const documentExtractions=pgTable('document_extractions',{
+  id:text().primaryKey(),
+  ...scope(),
+  documentId:text().notNull(),
+  status:text().notNull().default('PENDING'),
+  provider:text(),
+  model:text(),
+  content:text(),
+  metadata:jsonb().$type<Record<string,unknown>>().notNull().default({}),
+  createdAt:timestamp({withTimezone:true}).notNull()
+},t=>[
+  unique().on(t.workspaceId,t.brandId,t.id),
+  unique().on(t.workspaceId,t.brandId,t.documentId,t.id),
+  foreignKey({
+    columns:[t.workspaceId,t.brandId,t.documentId],
+    foreignColumns:[
+      sourceDocuments.workspaceId,
+      sourceDocuments.brandId,
+      sourceDocuments.id
+    ]
+  }),
+  index().on(t.workspaceId,t.brandId,t.documentId)
+]);
+
+export const documentClaims=pgTable('document_claims',{
+  id:text().primaryKey(),
+  ...scope(),
+  documentId:text().notNull(),
+  extractionId:text().notNull(),
+  claimType:text().notNull(),
+  statement:text().notNull(),
+  location:jsonb().$type<Record<string,unknown>>().notNull().default({}),
+  confidence:text().notNull().default('UNASSESSED'),
+  reviewStatus:text().notNull().default('CANDIDATE'),
+  reviewedStatement:text(),
+  reviewedBy:text().references(()=>users.id),
+  reviewedAt:timestamp({withTimezone:true}),
+  contextKind:text(),
+  contextEntityId:text(),
+  createdAt:timestamp({withTimezone:true}).notNull()
+},t=>[
+  unique().on(t.workspaceId,t.brandId,t.id),
+  foreignKey({
+    columns:[t.workspaceId,t.brandId,t.documentId],
+    foreignColumns:[
+      sourceDocuments.workspaceId,
+      sourceDocuments.brandId,
+      sourceDocuments.id
+    ]
+  }),
+  foreignKey({
+    columns:[
+      t.workspaceId,
+      t.brandId,
+      t.documentId,
+      t.extractionId
+    ],
+    foreignColumns:[
+      documentExtractions.workspaceId,
+      documentExtractions.brandId,
+      documentExtractions.documentId,
+      documentExtractions.id
+    ]
+  }),
+  index().on(t.workspaceId,t.brandId,t.documentId),
+  index().on(t.workspaceId,t.brandId,t.reviewStatus)
+]);
+
 export const capabilityEvents=pgTable('capability_events',{id:text().primaryKey(),userId:text().notNull().references(()=>users.id),payload:jsonb().$type<Record<string,unknown>>().notNull()},t=>[index().on(t.userId)]);
 // Pilot metadata is additive. Existing DEMO identities and strategic history remain unchanged.
 export const pilotWorkspaces=pgTable('pilot_workspaces',{workspaceId:text().primaryKey().references(()=>workspaces.id),cohort:text().notNull(),createdAt:timestamp({withTimezone:true}).notNull()});
