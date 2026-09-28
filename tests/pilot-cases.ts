@@ -2,7 +2,7 @@ import { describe,it,expect } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { generateKeyPair,exportJWK,SignJWT } from 'jose';
 import * as oidc from 'openid-client';
-import { eq } from 'drizzle-orm';
+import { and,eq } from 'drizzle-orm';
 import type { AddressInfo } from 'node:net';
 import { connect } from '../src/persistence/database.js';
 import { startLocalDb,stopLocalDb } from '../scripts/local-db.js';
@@ -26,6 +26,42 @@ import { seedIdentity } from '../scripts/seed.js';
 export function pilotCases(connection:()=>ReturnType<typeof connect>){
  describe('PILOT boundaries',()=>{
   async function setup(){const {db}=connection(),access=new PilotAccess(db,'https://issuer.example'),subject=randomUUID(),who=await access.provision(subject,'A'),session=await access.issueSession(subject);return {db,access,who,session,subject,engine:new Engine(db)};}
+  it('recognises verified identities, self-provisions only when enabled, and never duplicates an account',async()=>{
+   const {db}=connection(),access=new PilotAccess(db,'https://issuer.example');
+   const subject='self-'+randomUUID(),claims=(over:Record<string,unknown>={})=>({subject,email:`${subject}@example.test`,emailVerified:true,displayName:'Estratega',avatarUrl:null,...over});
+   // Fail-closed: an unknown identity is denied while auto-provisioning is off.
+   await expect(access.recognise(claims(),false)).rejects.toMatchObject({code:'FORBIDDEN'});
+   // A verified email is mandatory even when auto-provisioning is on.
+   await expect(access.recognise(claims({email:undefined}),true)).rejects.toMatchObject({code:'FORBIDDEN'});
+   await expect(access.recognise(claims({emailVerified:false}),true)).rejects.toMatchObject({code:'FORBIDDEN'});
+   const userId=await access.recognise(claims(),true);
+   const [account]=await db.select().from(t.userAccounts).where(eq(t.userAccounts.userId,userId));
+   expect(account.normalizedEmail).toBe(`${subject}@example.test`.toLowerCase());
+   expect(account.emailVerifiedAt).toBeInstanceOf(Date);
+   // The same identity signing in again reuses the same user and workspace.
+   expect(await access.recognise(claims(),true)).toBe(userId);
+   const identities=await db.select().from(t.pilotIdentities).where(and(eq(t.pilotIdentities.issuer,'https://issuer.example'),eq(t.pilotIdentities.subject,subject)));
+   expect(identities).toHaveLength(1);
+   // Concurrent first callbacks for one identity must not create a second account or workspace.
+   const racer='race-'+randomUUID(),raceClaims={subject:racer,email:`${racer}@example.test`,emailVerified:true};
+   const settled=await Promise.allSettled([access.recognise(raceClaims,true),access.recognise(raceClaims,true),access.recognise(raceClaims,true)]);
+   const winners=new Set(settled.flatMap(r=>r.status==='fulfilled'?[r.value]:[]));
+   expect(winners.size).toBe(1);
+   expect(await db.select().from(t.pilotIdentities).where(and(eq(t.pilotIdentities.issuer,'https://issuer.example'),eq(t.pilotIdentities.subject,racer)))).toHaveLength(1);
+   // A disabled identity stays denied even with auto-provisioning on.
+   await access.disable(userId);
+   await expect(access.issueSession(subject)).rejects.toMatchObject({code:'FORBIDDEN'});
+  });
+  it('assigns a deterministic cohort from the canonical identity, never at random',async()=>{
+   const issuer='https://issuer.example',subject='cohort-fixture';
+   const once=PilotAccess.cohortFor(issuer,subject);
+   expect(['A','B']).toContain(once);
+   for(let i=0;i<5;i++)expect(PilotAccess.cohortFor(issuer,subject)).toBe(once);
+   // Different identities distribute across both arms; the issuer participates in the hash.
+   const spread=new Set(Array.from({length:40},(_,i)=>PilotAccess.cohortFor(issuer,'spread-'+i)));
+   expect(spread).toEqual(new Set(['A','B']));
+   expect(PilotAccess.cohortFor('https://other.example',subject)).toBeDefined();
+  });
   it('provisions unique testers, isolates workspaces and brands, and rejects manipulated IDs',async()=>{
    const a=await setup(),b=await setup(),brand=await a.engine.createBrand(a.session.token,'Tester A','Context A');
    expect(brand.dataClass).toBe('PILOT');expect(a.who.workspaceId).not.toBe(b.who.workspaceId);

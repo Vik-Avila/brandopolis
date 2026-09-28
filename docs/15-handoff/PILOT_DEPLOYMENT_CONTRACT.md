@@ -52,6 +52,7 @@ Define lo que cualquier hosting debe ofrecer. No elige proveedor. PILOT no es pr
 | `BIND_HOST` | `127.0.0.1` | `0.0.0.0` detrás de proxy de plataforma. |
 | `TRUST_PROXY` | `false` | `true` sólo si el proxy propio fija `X-Forwarded-For` (límites por IP real). |
 | `OIDC_REDIRECT_URI` | `PILOT_ORIGIN/auth/callback` | Si se define, debe ser exactamente ese valor. |
+| `PILOT_AUTO_PROVISION` | `false` | `true` permite que una identidad OIDC verificada cree su propia cuenta y workspace en el primer acceso. Con `false` (o sin definir) se mantiene el comportamiento fail-closed actual: identidad no aprovisionada = denegada. Exige `email` y `email_verified=true` en el ID token. |
 | `PILOT_REQUEST_ACCESS_URL` | — | `https:` o `mailto:`. Sin él, la entrada pide contactar al organizador (nunca un enlace roto). |
 | `PG_BIN` | PATH | Herramientas cliente PostgreSQL 17 para `pilot:backup`. |
 | `PILOT_LOCAL_REHEARSAL` | — | Sólo ensayos locales: permite origen loopback. Nunca en Internet. |

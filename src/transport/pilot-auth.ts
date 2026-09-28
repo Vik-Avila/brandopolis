@@ -5,7 +5,7 @@ import type { IncomingMessage,ServerResponse } from 'node:http';
 import type { Database } from '../persistence/database.js';
 import { loginFlows } from '../persistence/schema.js';
 import { hash } from '../application/engine.js';
-import { PilotAccess } from '../application/pilot-access.js';
+import { PilotAccess,type VerifiedClaims } from '../application/pilot-access.js';
 import { AppError } from '../domain/contracts.js';
 import { createHash } from 'node:crypto';
 import type { Limiter } from './http.js';
@@ -24,7 +24,7 @@ export interface PilotBoundary {
 }
 /** notice is null when AI is disabled (nothing is sent to a provider, so no acknowledgement is needed). */
 export interface PilotAiPolicy {notice:{version:string;text:string}|null;capPerTester:number;capTotal:number}
-export interface PilotAuthOptions {redirectUri?:string;trustProxy?:boolean;requestAccessUrl?:string|null;limiter?:Limiter;ai?:PilotAiPolicy}
+export interface PilotAuthOptions {redirectUri?:string;trustProxy?:boolean;requestAccessUrl?:string|null;limiter?:Limiter;ai?:PilotAiPolicy;autoProvision?:boolean}
 /** Operator-facing configuration error; messages never include secret values. */
 export class ConfigError extends Error {}
 const FLOW='__Host-brandopolis_flow',SESSION='__Host-brandopolis_session';
@@ -32,10 +32,10 @@ const FLOW='__Host-brandopolis_flow',SESSION='__Host-brandopolis_session';
 // signature (JWKS), issuer, audience, expiry and nonce; identity is keyed by (issuer, subject), never email.
 export class PilotAuth implements PilotBoundary {
   private access:PilotAccess;
-  readonly redirectUri:string;readonly trustProxy:boolean;readonly requestAccessUrl:string|null;readonly limiter?:Limiter;readonly ai?:PilotAiPolicy;
+  readonly redirectUri:string;readonly trustProxy:boolean;readonly requestAccessUrl:string|null;readonly limiter?:Limiter;readonly ai?:PilotAiPolicy;readonly autoProvision:boolean;
   constructor(private db:Database,private config:oidc.Configuration,readonly origin:string,options:PilotAuthOptions={}){
     this.access=new PilotAccess(db,config.serverMetadata().issuer);
-    this.redirectUri=options.redirectUri??origin+'/auth/callback';this.trustProxy=options.trustProxy??false;this.requestAccessUrl=options.requestAccessUrl??null;this.limiter=options.limiter;this.ai=options.ai;
+    this.redirectUri=options.redirectUri??origin+'/auth/callback';this.trustProxy=options.trustProxy??false;this.requestAccessUrl=options.requestAccessUrl??null;this.limiter=options.limiter;this.ai=options.ai;this.autoProvision=options.autoProvision??false;
     if(new URL(this.redirectUri).origin!==origin||new URL(this.redirectUri).pathname!=='/auth/callback')throw new ConfigError('OIDC_REDIRECT_URI must be PILOT_ORIGIN/auth/callback');
   }
   authorize(token:string){return this.access.authorize(token);}
@@ -58,7 +58,7 @@ export class PilotAuth implements PilotBoundary {
       const state=oidc.randomState(),verifier=oidc.randomPKCECodeVerifier(),nonce=oidc.randomNonce();
       await this.db.delete(loginFlows).where(lt(loginFlows.expiresAt,new Date()));
       await this.db.insert(loginFlows).values({stateHash:hash(state),verifier,nonce,expiresAt:new Date(Date.now()+600000)});
-      const target=oidc.buildAuthorizationUrl(this.config,{redirect_uri:this.redirectUri,scope:'openid',state,nonce,code_challenge:await oidc.calculatePKCECodeChallenge(verifier),code_challenge_method:'S256',prompt:'login'});
+      const target=oidc.buildAuthorizationUrl(this.config,{redirect_uri:this.redirectUri,scope:'openid email profile',state,nonce,code_challenge:await oidc.calculatePKCECodeChallenge(verifier),code_challenge_method:'S256',prompt:'login'});
       res.setHeader('Set-Cookie',`${FLOW}=${state}; Secure; HttpOnly; SameSite=Lax; Path=/; Max-Age=600`);
       res.writeHead(302,{Location:target.href});res.end();return true;
     }
@@ -67,13 +67,20 @@ export class PilotAuth implements PilotBoundary {
     // Single use: the flow row is consumed before the code exchange, so a replayed callback always fails.
     const [flow]=await this.db.delete(loginFlows).where(and(eq(loginFlows.stateHash,hash(state)),gt(loginFlows.expiresAt,new Date()))).returning();
     if(!flow)return this.fail(res,'expired');
-    let subject:string;
+    let subject:string,verified:VerifiedClaims;
     try {
       const tokens=await oidc.authorizationCodeGrant(this.config,url,{pkceCodeVerifier:flow.verifier,expectedState:state,expectedNonce:flow.nonce,idTokenExpected:true});
       const claims=tokens.claims();if(!claims?.sub)return this.fail(res,'failed');subject=claims.sub;
+      verified={subject,email:typeof claims.email==='string'?claims.email:undefined,emailVerified:claims.email_verified===true,
+        displayName:typeof claims.name==='string'?claims.name:null,avatarUrl:typeof claims.picture==='string'?claims.picture:null};
     } catch {return this.fail(res,'failed');}
     let session:{token:string;expiresAt:Date};
-    try {session=await this.access.issueSession(subject);} catch {return this.fail(res,'denied');}
+    try {
+      // Recognise (or, when enabled, provision) before a session exists: an unknown or unverified
+      // identity never reaches issueSession.
+      await this.access.recognise(verified,this.autoProvision);
+      session=await this.access.issueSession(subject);
+    } catch {return this.fail(res,'denied');}
     res.setHeader('Set-Cookie',[`${SESSION}=${session.token}; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age=${Math.max(0,Math.floor((session.expiresAt.getTime()-Date.now())/1000))}`,`${FLOW}=; Secure; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`]);
     res.writeHead(302,{Location:'/'});res.end();return true;
   }
@@ -90,10 +97,16 @@ export async function discoverIssuer(){
   const s=oidcSettings();
   return (await oidc.discovery(s.issuer,s.clientId,s.secret,s.secret?undefined:oidc.None(),{timeout:10})).serverMetadata().issuer;
 }
+export function autoProvisionEnabled(env:NodeJS.ProcessEnv=process.env){
+  const raw=env.PILOT_AUTO_PROVISION?.trim();
+  if(raw===undefined||raw==='')return false;
+  if(!['true','false'].includes(raw))throw new ConfigError('PILOT_AUTO_PROVISION must be true or false.');
+  return raw==='true';
+}
 export async function pilotAuth(db:Database,origin:string,options:Omit<PilotAuthOptions,'redirectUri'>={}){
   const s=oidcSettings();
   const config=await oidc.discovery(s.issuer,s.clientId,s.secret,s.secret?undefined:oidc.None(),{timeout:10});
-  return new PilotAuth(db,config,origin,{...options,redirectUri:s.redirectUri});
+  return new PilotAuth(db,config,origin,{autoProvision:autoProvisionEnabled(),...options,redirectUri:s.redirectUri});
 }
 export function loadAiNotice(file:string){
   const text=readFileSync(file,'utf8').trim();

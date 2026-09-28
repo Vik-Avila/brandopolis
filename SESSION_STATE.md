@@ -1,10 +1,12 @@
 # Session State
 
-Current phase: **PILOT HARDENING** — mobile header defect closed on `feat/pilot-auth-admin` (from d43fd4d).
+Current phase: **PILOT AUTH** — OIDC self-provisioning foundation on `feat/pilot-auth-admin` (from d43fd4d).
 
-`.header-brand-control` was `position:absolute; z-index:2` and floated over `#new-brand` once the header became a flex row (its `margin-left:auto` was inert while absolute); the `select` also kept a `min-width:150px` floor from a later `@media (max-width:1280px)` block and overflowed its container. Fix confined to `product-responsive.css`. The mode badge is now hidden at ≤767 inside `.app`: it cost 74px of a 358px row and starved the selector to 49px. Judgement call, reversible in one rule.
+Scope `openid email profile`; claims taken only from the validated ID token. `PILOT_AUTO_PROVISION` is fail-closed by default. Verified email is required **only on the provisioning path**, so an operator-provisioned identity is never locked out if the provider stops sending email claims. Deterministic cohort from SHA-256 of `issuer+subject`. New `user_accounts` table, migration 0011, additive. Canonical identity remains `(issuer, subject)`.
 
-Gate: typecheck/lint PASS; pnpm test 64/64; **test:e2e 30/30** (was 24 pass + 6 mobile failures); **test:visual 10 pass + 1 skip, 0 fail** (the phase10a failure had the same root cause); mobile header browser verification 28/28 at 360/390/768/1440; git diff --check clean.
+Gate: typecheck/lint PASS; pnpm test 66/66; test:e2e 30/30; test:visual 10 pass + 1 skip. Migration count expectations updated 11→12 (and the divergence case 12→13) because a real twelfth migration exists; no test was weakened.
+
+NOT IMPLEMENTED: password credentials, email+password login, recovery, SMTP, `/admin`, `/api/admin/*`.
 
 ---
 

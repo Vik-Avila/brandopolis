@@ -14,6 +14,16 @@ Depends on: —
 
 # Registro
 
+## Autoservicio OIDC verificado · 2026-09-28
+
+- OIDC: `scope` pasa de `openid` a `openid email profile`. Los claims se construyen sólo desde el ID token validado (firma, issuer, audiencia, expiración, nonce); nada proviene del navegador.
+- `PILOT_AUTO_PROVISION` (por defecto `false`). Apagado conserva el comportamiento fail-closed. Encendido, una identidad verificada crea en una sola transacción usuario, workspace PILOT privado, membresía con `canCreateBrand`, mapeo de identidad, perfil de cuenta y evento `account_created`.
+- **El email verificado se exige sólo en la vía de aprovisionamiento.** Una identidad ya aprovisionada por un operador sigue entrando con `(issuer, subject)`: si el proveedor dejara de enviar claims de email, ningún Estratega de Marca queda fuera.
+- Cohorte determinista por SHA-256 de `issuer+subject`; sin `Math.random()`. Sólo se consulta al aprovisionar, así que ninguna cuenta existente se reasigna.
+- Nueva tabla `user_accounts` (migración 0011, aditiva). La identidad canónica sigue siendo `(issuer, subject)`, nunca el email.
+- Concurrencia: dos callbacks simultáneos de la misma identidad no duplican cuenta ni workspace.
+- Recuento de migraciones actualizado 11→12 (y 12→13 donde la prueba inyecta una fila extra), nunca relajado.
+
 ## Cabecera móvil del piloto · defecto previo corregido · 2026-09-28
 
 - `.header-brand-control` estaba en `position:absolute` con `z-index:2`. Al pasar la cabecera a `display:flex` en ≤900px su `margin-left:auto` quedaba inerte y el control flotaba sobre `#new-brand`; además el `select` conservaba un suelo `min-width:150px` de un bloque `@media (max-width:1280px)` posterior y se desbordaba de su contenedor. El `select` interceptaba los clics de «Nueva marca».

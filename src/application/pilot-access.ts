@@ -1,13 +1,17 @@
-import { randomBytes,randomUUID } from 'node:crypto';
+import { createHash,randomBytes,randomUUID } from 'node:crypto';
 import { and,asc,count,eq,gt } from 'drizzle-orm';
 import type { Database } from '../persistence/database.js';
 import * as t from '../persistence/schema.js';
 import { AppError } from '../domain/contracts.js';
 import { Engine,hash } from './engine.js';
 
+/** Claims taken from a validated ID token. Never populated from anything the browser sends. */
+export interface VerifiedClaims {subject:string;email?:string;emailVerified?:boolean;displayName?:string|null;avatarUrl?:string|null}
+export interface VerifiedProfile {email:string;normalizedEmail:string;displayName:string|null;avatarUrl:string|null}
+
 export class PilotAccess {
   constructor(private db:Database,readonly issuer:string) {}
-  async provision(subject:string,cohort:string,workspaceId?:string) {
+  async provision(subject:string,cohort:string,workspaceId?:string,account?:VerifiedProfile) {
     if(!subject.trim()||subject.length>500||!['A','B'].includes(cohort))throw new AppError('INVALID','Invalid tester');
     return this.db.transaction(async tx=>{
       if((await tx.select().from(t.pilotIdentities).where(and(eq(t.pilotIdentities.issuer,this.issuer),eq(t.pilotIdentities.subject,subject)))).length)throw new AppError('CONFLICT','Tester already provisioned');
@@ -17,6 +21,7 @@ export class PilotAccess {
       await tx.insert(t.users).values({id:userId});
       await tx.insert(t.memberships).values({workspaceId:wid,userId,role:'MEMBER',active:true,canCreateBrand:true});
       await tx.insert(t.pilotIdentities).values({userId,issuer:this.issuer,subject,workspaceId:wid});
+      if(account)await tx.insert(t.userAccounts).values({userId,email:account.email,normalizedEmail:account.normalizedEmail,emailVerifiedAt:now,displayName:account.displayName??null,avatarUrl:account.avatarUrl??null,createdAt:now,lastLoginAt:now});
       await tx.insert(t.pilotEvents).values({id:randomUUID(),userId,workspaceId:wid,name:'account_created',cohort,intervention:'NONE',occurredAt:now});
       return {userId,workspaceId:wid};
     });
@@ -106,6 +111,54 @@ export class PilotAccess {
       ai:{requested:people.reduce((a,p)=>a+p.recommendationsRequested,0),failed:people.reduce((a,p)=>a+p.recommendationsFailed,0)},
       reviewsCompleted:people.reduce((a,p)=>a+p.reviewsCompleted,0),
       feedback:{responses:feedback.filter(f=>f.kind==='FEEDBACK').length,issues:feedback.filter(f=>f.kind==='ISSUE').length,usefulness:distribution('usefulness'),clarity:distribution('clarity'),confidence:distribution('confidence')}};
+  }
+  /** Deterministic cohort from the canonical identity. The same identity always lands in the same arm,
+   *  and an existing account is never reassigned because this is only consulted at first provisioning. */
+  static cohortFor(issuer:string,subject:string) {
+    return createHash('sha256').update(issuer+'\n'+subject).digest()[0]%2===0?'A':'B';
+  }
+  /** Recognises a verified external identity and, when auto-provisioning is on, creates the account on
+   *  first sight. Identity stays (issuer, subject); the verified email is stored as profile metadata.
+   *  Fail-closed by default: an unknown identity is denied unless autoProvision is explicitly enabled. */
+  async recognise(claims:VerifiedClaims,autoProvision:boolean) {
+    const subject=String(claims.subject??'').trim(),email=String(claims.email??'').trim();
+    if(!subject)throw new AppError('FORBIDDEN','Identity not authorized');
+    const verifiedEmail=Boolean(email)&&claims.emailVerified===true;
+    const profile:VerifiedProfile={email,normalizedEmail:email.toLowerCase(),displayName:claims.displayName??null,avatarUrl:claims.avatarUrl??null};
+    const seen=await this.identity(subject);
+    // An identity provisioned by an operator keeps signing in on (issuer, subject) alone: a provider that
+    // stops sending email claims must not lock an existing Estratega de Marca out. The profile is
+    // refreshed only when the claims are actually verified.
+    if(seen){if(verifiedEmail)await this.touchAccount(seen.userId,profile);return seen.userId;}
+    if(!autoProvision)throw new AppError('FORBIDDEN','Identity not authorized');
+    // Creating an account from nothing but an assertion demands a verified mailbox.
+    if(!verifiedEmail)throw new AppError('FORBIDDEN','Verified email required');
+    try {
+      const {userId}=await this.provision(subject,PilotAccess.cohortFor(this.issuer,subject),undefined,profile);
+      return userId;
+    } catch(error) {
+      // A concurrent callback for the same identity loses the unique (issuer, subject) race. The winner's
+      // account is the canonical one, so re-read instead of creating a second workspace.
+      const again=await this.identity(subject);
+      if(again){await this.touchAccount(again.userId,profile);return again.userId;}
+      throw error;
+    }
+  }
+  private async identity(subject:string) {
+    const [who]=await this.db.select().from(t.pilotIdentities).where(and(eq(t.pilotIdentities.issuer,this.issuer),eq(t.pilotIdentities.subject,subject)));
+    return who;
+  }
+  /** Refreshes the profile on every sign-in. If the mailbox already belongs to another account the email
+   *  is left untouched rather than failing the login: identity is (issuer, subject), not the address. */
+  private async touchAccount(userId:string,profile:VerifiedProfile) {
+    const now=new Date();
+    try {
+      await this.db.insert(t.userAccounts)
+        .values({userId,email:profile.email,normalizedEmail:profile.normalizedEmail,emailVerifiedAt:now,displayName:profile.displayName,avatarUrl:profile.avatarUrl,createdAt:now,lastLoginAt:now})
+        .onConflictDoUpdate({target:t.userAccounts.userId,set:{email:profile.email,normalizedEmail:profile.normalizedEmail,emailVerifiedAt:now,displayName:profile.displayName,avatarUrl:profile.avatarUrl,lastLoginAt:now}});
+    } catch {
+      await this.db.update(t.userAccounts).set({lastLoginAt:now}).where(eq(t.userAccounts.userId,userId));
+    }
   }
   async issueSession(subject:string) {
     return this.db.transaction(async tx=>{
