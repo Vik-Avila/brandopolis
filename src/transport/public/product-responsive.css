@@ -97,9 +97,9 @@
     max-width: 540px;
   }
   .pillars {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
-  .pillars li:nth-child(3) {
+  .pillars li:nth-child(4) {
     border-left: 0px;
     padding-left: 0px;
   }
@@ -182,6 +182,29 @@
   }
 }
 
+/* Landing editorial sections ≤1023: number rail over one text column. */
+@media (max-width: 1023px) {
+  .reality, .distinction {
+    margin-top: 64px;
+    margin-bottom: 64px;
+    padding-right: 24px;
+    padding-left: 24px;
+  }
+  .reality-list {
+    --rail: 56px;
+  }
+  .reality-list li {
+    grid-template-columns: 44px minmax(0px, 1fr);
+    padding: 22px 0px;
+  }
+  .reality-list h3, .reality-list p {
+    grid-column: 2;
+  }
+  .distinction-copy {
+    padding: 28px 24px;
+  }
+}
+
 /* Mobile ≤767 */
 @media (max-width: 767px) {
   .public-nav a:not(.cta) {
@@ -207,11 +230,31 @@
     grid-template-columns: 1fr 1fr;
     padding: 16px;
   }
+  .pillars li:nth-child(4) {
+    border-left: 1px solid var(--bp-divider-gold);
+    padding-left: 14px;
+  }
+  .pillars li:nth-child(3), .pillars li:nth-child(5) {
+    border-left: 0px;
+    padding-left: 0px;
+  }
+  .pillars li:nth-child(5) {
+    grid-column: 1 / -1;
+  }
   .how {
     margin-top: 56px;
     margin-bottom: 56px;
     padding-right: 16px;
     padding-left: 16px;
+  }
+  .reality, .distinction {
+    margin-top: 56px;
+    margin-bottom: 56px;
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+  .request-actions .button {
+    width: 100%;
   }
   .welcome {
     display: block;
@@ -288,10 +331,6 @@
     padding-right: 14px;
     padding-left: 14px;
     font-size: 11px;
-  }
-  .public-nav a[href="/login"] {
-    display: inline-flex;
-    font-size: 12px;
   }
   .app .public-nav {
     display: none;

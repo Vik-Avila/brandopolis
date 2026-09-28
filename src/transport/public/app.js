@@ -63,7 +63,7 @@ async function api(path,input,timeoutOverrideMs) {
   if(!response.ok) {
     const conflict=path.includes('/learning/')?'Este registro cambió o no permite esa acción. Vuelve a abrir Experimentos y aprendizajes para revisar su estado.':path.includes('/recommendations/')?'La propuesta ya no corresponde al contexto actual. Vuelve a abrir la decisión y compara opciones de nuevo.':'Esta decisión cambió mientras la estabas editando. Revisa la versión más reciente antes de aprobar. Si usaste una recomendación, genera otra con el contexto actual.';
     const messages={CONFLICT:conflict,UNAUTHORIZED:pilotMode?'Tu sesión venció. Vuelve a entrar al piloto.':'Tu sesión DEMO venció o no está disponible. Vuelve a entrar con la sesión local vigente.',FORBIDDEN:pilotMode?'No tienes permiso para esta acción o esta marca.':'No tienes permiso para esta acción. Revisa que hayas entrado con la sesión DEMO correcta.',UNAVAILABLE:pilotMode?'El servicio no está disponible por el momento. Tu borrador se conserva; vuelve a intentar en unos minutos.':'La demo local no está disponible. Conserva tu borrador y comprueba que la terminal siga abierta.',RATE_LIMITED:'Demasiadas solicitudes seguidas. Espera un momento y vuelve a intentar.',AI_CAP_REACHED:'Se alcanzó el límite diario de propuestas IA. Puedes continuar con tu decisión humana y volver a pedir propuestas mañana.',AI_CONSENT_REQUIRED:'Antes de pedir una propuesta, confirma el aviso sobre el uso de datos con IA.',INVALID:'Revisa los campos requeridos y el contexto disponible antes de continuar.',NOT_FOUND:'La marca o el registro ya no está disponible para esta sesión. Selecciona una marca accesible.'};
-    if(data.code==='UNAUTHORIZED'){preserveDraft();document.body.classList.remove('app');$('#login').hidden=false;$('#workspace').hidden=true;$('#logout').hidden=true;$('#menu').hidden=true;}
+    if(data.code==='UNAUTHORIZED'){preserveDraft();document.body.classList.remove('app');$('#login').hidden=false;$('#workspace').hidden=true;$('#logout').hidden=true;$('#menu').hidden=true;$('.header-brand-control').hidden=true;$('#new-brand').hidden=true;$('#mode-badge').hidden=true;}
     throw Object.assign(new Error(messages[data.code]??'No se pudo completar la operación. Conserva tus datos y revisa el estado antes de reintentar.'),{code:data.code});
   }
   return data;
@@ -554,12 +554,14 @@ async function run(action,button) {
 }
 async function loadBrands(preferred) {
   const brands=await api('/api/brands');
+  // An empty selector says nothing: the control appears with the first brand and hides again if none remain.
+  $('.header-brand-control').hidden=brands.length===0;
   $('#brands').innerHTML=brands.map(b=>`<option value="${escape(b.id)}">${escape(b.name)}</option>`).join('');
   brandId=brands.some(b=>b.id===preferred)?preferred:brands[0]?.id;
   if(brandId)$('#brands').value=brandId;
   activeDecisionTab='overview';draft=null;await refresh();
 }
-async function authenticated() {const directModule=new URL(location.href).searchParams.has('module');document.body.classList.add('app');for(const id of ['#gateway','#request-access-view'])$(id).hidden=true;$('#login').hidden=true;document.body.classList.remove('booting');user=await api('/api/me');$('#workspace').hidden=false;$('#logout').hidden=false;$('#menu').hidden=false;await loadBrands(new URL(location.href).searchParams.get('brand'));if(!directModule&&context)await showHome();}
+async function authenticated() {const directModule=new URL(location.href).searchParams.has('module');document.body.classList.add('app');for(const id of ['#gateway','#request-access-view'])$(id).hidden=true;$('#login').hidden=true;document.body.classList.remove('booting');user=await api('/api/me');$('#workspace').hidden=false;$('#logout').hidden=false;$('#menu').hidden=false;$('#new-brand').hidden=false;$('#mode-badge').hidden=false;await loadBrands(new URL(location.href).searchParams.get('brand'));if(!directModule&&context)await showHome();}
 async function refresh(){if(brandId)context=await api(`/api/context?brandId=${encodeURIComponent(brandId)}`);else context=null;render();}
 function render() {
   setNavActive();$('#decision').dataset.view='decision';updateShell();
@@ -731,22 +733,36 @@ function showPublicView(){
  $('#gateway').hidden=path!=='/';$('#login').hidden=path==='/request-access';$('#request-access-view').hidden=path!=='/request-access';
  // On the gateway the access card is a section of the page, not a second top-level heading.
  if(path==='/')$('#login-title').setAttribute('aria-level','2');else $('#login-title').removeAttribute('aria-level');
- setTitle(path==='/login'?'Acceder':path==='/request-access'?'Solicitar acceso':'');
+ setTitle(path==='/login'?'Entrar al piloto':path==='/request-access'?'Acceso al piloto':'');
 }
 showPublicView();
 // Motion is an enhancement: the poster stays when reduced motion is requested or the video cannot play.
 const flow=$('.flow-video'),still=matchMedia('(prefers-reduced-motion: reduce)'),motionToggle=$('#motion-toggle');let userPaused=false,flowVisible=false;
-const syncMotion=()=>{const allowed=!still.matches&&!userPaused;motionToggle.hidden=still.matches;if(flowVisible&&allowed)flow.play().catch(()=>{});else flow.pause();};
+const build=$('.how-art');
+const syncMotion=()=>{const allowed=!still.matches&&!userPaused;motionToggle.hidden=still.matches;build.classList.toggle('is-paused',!(flowVisible&&allowed));if(flowVisible&&allowed)flow.play().catch(()=>{});else flow.pause();};
 if(flow&&'IntersectionObserver' in window)new IntersectionObserver(entries=>{flowVisible=entries.some(e=>e.isIntersecting);syncMotion();}).observe(flow);
 still.addEventListener('change',syncMotion);syncMotion();
 motionToggle.addEventListener('click',()=>{userPaused=!userPaused;motionToggle.setAttribute('aria-pressed',String(userPaused));motionToggle.textContent=userPaused?'Reanudar animación':'Pausar animación';syncMotion();});
+const rail=$('.reality-list');
+if(rail){
+ const steps=[...rail.children];
+ if(still.matches||!('IntersectionObserver' in window))rail.style.setProperty('--progress','100%');
+ else {
+  rail.classList.add('reveal-ready');
+  const advance=()=>{const last=steps.filter(li=>li.classList.contains('is-revealed')).pop();rail.style.setProperty('--progress',last?`${last.offsetTop+last.offsetHeight}px`:'0px');};
+  const watch=new IntersectionObserver(entries=>{for(const e of entries)if(e.isIntersecting){e.target.classList.add('is-revealed');watch.unobserve(e.target);}advance();},{rootMargin:'0px 0px -12% 0px'});
+  for(const step of steps)watch.observe(step);
+  // A late preference change must never leave a step invisible.
+  still.addEventListener('change',()=>{if(still.matches){watch.disconnect();rail.classList.remove('reveal-ready');rail.style.setProperty('--progress','100%');}});
+ }
+}
 Promise.all([api('/api/mode'),api('/api/session-state')]).then(async([mode,state])=>{
  pilotMode=mode.mode==='PILOT';aiNotice=mode.aiNotice??null;
  if(pilotMode){
   $('#login-form').hidden=true;$('#mode-badge').textContent='PILOT';
-  const entry=document.createElement('div');entry.id='pilot-entry';entry.innerHTML='<p class="eyebrow"><span lang="en">The Brand Operating System</span> · Piloto por invitación</p><p>Construye tu primera decisión estratégica. La IA propone; tú decides. Tus marcas conservan contexto e historial dentro de tu espacio autorizado.</p><p><a class="button" href="/auth/login">Entrar al piloto</a></p><p id="request-access" class="hint">¿Aún no tienes acceso? <a href="/request-access">Solicitar acceso</a></p>';$('#login').append(entry);
+  const entry=document.createElement('div');entry.id='pilot-entry';entry.innerHTML='<p class="eyebrow">Acceso</p><p>Entra con tu cuenta para abrir tu espacio privado.</p><p><a class="button" href="/auth/login">Entrar al piloto</a></p>';$('#login').append(entry);
   if(mode.requestAccessUrl&&/^(https:|mailto:)/.test(mode.requestAccessUrl)){const link=document.createElement('a');link.href=mode.requestAccessUrl;link.className='button';link.textContent=mode.requestAccessUrl.startsWith('mailto:')?'Escribir para solicitar acceso':'Abrir formulario de solicitud';link.rel='noopener';$('#request-destination').replaceChildren(link);}
-  const login=new URL(location.href).searchParams.get('login'),reasons={denied:'Tu identidad no tiene acceso a este piloto. Solicita acceso a quien lo organiza.',expired:'El inicio de sesión tardó demasiado. Vuelve a intentarlo.',failed:'No se pudo completar el inicio de sesión. Vuelve a intentarlo.'};
+  const login=new URL(location.href).searchParams.get('login'),reasons={denied:'Tu cuenta aún no tiene acceso a este piloto.',expired:'El inicio de sesión tardó demasiado. Vuelve a intentarlo.',failed:'No se pudo completar el inicio de sesión. Vuelve a intentarlo.'};
   if(reasons[login]){notice(reasons[login],true);history.replaceState(null,'','/');}
   const feedback=document.createElement('button');feedback.id='pilot-feedback';feedback.className='secondary';feedback.textContent='Compartir feedback';feedback.addEventListener('click',()=>run(showFeedback));$('#journey').append(feedback);
  }

@@ -45,7 +45,7 @@ for(const [name,viewport] of Object.entries(viewports)){
     const context=await browser.newContext({viewport,...(name==='mobile'?{isMobile:true,hasTouch:true}:{})}),page=await context.newPage(),errors:string[]=[];
     page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
     for(const path of ['/','/login','/request-access']){await page.goto(path);await expect(page.locator('main')).toBeVisible();await page.waitForLoadState('networkidle');await sound(page,`${name} ${path}`);}
-    await page.goto('/');await expect(page.getByRole('heading',{name:/Estrategia que evoluciona/})).toBeVisible();
+    await page.goto('/');await expect(page.getByRole('heading',{name:/De la idea a la marca/})).toBeVisible();
     await signIn(page,seeded.brand.id,'Positioning');await sound(page,`${name} needs review`);
     await expect(page.locator('#decision')).toContainText('Requiere revisión');
     await page.getByRole('button',{name:'Ver impacto',exact:true}).click();await expect(page.locator('.impact-pair')).toBeVisible();await sound(page,`${name} impact`);

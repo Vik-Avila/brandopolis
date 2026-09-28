@@ -78,7 +78,7 @@
 }
 
 .hero-copy h1 {
-  font-size: clamp(44px, 5.4vw, 80px);
+  font-size: clamp(32px, 3.9vw, 50px);
   line-height: 1.02;
   margin: 12px 0px 24px;
   color: var(--bp-brand-charcoal);
@@ -102,13 +102,30 @@
   margin-top: 28px;
 }
 
+.hero-principle {
+  font-family: var(--font-display);
+  font-size: clamp(15px, 1.15vw, 17px);
+  color: var(--bp-brand-emerald);
+  width: fit-content;
+  max-width: 520px;
+  margin: 22px 0px 0px;
+  padding-left: 14px;
+  border-left: 1px solid var(--bp-divider-gold);
+}
+
+.hero-secondary {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 14px 0px 0px;
+}
+
 .pillars {
   list-style: none;
   margin: 0px 7vw 40px;
   padding: 18px 24px;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
   background: var(--surface-glass-elevated);
   border: 1px solid var(--border-glass-strong);
   border-radius: var(--bp-radius-xl);
@@ -128,6 +145,20 @@
 .pillars li:first-child {
   border-left: 0px;
   padding-left: 0px;
+}
+
+/* Decorative line icons: one visual family, stroked in emerald, never carrying meaning on their own. */
+
+.pillar-icon {
+  width: 22px;
+  height: 22px;
+  margin-bottom: 8px;
+  color: var(--bp-brand-emerald);
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .pillars span {
@@ -165,6 +196,7 @@
 }
 
 .how-art {
+  position: relative;
   border-radius: var(--bp-radius-2xl);
   overflow: hidden;
   border: 1px solid var(--border-glass-strong);
@@ -180,6 +212,106 @@
   display: block;
 }
 
+/* "Cómo funciona" construction: five strategic planes assemble over the composition and a green path
+   connects them. The unanimated state below is the completed structure, so reduced motion (which drops
+   every animation) shows the finished build rather than an empty panel. */
+
+.flow-build {
+  position: absolute;
+  inset: 0px;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.flow-plane {
+  fill: none;
+  stroke: var(--bp-brand-emerald-deep);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  opacity: 0.55;
+}
+
+.flow-node {
+  fill: var(--bp-brand-emerald);
+}
+
+.flow-link {
+  fill: none;
+  stroke: var(--bp-brand-emerald);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0;
+  animation: flow-draw 7s var(--bp-ease) infinite;
+}
+
+.flow-layer {
+  animation: flow-rise 7s var(--bp-ease) infinite;
+}
+
+.flow-layer:nth-of-type(2) {
+  animation-delay: 0.55s;
+}
+
+.flow-layer:nth-of-type(3) {
+  animation-delay: 1.1s;
+}
+
+.flow-layer:nth-of-type(4) {
+  animation-delay: 1.65s;
+}
+
+.flow-layer:nth-of-type(5) {
+  animation-delay: 2.2s;
+}
+
+
+/* Paused by the visible control, and whenever the panel is off screen, so the build starts when seen. */
+
+.how-art.is-paused .flow-layer, .how-art.is-paused .flow-link {
+  animation-play-state: paused;
+}
+
+@keyframes flow-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  10% {
+    opacity: 1;
+    transform: none;
+  }
+  74% {
+    opacity: 1;
+    transform: none;
+  }
+  88% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+
+@keyframes flow-draw {
+  0%, 8% {
+    stroke-dashoffset: 100;
+    opacity: 1;
+  }
+  62%, 80% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  92%, 100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+
 .how-media {
   display: grid;
   gap: 8px;
@@ -192,6 +324,150 @@
 
 #motion-toggle {
   font-size: 13px;
+}
+
+/* What Brandopolis holds, and how it differs: editorial rails, never a grid of feature cards. */
+
+.reality, .distinction {
+  max-width: 1280px;
+  margin: 88px auto;
+  padding: 0px 32px;
+}
+
+.reality-intro {
+  max-width: 760px;
+}
+
+.reality-list {
+  position: relative;
+  list-style: none;
+  margin: 40px 0px 0px;
+  padding: 0px;
+  border-top: 1px solid var(--border-glass-strong);
+  --rail: 68px;
+}
+
+/* A spine between the numbers and the text: the emerald segment grows as the reader moves through
+   context → evidencia → decisiones → memoria → aprendizaje. --progress is set from app.js. */
+
+.reality-list::before, .reality-list::after {
+  content: "";
+  position: absolute;
+  top: 0px;
+  left: var(--rail);
+  width: 1px;
+}
+
+.reality-list::before {
+  bottom: 0px;
+  background: var(--border-glass-strong);
+}
+
+.reality-list::after {
+  width: 2px;
+  margin-left: -0.5px;
+  height: var(--progress, 0px);
+  background: var(--bp-brand-emerald);
+  transition: height 620ms var(--bp-ease);
+}
+
+/* Applied by app.js only when motion is allowed; without it every step is simply visible. */
+
+.reality-list.reveal-ready li {
+  opacity: 0.32;
+  transform: translateY(14px);
+  transition: opacity 560ms var(--bp-ease), transform 560ms var(--bp-ease);
+}
+
+.reality-list.reveal-ready li:nth-child(2) {
+  transition-delay: 70ms;
+}
+
+.reality-list.reveal-ready li:nth-child(3) {
+  transition-delay: 140ms;
+}
+
+.reality-list.reveal-ready li:nth-child(4) {
+  transition-delay: 210ms;
+}
+
+.reality-list.reveal-ready li:nth-child(5) {
+  transition-delay: 280ms;
+}
+
+.reality-list.reveal-ready li:nth-child(6) {
+  transition-delay: 350ms;
+}
+
+.reality-list.reveal-ready li.is-revealed {
+  opacity: 1;
+  transform: none;
+}
+
+.reality-list.reveal-ready .reality-number {
+  color: var(--text-muted);
+  transition: color 560ms var(--bp-ease);
+}
+
+.reality-list.reveal-ready li.is-revealed .reality-number {
+  color: var(--bp-brand-emerald);
+}
+
+.reality-list li {
+  display: grid;
+  grid-template-columns: 56px minmax(0px, 300px) minmax(0px, 1fr);
+  gap: 8px 24px;
+  align-items: baseline;
+  padding: 26px 0px;
+  border-bottom: 1px solid var(--border-glass-strong);
+}
+
+.reality-number {
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  color: var(--bp-brand-emerald);
+}
+
+.reality-list h3 {
+  margin: 0px;
+}
+
+.reality-list p {
+  margin: 0px;
+  max-width: 62ch;
+  color: var(--text-secondary);
+}
+
+.reality-close {
+  margin: 28px 0px 0px;
+  font-family: var(--font-display);
+  font-size: clamp(16px, 1.15vw, 19px);
+  color: var(--bp-brand-emerald);
+}
+
+.distinction-copy {
+  max-width: 760px;
+  padding: 36px 40px;
+  border: 1px solid var(--border-glass-strong);
+  border-radius: var(--bp-radius-xl);
+  background: var(--surface-glass-elevated);
+  box-shadow: var(--shadow-glass);
+  -webkit-backdrop-filter: blur(var(--blur-glass));
+  backdrop-filter: blur(var(--blur-glass));
+}
+
+.distinction-copy > p {
+  max-width: 62ch;
+  color: var(--text-secondary);
+}
+
+.distinction-copy > .distinction-tags {
+  max-width: none;
+  margin-bottom: 0px;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--bp-brand-emerald);
 }
 
 /* Access (login / request access) */
@@ -239,6 +515,19 @@
 
 .access-copy > p {
   font-size: 14px;
+}
+
+.access-copy > .access-note {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 18px;
+}
+
+.request-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
 }
 
 .welcome form, #pilot-entry {

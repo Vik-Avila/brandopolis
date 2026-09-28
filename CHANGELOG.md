@@ -14,6 +14,19 @@ Depends on: —
 
 # Registro
 
+## Landing pública del piloto · claridad de producto · 2026-09-28
+
+- Landing pasa de visión a producto: hero «De la idea a la marca. De la marca al mercado.», cinta de cinco capacidades con iconos de línea, los cuatro pasos reales en «Cómo funciona», sección «Qué incluye» con seis capacidades numeradas y bloque de diferenciación.
+- Entrada al piloto como acción primaria: la cabecera pública queda en logo, «Cómo funciona» y «Entrar al piloto». Sin lenguaje de token, invitación ni «Solicitar acceso» en texto público; `/request-access` se conserva (ruta y contrato de `PILOT_REQUEST_ACCESS_URL` intactos) y apunta al acceso con cuenta.
+- Separación de estado público/autenticado: «Nueva marca», insignia de modo y selector de marca activa pertenecen al shell autenticado; el selector aparece sólo cuando existen marcas y se oculta si no queda ninguna.
+- Terminología de producto: quien participa en el piloto es «Estratega de Marca» en todo el texto visible. Sin renombrar esquema, telemetría, contratos ni identificadores internos.
+- Movimiento con significado: la lista de capacidades revela su progresión al desplazarse y «Cómo funciona» construye cinco planos estratégicos unidos por un trazo verde (ciclo de 7 s, CSS puro, sin dependencias). El control de pausa detiene ambas animaciones y `prefers-reduced-motion` muestra la estructura terminada.
+- Sin cambios de backend, esquema, migraciones, autenticación, tenencia, gobierno de IA ni contratos de Brand Context; sin nuevos archivos de runtime (allowlist de `assets.ts` sin tocar).
+- Puertas (2026-09-28): typecheck/lint PASS; pnpm test 64/64; test:visual 9 pass + 1 skip + 1 fallo; test:e2e 24 pass + 6 fallos, todos del proyecto `mobile`. Ambos fallos son previos a este trabajo: reproducidos de forma idéntica en 89e2afe con estos cambios en stash (el `select#brands` intercepta el clic sobre `#new-brand`). La base de datos DEMO local acumula 51 marcas de pruebas repetidas, lo que ensancha el selector y agrava el solape a 390 px.
+- Verificación de navegador sobre la landing: 54/54 (estado de cabecera, terminología, cinta, animación de construcción, pausa, movimiento reducido, estados del selector de marca, PILOT simulado, `/request-access`, sin desbordamiento horizontal de 1600 a 360 px). Contraste sobre fotografía PASS en 1440/1024/768/390. git diff --check limpio.
+- Foundation, validador de UI y validador de Brand Master NO EJECUTADOS: la máquina no tiene intérprete de Python (sólo el alias de Microsoft Store). Se verificó por separado que los archivos requeridos existen y que todos los enlaces relativos de markdown resuelven.
+
+
 ## Fase 10B · pulido final de producto + handoff · 2026-09-25
 
 - Trabajo de Phase 10A preservado y validado; rama `handoff/phase10b-final-2026-09-25`, tag `brandopolis-mvp-handoff-ready-2026-09-25`.

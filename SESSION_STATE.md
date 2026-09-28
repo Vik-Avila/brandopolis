@@ -1,5 +1,20 @@
 # Session State
 
+Current phase: **PILOT LANDING — PUBLIC COPY + UX CLARITY** — COMPLETE (2026-09-28). Founder review: **APPROVED (2026-09-28)**.
+
+Branch: `main`, from 89e2afe. Scope: public landing copy, UX clarity, public/authenticated state separation and landing-only motion. No backend, schema, migration, auth, tenancy, AI governance or Brand Context change; no new runtime asset; `src/transport/assets.ts` untouched. Production not deployed and not restarted.
+
+Gate (2026-09-28): typecheck/lint PASS; pnpm test 64/64; test:visual 9 pass + 1 skip + 1 fail; test:e2e 24 pass + 6 fail (every failure in the `mobile` project); landing browser verification 54/54; contrast over photography PASS at 1440/1024/768/390; no horizontal overflow 1600→360; git diff --check clean.
+
+Both browser failures PRE-DATE this work and are not caused by it. Verified by stashing all five changed files and re-running against 89e2afe on a restarted DEMO server: the same 6 mobile e2e tests and the same phase10a dialog test fail with the identical signature — `select#brands` inside `.header-brand-control` intercepts the pointer event for `#new-brand`. Contributing factor in this environment: the local DEMO database has accumulated 51 brands (names up to 45 chars) from repeated test runs, which widens the selector and worsens the overlap at 390 px; the historical 25/25 record was taken on a cleaner database. The affected tests cover concurrency, idempotency and brand isolation at the mobile viewport only — the same assertions pass in the wide, desktop, compact and tablet projects. FIX NOT ATTEMPTED HERE: it is authenticated workspace header layout, outside this landing-only task.
+
+Foundation, UI validator and Brand Master validator NOT RUN: no Python interpreter on this machine (only the Microsoft Store alias). Required files and every relative markdown link were verified separately.
+
+Next: pilot authentication and admin on `feat/pilot-auth-admin`. The mobile header overlap should be fixed there or in a dedicated fix before external use on phones.
+
+---
+
+
 Current phase: **PHASE 10B — FINAL PRODUCT POLISH + DEVELOPER HANDOFF** — COMPLETE (2026-09-25). Founder final visual review: **APPROVED (2026-09-26)**.
 
 Branch: `handoff/phase10b-final-2026-09-25` (from 7be0b67). Tag: `brandopolis-mvp-handoff-ready-2026-09-25`. Verified code: 770458f. Not merged to `main` (GitHub `main` holds only the Foundation import). Start here: [NEXT_DEVELOPER_START_HERE](docs/15-handoff/NEXT_DEVELOPER_START_HERE.md); record: [FINAL_MVP_HANDOFF](docs/15-handoff/FINAL_MVP_HANDOFF_2026-09-25.md).
