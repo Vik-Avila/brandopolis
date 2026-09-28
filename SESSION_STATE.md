@@ -8,7 +8,9 @@ NOT IMPLEMENTED: password credentials, email+password login, password recovery, 
 
 Production: the approved landing (d43fd4d) is deployed and `brandopolis.ai` now redirects to the pilot. **This branch has NOT been deployed.** Migration 0011 is additive and must be applied with `pnpm pilot:migrate` before starting a version that includes it.
 
-Gate (2026-09-28): typecheck/lint PASS; pnpm test 71/71; test:e2e 30/30; test:visual 10 pass + 1 skip, 0 fail; git diff --check clean. Foundation, UI and Brand Master validators NOT RUN: no Python interpreter on this machine.
+Google auth is CERTIFIED for arbitrary verified users: four multi-user tests prove distinct users and private workspaces per identity, tenant isolation across the real product surface, canonical identity at `(issuer, subject)` with email as metadata only, the `PILOT_AUTO_PROVISION` gate, and no duplication under concurrent first logins. No production code change was required. Known limitation: a new `subject` carrying an already-registered email is denied (safe, but blocks a Google account migration that keeps the address) — pending product decision. Config and callback: [GOOGLE_AUTH_PRODUCTION](docs/15-handoff/GOOGLE_AUTH_PRODUCTION.md).
+
+Gate (2026-09-28): typecheck/lint PASS; pnpm test 75/75; test:e2e 30/30; test:visual 10 pass + 1 skip, 0 fail; git diff --check clean. Foundation, UI and Brand Master validators NOT RUN: no Python interpreter on this machine.
 
 ---
 

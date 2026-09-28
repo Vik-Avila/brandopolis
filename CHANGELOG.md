@@ -14,6 +14,15 @@ Depends on: —
 
 # Registro
 
+## Certificación multiusuario del acceso con Google · 2026-09-28
+
+- Cuatro pruebas de certificación sobre PostgreSQL real: identidades Google arbitrarias con usuarios y workspaces privados distintos; el correo como metadato y no como identidad; la puerta `PILOT_AUTO_PROVISION` y los claims exigidos; y ausencia de duplicados bajo primeros accesos concurrentes. **No hizo falta cambiar código de producción**: pasaron a la primera.
+- Aislamiento entre inquilinos comprobado sobre la superficie real de producto (marcas, contexto, documentos, blueprint, evidencia, asignación y sesiones), en ambos sentidos.
+- Auditoría de usuario fijo en `src/`: ningún correo, ningún `subject` de Google, ningún ID de workspace o usuario fijo; toda lectura de identidad y sesión está acotada. Observación: todo workspace auto-aprovisionado comparte el nombre visible «Workspace PILOT» (el identificador sí es único).
+- **Limitación documentada**: `normalizedEmail` es único, así que un `subject` nuevo con un correo ya registrado queda denegado. Es el comportamiento seguro —no hay apropiación ni duplicado— pero bloquea a quien cambie de cuenta de Google conservando la dirección. Decisión de producto pendiente.
+- Configuración exacta de producción y callback de Google en [GOOGLE_AUTH_PRODUCTION](docs/15-handoff/GOOGLE_AUTH_PRODUCTION.md).
+
+
 ## Documentación operativa y de handoff · 2026-09-28
 
 - Runbook de reconciliación de producción: el piloto servía código anterior a `d43fd4d`. La caché de assets en memoria de `assets.ts` hace que `git pull` sin reinicio no cambie nada de cara al público.

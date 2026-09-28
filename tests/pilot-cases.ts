@@ -62,6 +62,140 @@ export function pilotCases(connection:()=>ReturnType<typeof connect>){
    expect(spread).toEqual(new Set(['A','B']));
    expect(PilotAccess.cohortFor('https://other.example',subject)).toBeDefined();
   });
+  // MULTI-USER GOOGLE READINESS. Certifies that nothing in the auth path is bound to one user, one
+  // email, one workspace or one pre-provisioned identity.
+  it('serves arbitrary verified Google identities: distinct users, distinct private workspaces, no sharing',async()=>{
+   const {db}=connection(),issuer='https://accounts.google.com',access=new PilotAccess(db,issuer);
+   const run=randomUUID().slice(0,8);
+   const claimsFor=(who:string)=>({subject:`google-${who}-${run}`,email:`${who}.${run}@example.test`,emailVerified:true,displayName:`Estratega ${who.toUpperCase()}`,avatarUrl:null});
+   const A=claimsFor('a'),B=claimsFor('b');
+
+   // Two different Google identities each self-provision.
+   const userA=await access.recognise(A,true),userB=await access.recognise(B,true);
+   expect(userA).not.toBe(userB);
+
+   const identityOf=async(subject:string)=>(await db.select().from(t.pilotIdentities).where(and(eq(t.pilotIdentities.issuer,issuer),eq(t.pilotIdentities.subject,subject))))[0];
+   const idA=await identityOf(A.subject),idB=await identityOf(B.subject);
+   expect(idA.workspaceId).not.toBe(idB.workspaceId);      // private workspace each
+   expect(idA.active).toBe(true);expect(idB.active).toBe(true);
+
+   // Active membership with the right to create brands, for both.
+   for(const id of [idA,idB]){
+    const [member]=await db.select().from(t.memberships).where(and(eq(t.memberships.workspaceId,id.workspaceId),eq(t.memberships.userId,id.userId)));
+    expect(member.active).toBe(true);expect(member.canCreateBrand).toBe(true);expect(member.role).toBe('MEMBER');
+   }
+
+   // Repeated sign-in reuses the same canonical user; it never creates a second one.
+   expect(await access.recognise(A,true)).toBe(userA);
+   expect(await access.recognise(B,true)).toBe(userB);
+   expect(await db.select().from(t.pilotIdentities).where(and(eq(t.pilotIdentities.issuer,issuer),eq(t.pilotIdentities.subject,A.subject)))).toHaveLength(1);
+   expect(await db.select().from(t.pilotIdentities).where(and(eq(t.pilotIdentities.issuer,issuer),eq(t.pilotIdentities.subject,B.subject)))).toHaveLength(1);
+
+   // Tenant isolation across the real product surface, not just the identity tables.
+   const engine=new Engine(db);
+   const sessionA=await access.issueSession(A.subject),sessionB=await access.issueSession(B.subject);
+   const brandA=await engine.createBrand(sessionA.token,'Marca A','Contexto privado de A');
+   const brandB=await engine.createBrand(sessionB.token,'Marca B','Contexto privado de B');
+   expect((await engine.listBrands(sessionA.token)).map(x=>x.id)).toEqual([brandA.id]);
+   expect((await engine.listBrands(sessionB.token)).map(x=>x.id)).toEqual([brandB.id]);
+   // Strategic context, documents and decisions of one are unreachable from the other.
+   await expect(engine.context(sessionB.token,brandA.id)).rejects.toMatchObject({code:'NOT_FOUND'});
+   await expect(engine.context(sessionA.token,brandB.id)).rejects.toMatchObject({code:'NOT_FOUND'});
+   await expect(engine.listSourceDocuments(sessionB.token,brandA.id)).rejects.toMatchObject({code:'NOT_FOUND'});
+   await expect(engine.blueprint(sessionB.token,brandA.id)).rejects.toMatchObject({code:'NOT_FOUND'});
+   await expect(engine.documentUploadScope(sessionB.token,brandA.id)).rejects.toMatchObject({code:'NOT_FOUND'});
+   await expect(engine.captureContext(sessionB.token,brandA.id,'evidence',{claim:'intento de fuga'})).rejects.toMatchObject({code:'NOT_FOUND'});
+   await expect(access.assign(idB.userId,brandA.id)).rejects.toMatchObject({code:'NOT_FOUND'});
+   // Sessions do not cross either.
+   expect((await access.authorize(sessionA.token)).userId).toBe(userA);
+   expect((await access.authorize(sessionB.token)).userId).toBe(userB);
+  });
+
+  it('keeps canonical identity at issuer+subject: email is profile metadata and cannot take an account over',async()=>{
+   const {db}=connection(),issuer='https://accounts.google.com',access=new PilotAccess(db,issuer);
+   const run=randomUUID().slice(0,8),shared=`shared.${run}@example.test`;
+   const first={subject:`google-first-${run}`,email:shared,emailVerified:true,displayName:'Primera',avatarUrl:null};
+   const owner=await access.recognise(first,true);
+
+   // Same identity, same email: same user. The profile refreshes, the identity does not move.
+   expect(await access.recognise({...first,displayName:'Primera Renombrada'},true)).toBe(owner);
+   const [profile]=await db.select().from(t.userAccounts).where(eq(t.userAccounts.userId,owner));
+   expect(profile.displayName).toBe('Primera Renombrada');
+   expect(profile.normalizedEmail).toBe(shared.toLowerCase());
+
+   // A DIFFERENT subject presenting the SAME verified email must never become the first account.
+   const impostor={subject:`google-second-${run}`,email:shared,emailVerified:true,displayName:'Segunda',avatarUrl:null};
+   await expect(access.recognise(impostor,true)).rejects.toBeTruthy();
+   // Fail-safe: the first account is untouched and no identity was created for the second subject.
+   const [stillOwner]=await db.select().from(t.userAccounts).where(eq(t.userAccounts.normalizedEmail,shared.toLowerCase()));
+   expect(stillOwner.userId).toBe(owner);
+   expect(stillOwner.displayName).toBe('Primera Renombrada');
+   expect(await db.select().from(t.pilotIdentities).where(and(eq(t.pilotIdentities.issuer,issuer),eq(t.pilotIdentities.subject,impostor.subject)))).toHaveLength(0);
+   // And the impostor cannot obtain a session.
+   await expect(access.issueSession(impostor.subject)).rejects.toMatchObject({code:'FORBIDDEN'});
+
+   // Changing the email on an existing identity does not repoint anyone else's account.
+   const moved=`moved.${run}@example.test`;
+   expect(await access.recognise({...first,email:moved},true)).toBe(owner);
+   const [after]=await db.select().from(t.userAccounts).where(eq(t.userAccounts.userId,owner));
+   expect(after.normalizedEmail).toBe(moved.toLowerCase());
+  });
+
+  it('gates self-provisioning on the flag and on verified Google claims',async()=>{
+   const {db}=connection(),issuer='https://accounts.google.com',access=new PilotAccess(db,issuer);
+   const run=randomUUID().slice(0,8);
+   const fresh=(tag:string)=>({subject:`gate-${tag}-${run}`,email:`gate.${tag}.${run}@example.test`,emailVerified:true});
+
+   // OFF: a perfectly valid, verified, unknown Google identity is denied and nothing is created.
+   const denied=fresh('off');
+   await expect(access.recognise(denied,false)).rejects.toMatchObject({code:'FORBIDDEN'});
+   expect(await db.select().from(t.pilotIdentities).where(and(eq(t.pilotIdentities.issuer,issuer),eq(t.pilotIdentities.subject,denied.subject)))).toHaveLength(0);
+
+   // ON: the same identity is provisioned.
+   const userId=await access.recognise(denied,true);
+   expect(userId).toBeTruthy();
+   // Reused, never recreated, and the flag no longer matters for a known identity.
+   expect(await access.recognise(denied,false)).toBe(userId);
+
+   // First-time provisioning demands sub, email and email_verified===true.
+   await expect(access.recognise({subject:'',email:`x.${run}@example.test`,emailVerified:true},true)).rejects.toMatchObject({code:'FORBIDDEN'});
+   await expect(access.recognise({subject:`gate-noemail-${run}`,emailVerified:true},true)).rejects.toMatchObject({code:'FORBIDDEN'});
+   await expect(access.recognise({...fresh('unverified'),emailVerified:false},true)).rejects.toMatchObject({code:'FORBIDDEN'});
+   await expect(access.recognise({...fresh('undef')},true)).resolves.toBeTruthy();
+
+   // A disabled account stays denied whatever the flag says, and is never re-provisioned.
+   await access.disable(userId);
+   await expect(access.issueSession(denied.subject)).rejects.toMatchObject({code:'FORBIDDEN'});
+   expect(await access.recognise(denied,true)).toBe(userId);   // recognised, still the same user
+   await expect(access.issueSession(denied.subject)).rejects.toMatchObject({code:'FORBIDDEN'});
+   expect(await db.select().from(t.pilotIdentities).where(and(eq(t.pilotIdentities.issuer,issuer),eq(t.pilotIdentities.subject,denied.subject)))).toHaveLength(1);
+
+   // An identity from another issuer is a different principal entirely.
+   const otherIssuer=new PilotAccess(db,'https://login.microsoftonline.com/x');
+   await expect(otherIssuer.issueSession(denied.subject)).rejects.toMatchObject({code:'FORBIDDEN'});
+  });
+
+  it('does not duplicate accounts when several Google identities sign in for the first time at once',async()=>{
+   const {db}=connection(),issuer='https://accounts.google.com',access=new PilotAccess(db,issuer);
+   const run=randomUUID().slice(0,8);
+   const people=['p1','p2','p3'].map(tag=>({subject:`burst-${tag}-${run}`,email:`burst.${tag}.${run}@example.test`,emailVerified:true}));
+   // Each identity races itself three times, and all identities race each other.
+   const attempts=people.flatMap(claims=>[claims,claims,claims].map(c=>access.recognise(c,true)));
+   const settled=await Promise.allSettled(attempts);
+   const byPerson=new Map<string,Set<string>>();
+   settled.forEach((r,i)=>{if(r.status==='fulfilled')byPerson.set(people[Math.floor(i/3)].subject,(byPerson.get(people[Math.floor(i/3)].subject)??new Set()).add(r.value));});
+   expect(byPerson.size).toBe(3);
+   for(const [subject,ids] of byPerson){
+    expect(ids.size,`${subject} resolved to one canonical user`).toBe(1);
+    expect(await db.select().from(t.pilotIdentities).where(and(eq(t.pilotIdentities.issuer,issuer),eq(t.pilotIdentities.subject,subject)))).toHaveLength(1);
+   }
+   // Three people, three distinct users and three distinct workspaces.
+   const users=[...byPerson.values()].map(s=>[...s][0]);
+   expect(new Set(users).size).toBe(3);
+   const workspaces=await Promise.all(users.map(async u=>(await db.select().from(t.pilotIdentities).where(eq(t.pilotIdentities.userId,u)))[0].workspaceId));
+   expect(new Set(workspaces).size).toBe(3);
+  });
+
   it('provisions unique testers, isolates workspaces and brands, and rejects manipulated IDs',async()=>{
    const a=await setup(),b=await setup(),brand=await a.engine.createBrand(a.session.token,'Tester A','Context A');
    expect(brand.dataClass).toBe('PILOT');expect(a.who.workspaceId).not.toBe(b.who.workspaceId);
