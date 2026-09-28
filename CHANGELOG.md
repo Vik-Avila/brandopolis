@@ -14,6 +14,13 @@ Depends on: —
 
 # Registro
 
+## Cabecera móvil del piloto · defecto previo corregido · 2026-09-28
+
+- `.header-brand-control` estaba en `position:absolute` con `z-index:2`. Al pasar la cabecera a `display:flex` en ≤900px su `margin-left:auto` quedaba inerte y el control flotaba sobre `#new-brand`; además el `select` conservaba un suelo `min-width:150px` de un bloque `@media (max-width:1280px)` posterior y se desbordaba de su contenedor. El `select` interceptaba los clics de «Nueva marca».
+- Corrección acotada a `product-responsive.css`: en ≤900px el control entra en el flujo y pierde el suelo; en ≤767px se oculta la insignia de modo, que ocupaba 74px de una fila de 358px y dejaba el selector en 49px.
+- Resultado: **test:e2e 30/30** (antes 24 pass + 6 fallos móviles) y **test:visual 10 pass + 1 skip, 0 fallos** (antes 1 fallo persistente en phase10a por la misma causa). Verificado en navegador real a 360/390/768/1440 con 54 marcas y nombres de 45 caracteres.
+
+
 ## Landing pública del piloto · claridad de producto · 2026-09-28
 
 - Landing pasa de visión a producto: hero «De la idea a la marca. De la marca al mercado.», cinta de cinco capacidades con iconos de línea, los cuatro pasos reales en «Cómo funciona», sección «Qué incluye» con seis capacidades numeradas y bloque de diferenciación.

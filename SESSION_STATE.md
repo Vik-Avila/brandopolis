@@ -1,5 +1,14 @@
 # Session State
 
+Current phase: **PILOT HARDENING** — mobile header defect closed on `feat/pilot-auth-admin` (from d43fd4d).
+
+`.header-brand-control` was `position:absolute; z-index:2` and floated over `#new-brand` once the header became a flex row (its `margin-left:auto` was inert while absolute); the `select` also kept a `min-width:150px` floor from a later `@media (max-width:1280px)` block and overflowed its container. Fix confined to `product-responsive.css`. The mode badge is now hidden at ≤767 inside `.app`: it cost 74px of a 358px row and starved the selector to 49px. Judgement call, reversible in one rule.
+
+Gate: typecheck/lint PASS; pnpm test 64/64; **test:e2e 30/30** (was 24 pass + 6 mobile failures); **test:visual 10 pass + 1 skip, 0 fail** (the phase10a failure had the same root cause); mobile header browser verification 28/28 at 360/390/768/1440; git diff --check clean.
+
+---
+
+
 Current phase: **PILOT LANDING — PUBLIC COPY + UX CLARITY** — COMPLETE (2026-09-28). Founder review: **APPROVED (2026-09-28)**.
 
 Branch: `main`, from 89e2afe. Scope: public landing copy, UX clarity, public/authenticated state separation and landing-only motion. No backend, schema, migration, auth, tenancy, AI governance or Brand Context change; no new runtime asset; `src/transport/assets.ts` untouched. Production not deployed and not restarted.

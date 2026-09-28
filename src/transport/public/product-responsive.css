@@ -747,6 +747,10 @@
 }
 
 @media (max-width: 767px) {
+  .app header #mode-badge {
+    display: none;
+  }
+
   .app header #new-brand {
     margin-left: auto;
     min-width: 40px;
@@ -782,12 +786,13 @@
 
 @media (max-width: 767px) {
   .app header .header-brand-control {
-    grid-template-columns: minmax(110px, 1fr);
-    max-width: 150px;
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 132px;
   }
 
   .app header .header-brand-control select {
     height: 38px;
+    min-width: 0;
     padding-left: 9px;
     font-size: 12px;
   }
@@ -824,6 +829,16 @@
   }
 
   .app header .header-brand-control {
-    margin-left: auto;
+    position: static;
+    transform: none;
+    z-index: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 200px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app header .header-brand-control select {
+    min-width: 0;
   }
 }
