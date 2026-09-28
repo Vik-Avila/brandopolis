@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { Engine } from '../application/engine.js';
+import { contentSecurityPolicy,ga4MeasurementId } from './analytics.js';
 import { AppError, type CommitCommand } from '../domain/contracts.js';
 import type { PilotBoundary } from './pilot-auth.js';
 import type { CompetitiveResearchService } from './competitive-research.js';
@@ -127,13 +128,15 @@ export class RateLimiter implements Limiter {
 export const pilotLimits={all:[600,60000],auth:[20,60000],ai:[20,600000],feedback:[20,600000]} as const;
 export function createApp(engine:Engine,assets?:(path:string)=>{content:string|Buffer;type:string;etag?:string}|undefined,health?:()=>Promise<string>,pilot?:PilotBoundary,competitiveResearch?:CompetitiveResearchService,documentClaims?:DocumentClaimsService) {
   const limiter=pilot?.limiter??new RateLimiter();
+  // Resolved once at construction: a malformed Measurement ID fails at boot, never per request.
+  const ga4=ga4MeasurementId(),csp=contentSecurityPolicy(ga4);
   return createServer(async(req,res)=>{
     const requestId=randomUUID();
     const limited=(key:string,[limit,windowMs]:readonly [number,number])=>{if(limiter.allow(key,limit,windowMs))return false;res.setHeader('Retry-After',String(Math.ceil(windowMs/1000)));send(res,429,{code:'RATE_LIMITED',message:'Demasiadas solicitudes. Espera un momento e inténtalo de nuevo.'});return true;};
     // Structured access log without paths, query strings, cookies or bodies (they may carry identifiers or strategy text).
     if(pilot){res.setHeader('X-Request-Id',requestId);res.once('finish',()=>console.log(JSON.stringify({event:'http_request',requestId,status:res.statusCode,method:req.method})));}
     res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
-    res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+    res.setHeader('Content-Security-Policy',csp);
     try {
       // Loopback Host allowlist also prevents DNS rebinding against the local demo.
       if(pilot){
@@ -147,7 +150,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
       const url=new URL(req.url??'/',pilot?.origin??`http://${req.headers.host}`),path=url.pathname;
       if(pilot&&url.origin!==pilot.origin)throw new AppError('FORBIDDEN','Origin not allowed');
       if(pilot&&await pilot.handle(req,res,url))return;
-      if(req.method==='GET'&&path==='/api/mode')return send(res,200,{mode:pilot?'PILOT':'DEMO',requestAccessUrl:pilot?.requestAccessUrl??null,aiNotice:pilot?.ai?.notice??null});
+      if(req.method==='GET'&&path==='/api/mode')return send(res,200,{mode:pilot?'PILOT':'DEMO',requestAccessUrl:pilot?.requestAccessUrl??null,aiNotice:pilot?.ai?.notice??null,ga4MeasurementId:ga4});
       if(req.method==='GET'&&path==='/health') {
         const ready=health?await health():'UNAVAILABLE';
         if(pilot&&ready!=='READY')console.error(JSON.stringify({event:'readiness',status:ready}));return send(res,ready==='READY'?200:503,{application:pilot?'brandopolis-pilot':'brandopolis-competition',protocol:pilot?'pilot-v1':'rc1',status:ready==='READY'?'ready':'unavailable'});

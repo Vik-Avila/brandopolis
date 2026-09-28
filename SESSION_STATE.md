@@ -1,12 +1,14 @@
 # Session State
 
-Current phase: **PILOT AUTH** — OIDC self-provisioning foundation on `feat/pilot-auth-admin` (from d43fd4d).
+Current phase: **PILOT INSTRUMENTATION** — GA4 analytics on `feat/pilot-auth-admin` (from d43fd4d).
 
-Scope `openid email profile`; claims taken only from the validated ID token. `PILOT_AUTO_PROVISION` is fail-closed by default. Verified email is required **only on the provisioning path**, so an operator-provisioned identity is never locked out if the provider stops sending email claims. Deterministic cohort from SHA-256 of `issuer+subject`. New `user_accounts` table, migration 0011, additive. Canonical identity remains `(issuer, subject)`.
+GA4 behind `GA4_MEASUREMENT_ID` (unset = fully disabled). The strict CSP is widened only while a Measurement ID is configured and only with Google origins; no `unsafe-inline` is ever introduced because gtag bootstraps from the same-origin `/analytics.js` module (added to the `assets.ts` allowlist). Privacy is enforced by an allowlist in `sanitise()`, not by convention. Seven milestone events, none fired by rendering alone; `pilot_login_completed` required the OIDC success redirect to carry `?login=ok`.
 
-Gate: typecheck/lint PASS; pnpm test 66/66; test:e2e 30/30; test:visual 10 pass + 1 skip. Migration count expectations updated 11→12 (and the divergence case 12→13) because a real twelfth migration exists; no test was weakened.
+GA4 is NOT the canonical evidence layer. Activation, time to first decision, AI usage and every strategic metric remain in `pilot_events`/`capability_events`.
 
-NOT IMPLEMENTED: password credentials, email+password login, recovery, SMTP, `/admin`, `/api/admin/*`.
+CONSENT: the repository has no consent architecture and none was invented. Enabling GA4 in production is a pending human product/legal decision; leaving the variable unset keeps the pilot exactly as it is today.
+
+Gate: typecheck/lint PASS; pnpm test 71/71; test:e2e 30/30; test:visual 10 pass + 1 skip, 0 fail; git diff --check clean.
 
 ---
 

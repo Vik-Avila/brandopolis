@@ -14,6 +14,14 @@ Depends on: —
 
 # Registro
 
+## Instrumentación GA4 del piloto · 2026-09-28
+
+- GA4 opcional por `GA4_MEASUREMENT_ID`. Sin definir queda completamente desactivado; mal formado falla al arrancar. **Ningún Measurement ID en el código**: el valor se publica en `/api/mode` desde el entorno.
+- La CSP estricta bloqueaba gtag por completo. Ahora se amplía **sólo** cuando hay ID configurado y **sólo** con orígenes de Google; apagado, la cabecera es byte a byte la de siempre (fijado por prueba). Nunca se introduce `unsafe-inline`: el arranque de gtag vive en `/analytics.js`, módulo del mismo origen.
+- Privacidad aplicada por código: `sanitise()` descarta toda clave fuera de la allowlist (`cohort`, `auth_method`, `pilot_stage`, `mode`) y todo valor con forma de identificador, correo, URL o de más de 40 caracteres. Google Signals y personalización de anuncios desactivados.
+- Siete hitos reales, ninguno disparado por el mero renderizado. `pilot_login_completed` exigió que la redirección de éxito del callback OIDC lleve `?login=ok`, simétrica al `?login=<motivo>` de los fallos.
+- GA4 es analítica de navegación; **la telemetría interna sigue siendo la evidencia canónica**.
+
 ## Autoservicio OIDC verificado · 2026-09-28
 
 - OIDC: `scope` pasa de `openid` a `openid email profile`. Los claims se construyen sólo desde el ID token validado (firma, issuer, audiencia, expiración, nonce); nada proviene del navegador.

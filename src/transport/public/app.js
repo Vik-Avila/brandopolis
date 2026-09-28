@@ -1,6 +1,8 @@
 const $=s=>document.querySelector(s);
 import {escape,labels,fmt,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
 import {trapFocus,decisionTabs} from './product-interactions.js';
+import * as analytics from './analytics.js';
+import {PILOT_EVENTS} from './analytics.js';
 let activeDecisionTab='overview';
 let user,brandId,context,selected=Object.hasOwn(labels,new URL(location.href).searchParams.get('module'))?new URL(location.href).searchParams.get('module'):'Primary Customer',draft=null,impactVisible=false;
 let pilotMode=false,aiNotice=null;
@@ -566,7 +568,7 @@ async function refresh(){if(brandId)context=await api(`/api/context?brandId=${en
 function render() {
   setNavActive();$('#decision').dataset.view='decision';updateShell();
   document.querySelectorAll('[data-module]').forEach(b=>{if(b.dataset.module===selected)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
-  if(!context){$('#decision').innerHTML='<section class="empty-state" aria-labelledby="onboarding-title"><p class="eyebrow">Tu punto de partida</p><h2 id="onboarding-title">Construye tu primera decisión estratégica.</h2><p>Primero a quién sirves. Después, cómo quieres ser elegido. Cada decisión conservará tu criterio y su historia.</p><ol><li>Abre «Nueva marca» para crear tu espacio.</li><li>Define tu cliente principal.</li><li>Compara opciones y decide con tu criterio.</li></ol><p><strong>La IA propone. Tú decides. Brandopolis recuerda.</strong></p></section>';$('#context').innerHTML='';return;}
+  if(!context){analytics.sendOnce(PILOT_EVENTS.onboardingStarted,{pilot_stage:'no_brand'});$('#decision').innerHTML='<section class="empty-state" aria-labelledby="onboarding-title"><p class="eyebrow">Tu punto de partida</p><h2 id="onboarding-title">Construye tu primera decisión estratégica.</h2><p>Primero a quién sirves. Después, cómo quieres ser elegido. Cada decisión conservará tu criterio y su historia.</p><ol><li>Abre «Nueva marca» para crear tu espacio.</li><li>Define tu cliente principal.</li><li>Compara opciones y decide con tu criterio.</li></ol><p><strong>La IA propone. Tú decides. Brandopolis recuerda.</strong></p></section>';$('#context').innerHTML='';return;}
   history.replaceState(null,'',`/?brand=${encodeURIComponent(brandId)}&module=${encodeURIComponent(selected)}`);setTitle(labels[selected]);
   const q=context.questions.find(q=>q.module===selected),d=context.decisions.find(d=>d.questionId===q.id),v=context.versions.find(v=>v.id===d?.activeVersionId),reviews=context.reviews.filter(r=>r.downstreamDecisionId===d?.id&&r.status!=='COMPLETED');
   const pending=context.impacts.some(i=>i.status==='IMPACT_PENDING');
@@ -596,7 +598,8 @@ function render() {
   $('#decision-form')?.addEventListener('input',event=>{draft.selectedOption=$('#option').value;draft.rationale=$('#rationale').value;if(event.target.id==='option'&&$('#modify')&&v&&$('#option').value!==v.selectedOption)choose('#modify',false);});
   $('#decision-form')?.addEventListener('submit',event=>{event.preventDefault();run(async()=>{
     const command={brandId,questionId:draft.questionId,sourceRecommendationId:draft.sourceRecommendationId??null,selectedOption:draft.selectedOption,rationale:draft.rationale,expectedActiveVersion:draft.expectedActiveVersion,idempotencyKey:draft.idempotencyKey,actorUserId:user.userId};
-    const result=await api('/api/decisions/commit',{command,reviewToken:draft.reviewToken});draft=null;await refresh();notice(result.impactPending?'Decisión guardada. El impacto está pendiente; reinténtalo.':'Decisión aprobada. Su versión y su historial quedaron guardados.');
+    const result=await api('/api/decisions/commit',{command,reviewToken:draft.reviewToken});draft=null;await refresh();
+    if((context?.versions?.length??0)===1)analytics.sendOnce(PILOT_EVENTS.firstDecision,{pilot_stage:'activated'});notice(result.impactPending?'Decisión guardada. El impacto está pendiente; reinténtalo.':'Decisión aprobada. Su versión y su historial quedaron guardados.');
   },event.submitter);});
   function choose(id,focus=true){for(const b of ['#keep','#modify'])$(b).setAttribute('aria-pressed',String(b===id));$('#submit-decision').disabled=false;if(id==='#keep'){draft.selectedOption=v.selectedOption;$('#option').value=v.selectedOption;$('#option').readOnly=true;if(focus)$('#rationale').focus();}else{$('#option').readOnly=false;if(focus)$('#option').focus();}}
   $('#keep')?.addEventListener('click',()=>choose('#keep',false));
@@ -694,6 +697,7 @@ $('#create-brand').addEventListener('submit',event=>{event.preventDefault();run(
     `Marca creada. ${brandDocuments.length} documento${brandDocuments.length===1?' quedó guardado':'s quedaron guardados'}. Revisa «Qué necesita atención» para continuar con su procesamiento.`
    );
   }else{
+   analytics.send(PILOT_EVENTS.brandCreated,{pilot_stage:'brand_created'});
    notice('Marca creada. Tu contexto inicial quedó guardado. Comienza con tu cliente principal.');
   }
  }
@@ -758,8 +762,21 @@ if(rail){
 }
 Promise.all([api('/api/mode'),api('/api/session-state')]).then(async([mode,state])=>{
  pilotMode=mode.mode==='PILOT';aiNotice=mode.aiNotice??null;
+ // GA4 stays entirely off unless the server reports a configured Measurement ID.
+ analytics.init(mode.ga4MeasurementId??null);
+ if(!state.authenticated&&location.pathname==='/')analytics.sendOnce(PILOT_EVENTS.landingView,{mode:mode.mode});
+ // The OIDC callback returns with ?login=ok exactly once per completed sign-in, so this counts real
+ // logins rather than page renders. The parameter is stripped immediately afterwards.
+ if(state.authenticated&&new URL(location.href).searchParams.get('login')==='ok'){
+  analytics.sendOnce(PILOT_EVENTS.loginCompleted,{auth_method:'oidc',mode:mode.mode});
+  history.replaceState(null,'','/');
+ }
  if(pilotMode){
   $('#login-form').hidden=true;$('#mode-badge').textContent='PILOT';
+  // Fires on the real navigation to the identity provider.
+  document.addEventListener('click',event=>{
+   if(event.target instanceof Element&&event.target.closest('a[href="/auth/login"]'))analytics.send(PILOT_EVENTS.loginStarted,{auth_method:'oidc'});
+  });
   const entry=document.createElement('div');entry.id='pilot-entry';entry.innerHTML='<p class="eyebrow">Acceso</p><p>Entra con tu cuenta para abrir tu espacio privado.</p><p><a class="button" href="/auth/login">Entrar al piloto</a></p>';$('#login').append(entry);
   if(mode.requestAccessUrl&&/^(https:|mailto:)/.test(mode.requestAccessUrl)){const link=document.createElement('a');link.href=mode.requestAccessUrl;link.className='button';link.textContent=mode.requestAccessUrl.startsWith('mailto:')?'Escribir para solicitar acceso':'Abrir formulario de solicitud';link.rel='noopener';$('#request-destination').replaceChildren(link);}
   const login=new URL(location.href).searchParams.get('login'),reasons={denied:'Tu cuenta aún no tiene acceso a este piloto.',expired:'El inicio de sesión tardó demasiado. Vuelve a intentarlo.',failed:'No se pudo completar el inicio de sesión. Vuelve a intentarlo.'};
@@ -1504,6 +1521,7 @@ function bindStrategyLinks(){document.querySelectorAll('[data-strategy-module]')
 function setNavActive(selector){$('#decision').dataset.view=selector?.slice(1)??'decision';document.querySelectorAll('#journey [aria-current]').forEach(b=>b.removeAttribute('aria-current'));if(selector)$(selector).setAttribute('aria-current','page');}
 
 async function showFeedback(){
+ analytics.send(PILOT_EVENTS.feedbackOpened);
  closeMenu(false);setTitle('Feedback');preserveDraft();if(!brandId){notice('Selecciona una marca para compartir feedback.');return;}
  const capturedBrand=brandId;
  $('#decision').innerHTML=`<h2>Ayúdanos a mejorar tu experiencia</h2><p>Feedback del piloto; no modifica tus decisiones. No incluyas secretos ni datos personales de terceros.</p><form id="feedback-form">${[['usefulness','Utilidad'],['clarity','Claridad'],['confidence','Confianza para decidir']].map(([id,label])=>`<label for="feedback-${id}">${label} (1 baja, 5 alta)</label><select id="feedback-${id}" required><option value="">Elige</option>${[1,2,3,4,5].map(n=>`<option value="${n}">${n}</option>`).join('')}</select>`).join('')}<label for="feedback-kind">Tipo</label><select id="feedback-kind"><option value="FEEDBACK">Comentario</option><option value="ISSUE">Reportar problema</option></select><label for="feedback-comment">Comentario opcional</label><textarea id="feedback-comment" maxlength="2000"></textarea><button>Enviar feedback</button></form>`;

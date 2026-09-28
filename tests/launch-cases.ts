@@ -65,7 +65,7 @@ export function launchCases(connection:()=>ReturnType<typeof connect>){
     await denied(await p.fixture.login(p.base,subject,{issuer:'https://attacker.test'}),'failed');
     await denied(await p.fixture.login(p.base,subject,{nonce:'forged-nonce'}),'failed');
     await denied(await p.fixture.login(p.base,randomUUID()),'denied');
-    const ok=await p.fixture.login(p.base,subject);expect(ok.location).toBe('/');expect(ok.cookie).toMatch(/^__Host-brandopolis_session=/);
+    const ok=await p.fixture.login(p.base,subject);expect(ok.location).toBe('/?login=ok');expect(ok.cookie).toMatch(/^__Host-brandopolis_session=/);
     expect((await p.call(ok.cookie,'/api/me')).status).toBe(200);
     const replay=await fetch(p.base+`/auth/callback?code=fixture&state=${ok.state}`,{headers:{Cookie:ok.flow},redirect:'manual'});expect(replay.headers.get('location')).toBe('/?login=expired');
     await p.access.disable(who.userId);expect((await p.call(ok.cookie,'/api/me')).status).toBe(401);await denied(await p.fixture.login(p.base,subject),'denied');

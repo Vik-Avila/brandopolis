@@ -8,6 +8,7 @@ export const runtimeAssets={
   '/app.js':['src/transport/public/app.js','text/javascript; charset=utf-8'],
   '/product-views.js':['src/transport/public/product-views.js','text/javascript; charset=utf-8'],
   '/product-interactions.js':['src/transport/public/product-interactions.js','text/javascript; charset=utf-8'],
+  '/analytics.js':['src/transport/public/analytics.js','text/javascript; charset=utf-8'],
   // Stylesheets in cascade order (linked directly from index.html; see design/brandopolis-ui/FRONTEND_ASSET_MAPPING.md).
   '/base.css':['src/transport/public/base.css','text/css; charset=utf-8'],
   '/public.css':['src/transport/public/public.css','text/css; charset=utf-8'],

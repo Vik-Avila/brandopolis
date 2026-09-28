@@ -82,7 +82,7 @@ export class PilotAuth implements PilotBoundary {
       session=await this.access.issueSession(subject);
     } catch {return this.fail(res,'denied');}
     res.setHeader('Set-Cookie',[`${SESSION}=${session.token}; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age=${Math.max(0,Math.floor((session.expiresAt.getTime()-Date.now())/1000))}`,`${FLOW}=; Secure; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`]);
-    res.writeHead(302,{Location:'/'});res.end();return true;
+    res.writeHead(302,{Location:'/?login=ok'});res.end();return true;
   }
 }
 export function oidcSettings(env:NodeJS.ProcessEnv=process.env){
