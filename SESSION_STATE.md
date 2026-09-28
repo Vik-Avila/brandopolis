@@ -1,14 +1,14 @@
 # Session State
 
-Current phase: **PILOT INSTRUMENTATION** — GA4 analytics on `feat/pilot-auth-admin` (from d43fd4d).
+Current phase: **PILOT AUTH + ANALYTICS** — branch `feat/pilot-auth-admin`, from d43fd4d. Not pushed, not deployed.
 
-GA4 behind `GA4_MEASUREMENT_ID` (unset = fully disabled). The strict CSP is widened only while a Measurement ID is configured and only with Google origins; no `unsafe-inline` is ever introduced because gtag bootstraps from the same-origin `/analytics.js` module (added to the `assets.ts` allowlist). Privacy is enforced by an allowlist in `sanitise()`, not by convention. Seven milestone events, none fired by rendering alone; `pilot_login_completed` required the OIDC success redirect to carry `?login=ok`.
+Delivered on this branch: mobile header defect closed; OIDC self-provisioning foundation (scope `openid email profile`, verified-claim enforcement on the provisioning path, `PILOT_AUTO_PROVISION` fail-closed by default, deterministic cohort, `user_accounts` + migration 0011); privacy-safe GA4 analytics behind `GA4_MEASUREMENT_ID`; production reconciliation and root-domain runbooks; consolidated handoff state.
 
-GA4 is NOT the canonical evidence layer. Activation, time to first decision, AI usage and every strategic metric remain in `pilot_events`/`capability_events`.
+NOT IMPLEMENTED: password credentials, email+password login, password recovery, SMTP transport, `/admin`, `/api/admin/*`, evidence view. Design recorded in [CURRENT_IMPLEMENTATION_STATE_2026-09-28](docs/15-handoff/CURRENT_IMPLEMENTATION_STATE_2026-09-28.md) §11.
 
-CONSENT: the repository has no consent architecture and none was invented. Enabling GA4 in production is a pending human product/legal decision; leaving the variable unset keeps the pilot exactly as it is today.
+Production: the approved landing (d43fd4d) is deployed and `brandopolis.ai` now redirects to the pilot. **This branch has NOT been deployed.** Migration 0011 is additive and must be applied with `pnpm pilot:migrate` before starting a version that includes it.
 
-Gate: typecheck/lint PASS; pnpm test 71/71; test:e2e 30/30; test:visual 10 pass + 1 skip, 0 fail; git diff --check clean.
+Gate (2026-09-28): typecheck/lint PASS; pnpm test 71/71; test:e2e 30/30; test:visual 10 pass + 1 skip, 0 fail; git diff --check clean. Foundation, UI and Brand Master validators NOT RUN: no Python interpreter on this machine.
 
 ---
 

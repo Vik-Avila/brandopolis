@@ -2,6 +2,24 @@
 
 Brandopolis is **the Brand Operating System**: connected Strategic Decisions with evidence, hypotheses, human rationale, versions, dependencies and Change Impact. **AI proposes. Humans decide. Brandopolis remembers.**
 
+## Pilot freeze (2026-09-28)
+
+The PILOT workspace is **functionally complete for this validation phase**. Do not modify its UI or
+strategic workflow except to: unblock authentication, support administration, support
+telemetry/evidence, fix a critical defect, or maintain security/tenant isolation. Deferred product
+improvements go to the backlog, never straight into the code. Do not redesign approved UI without an
+explicit instruction. Repository docs are authoritative; chat history is not a source of truth.
+
+Operational entry point, including what is implemented vs deferred:
+[CURRENT_IMPLEMENTATION_STATE_2026-09-28](docs/15-handoff/CURRENT_IMPLEMENTATION_STATE_2026-09-28.md).
+Public landing is approved and committed but **not deployed**; `brandopolis.ai` still returns 403 —
+see [ROOT_DOMAIN_403_REMEDIATION](docs/15-handoff/ROOT_DOMAIN_403_REMEDIATION.md). Commit and push are
+not deployment.
+
+User-facing term for pilot participants is **Estratega de Marca / Estrategas de Marca**, never
+"tester". Internal identifiers (schema, telemetry, tests, env vars) keep `tester` where renaming
+would add risk.
+
 ## Start
 
 1. [docs/15-handoff/NEXT_DEVELOPER_START_HERE.md](docs/15-handoff/NEXT_DEVELOPER_START_HERE.md) — setup, commands, architecture, current state.

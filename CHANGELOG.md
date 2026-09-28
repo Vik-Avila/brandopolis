@@ -14,6 +14,14 @@ Depends on: —
 
 # Registro
 
+## Documentación operativa y de handoff · 2026-09-28
+
+- Runbook de reconciliación de producción: el piloto servía código anterior a `d43fd4d`. La caché de assets en memoria de `assets.ts` hace que `git pull` sin reinicio no cambie nada de cara al público.
+- Diagnóstico y runbook del 403 del dominio raíz, con los hechos de servidor confirmados y una redirección 301 persistente vía `userdata` de cPanel.
+- Estado de implementación consolidado para retomar sin conversaciones previas, y congelación del workspace PILOT registrada en CLAUDE.md.
+- Documentación de GA4: propósito, frontera de medición, reglas de privacidad, lista de eventos, distinción frente a la telemetría interna, variable de producción y verificación en Realtime/DebugView.
+- **No implementado**: contraseña propia, recuperación, SMTP, `/admin` y `/api/admin/*`. Documentado como trabajo diferido con su diseño.
+
 ## Instrumentación GA4 del piloto · 2026-09-28
 
 - GA4 opcional por `GA4_MEASUREMENT_ID`. Sin definir queda completamente desactivado; mal formado falla al arrancar. **Ningún Measurement ID en el código**: el valor se publica en `/api/mode` desde el entorno.
