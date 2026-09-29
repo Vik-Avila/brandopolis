@@ -247,6 +247,22 @@ export class PilotAccess {
     return {revoked:(await this.db.delete(t.sessions).where(eq(t.sessions.userId,userId)).returning()).length};
   }
   // Activation = first strategic Decision approved. Durations in seconds from the tester's first session.
+  /**
+   * D7/D14/D30 from stored timestamps: activated participants with a High-Value Strategic Event inside
+   * the window, day ±1 as the canonical definition requires. Returns null — not false — while the window
+   * has not fully elapsed for that participant, so "not yet observable" never reads as "did not return".
+   */
+  private static retentionWindows(events:{name:string;occurredAt:Date}[],activation:Date|undefined,hve:string[],now=new Date()):
+    {retainedD7:boolean|null;retainedD14:boolean|null;retainedD30:boolean|null} {
+    const inWindow=(day:number)=>{
+      if(!activation)return null;
+      const opensAt=activation.getTime()+(day-1)*86400000,closesAt=activation.getTime()+(day+1)*86400000;
+      // The window must be fully in the past before an absence can mean anything.
+      if(now.getTime()<closesAt)return null;
+      return events.some(e=>hve.includes(e.name)&&e.occurredAt.getTime()>=opensAt&&e.occurredAt.getTime()<=closesAt);
+    };
+    return {retainedD7:inWindow(7),retainedD14:inWindow(14),retainedD30:inWindow(30)};
+  }
   async metrics() {
     const rows=await this.db.select().from(t.pilotEvents).orderBy(asc(t.pilotEvents.occurredAt));
     // Demo brands are classified server-side, never inferred from a name. Every brand-scoped event that
@@ -261,14 +277,32 @@ export class PilotAccess {
     return [...users].map(([userId,all])=>{
       const events=all.filter(e=>!isDemoEvent(e));
       const demoEvents=demoByUser.get(userId)??[];
-      const start=first(events,'session_started'),decisions=events.filter(e=>e.name==='decision_created');
+      // Canonical anchor: the brand. session_started is only a fallback for events that predate a brand.
+      const brandStart=first(events,'brand_created'),start=brandStart??first(events,'session_started');
+      const decisions=events.filter(e=>e.name==='decision_created');
       // Canonical High-Value Strategic Events (Master Context §45); activation is the first approved Decision.
       const activation=decisions[0]?.occurredAt,hve=['strategic_question_started','decision_created','change_impact_review_completed','dependency_triggered','experiment_created','signal_added','learning_created'];
       const secondHighValueEvent14d=Boolean(activation)&&events.some(e=>hve.includes(e.name)&&e.occurredAt>activation!&&e.occurredAt.getTime()-activation!.getTime()<=14*86400000);
+      const retention=(rows:typeof events,at:Date|undefined)=>PilotAccess.retentionWindows(rows,at,hve);
       return {userId,cohort:events[0].cohort,sessions:events.filter(e=>e.name==='session_started').length,brands:new Set(events.filter(e=>e.name==='brand_created').map(e=>e.brandId)).size,
         recommendationsRequested:events.filter(e=>e.name==='recommendation_requested').length,recommendationsFailed:events.filter(e=>e.name==='analysis_failed').length,
         decisionsApproved:decisions.length,activated:decisions.length>0,reviewsCompleted:events.filter(e=>e.name==='change_impact_review_completed').length,
         secondHighValueEvent14d,timeToFirstInsightSeconds:since(start,first(events,'recommendation_generated')),timeToFirstDecisionSeconds:since(start,decisions[0]?.occurredAt),
+        // Mapa estratégico: viewing the connected map and taking it away are different acts, so they are
+        // counted separately. The export has its own event because it reuses the same read.
+        mapaEstrategicoViewed:events.some(e=>e.name==='blueprint_viewed'),
+        mapaEstrategicoExports:events.filter(e=>e.name==='blueprint_pdf_exported').length,
+        // Evidence Engagement, canonical: exposed to a Recommendation, and opened Evidence.
+        exposedToRecommendation:events.some(e=>e.name==='recommendation_generated'),
+        openedEvidence:events.some(e=>e.name==='evidence_panel_opened'),
+        // Evidence actually supplied or curated. Stronger than opening, reported alongside rather than
+        // folded into the canonical rate, which is deliberately about opening.
+        evidenceSupplied:events.filter(e=>e.name==='evidence_added').length,
+        documentsUploaded:events.filter(e=>e.name==='source_document_uploaded').length,
+        documentClaimsGenerated:events.filter(e=>e.name==='document_claims_generated').length,
+        // Retention: derived from timestamps, never from a client-side "returned" flag. Null while the
+        // window has not elapsed yet, so an unobserved participant is never counted as churned.
+        ...retention(events,activation),
         // Demo exploration is reported separately so it stays visible without ever counting as real work.
         demoBrands:new Set(demoEvents.filter(e=>e.name==='brand_created').map(e=>e.brandId)).size,
         demoDecisions:demoEvents.filter(e=>e.name==='decision_created').length};
@@ -308,6 +342,30 @@ export class PilotAccess {
       timeToFirstInsight:stats(people.map(p=>p.timeToFirstInsightSeconds)),timeToFirstDecision:stats(people.map(p=>p.timeToFirstDecisionSeconds)),
       ai:{requested:people.reduce((a,p)=>a+p.recommendationsRequested,0),failed:people.reduce((a,p)=>a+p.recommendationsFailed,0)},
       reviewsCompleted:people.reduce((a,p)=>a+p.reviewsCompleted,0),
+      // Mapa estratégico: reached, and taken away. Separate acts, separately counted.
+      mapaEstrategico:{
+        viewed:people.filter(p=>p.mapaEstrategicoViewed).length,
+        exportedParticipants:people.filter(p=>p.mapaEstrategicoExports>0).length,
+        exports:people.reduce((a,p)=>a+p.mapaEstrategicoExports,0)
+      },
+      // Evidence Engagement, canonical: of those exposed to a Recommendation, how many opened Evidence.
+      // The stronger acts of supplying and curating evidence are reported beside it, never folded in.
+      evidence:{
+        exposed:people.filter(p=>p.exposedToRecommendation).length,
+        opened:people.filter(p=>p.openedEvidence).length,
+        rate:(()=>{const exposed=people.filter(p=>p.exposedToRecommendation).length;
+          return exposed?Math.round(people.filter(p=>p.exposedToRecommendation&&p.openedEvidence).length/exposed*1000)/1000:null;})(),
+        participantsSupplying:people.filter(p=>p.evidenceSupplied>0).length,
+        documentsUploaded:people.reduce((a,p)=>a+p.documentsUploaded,0),
+        documentClaimsGenerated:people.reduce((a,p)=>a+p.documentClaimsGenerated,0)
+      },
+      // Retention: observed cases only. A null window is excluded from both numerator and denominator,
+      // so an early Pilot reads as "not yet observable" instead of as churn.
+      retention:Object.fromEntries((['retainedD7','retainedD14','retainedD30'] as const).map(key=>{
+        const observed=people.filter(p=>p[key]!==null);
+        return [key.replace('retained',''),{observed:observed.length,returned:observed.filter(p=>p[key]===true).length,
+          rate:observed.length?Math.round(observed.filter(p=>p[key]===true).length/observed.length*1000)/1000:null}];
+      })),
       feedback:{responses:feedback.filter(f=>f.kind==='FEEDBACK').length,issues:feedback.filter(f=>f.kind==='ISSUE').length,usefulness:distribution('usefulness'),clarity:distribution('clarity'),confidence:distribution('confidence')}};
   }
   /** Deterministic cohort from the canonical identity. The same identity always lands in the same arm,

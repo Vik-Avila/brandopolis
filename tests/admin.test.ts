@@ -72,7 +72,15 @@ describe('pilot admin', () => {
   });
 
   it('marks underivable metrics unavailable rather than inventing them', () => {
-    expect(admin).toContain("unavailable: ['documentEngagement', 'phaseCompletionCounts', 'optionActionCounts']");
+    // Only what this build genuinely cannot measure: AI cost is not captured per request, and there is
+    // no payment or offer surface, so these four are reported absent instead of approximated.
+    expect(admin).toContain("unavailable: ['aiCostPerDecision', 'aiCostPerActiveBrand', 'willingnessToPay', 'pilotPaidConversion']");
+    // The three former gaps are now derived from durable state, so they must no longer be listed.
+    const unavailable = admin.slice(admin.indexOf('unavailable: ['), admin.indexOf(']', admin.indexOf('unavailable: [')));
+    for (const closed of ['documentEngagement', 'phaseCompletionCounts', 'optionActionCounts'])
+      expect(unavailable, closed + ' is derived now and must not be listed as unavailable').not.toContain(closed);
+    expect(admin).toContain('phaseCompletionCounts,');
+    expect(admin).toContain('optionActionCounts:');
   });
 
   it('keeps aggregate evidence free of anything that could identify a participant', () => {
@@ -85,7 +93,14 @@ describe('pilot admin', () => {
         activated: 1, activationRate: 0.333,
         timeToFirstInsight: { n: 1, medianSeconds: 120, averageSeconds: 120 },
         timeToFirstDecision: { n: 1, medianSeconds: 300, averageSeconds: 300 },
-        ai: { requested: 5, failed: 1 }
+        ai: { requested: 5, failed: 1 },
+        mapaEstrategico: { viewed: 2, exportedParticipants: 1, exports: 3 },
+        evidenceEngagement: { exposed: 2, opened: 1, rate: 0.5, participantsSupplying: 1, documentsUploaded: 4, documentClaimsGenerated: 2 },
+        phaseCompletionCounts: { 'Primary Customer': 2, Positioning: 1 },
+        strategyReady: { eligibleBrands: 2, ready: 1, rate: 0.5 },
+        humanOverride: { resolved: 4, accepted: 1, modified: 2, rejected: 1, rate: 0.75 },
+        optionActionCounts: { incorporatedOrModified: 3, rejectedProposals: 1, discarded: null },
+        retention: { D7: { observed: 1, returned: 1, rate: 1 }, D14: { observed: 0, returned: 0, rate: null }, D30: { observed: 0, returned: 0, rate: null } }
       },
       segmentation: { primaryProfile: { FUNDADOR: 2, CONSULTOR: 1 }, country: { 'México': 3 }, region: { Veracruz: 3 }, cohort: { A: 2, B: 1 } },
       feedback: { responses: 2, issues: 1, usefulness: 4.5, clarity: 4, confidence: 3.5 },
@@ -95,6 +110,15 @@ describe('pilot admin', () => {
     expect(csv).toContain('real_brands,2');
     expect(csv).toContain('demo_brands,3');
     expect(csv).toContain('primaryProfile:FUNDADOR,2');
+    // The new Pilot metrics travel as counts and rates, including per-phase progression.
+    expect(csv).toContain('mapa_estrategico_exports,3');
+    expect(csv).toContain('evidence_engagement_rate,0.5');
+    expect(csv).toContain('strategy_ready_rate,0.5');
+    expect(csv).toContain('human_override_rate,0.75');
+    expect(csv).toContain('phase_completed:Primary Customer,2');
+    // An unobserved retention window exports empty, never as a zero rate that would read as churn.
+    expect(csv).toContain('retention_D14_rate,');
+    expect(csv).not.toContain('retention_D14_rate,0');
     expect(csv).toContain('country:México,3');
     // No identifying column exists at all.
     for (const pii of ['email', 'userId', 'workspaceId', 'brandId', 'name', 'city'])

@@ -67,6 +67,82 @@ export class PilotAdmin {
    * inferred. A metric the architecture cannot derive is returned as null and labelled unavailable
    * rather than filled with a plausible number.
    */
+  /**
+   * Strategic progression and human authority over AI, derived from durable state rather than clicks.
+   *
+   *  - phaseCompletionCounts: modules with an approved active version, per canonical module. Demo brands
+   *    are excluded exactly as every participant metric excludes them.
+   *  - strategyReady: brands whose canonical questions all have an active version and which carry no
+   *    HARD review outstanding (docs/09-validation/metrics.md: Strategy Ready Rate).
+   *  - humanOverride: of the recommendations a person resolved, how many they changed or rejected.
+   *    Accepted vs modified is read from the committed version against the proposal it came from, so a
+   *    participant who edited the wording counts as an override, which is the point of the metric.
+   */
+  private async progression() {
+    const demo = new Set((await this.db.select().from(t.brandProfiles).where(eq(t.brandProfiles.isDemo, true))).map(b => b.brandId));
+    const real = <T extends { brandId: string }>(rows: T[]) => rows.filter(r => !demo.has(r.brandId));
+    const questions = real(await this.db.select().from(t.questions));
+    const decisions = real(await this.db.select().from(t.decisions));
+    const versions = real(await this.db.select().from(t.versions));
+    const reviews = real(await this.db.select().from(t.reviews));
+    const recommendations = real(await this.db.select().from(t.recommendations));
+
+    const activeVersion = new Map(versions.map(v => [v.id, v]));
+    const moduleOf = new Map(questions.map(q => [q.id, q.module]));
+    const decided = decisions.filter(d => d.activeVersionId && activeVersion.has(d.activeVersionId));
+
+    const phaseCompletionCounts: Record<string, number> = {};
+    for (const decision of decided) {
+      const module = moduleOf.get(decision.questionId);
+      if (module) phaseCompletionCounts[module] = (phaseCompletionCounts[module] ?? 0) + 1;
+    }
+
+    // Strategy Ready: every canonical question of the brand decided, and no HARD review left open.
+    const byBrand = new Map<string, { total: number; decided: number; hardOpen: boolean }>();
+    for (const question of questions) {
+      const entry = byBrand.get(question.brandId) ?? { total: 0, decided: 0, hardOpen: false };
+      entry.total += 1;
+      byBrand.set(question.brandId, entry);
+    }
+    for (const decision of decided) {
+      const entry = byBrand.get(decision.brandId);
+      if (entry) entry.decided += 1;
+    }
+    for (const review of reviews) {
+      if (review.dependencyType === 'HARD' && review.status !== 'COMPLETED') {
+        const entry = byBrand.get(review.brandId);
+        if (entry) entry.hardOpen = true;
+      }
+    }
+    const eligible = [...byBrand.values()].filter(b => b.total > 0);
+    const ready = eligible.filter(b => b.decided === b.total && !b.hardOpen).length;
+
+    // Human Override: resolved recommendations, and how the human resolved them.
+    const rejected = recommendations.filter(r => r.resolution === 'REJECTED').length;
+    const audits = real(await this.db.select().from(t.audits));
+    const versionById = new Map(versions.map(v => [v.id, v]));
+    const proposalById = new Map(recommendations.map(r => [r.id, r]));
+    const fromProposal = audits.filter(a => a.sourceRecommendationId && a.newVersion && versionById.has(a.newVersion));
+    let accepted = 0, modified = 0;
+    for (const entry of fromProposal) {
+      const proposal = proposalById.get(entry.sourceRecommendationId!);
+      const payload = proposal?.payload as { options?: { label: string }[] } | undefined;
+      const labels = new Set((payload?.options ?? []).map(o => o.label));
+      // Taken as offered if the committed text is one of the proposed options verbatim; otherwise the
+      // participant rewrote it, which is exactly what this metric is meant to catch.
+      if (labels.has(versionById.get(entry.newVersion!)!.selectedOption)) accepted += 1; else modified += 1;
+    }
+    const resolved = accepted + modified + rejected;
+    return {
+      phaseCompletionCounts,
+      strategyReady: { eligibleBrands: eligible.length, ready, rate: eligible.length ? Math.round(ready / eligible.length * 1000) / 1000 : null },
+      humanOverride: { resolved, accepted, modified, rejected, rate: resolved ? Math.round((modified + rejected) / resolved * 1000) / 1000 : null },
+      // Per-option Incorporar/Modificar/Descartar is a client-side comparison aid and is not persisted,
+      // so only the outcomes that became strategy are counted here. Discards leave no durable trace.
+      optionActionCounts: { incorporatedOrModified: fromProposal.length, rejectedProposals: rejected, discarded: null }
+    };
+  }
+
   async summary() {
     const report = await this.access.report();
     const identities = await this.db.select().from(t.pilotIdentities);
@@ -96,8 +172,14 @@ export class PilotAdmin {
       timeToFirstDecision: report.timeToFirstDecision,
       ai: report.ai,
       reviewsCompleted: report.reviewsCompleted,
-      // Not derivable from the canonical envelope today; surfaced as a documented gap, never guessed.
-      unavailable: ['documentEngagement', 'phaseCompletionCounts', 'optionActionCounts']
+      mapaEstrategico: report.mapaEstrategico,
+      evidence: report.evidence,
+      retention: report.retention,
+      ...await this.progression(),
+      // Measurable only with capability this build does not have: AI cost is not captured per request,
+      // and there is no payment or offer surface, so cost-per-decision, cost-per-active-brand, WTP and
+      // paid conversion are reported as absent rather than approximated.
+      unavailable: ['aiCostPerDecision', 'aiCostPerActiveBrand', 'willingnessToPay', 'pilotPaidConversion']
     };
   }
 
@@ -127,7 +209,18 @@ export class PilotAdmin {
         cohort: workspaces.get(identity.workspaceId)?.cohort ?? null,
         accessStatus: account?.accessStatus ?? ACCESS_STATUS.approved,
         identityActive: identity.active,
-        intakeComplete: Boolean(profile)
+        intakeComplete: Boolean(profile),
+        activated: metrics.get(identity.userId)?.activated ?? false,
+        decisionsApproved: metrics.get(identity.userId)?.decisionsApproved ?? 0,
+        timeToFirstInsightSeconds: metrics.get(identity.userId)?.timeToFirstInsightSeconds ?? null,
+        timeToFirstDecisionSeconds: metrics.get(identity.userId)?.timeToFirstDecisionSeconds ?? null,
+        recurrent: (metrics.get(identity.userId)?.sessions ?? 0) > 1,
+        openedEvidence: metrics.get(identity.userId)?.openedEvidence ?? false,
+        evidenceSupplied: metrics.get(identity.userId)?.evidenceSupplied ?? 0,
+        mapaEstrategicoViewed: metrics.get(identity.userId)?.mapaEstrategicoViewed ?? false,
+        mapaEstrategicoExports: metrics.get(identity.userId)?.mapaEstrategicoExports ?? 0,
+        recommendationsRequested: metrics.get(identity.userId)?.recommendationsRequested ?? 0,
+        recommendationsFailed: metrics.get(identity.userId)?.recommendationsFailed ?? 0
       };
     });
   }
@@ -173,7 +266,14 @@ export class PilotAdmin {
         activationRate: summary.activationRate,
         timeToFirstInsight: summary.timeToFirstInsight,
         timeToFirstDecision: summary.timeToFirstDecision,
-        ai: summary.ai
+        ai: summary.ai,
+        mapaEstrategico: summary.mapaEstrategico,
+        evidenceEngagement: summary.evidence,
+        phaseCompletionCounts: summary.phaseCompletionCounts,
+        strategyReady: summary.strategyReady,
+        humanOverride: summary.humanOverride,
+        optionActionCounts: summary.optionActionCounts,
+        retention: summary.retention
       },
       segmentation: {
         primaryProfile: tally(profiles.map(p => p.primaryProfile)),
@@ -243,6 +343,23 @@ export function evidenceCsv(evidence: Awaited<ReturnType<PilotAdmin['evidence']>
   push('time_to_first_decision_median_seconds', evidence.product.timeToFirstDecision.medianSeconds);
   push('ai_requested', evidence.product.ai.requested);
   push('ai_failed', evidence.product.ai.failed);
+  push('mapa_estrategico_viewed', evidence.product.mapaEstrategico.viewed);
+  push('mapa_estrategico_export_participants', evidence.product.mapaEstrategico.exportedParticipants);
+  push('mapa_estrategico_exports', evidence.product.mapaEstrategico.exports);
+  push('evidence_exposed', evidence.product.evidenceEngagement.exposed);
+  push('evidence_opened', evidence.product.evidenceEngagement.opened);
+  push('evidence_engagement_rate', evidence.product.evidenceEngagement.rate);
+  push('evidence_participants_supplying', evidence.product.evidenceEngagement.participantsSupplying);
+  push('strategy_ready_brands', evidence.product.strategyReady.ready);
+  push('strategy_ready_rate', evidence.product.strategyReady.rate);
+  push('human_override_resolved', evidence.product.humanOverride.resolved);
+  push('human_override_rate', evidence.product.humanOverride.rate);
+  for (const [module, count] of Object.entries(evidence.product.phaseCompletionCounts)) push('phase_completed:' + module, count);
+  for (const [window, value] of Object.entries(evidence.product.retention)) {
+    push('retention_' + window + '_observed', value.observed);
+    push('retention_' + window + '_returned', value.returned);
+    push('retention_' + window + '_rate', value.rate);
+  }
   push('feedback_responses', evidence.feedback.responses);
   push('feedback_issues', evidence.feedback.issues);
   for (const [group, values] of Object.entries(evidence.segmentation))

@@ -1,5 +1,41 @@
 # Session State
 
+Current phase: **FOUNDING PILOT PRODUCT ANALYTICS** (2026-09-29). Uncommitted.
+
+Minimum reliable analytics to operate the first 12–20 Estrategas de Marca. No new dashboard, no vendor,
+no migration, no dependency. Readiness table:
+[FOUNDING_PILOT_ANALYTICS_READINESS](docs/09-validation/FOUNDING_PILOT_ANALYTICS_READINESS.md).
+
+- **Two new durable signals**, as names inside the existing `pilot_events`/`telemetry` envelope:
+  `blueprint_pdf_exported` (the export reuses `engine.blueprint()`, so a download was indistinguishable
+  from a view; recorded after the document is built, so a failure never counts) and
+  `evidence_panel_opened` (canonical Evidence Engagement is "exposed participants who **open** Evidence",
+  and opening had no signal at all). Recorded once per brand per page load: the metric counts people.
+- **The three gaps the Admin itself declared underivable are closed**: `phaseCompletionCounts` from the
+  active version per module, `optionActionCounts` from audited proposal provenance, and
+  `documentEngagement` as canonical Evidence Engagement plus the stronger acts of supplying and curating
+  evidence, reported beside the rate and never folded into it.
+- **Strategy Ready and Human Override derive from durable state**, not clicks: questions decided with no
+  HARD review outstanding, and strategic audit × proposal × committed version to tell a proposal taken
+  as offered from one the participant rewrote.
+- **D7/D14/D30 derive from timestamps** with the canonical day ±1 window, returning `null` until the
+  window closes so insufficient elapsed time never reads as churn.
+- **TTFI and TTFD anchors corrected.** `metrics.md` defines both from the brand; they were measured from
+  `session_started`, which starts the clock before a brand exists and inflates both. Aligning with the
+  canonical definition, not redefining it, and done now because there are no real testers yet.
+- **`/admin/` was not redesigned.** Resumen gains evidence opened, map viewed, map downloaded, strategy
+  ready and human override, each rate showing its denominator. Estrategas de Marca gains the per-tester
+  journey. Aggregate detail lives in Evidencia; Configuración stays operator settings.
+- **Not measurable in this build**: AI cost per decision and per active brand (no per-request cost is
+  captured) and WTP / paid conversion (no offer or payment surface). None blocks starting testers.
+- No new GA4 events: none would improve the aggregate funnel without duplicating first-party truth.
+
+Gate (2026-09-29): typecheck/lint PASS; pnpm test 135/135 (3 new behavioural); focused browser
+verification 12/12. No migration, no schema change, no dependency change.
+
+---
+
+
 Current phase: **PUBLIC SURVEY THANK-YOU PAGE** (2026-09-29). Uncommitted.
 
 New public page at `/gracias-encuesta`, shown to whoever finishes the Brandopolis survey.

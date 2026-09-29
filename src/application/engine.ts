@@ -1141,6 +1141,22 @@ export class Engine {
     return projection;
   }
   /**
+   * Records that the participant took their Mapa estratégico away as a document. The export reuses
+   * blueprint(), so without its own event a download is indistinguishable from a view. Authorization is
+   * scope() as everywhere else, so this can only ever record a brand the caller may already read.
+   */
+  async blueprintExported(token:string,brandId:string) {
+    await this.db.transaction(async tx=>{const s=await this.scope(tx,token,brandId,false);await this.event(tx,s,'blueprint_pdf_exported');});
+  }
+  /**
+   * Records that the participant opened the evidence and hypotheses panel for a decision. This is the
+   * numerator of the canonical Evidence Engagement rate; supplying evidence (evidence_added) is a
+   * different and later act, so it cannot stand in for opening it.
+   */
+  async evidenceOpened(token:string,brandId:string) {
+    await this.db.transaction(async tx=>{const s=await this.scope(tx,token,brandId,false);await this.event(tx,s,'evidence_panel_opened');});
+  }
+  /**
    * Identity of a brand the caller may read: name, demo classification and declared geography.
    *
    * Authorization is scope() itself, unchanged — the brand must belong to the caller's workspace and,

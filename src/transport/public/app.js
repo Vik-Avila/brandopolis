@@ -34,6 +34,15 @@ let competitiveRejectedClaims=new Set();
 let competitiveResearchBrandId=null;
 /** Brand whose competitive review has already reported completion, so a re-render cannot re-report. */
 let competitiveCompletionReported=null;
+/** Brands whose evidence panel has already been recorded as opened in this page load. */
+const evidenceOpenedRecorded=new Set();
+
+/** Records the canonical Evidence Engagement signal. Never blocks the interface, never retries. */
+function recordEvidenceOpened(){
+ if(!brandId||evidenceOpenedRecorded.has(brandId))return;
+ evidenceOpenedRecorded.add(brandId);
+ api('/api/evidence/opened',{brandId}).catch(()=>evidenceOpenedRecorded.delete(brandId));
+}
 /** Brand whose rejected competitive claims are already loaded, so the status is canonical anywhere. */
 let competitiveRejectionsBrandId=null;
 
@@ -676,17 +685,23 @@ const adminTiles=items=>'<div class="admin-tiles">'+items.map(([label,value,note
 const adminDist=(title,values)=>'<div class="admin-dist"><h3>'+escape(title)+'</h3><ul>'+
  (Object.entries(values??{}).map(([k,v])=>'<li><span>'+escape(k)+'</span><strong>'+adminNum(v)+'</strong></li>').join('')||'<li class="hint">Sin datos</li>')+'</ul></div>';
 
-const ADMIN_COLUMNS=['Nombre','Email','País','Región','Ciudad','Perfil','Empresa','Registro','Último acceso','Sesiones','Marcas reales','Cohorte','Estado','Intake','Acción'];
+const ADMIN_COLUMNS=['Nombre','Email','País','Perfil','Registro','Último acceso','Sesiones','Recurrente','Marcas reales','Intake','Activado','Decisiones','TTFI','TTFD','Evidencia','Mapa','PDF','IA','Fallos IA','Cohorte','Estado','Acción'];
+/** Minutes, or an em dash. Durations are reported in minutes because the targets are stated in minutes. */
+const adminDuration=seconds=>seconds==null?'—':Math.round(seconds/60)+' min';
 function adminRow(p){
  const status=escape(p.accessStatus)+(p.identityActive?'':' · desactivado');
  const next=p.accessStatus==='SUSPENDED'?'APPROVED':'SUSPENDED';
  const action=p.identityActive
   ?'<button type="button" class="secondary" data-admin-status="'+escape(p.userId)+'" data-next="'+next+'">'+(next==='APPROVED'?'Reactivar':'Suspender')+'</button>'
   :'—';
- return '<tr>'+[escape(p.name??'—'),escape(p.email??'—'),escape(p.country??'—'),escape(p.region??'—'),escape(p.city??'—'),
-  escape(p.primaryProfile??'—'),escape(p.companyOrProject??'—'),p.registeredAt?escape(fmt(p.registeredAt)):'—',
-  p.lastLoginAt?escape(fmt(p.lastLoginAt)):'—',adminNum(p.sessions),adminNum(p.realBrands),escape(p.cohort??'—'),
-  status,p.intakeComplete?'Sí':'No',action].map(cell=>'<td>'+cell+'</td>').join('')+'</tr>';
+ return '<tr>'+[escape(p.name??'—'),escape(p.email??'—'),escape(p.country??'—'),
+  escape(p.primaryProfile??'—'),p.registeredAt?escape(fmt(p.registeredAt)):'—',
+  p.lastLoginAt?escape(fmt(p.lastLoginAt)):'—',adminNum(p.sessions),p.recurrent?'Sí':'No',
+  adminNum(p.realBrands),p.intakeComplete?'Sí':'No',p.activated?'Sí':'No',adminNum(p.decisionsApproved),
+  adminDuration(p.timeToFirstInsightSeconds),adminDuration(p.timeToFirstDecisionSeconds),
+  p.openedEvidence?'Abierta':(p.evidenceSupplied?'Aportada':'No'),p.mapaEstrategicoViewed?'Sí':'No',
+  adminNum(p.mapaEstrategicoExports),adminNum(p.recommendationsRequested),adminNum(p.recommendationsFailed),
+  escape(p.cohort??'—'),status,action].map(cell=>'<td>'+cell+'</td>').join('')+'</tr>';
 }
 
 async function renderAdmin(){
@@ -707,8 +722,13 @@ async function renderAdmin(){
    ['Con segunda marca real',adminNum(s.participantsWithSecondRealBrand)],['Recurrentes',adminNum(s.returningParticipants)],
    ['Activados',adminNum(s.activated)],['Tasa de activación',s.activationRate==null?'—':Math.round(s.activationRate*100)+'%'],
    ['Tiempo a primer insight',adminMins(s.timeToFirstInsight)],['Tiempo a primera decisión',adminMins(s.timeToFirstDecision)],
-   ['Propuestas IA',adminNum(s.ai?.requested)],['Fallos IA',adminNum(s.ai?.failed)]
-  ])+'<p class="hint">No derivable todavía: '+escape((s.unavailable??[]).join(', ')||'—')+'.</p></section>';
+   ['Propuestas IA',adminNum(s.ai?.requested)],['Fallos IA',adminNum(s.ai?.failed)],
+   ['Evidencia abierta',adminNum(s.evidence?.opened),s.evidence?.rate==null?'sin expuestos todavía':Math.round(s.evidence.rate*100)+'% de '+adminNum(s.evidence.exposed)+' expuestos'],
+   ['Mapa estratégico visto',adminNum(s.mapaEstrategico?.viewed)],
+   ['Mapa estratégico descargado',adminNum(s.mapaEstrategico?.exportedParticipants),adminNum(s.mapaEstrategico?.exports)+' descargas'],
+   ['Estrategia lista',adminNum(s.strategyReady?.ready),s.strategyReady?.rate==null?'sin marcas elegibles':Math.round(s.strategyReady.rate*100)+'% de '+adminNum(s.strategyReady.eligibleBrands)+' marcas'],
+   ['Criterio humano sobre IA',s.humanOverride?.rate==null?'—':Math.round(s.humanOverride.rate*100)+'%',s.humanOverride?'de '+adminNum(s.humanOverride.resolved)+' propuestas resueltas':undefined]
+  ])+'<p class="hint">Retención D7/D14/D30 y progresión por fase, en Evidencia. No medible en esta build: '+escape((s.unavailable??[]).join(', ')||'—')+'.</p></section>';
   return;
  }
  if(adminView==='estrategas'){
@@ -814,7 +834,7 @@ function render() {
   mountRecommendation(q,d,v,reviews,pending||locked);
   mountLearningMoment(q);
   $('#decision').insertAdjacentHTML('beforeend',historyHtml(versions,d));
-  decisionTabs($('#decision'),draft?'overview':activeDecisionTab,key=>{activeDecisionTab=key;},versions.length);
+  decisionTabs($('#decision'),draft?'overview':activeDecisionTab,key=>{activeDecisionTab=key;if(key==='knowledge')recordEvidenceOpened();},versions.length);
   renderContext();
   $('#edit')?.addEventListener('click',event=>run(async()=>{
     let receipt;

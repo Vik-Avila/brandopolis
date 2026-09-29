@@ -438,6 +438,98 @@ export function pilotCases(connection:()=>ReturnType<typeof connect>){
    expect((await access.metrics()).find(m=>m.userId===realUser)!.brands).toBe(1);
   });
 
+  it('measures Mapa estratégico views and exports as distinct acts, excluding the demo sandbox',async()=>{
+   const {db}=connection(),issuer='https://accounts.google.com',access=new PilotAccess(db,issuer);
+   const run=randomUUID().slice(0,8),engine=new Engine(db);
+   const claims={subject:`map-${run}`,email:`map.${run}@example.test`,emailVerified:true};
+   const userId=await access.recognise(claims,true);
+   const session=await access.issueSession(claims.subject);
+   const brand=await engine.createBrand(session.token,'Marca del mapa','Contexto');
+
+   const mine=async()=>(await access.metrics()).find(m=>m.userId===userId)!;
+   expect((await mine()).mapaEstrategicoViewed,'no view before opening it').toBe(false);
+   expect((await mine()).mapaEstrategicoExports).toBe(0);
+
+   // Viewing the map and taking it away are different acts and must not be conflated.
+   await engine.blueprint(session.token,brand.id);
+   expect((await mine()).mapaEstrategicoViewed).toBe(true);
+   expect((await mine()).mapaEstrategicoExports,'a view is not an export').toBe(0);
+
+   await engine.blueprintExported(session.token,brand.id);
+   expect((await mine()).mapaEstrategicoExports).toBe(1);
+   await engine.blueprintExported(session.token,brand.id);
+   expect((await mine()).mapaEstrategicoExports,'each export counts').toBe(2);
+
+   // The demo sandbox can never fabricate either signal.
+   const demoUser={subject:`mapdemo-${run}`,email:`mapdemo.${run}@example.test`,emailVerified:true};
+   const demoId=await access.recognise(demoUser,true);
+   const demoSession=await access.issueSession(demoUser.subject);
+   const demo=(await access.ensureDemoBrand(demoSession.token))!;
+   await engine.blueprint(demoSession.token,demo.id);
+   await engine.blueprintExported(demoSession.token,demo.id);
+   const demoMetrics=(await access.metrics()).find(m=>m.userId===demoId)!;
+   expect(demoMetrics.mapaEstrategicoViewed,'demo viewing is not real engagement').toBe(false);
+   expect(demoMetrics.mapaEstrategicoExports).toBe(0);
+
+   // Aggregate rollup separates participants who exported from the number of exports.
+   const report=await access.report();
+   expect(report.mapaEstrategico.viewed).toBeGreaterThanOrEqual(1);
+   expect(report.mapaEstrategico.exports).toBeGreaterThanOrEqual(2);
+   expect(report.mapaEstrategico.exportedParticipants).toBeGreaterThanOrEqual(1);
+  });
+
+  it('derives Evidence Engagement from opening evidence, against those exposed to a proposal',async()=>{
+   const {db}=connection(),issuer='https://accounts.google.com',access=new PilotAccess(db,issuer);
+   const run=randomUUID().slice(0,8),engine=new Engine(db);
+   const claims={subject:`ev-${run}`,email:`ev.${run}@example.test`,emailVerified:true};
+   const userId=await access.recognise(claims,true);
+   const session=await access.issueSession(claims.subject);
+   const brand=await engine.createBrand(session.token,'Marca con evidencia','Contexto');
+
+   const mine=async()=>(await access.metrics()).find(m=>m.userId===userId)!;
+   expect((await mine()).openedEvidence).toBe(false);
+   await engine.evidenceOpened(session.token,brand.id);
+   expect((await mine()).openedEvidence).toBe(true);
+   // Opening is the canonical numerator; supplying evidence is a different, stronger act reported apart.
+   expect((await mine()).evidenceSupplied,'opening is not supplying').toBe(0);
+
+   // The rate never divides by zero and is null while nobody has been exposed to a proposal.
+   const report=await access.report();
+   expect(report.evidence.opened).toBeGreaterThanOrEqual(1);
+   if(report.evidence.exposed===0)expect(report.evidence.rate).toBeNull();
+   else expect(report.evidence.rate).toBeGreaterThanOrEqual(0);
+  });
+
+  it('anchors TTFI and TTFD on the brand, and leaves retention unobserved until its window closes',async()=>{
+   const {db}=connection(),issuer='https://accounts.google.com',access=new PilotAccess(db,issuer);
+   const run=randomUUID().slice(0,8),engine=new Engine(db);
+   const claims={subject:`ttf-${run}`,email:`ttf.${run}@example.test`,emailVerified:true};
+   const userId=await access.recognise(claims,true);
+   const session=await access.issueSession(claims.subject);
+   const brand=await engine.createBrand(session.token,'Marca del reloj','Contexto');
+   const ctx=await engine.context(session.token,brand.id);
+   const customer=ctx.questions.find((q:{module:string})=>q.module==='Primary Customer')!;
+   await engine.prepareQuestion(session.token,brand.id,customer.id,null);
+   await engine.commitDecision(session.token,{brandId:brand.id,questionId:customer.id,selectedOption:'Mi cliente',
+    rationale:'Mi criterio',expectedActiveVersion:null,sourceRecommendationId:null,actorUserId:userId,idempotencyKey:randomUUID()});
+
+   const mine=(await access.metrics()).find(m=>m.userId===userId)!;
+   // Canonical anchor is the brand, so a decision taken moments after creating it reads as near zero
+   // rather than carrying the time spent before the brand existed.
+   expect(mine.timeToFirstDecisionSeconds).not.toBeNull();
+   expect(mine.timeToFirstDecisionSeconds!,'TTFD is measured from the brand, not the session').toBeLessThan(120);
+   expect(mine.activated).toBe(true);
+
+   // Retention windows have not elapsed, so they are unobserved rather than false.
+   expect(mine.retainedD7,'D7 cannot be known on day zero').toBeNull();
+   expect(mine.retainedD14).toBeNull();
+   expect(mine.retainedD30).toBeNull();
+   const report=await access.report();
+   // An unobserved window contributes to neither numerator nor denominator.
+   expect(report.retention.D30.rate).toBeNull();
+   expect(report.retention.D30.observed).toBe(0);
+  });
+
   it('gives every participant their own CoffeePolis and keeps demo work isolated',async()=>{
    const {db}=connection(),issuer='https://accounts.google.com',access=new PilotAccess(db,issuer);
    const run=randomUUID().slice(0,8),engine=new Engine(db);

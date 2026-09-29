@@ -14,6 +14,41 @@ Depends on: —
 
 # Registro
 
+## Analítica de producto del Founding Pilot · 2026-09-29
+
+Reconciliación y capa mínima fiable para operar los primeros 12–20 Estrategas de Marca. **Sin dashboard
+nuevo, sin proveedores, sin migración, sin dependencias.** Ver
+[FOUNDING_PILOT_ANALYTICS_READINESS](docs/09-validation/FOUNDING_PILOT_ANALYTICS_READINESS.md).
+
+- **Dos señales duraderas nuevas**, como nombres dentro del sobre existente `pilot_events`/`telemetry`:
+  `blueprint_pdf_exported` (la exportación reutilizaba `engine.blueprint()`, así que una descarga era
+  indistinguible de una vista; se registra tras construir el documento, así que un fallo no cuenta) y
+  `evidence_panel_opened` (Evidence Engagement canónico es «expuestos que **abren** Evidence», y abrir
+  no tenía señal alguna). Una vez por marca y carga de página: la métrica cuenta personas, no miradas.
+- **Cerradas las tres lagunas** que el propio Admin declaraba no derivables: `phaseCompletionCounts`
+  (versión activa por módulo), `optionActionCounts` (procedencia auditada de la propuesta) y
+  `documentEngagement` (ahora Evidence Engagement canónico más los actos más fuertes de aportar y curar
+  evidencia, reportados aparte y nunca mezclados con la tasa).
+- **Strategy Ready y Human Override derivados de estado durable**, no de clics: preguntas decididas sin
+  revisión HARD abierta, y auditoría estratégica × propuesta × versión comprometida para distinguir una
+  propuesta aceptada tal cual de una reescrita por la persona.
+- **D7/D14/D30 derivadas de marcas de tiempo**, con la ventana día ±1 canónica. Devuelven `null`
+  mientras la ventana no cierra, así que la falta de tiempo transcurrido **nunca se lee como abandono**.
+- **Corregido el anclaje de TTFI y TTFD.** `metrics.md` los define desde la marca; se medían desde
+  `session_started`, lo que arranca el reloj antes de que exista una marca e infla ambas cifras. No es
+  una redefinición: es alinearse con la definición canónica, y se hace ahora porque aún no hay testers
+  reales y no se pierde comparabilidad.
+- **`/admin/` no se rediseñó.** Resumen gana evidencia abierta, mapa visto, mapa descargado, estrategia
+  lista y criterio humano sobre IA, cada tasa con su denominador a la vista. Estrategas de Marca gana el
+  recorrido por tester. El detalle agregado vive en Evidencia, y Configuración sigue siendo ajustes.
+- **No medible en esta build, reportado como tal**: coste de IA por decisión y por marca activa (no se
+  captura coste por petición) y WTP/conversión de pago (no existe superficie de oferta ni de pago).
+  Ninguna de las cuatro bloquea el arranque con 12–20 personas.
+- Sin eventos GA4 nuevos: ninguno mejoraría el embudo agregado sin duplicar verdad de primera parte.
+- Pruebas: typecheck/lint PASS; pnpm test 135/135 (3 de comportamiento nuevas, incluidas la exclusión de
+  la marca demo y las ventanas no observadas); verificación en navegador 12/12. **Sin migración, sin
+  cambios de esquema, sin dependencias.**
+
 ## Página pública de agradecimiento de encuesta · 2026-09-29
 
 Nueva página pública en `/gracias-encuesta`, mostrada a quien termina la encuesta de Brandopolis.

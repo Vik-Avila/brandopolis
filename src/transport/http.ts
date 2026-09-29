@@ -508,6 +508,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(path==='/api/reviews/start') return send(res,200,await engine.beginReview(token,string(input.brandId),string(input.decisionId)));
         if(path==='/api/impacts/retry') return send(res,200,await engine.retryImpact(token,string(input.brandId)));
         if(path==='/api/impacts/shown') return send(res,200,await engine.showImpact(token,string(input.brandId)));
+        if(path==='/api/evidence/opened') {await engine.evidenceOpened(token,string(input.brandId));return send(res,200,{recorded:true});}
       }
       if(req.method==='GET') {
         if(path==='/api/competitive/rejections') return send(
@@ -564,6 +565,8 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
             competitiveStatus,
             generatedAt
           });
+          // Recorded only once the document exists, so a failed build never counts as an export.
+          await engine.blueprintExported(token,brandId);
           res.writeHead(200,{
             'Content-Type':'application/pdf',
             'Content-Length':String(pdf.byteLength),

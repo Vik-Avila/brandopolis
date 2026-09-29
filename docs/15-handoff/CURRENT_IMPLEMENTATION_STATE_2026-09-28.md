@@ -158,6 +158,23 @@ Terminología (2026-09-29): la vista conectada se llama **«Mapa estratégico»*
 ninguna URL se rompe. Exportación en PDF y la decisión completa:
 [BLUEPRINT_PDF_EXPORT](BLUEPRINT_PDF_EXPORT.md).
 
+## 6.ter Analítica de producto del Founding Pilot · 2026-09-29
+
+Capa mínima fiable para operar los primeros 12-20 Estrategas de Marca. Tabla de preparación y motivos:
+[FOUNDING_PILOT_ANALYTICS_READINESS](../09-validation/FOUNDING_PILOT_ANALYTICS_READINESS.md).
+Definiciones canonicas: [metrics.md](../09-validation/metrics.md), que no se redefine.
+
+- Verdad canonica: telemetria de primera parte. GA4 es senal agregada y nunca fuente de Decisiones,
+  activacion, retencion ni estado por inquilino. /admin/ presenta lo derivado de la primera parte.
+- READY para arrancar: registro, login, intake, primera marca real, activacion y tasa, TTFI, TTFD,
+  sesiones, ultimo acceso, recurrencia, Mapa estrategico visto y descargado, propuestas y fallos de IA,
+  segunda marca real, Evidence Engagement, progresion por fase, Strategy Ready y Human Override.
+- PARTIAL: optionActionCounts (descartar es estado de sesion en el cliente y no se persiste) y
+  D7/D14/D30 (derivadas, pero sin tiempo transcurrido todavia; devuelven null, no falso).
+- DEFERRED: coste de IA por decision y por marca activa, WTP y conversion de pago. Ninguna bloquea el
+  arranque de testers.
+- Sin dashboard nuevo, sin proveedores, sin migracion, sin dependencias.
+
 ## 7. Congelación del producto PILOT
 
 > **El workspace PILOT está funcionalmente completo para esta fase de validación.**
