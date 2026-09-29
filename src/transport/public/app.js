@@ -581,9 +581,96 @@ async function loadBrands(preferred) {
   if(brandId)$('#brands').value=brandId;
   activeDecisionTab='overview';draft=null;await refresh();
 }
+/** Administration. A separate surface: authorization is the server's; this renders what it returns. */
+let adminView='resumen';
+const adminNum=value=>value==null?'—':typeof value==='number'?value.toLocaleString('es-MX'):String(value);
+const adminMins=stat=>stat?.medianSeconds==null?'—':Math.round(stat.medianSeconds/60)+' min (n='+stat.n+')';
+const adminTiles=items=>'<div class="admin-tiles">'+items.map(([label,value,note])=>
+ '<div class="admin-tile"><span>'+escape(label)+'</span><strong>'+escape(String(value))+'</strong>'+(note?'<em>'+escape(note)+'</em>':'')+'</div>').join('')+'</div>';
+const adminDist=(title,values)=>'<div class="admin-dist"><h3>'+escape(title)+'</h3><ul>'+
+ (Object.entries(values??{}).map(([k,v])=>'<li><span>'+escape(k)+'</span><strong>'+adminNum(v)+'</strong></li>').join('')||'<li class="hint">Sin datos</li>')+'</ul></div>';
+
+const ADMIN_COLUMNS=['Nombre','Email','País','Región','Ciudad','Perfil','Empresa','Registro','Último acceso','Sesiones','Marcas reales','Cohorte','Estado','Intake','Acción'];
+function adminRow(p){
+ const status=escape(p.accessStatus)+(p.identityActive?'':' · desactivado');
+ const next=p.accessStatus==='SUSPENDED'?'APPROVED':'SUSPENDED';
+ const action=p.identityActive
+  ?'<button type="button" class="secondary" data-admin-status="'+escape(p.userId)+'" data-next="'+next+'">'+(next==='APPROVED'?'Reactivar':'Suspender')+'</button>'
+  :'—';
+ return '<tr>'+[escape(p.name??'—'),escape(p.email??'—'),escape(p.country??'—'),escape(p.region??'—'),escape(p.city??'—'),
+  escape(p.primaryProfile??'—'),escape(p.companyOrProject??'—'),p.registeredAt?escape(fmt(p.registeredAt)):'—',
+  p.lastLoginAt?escape(fmt(p.lastLoginAt)):'—',adminNum(p.sessions),adminNum(p.realBrands),escape(p.cohort??'—'),
+  status,p.intakeComplete?'Sí':'No',action].map(cell=>'<td>'+cell+'</td>').join('')+'</tr>';
+}
+
+async function renderAdmin(){
+ const body=$('#admin-body');
+ document.querySelectorAll('[data-admin-view]').forEach(b=>b.setAttribute('aria-current',b.dataset.adminView===adminView?'page':'false'));
+ body.innerHTML='<p class="hint">Cargando…</p>';
+ if(adminView==='configuracion'){
+  body.innerHTML='<section class="admin-panel"><h2>Configuración</h2><p class="hint">Los operadores se configuran con <code>BRANDOPOLIS_ADMIN_EMAILS</code> en el entorno del servidor. Más controles llegarán en una iteración posterior.</p></section>';
+  return;
+ }
+ if(adminView==='resumen'){
+  const s=await api('/api/admin/summary');
+  body.innerHTML='<section class="admin-panel"><h2>Resumen</h2>'+adminTiles([
+   ['Estrategas registrados',adminNum(s.participants)],['Estrategas activos',adminNum(s.activeParticipants)],
+   ['Nuevos hoy',adminNum(s.newToday)],['Últimos 7 días',adminNum(s.new7d)],['Últimos 30 días',adminNum(s.new30d)],
+   ['Intake completo',adminNum(s.intakeComplete)],['Con marca real',adminNum(s.participantsWithRealBrand)],
+   ['Marcas reales',adminNum(s.realBrands)],['Marcas demo',adminNum(s.demoBrands),'excluidas de la evidencia'],
+   ['Con segunda marca real',adminNum(s.participantsWithSecondRealBrand)],['Recurrentes',adminNum(s.returningParticipants)],
+   ['Activados',adminNum(s.activated)],['Tasa de activación',s.activationRate==null?'—':Math.round(s.activationRate*100)+'%'],
+   ['Tiempo a primer insight',adminMins(s.timeToFirstInsight)],['Tiempo a primera decisión',adminMins(s.timeToFirstDecision)],
+   ['Propuestas IA',adminNum(s.ai?.requested)],['Fallos IA',adminNum(s.ai?.failed)]
+  ])+'<p class="hint">No derivable todavía: '+escape((s.unavailable??[]).join(', ')||'—')+'.</p></section>';
+  return;
+ }
+ if(adminView==='estrategas'){
+  const {participants}=await api('/api/admin/users');
+  body.innerHTML='<section class="admin-panel"><h2>Estrategas de Marca</h2><div class="admin-scroll"><table class="admin-table"><thead><tr>'+
+   ADMIN_COLUMNS.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'+
+   (participants.map(adminRow).join('')||'<tr><td colspan="'+ADMIN_COLUMNS.length+'">Sin Estrategas de Marca todavía.</td></tr>')+
+   '</tbody></table></div></section>';
+  body.querySelectorAll('[data-admin-status]').forEach(button=>button.addEventListener('click',event=>run(async()=>{
+   const suspending=button.dataset.next==='SUSPENDED';
+   if(!confirm(suspending?'¿Suspender el acceso de este Estratega de Marca? Sus sesiones activas se cerrarán.':'¿Reactivar el acceso de este Estratega de Marca?'))return;
+   await api('/api/admin/access-status',{userId:button.dataset.adminStatus,status:button.dataset.next});
+   notice(suspending?'Acceso suspendido. Las sesiones activas se cerraron.':'Acceso reactivado.');
+   await renderAdmin();
+  },event.currentTarget)));
+  return;
+ }
+ const e=await api('/api/admin/evidence');
+ body.innerHTML='<section class="admin-panel"><h2>Evidencia del piloto</h2>'+adminTiles([
+  ['Participantes',adminNum(e.sample.participants)],['Intake completo',adminNum(e.sample.intakeComplete)],['Activos',adminNum(e.sample.active)],
+  ['Con sesiones',adminNum(e.engagement.participantsWithSessions)],['Recurrentes',adminNum(e.engagement.returningParticipants)],
+  ['Marcas reales',adminNum(e.product.realBrands)],['Marcas demo',adminNum(e.product.demoBrands),'excluidas'],
+  ['Activados',adminNum(e.product.activated)],['Segunda marca real',adminNum(e.product.participantsWithSecondRealBrand)],
+  ['Propuestas IA',adminNum(e.product.ai.requested)],['Fallos IA',adminNum(e.product.ai.failed)],
+  ['Comentarios',adminNum(e.feedback.responses)],['Incidencias',adminNum(e.feedback.issues)]
+ ])+'<div class="admin-dists">'+adminDist('Perfil profesional',e.segmentation.primaryProfile)+adminDist('País',e.segmentation.country)+
+ adminDist('Región',e.segmentation.region)+adminDist('Cohorte',e.segmentation.cohort)+'</div>'+
+ '<p><a class="button secondary" href="/api/admin/evidence.csv">Descargar evidencia agregada (CSV)</a></p>'+
+ '<p class="hint">Agregados sin datos personales. GA4 es analítica de navegación; esta evidencia interna es la fuente canónica.</p></section>';
+}
+
+async function showAdmin(){
+ document.body.classList.remove('booting');
+ for(const id of ['#gateway','#request-access-view','#login','#workspace','#intake','#privacidad','#terminos'])$(id).hidden=true;
+ const {admin}=await api('/api/admin/session').catch(()=>({admin:false}));
+ if(!admin){location.replace('/');return;}
+ // Administration is its own surface: it must NOT borrow the participant workspace shell, whose
+ // sticky header and brand controls belong to a strategist's session, not an operator's.
+ $('#admin').hidden=false;document.body.classList.remove('app');document.body.classList.add('admin-mode');setTitle('Administración');
+ document.querySelectorAll('[data-admin-view]').forEach(button=>button.addEventListener('click',event=>run(async()=>{
+  adminView=button.dataset.adminView;await renderAdmin();
+ },event.currentTarget)));
+ await renderAdmin();
+}
 /** Single entry to the product: required intake first, workspace second. Used by every sign-in path. */
 async function enterWorkspace(){
  const state=await api('/api/session-state');
+ if(location.pathname.replace(/\/$/,'')==='/admin')return showAdmin();
  if(state.intakeRequired)return showIntake();
  return authenticated();
 }
@@ -845,7 +932,12 @@ Promise.all([api('/api/mode'),api('/api/session-state')]).then(async([mode,state
   const feedback=document.createElement('button');feedback.id='pilot-feedback';feedback.className='secondary';feedback.textContent='Compartir feedback';feedback.addEventListener('click',()=>run(showFeedback));$('#journey').append(feedback);
  }
  // Booting only covers the session probe; the app shell is interactive while brands load.
- if(state.authenticated){if(state.intakeRequired)await showIntake();else await authenticated();}
+ if(state.authenticated){
+  // One entry point on boot too: /admin, then required intake, then the workspace.
+  if(location.pathname.replace(/\/$/,'')==='/admin')await showAdmin();
+  else if(state.intakeRequired)await showIntake();
+  else await authenticated();
+ }
  else document.body.classList.remove('booting');
 }).catch(error=>{if(error.code!=='UNAUTHORIZED')notice(error.message,true);}).finally(()=>document.body.classList.remove('booting'));
 $('#brand-context').addEventListener('click',()=>run(showBrandContext));

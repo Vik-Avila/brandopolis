@@ -632,3 +632,143 @@
 #intake-form button[type="submit"] {
   margin-top: 22px;
 }
+
+/* Administration: an operational surface. Clarity over decoration. */
+
+.admin {
+  max-width: 1280px;
+  margin: 32px auto 80px;
+  padding: 0px 24px;
+}
+
+.admin-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.admin-subtitle {
+  color: var(--text-secondary);
+  margin: 4px 0px 0px;
+}
+
+.admin-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 24px 0px;
+  border-bottom: 1px solid var(--border-glass-strong);
+  padding-bottom: 12px;
+}
+
+.admin-nav button {
+  background: none;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--text-secondary);
+  padding: 8px 14px;
+}
+
+.admin-nav button[aria-current="page"] {
+  background: var(--surface-card);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.admin-panel {
+  padding: 4px 0px;
+}
+
+.admin-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
+  margin: 16px 0px;
+}
+
+.admin-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-glass-strong);
+  border-radius: var(--bp-radius-lg);
+  background: var(--surface-card);
+}
+
+.admin-tile span {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.admin-tile strong {
+  font-family: var(--font-display);
+  font-size: 26px;
+}
+
+.admin-tile em {
+  font-size: 11px;
+  font-style: normal;
+  color: var(--text-muted);
+}
+
+.admin-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border-glass-strong);
+  border-radius: var(--bp-radius-lg);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.admin-table th, .admin-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.admin-table th {
+  background: var(--surface-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.admin-dists {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  margin: 20px 0px;
+}
+
+.admin-dist ul {
+  list-style: none;
+  margin: 8px 0px 0px;
+  padding: 0px;
+}
+
+.admin-dist li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0px;
+  border-bottom: 1px solid var(--border-default);
+  font-size: 13px;
+}
+
+/* Administration owns its own header, so the product shell header stays out of the way entirely. */
+
+body.admin-mode > header, body.admin-mode > footer {
+  display: none;
+}
+
+body.admin-mode .admin-head > a {
+  flex: 0 0 auto;
+}

@@ -14,6 +14,19 @@ Depends on: —
 
 # Registro
 
+## Administración V1 y centro de evidencia del piloto · 2026-09-29
+
+- Superficie de operador en `/admin`, **separada del workspace del participante**, con Resumen, Estrategas de Marca, Evidencia y un marcador de Configuración.
+- **Autorización**: tres condiciones obligatorias — sesión PILOT viva, correo verificado por el proveedor y pertenencia a `BRANDOPOLIS_ADMIN_EMAILS`. Se comprueba **en cada endpoint por separado**, nunca una vez en el borde, y los dos rechazos devuelven el mismo mensaje para no revelar por qué. Ninguna dirección está escrita en el código; una prueba lo fija.
+- Endpoints: `GET /api/admin/{session,summary,users,evidence,evidence.csv,feedback}` y `POST /api/admin/access-status`.
+- **Integridad de métricas**: las cifras canónicas vienen de `report()`/`metrics()`, que ya excluyen la actividad demo en el servidor. **La administración no recalcula evidencia**: si lo hiciera, las exclusiones de CoffeePolis podrían divergir entre superficies. Marcas reales y demo se reportan siempre por separado, y lo que la arquitectura no puede derivar hoy se devuelve en `unavailable` y se muestra como tal, nunca inventado.
+- **Nada estratégico sale de esta capa**: no se seleccionan decisiones, documentos, contexto ni material de sesión/OIDC/hashes. La evidencia agregada son conteos por categoría, nunca filas; la ciudad se omite incluso en agregado porque en un piloto pequeño un conteo de uno señala a una persona.
+- Suspender y reactivar con confirmación, auditados contra el operador que actúa. `PENDING` no se asigna a mano y **reactivar nunca resucita una identidad desactivada con `disable()`**.
+- **Defecto real encontrado en la verificación**: la barra de título de administración era un `<header>`, así que le aplicaba la regla global `header{position:sticky;height:var(--shell-height);z-index:30}` y tapaba su propia navegación a 390px, interceptando los clics. Corregido usando un `div` en lugar de debilitar el estilo compartido del shell. Además se dejó de añadir la clase `app` en administración, que arrastraba chrome del participante que un operador no debe ver.
+- Pruebas: typecheck/lint PASS; pnpm test 100/100 (8 nuevas de seguridad y métricas de administración); test:e2e 30/30; test:visual 10 pass + 1 skip; **ensayo de release PASS**; **regresión de métricas demo PASS**; verificación de administración en navegador **42/42** a 390/768/1440. Sin migración: la administración lee tablas existentes.
+- **Diferido explícitamente**: pantalla visual de comentarios e incidencias (el endpoint existe y está probado, falta la vista), controles de filtro por fecha en la interfaz (el endpoint ya acepta `from`/`to`), exportación operativa del padrón en CSV, y retención D7/D14/D30 hasta que sea derivable canónicamente.
+
+
 ## UX final del workspace antes de las pruebas externas · 2026-09-29
 
 - **Geografía estratégica en el alta canónica de marca**: la pregunta, los seis valores y «Mercado principal» opcional, con la ayuda «La ubicación de tu empresa no siempre es el mercado donde compite tu marca». Persiste por el endpoint existente `/api/brands/geography`: **una sola implementación**. Es opcional por decisión: no declararla nunca impide crear la marca, y un fallo al guardarla nunca pierde la marca creada.

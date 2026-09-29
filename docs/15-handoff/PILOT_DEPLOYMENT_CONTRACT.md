@@ -52,6 +52,7 @@ Define lo que cualquier hosting debe ofrecer. No elige proveedor. PILOT no es pr
 | `BIND_HOST` | `127.0.0.1` | `0.0.0.0` detrás de proxy de plataforma. |
 | `TRUST_PROXY` | `false` | `true` sólo si el proxy propio fija `X-Forwarded-For` (límites por IP real). |
 | `OIDC_REDIRECT_URI` | `PILOT_ORIGIN/auth/callback` | Si se define, debe ser exactamente ese valor. |
+| `BRANDOPOLIS_ADMIN_EMAILS` | — | Correos verificados y normalizados, separados por comas, que pueden abrir `/admin`. Sin definir, **nadie** tiene administración. Ninguna dirección está escrita en el código. |
 | `GA4_MEASUREMENT_ID` | — | `G-XXXXXXXXXX`. Sin definir, GA4 queda desactivado y la CSP conserva su valor original. Mal formada, el proceso falla al arrancar. Amplía `script-src`/`connect-src`/`img-src` sólo con orígenes de Google. Analítica de comportamiento, nunca evidencia canónica. |
 | `PILOT_DEFAULT_ACCESS_STATUS` | `APPROVED` | Estado de acceso de un participante NUEVO. `APPROVED` (fase actual) admite de inmediato a todo participante autenticado. `PENDING` reserva el acceso para un piloto controlado futuro. `SUSPENDED` se rechaza: crearía cuentas que nunca podrían entrar. Cambiar el valor no reevalúa cuentas existentes. |
 | `PILOT_AUTO_PROVISION` | `false` | `true` permite que una identidad OIDC verificada cree su propia cuenta y workspace en el primer acceso. Con `false` (o sin definir) se mantiene el comportamiento fail-closed actual: identidad no aprovisionada = denegada. Exige `email` y `email_verified=true` en el ID token. |

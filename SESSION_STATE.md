@@ -37,7 +37,11 @@ BUILT: the last four pre-tester UX blockers are closed. Geography is asked in th
 > Do not continue opportunistic UI or strategic-workflow polishing.
 > Only defects discovered by regression or external testing may change the frozen workspace before validation.
 
-Remaining before external testers is operational, not code: deploy this branch (migrations 0011-0013 via `pnpm pilot:migrate` before the new version starts), set `PILOT_AUTO_PROVISION=true`, `GA4_MEASUREMENT_ID` and the Google OIDC credentials, and publish the Google OAuth app to Production — the longest-lead item, since external Google sign-in does not work for arbitrary users until that review completes.
+ADMIN V1 (2026-09-29): `/admin` is a separate operator surface with Resumen, Estrategas de Marca, Evidencia and a Configuración placeholder. Authorization needs a live PILOT session, a provider-verified email and membership of `BRANDOPOLIS_ADMIN_EMAILS`, checked independently inside every endpoint; no address is compiled in. Canonical figures come from `report()`/`metrics()`, so the demo exclusions cannot drift; real and demo brands are always separate; underivable metrics are returned as `unavailable` rather than invented. Aggregate evidence is counts by bucket only, and city is omitted even in aggregate. Suspend/reactivate is audited and can never revive a `disable()`d identity. No migration.
+
+DEFERRED, recorded so it is not mistaken for shipped: the visual feedback screen (the `/api/admin/feedback` endpoint exists and is tested, the view does not), date-filter controls in the UI (the evidence endpoint already accepts `from`/`to`), the operational participant CSV, and D7/D14/D30 retention until it is canonically derivable.
+
+Remaining before external testers is operational, not code: deploy this branch (migrations 0011-0013 via `pnpm pilot:migrate` before the new version starts), set `PILOT_AUTO_PROVISION=true`, `GA4_MEASUREMENT_ID`, `BRANDOPOLIS_ADMIN_EMAILS` and the Google OIDC credentials, and publish the Google OAuth app to Production — the longest-lead item, since external Google sign-in does not work for arbitrary users until that review completes.
 
 Gate (2026-09-28): typecheck/lint PASS; pnpm test 88/88; test:e2e 30/30; test:visual 10 pass + 1 skip, 0 fail; release rehearsal PASS; git diff --check clean. Foundation, UI and Brand Master validators NOT RUN: no Python interpreter on this machine.
 

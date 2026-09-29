@@ -30,8 +30,8 @@ cascada automática.
 | Landing pública | **APROBADA (2026-09-28)**, en `origin/main` `d43fd4d` | **no desplegada** |
 | Corpus documental de origen | implementado | `source_documents`, `document_extractions`, `document_claims` |
 | Investigación competitiva | implementada, con revisión humana | hallazgos requieren aceptación explícita |
-| Autenticación | **OIDC genérico, sin cambios** | ver §4 |
-| Administración | **NO EXISTE** | ver §5 |
+| Autenticación | **autoservicio OIDC verificado + intake obligatorio** | ver §4 |
+| Administración | **V1 implementada** en `/admin` | ver §5.bis |
 | Telemetría / evidencia | parcial | ver §6 |
 | Defecto de cabecera móvil | **CORREGIDO 2026-09-28** | ver §8 |
 | `brandopolis.ai` (raíz) | **BLOQUEADO — 403 de Apache/cPanel** | ver §9 |
@@ -63,16 +63,63 @@ Implementación en `src/transport/pilot-auth.ts` (102 líneas) y `src/applicatio
 - Sesión en cookie `__Host-brandopolis_session` (Secure, HttpOnly, SameSite=Strict, host-only).
 - DEMO LOCAL usa un token de sesión local, sólo para ingeniería.
 
-**Nada de esto se modificó el 2026-09-28.** Los cambios pedidos (scope `openid email profile`,
-`PILOT_AUTO_PROVISION`, perfil de cuenta, contraseña propia, recuperación por email, SMTP) están
-**pendientes de implementación** — ver §11.
+**Actualizado en la rama `feat/pilot-auth-admin`**: el scope es `openid email profile`, los claims se
+toman sólo del ID token validado, `PILOT_AUTO_PROVISION` permite el autoservicio (fail-closed por
+defecto), la cohorte es determinista, existen `user_accounts` y `participant_profiles`, y el **intake
+del participante es obligatorio tras autenticarse**. Detalle y certificación multiusuario:
+[GOOGLE_AUTH_PRODUCTION](GOOGLE_AUTH_PRODUCTION.md). **Siguen sin implementarse**: contraseña propia,
+recuperación y SMTP — ver §11.
 
 ## 5. Administración
 
-**No existe superficie `/admin`.** No hay endpoints `/api/admin/*`, ni allowlist
-`BRANDOPOLIS_ADMIN_EMAILS`, ni vistas de Resumen / Estrategas de Marca / Configuración.
-Las métricas de adopción existentes viven en `src/application/pilot-access.ts` y en el informe de
-piloto; cualquier admin futuro debe **reutilizar esas definiciones**, no crear otras que compitan.
+Implementada en la rama `feat/pilot-auth-admin` — ver **§5.bis**. La regla que la gobierna sigue siendo
+la de siempre: las métricas de adopción viven en `src/application/pilot-access.ts` y la administración
+**reutiliza esas definiciones**, nunca crea otras que compitan.
+
+## 5.bis Administración (V1)
+
+Superficie de operador en `/admin`, **separada del workspace del participante** (no comparte el shell
+del producto: usarlo hacía que su cabecera heredara la regla global `header{position:sticky}` y tapara
+su propia navegación en teléfono).
+
+**Autorización**: tres condiciones, todas obligatorias — sesión PILOT viva, cuenta con correo verificado
+por el proveedor, y pertenencia a `BRANDOPOLIS_ADMIN_EMAILS`. Se comprueba **en cada endpoint por
+separado**, nunca una vez en el borde. Los rechazos son indistinguibles entre sí: la superficie no
+revela por qué dijo que no. Ninguna dirección está compilada en el código.
+
+| Endpoint | Devuelve |
+|---|---|
+| `GET /api/admin/session` | si esta sesión puede ver administración |
+| `GET /api/admin/summary` | resumen del piloto |
+| `GET /api/admin/users` | padrón operativo de Estrategas de Marca |
+| `GET /api/admin/evidence` | evidencia agregada (acepta `from`/`to`) |
+| `GET /api/admin/evidence.csv` | la misma evidencia como CSV |
+| `GET /api/admin/feedback` | comentarios e incidencias |
+| `POST /api/admin/access-status` | suspender o reactivar |
+
+**Definiciones de métricas**: las cifras canónicas vienen de `report()`/`metrics()` en
+`pilot-access.ts`, que **ya excluyen la actividad de marcas demo en el servidor**. La administración no
+recalcula evidencia: si lo hiciera, las exclusiones de CoffeePolis podrían divergir entre superficies.
+Lo que esta capa añade es operativo (intake completo, marcas reales por participante) y se calcula
+desde registros clasificados, nunca inferido de un nombre.
+
+- **Marcas reales** y **marcas demo** se reportan por separado, siempre.
+- Métricas que la arquitectura **no puede derivar hoy** se devuelven en `unavailable` y se muestran como
+  tales: `documentEngagement`, `phaseCompletionCounts`, `optionActionCounts`. No se inventan.
+- La evidencia agregada no contiene filas identificables: sólo conteos por categoría. **La ciudad se
+  omite incluso en agregado**, porque en un piloto pequeño un conteo de uno señala a una persona.
+
+**Control de estado**: un operador puede suspender y reactivar. `PENDING` no se asigna a mano en este
+piloto. La suspensión revoca sesiones por la lógica que ya existía, y **reactivar nunca resucita una
+identidad desactivada con `disable()`**: esa sigue siendo la desactivación dura. Cada cambio queda
+auditado contra el operador que lo hizo.
+
+**Nunca sale de esta capa**: texto de decisiones, contenido de documentos, contexto estratégico,
+tokens de sesión, OIDC o recuperación, ni hashes.
+
+**Pendiente para una iteración posterior**: filtros de fecha en la interfaz (el endpoint ya los acepta),
+estados de flujo para comentarios (`NEW/IN_REVIEW/RESOLVED/DISMISSED`), exportación operativa del padrón,
+y métricas de retención D7/D14/D30.
 
 ## 6. Telemetría y evidencia
 

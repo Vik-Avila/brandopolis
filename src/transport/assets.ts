@@ -43,7 +43,7 @@ export const runtimeAssets={
   '/brand/web/og.webp':['public/brand/web/og.webp','image/webp']
 } satisfies Record<string,[string,string]>;
 // Client-side views of the single page; the server always returns the same document.
-const views=new Set(['/','/login','/request-access','/workspace','/privacidad','/privacidad/','/terminos','/terminos/']);
+const views=new Set(['/','/login','/request-access','/workspace','/privacidad','/privacidad/','/terminos','/terminos/','/admin','/admin/']);
 export function assetPath(path:string):keyof typeof runtimeAssets|undefined {
   const key=views.has(path)?'/':path;
   return Object.hasOwn(runtimeAssets,key)?key as keyof typeof runtimeAssets:undefined;

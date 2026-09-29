@@ -202,6 +202,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         // Required intake is enforced server-side, not by hiding a screen. Only the endpoints needed to
         // complete it, read identity or leave stay open until the profile exists.
         const intakeOpen=['/api/participant','/api/logout','/api/me','/api/session-state','/api/mode'];
+        if(path.startsWith('/api/admin/'))intakeOpen.push(path);
         if(!intakeOpen.includes(path)&&await pilot.intakeRequired?.(token))
           return send(res,403,{code:'INTAKE_REQUIRED',message:'Completa tu perfil de Estratega de Marca para continuar.'});
       }
@@ -328,6 +329,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(path==='/api/logout') {if(pilot)await pilot.logout(token);res.setHeader('Set-Cookie',`${cookieName}=; ${pilot?'Secure; ':''}HttpOnly; SameSite=Strict; Path=/; Max-Age=0`);return send(res,200,{authenticated:false});}
         if(pilot&&path==='/api/feedback')return send(res,201,await pilot.feedback(token,input));
         if(pilot&&path==='/api/participant')return send(res,201,await pilot.saveParticipantProfile!(token,input));
+        if(pilot&&path==='/api/admin/access-status')return send(res,200,await pilot.adminSetAccessStatus!(token,string(input.userId),string(input.status) as never));
         if(pilot&&path==='/api/brands/geography')return send(res,200,await pilot.setBrandGeography!(token,string(input.brandId),string(input.geographicInfluence) as never,input.primaryMarket==null?null:string(input.primaryMarket)));
         if(path==='/api/brands') return send(res,201,await engine.createBrand(token,string(input.name),input.initialContext===undefined?undefined:string(input.initialContext)));
         if(path==='/api/context/capture') return send(res,201,await engine.captureContext(
@@ -516,6 +518,21 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(path==='/api/documents') return send(res,200,await engine.listSourceDocuments(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/me') return send(res,200,await engine.me(token));
         if(pilot&&path==='/api/participant') return send(res,200,{profile:await pilot.participantProfile!(token)});
+        // Every admin endpoint authorizes independently inside its own handler.
+        if(pilot&&path==='/api/admin/session') return send(res,200,{admin:await pilot.isAdmin!(token)});
+        if(pilot&&path==='/api/admin/summary') return send(res,200,await pilot.adminSummary!(token));
+        if(pilot&&path==='/api/admin/users') return send(res,200,{participants:await pilot.adminParticipants!(token)});
+        if(pilot&&path==='/api/admin/feedback') return send(res,200,{feedback:await pilot.adminFeedback!(token)});
+        if(pilot&&(path==='/api/admin/evidence'||path==='/api/admin/evidence.csv')){
+          const parse=(key:string)=>{const raw=url.searchParams.get(key);if(!raw)return undefined;const at=new Date(raw);if(Number.isNaN(at.getTime()))throw new AppError('INVALID','Rango de fechas inválido');return at;};
+          const range={from:parse('from'),to:parse('to')};
+          if(path==='/api/admin/evidence.csv'){
+            const csv=await pilot.adminEvidenceCsv!(token,range);
+            res.writeHead(200,{'Content-Type':'text/csv; charset=utf-8','Content-Disposition':'attachment; filename="brandopolis-evidencia.csv"','Cache-Control':'no-store'});
+            res.end(csv);return;
+          }
+          return send(res,200,await pilot.adminEvidence!(token,range));
+        }
         if(path==='/api/practice') return send(res,200,await engine.practice(token));
         if(path==='/api/blueprint') return send(res,200,await engine.blueprint(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/brands') return send(res,200,await engine.listBrands(token));

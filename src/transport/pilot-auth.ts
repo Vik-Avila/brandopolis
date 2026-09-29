@@ -6,6 +6,7 @@ import type { Database } from '../persistence/database.js';
 import { loginFlows } from '../persistence/schema.js';
 import { hash } from '../application/engine.js';
 import { ACCESS_STATUS,PilotAccess,type AccessStatus,type GeographicInfluence,type VerifiedClaims } from '../application/pilot-access.js';
+import { PilotAdmin,evidenceCsv } from '../application/pilot-admin.js';
 import { AppError } from '../domain/contracts.js';
 import { createHash } from 'node:crypto';
 import type { Limiter } from './http.js';
@@ -22,6 +23,13 @@ export interface PilotBoundary {
   logout(token:string):Promise<void>;
   feedback(token:string,input:Record<string,unknown>):Promise<unknown>;
   intakeRequired?(token:string):Promise<boolean>;
+  isAdmin?(token:string):Promise<boolean>;
+  adminSummary?(token:string):Promise<unknown>;
+  adminParticipants?(token:string):Promise<unknown>;
+  adminEvidence?(token:string,range?:{from?:Date;to?:Date}):Promise<unknown>;
+  adminEvidenceCsv?(token:string,range?:{from?:Date;to?:Date}):Promise<string>;
+  adminFeedback?(token:string):Promise<unknown>;
+  adminSetAccessStatus?(token:string,userId:string,status:AccessStatus):Promise<unknown>;
   participantProfile?(token:string):Promise<unknown>;
   saveParticipantProfile?(token:string,input:Record<string,unknown>):Promise<unknown>;
   setBrandGeography?(token:string,brandId:string,influence:GeographicInfluence,primaryMarket?:string|null):Promise<unknown>;
@@ -36,9 +44,11 @@ const FLOW='__Host-brandopolis_flow',SESSION='__Host-brandopolis_session';
 // signature (JWKS), issuer, audience, expiry and nonce; identity is keyed by (issuer, subject), never email.
 export class PilotAuth implements PilotBoundary {
   private access:PilotAccess;
+  private admin:PilotAdmin;
   readonly redirectUri:string;readonly trustProxy:boolean;readonly requestAccessUrl:string|null;readonly limiter?:Limiter;readonly ai?:PilotAiPolicy;readonly autoProvision:boolean;readonly defaultAccessStatus:AccessStatus;
   constructor(private db:Database,private config:oidc.Configuration,readonly origin:string,options:PilotAuthOptions={}){
     this.access=new PilotAccess(db,config.serverMetadata().issuer);
+    this.admin=new PilotAdmin(db,this.access);
     this.redirectUri=options.redirectUri??origin+'/auth/callback';this.trustProxy=options.trustProxy??false;this.requestAccessUrl=options.requestAccessUrl??null;this.limiter=options.limiter;this.ai=options.ai;this.autoProvision=options.autoProvision??false;this.defaultAccessStatus=options.defaultAccessStatus??ACCESS_STATUS.approved;
     if(new URL(this.redirectUri).origin!==origin||new URL(this.redirectUri).pathname!=='/auth/callback')throw new ConfigError('OIDC_REDIRECT_URI must be PILOT_ORIGIN/auth/callback');
   }
@@ -46,6 +56,13 @@ export class PilotAuth implements PilotBoundary {
   logout(token:string){return this.access.logout(token);}
   feedback(token:string,input:Record<string,unknown>){return this.access.saveFeedback(token,input);}
   intakeRequired(token:string){return this.access.intakeRequired(token);}
+  isAdmin(token:string){return this.admin.isAdmin(token);}
+  async adminSummary(token:string){await this.admin.authorizeAdmin(token);return this.admin.summary();}
+  async adminParticipants(token:string){await this.admin.authorizeAdmin(token);return this.admin.participants();}
+  async adminEvidence(token:string,range?:{from?:Date;to?:Date}){await this.admin.authorizeAdmin(token);return this.admin.evidence(range);}
+  async adminEvidenceCsv(token:string,range?:{from?:Date;to?:Date}){await this.admin.authorizeAdmin(token);return evidenceCsv(await this.admin.evidence(range));}
+  async adminFeedback(token:string){await this.admin.authorizeAdmin(token);return this.admin.feedback();}
+  adminSetAccessStatus(token:string,userId:string,status:AccessStatus){return this.admin.setAccessStatus(token,userId,status);}
   participantProfile(token:string){return this.access.participantProfile(token);}
   saveParticipantProfile(token:string,input:Record<string,unknown>){return this.access.saveParticipantProfile(token,input);}
   setBrandGeography(token:string,brandId:string,influence:GeographicInfluence,primaryMarket?:string|null){return this.access.setBrandGeography(token,brandId,influence,primaryMarket);}

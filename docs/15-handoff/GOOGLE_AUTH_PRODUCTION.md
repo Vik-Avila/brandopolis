@@ -174,6 +174,12 @@ PILOT_DEFAULT_ACCESS_STATUS=APPROVED
   controlado futuro, sin rediseño de esquema.
 - Las identidades aprovisionadas por operador están exentas del intake y se comportan como siempre.
 
+### Administración
+
+Los operadores entran con la misma identidad de Google y **no necesitan scopes adicionales**. El acceso
+a `/admin` se concede sólo si el correo verificado está en `BRANDOPOLIS_ADMIN_EMAILS`, y se comprueba en
+el servidor en cada endpoint. La administración **no exige intake**, pero sí autorización.
+
 ### Datos que recoge el intake, frente a la Política de Privacidad
 
 Campos implementados: nombre, apellido, país, estado/región, ciudad y perfil profesional (obligatorios);

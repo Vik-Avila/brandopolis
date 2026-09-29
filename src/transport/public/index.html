@@ -145,6 +145,21 @@
 <label class="intake-consent"><input id="intake-terms" type="checkbox" required> Acepto los <a href="/terminos/" target="_blank" rel="noopener">Términos del piloto</a></label>
 <button type="submit">Continuar a Brandopolis</button>
 </form></section>
+<section id="admin" class="admin" hidden aria-labelledby="admin-title">
+<div class="admin-head">
+<div><p class="eyebrow">Brandopolis</p><h1 id="admin-title">Administración</h1>
+<p class="admin-subtitle">Estado del piloto y adopción de Brandopolis.</p></div>
+<a class="button secondary" href="/">Volver al espacio</a>
+</div>
+<nav class="admin-nav" aria-label="Secciones de administración">
+<button type="button" data-admin-view="resumen" aria-current="page">Resumen</button>
+<button type="button" data-admin-view="estrategas">Estrategas de Marca</button>
+<button type="button" data-admin-view="evidencia">Evidencia</button>
+<button type="button" data-admin-view="configuracion">Configuración</button>
+</nav>
+<div id="admin-body" aria-live="polite"></div>
+</section>
+
 <section id="workspace" hidden><div id="demo-banner" class="demo-banner" hidden><span class="badge-demo">Marca demo</span><p>CoffeePolis es una marca demo para explorar cómo funciona Brandopolis. Puedes recorrerla y experimentar sin afectar tu propia marca.</p><button type="button" id="demo-create" class="secondary">Crear mi marca</button></div><div class="workspace-head"><div class="workspace-intro"><p class="eyebrow">Espacio estratégico</p><h1>Una decisión conecta con la siguiente.</h1></div></div><dialog id="brand-dialog" aria-labelledby="brand-dialog-title"><p class="eyebrow">Un nuevo punto de partida</p><h2 id="brand-dialog-title">Dale un espacio a tu marca.</h2><p>Cada marca conserva sus propias decisiones, contexto e historial.</p><form id="create-brand" class="new-brand">
 
 <label for="brand-stage">Tu punto de partida</label>
