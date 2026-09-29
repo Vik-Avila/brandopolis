@@ -7,7 +7,9 @@ let activeDecisionTab='overview';
 let user,brandId,context,selected=Object.hasOwn(labels,new URL(location.href).searchParams.get('module'))?new URL(location.href).searchParams.get('module'):'Primary Customer',draft=null,impactVisible=false;
 let pilotMode=false,aiNotice=null,demoBrandIds=new Set();
 /** Options the Estratega de Marca set aside. Kept for the session so nothing is silently erased: the
- *  canonical, audited rejection remains the recommendation-level form with its reason. */
+ *  canonical, audited rejection remains the recommendation-level form with its reason. Keyed
+ *  `<recommendationId>:<optionId>`, because option ids are positional and repeat across proposals, so
+ *  a bare id would leak one discard into every other phase and brand. */
 const discardedOptions=new Set();
 /** True while the active brand is the CoffeePolis sandbox rather than the participant's own work. */
 const activeBrandIsDemo=()=>demoBrandIds.has(brandId);
@@ -30,6 +32,8 @@ let activityTimer;
 let competitiveResearchResult=null;
 let competitiveRejectedClaims=new Set();
 let competitiveResearchBrandId=null;
+/** Brand whose competitive review has already reported completion, so a re-render cannot re-report. */
+let competitiveCompletionReported=null;
 const activityStart=(title,detail)=>{
  const box=$('#ai-activity');
  if(!box)return;
@@ -746,6 +750,13 @@ function render() {
   function choose(id,focus=true){for(const b of ['#keep','#modify'])$(b).setAttribute('aria-pressed',String(b===id));$('#submit-decision').disabled=false;if(id==='#keep'){draft.selectedOption=v.selectedOption;$('#option').value=v.selectedOption;$('#option').readOnly=true;if(focus)$('#rationale').focus();}else{$('#option').readOnly=false;if(focus)$('#option').focus();}}
   $('#keep')?.addEventListener('click',()=>choose('#keep',false));
   $('#modify')?.addEventListener('click',()=>choose('#modify',false));
+  // Optional assistance from the initial input, in every strategic phase. The participant's own text
+  // is preserved in this tab first, so asking for possibilities can never lose what they wrote.
+  $('#possibilities')?.addEventListener('click',event=>run(async()=>{
+    preserveDraft();
+    const generated=await generatePossibilities(q.id,{locked:pending||locked,stage:'initial_input',fromDraft:true});
+    if(generated)notice('Compara las posibilidades y decide cuál incorporar. Tu borrador quedó conservado en esta pestaña; nada se aprueba sin ti.');
+  },event.currentTarget));
   $('#cancel')?.addEventListener('click',()=>{draft=null;render();focusView($('#edit')??undefined);});
   $('#reload').addEventListener('click',event=>run(async()=>{if(draft)sessionStorage.setItem(`draft:${user.userId}:${brandId}:${selected}`,JSON.stringify(draft));draft=null;await refresh();notice('Borrador conservado en esta pestaña. Contexto recargado. Revisa la versión vigente antes de volver a editar.');},event.currentTarget));
   $('#restore-draft')?.addEventListener('click',()=>{const saved=JSON.parse(sessionStorage.getItem(`draft:${user.userId}:${brandId}:${selected}`));notice(`Borrador conservado: ${saved.selectedOption} — ${saved.rationale}`);});
@@ -1045,6 +1056,7 @@ async function startCompetitiveResearch(targetBrandId=brandId){
 
  competitiveResearchResult=null;
  competitiveResearchBrandId=targetBrandId;
+ competitiveCompletionReported=null;
 
  activityStart(
   'Brandopolis está investigando tu entorno competitivo…',
@@ -1330,6 +1342,23 @@ async function showCompetitiveContext(){
  `;
 
  bindCompetitiveResearchActions();
+
+ // Canonical completion is the HUMAN-reviewed state, not "the AI finished generating": research must
+ // have produced candidates AND the participant must have resolved every one of them, by
+ // incorporating it into the Brand Context or explicitly discarding it. While one stays unresolved
+ // the workflow is incomplete and no hand-off is shown.
+ const reviewComplete=Boolean(activeResult?.findings?.length)&&pendingFindings.length===0;
+
+ if(reviewComplete){
+  if(competitiveCompletionReported!==brandId){
+   competitiveCompletionReported=brandId;
+   analytics.send(PILOT_EVENTS.phaseCompleted,{pilot_stage:'competitive_review'});
+  }
+  showPhaseHandoff({
+   done:'Revisaste todos los hallazgos del entorno competitivo.',
+   complete:'Revisaste el entorno competitivo y ya decidiste cada fase de esta marca.'
+  });
+ }
 }
 async function showBrandContext(){
  if(!enterView('#brand-context','Contexto estratégico'))return;
@@ -1534,57 +1563,89 @@ async function showBrandContext(){
  $('#context-kind').addEventListener('change',()=>{const evidence=$('#context-kind').value==='evidence';$('#evidence-fields').hidden=!evidence;for(const name of ['source','date','provenance','limitations'])$(`#evidence-${name}`).required=evidence;});
  $('#capture-context').addEventListener('submit',event=>{event.preventDefault();run(async()=>{const kind=$('#context-kind').value,text=$('#context-statement').value;let entity=kind==='open-question'?{text,relatedHypothesisId:null}:{statement:text};if(kind==='evidence')entity={claim:text,source:$('#evidence-source').value,sourceDate:$('#evidence-date').value,provenance:$('#evidence-provenance').value,sourceQuality:$('#evidence-quality').value,relevance:$('#evidence-relevance').value,freshness:$('#evidence-freshness').value,limitations:[$('#evidence-limitations').value],external:$('#evidence-external').checked};await api('/api/context/capture',{brandId,kind,entity});await showBrandContext();notice('Contexto guardado. Las recomendaciones anteriores deberán actualizarse.');},event.submitter);});
 }
-function mountRecommendation(q,d,v,reviews,locked){
- if(draft)return;
- const facts=context.evidence,assumptions=context.hypotheses.filter(h=>h.status!=='REJECTED');
- $('#decision').insertAdjacentHTML('beforeend',`<details class="knowledge" open><summary>Lo que sabemos y lo que suponemos</summary><div class="knowledge-grid"><section class="evidence-panel"><p class="eyebrow">Fuentes y observaciones</p><h3>Evidencia registrada</h3>${facts.map(e=>`<p>${escape(e.claim)}<br><span class="hint">${escape(e.source)} · ${escape(e.sourceDate)}. Límites: ${escape(e.limitations.join('; ')||'No declarados')}</span></p>`).join('')||'<p class="hint">Sin evidencia registrada. No confundas una propuesta con un hecho.</p>'}</section><section class="hypothesis-panel"><p class="eyebrow">Supuestos por comprobar</p><h3>Hipótesis explícitas</h3>${assumptions.map(h=>`<p>${escape(h.statement)}<br><span class="badge warn">${h.status==='SUPPORTED'?'Con soporte registrado':'Por validar'}</span></p>`).join('')||'<p class="hint">Aún no declaras hipótesis para esta marca.</p>'}</section></div><p class="hint">Este contexto de marca no implica que cada fuente respalde la propuesta.</p></details>`);
- const row=context.recommendations?.find(r=>r.questionId===q.id&&r.resolution==='GENERATED'),rec=row?.payload,analysis=context.analyses?.find(a=>a.recommendationId===rec?.id);
- const list=rows=>`<ul>${rows.map(text=>`<li>${escape(text)}</li>`).join('')}</ul>`;
- $('#decision').insertAdjacentHTML('beforeend',`<section class="recommendation" aria-label="Propuesta de asistencia"><p class="eyebrow">Asistencia estratégica · ${pilotMode?'Piloto':'DEMO'}</p><p class="hint">${pilotMode?'El contexto de esta marca se comparte con el proveedor IA configurado al solicitar una propuesta. Puede no estar disponible; siempre puedes decidir con tu propio criterio. No incluyas secretos ni datos personales innecesarios.':'Opciones fijas de demostración. No son análisis de IA en vivo ni evidencia de mercado.'}</p><button id="generate-recommendation" class="secondary" ${locked?'disabled':''}>Ayúdame a generar posibilidades</button><p class="hint">Opcional. Tu propia respuesta siempre es el punto de partida: la IA sólo propone posibilidades que tú decides.</p>${rec?`<h3>Compara antes de decidir</h3><span class="badge warn">Sin validar · requiere tu revisión</span>${rec.options.map(o=>`<article class="option ${o.id===rec.recommendedOptionId?'is-proposed':''} ${discardedOptions.has(o.id)?'is-discarded':''}"><h4>${escape(o.label)}${o.id===rec.recommendedOptionId?(pilotMode?' · propuesta IA':' · propuesta DEMO'):''}</h4><p>${escape(o.rationale)}</p>${list(o.tradeoffs)}<div class="option-actions">${discardedOptions.has(o.id)?`<span class="badge muted">Descartada</span><button type="button" class="tertiary" data-option-restore="${escape(o.id)}">Reconsiderar</button>`:`<button type="button" class="secondary" data-option-take="${escape(o.id)}">Incorporar</button><button type="button" class="secondary" data-option-edit="${escape(o.id)}">Modificar</button><button type="button" class="tertiary" data-option-drop="${escape(o.id)}">Descartar</button>`}</div></article>`).join('')}<p>${escape(rec.rationale)}</p><h4>Renuncias y condiciones de fallo</h4>${list([...rec.tradeoffs,...rec.failureConditions])}<h4>Preguntas abiertas</h4>${list(rec.openQuestions)}<p class="hint">Evidencias: ${rec.evidenceReferences.length}. Hipótesis utilizadas: ${rec.hypothesesUsed.length}. Ámbitos: ${escape(rec.affectedDomains.map(x=>labels[x]??x).join(', '))}.</p><details><summary>Evaluación y límites</summary>${list(analysis?.evaluation?.issues.map(i=>i.reason)??[])}</details><div class="human-choice" role="group" aria-labelledby="human-choice-title"><p class="eyebrow" id="human-choice-title">Decisión del Estratega de Marca</p><p class="hint">La propuesta no cambia tu estrategia. Úsala o ajústala como punto de partida, o recházala con un motivo.</p><div class="actions">${rec.recommendedOptionId?'<button id="use-recommendation" class="secondary">Usar propuesta sugerida</button>':''}<button id="modify-recommendation" class="secondary">${rec.recommendedOptionId?'Modificar propuesta':'Construir mi decisión'}</button></div><form id="reject-recommendation"><label for="reject-reason">Motivo para rechazar</label><div class="reject-row"><input id="reject-reason" maxlength="1000" required><button class="secondary" type="submit">Rechazar recomendación</button></div></form></div>`:''}</section>`);
- $('#generate-recommendation').addEventListener('click',event=>run(async()=>{
+/** Shown whenever generation cannot produce options. Never carries provider or transport detail. */
+const POSSIBILITIES_FAILED='No pudimos generar posibilidades en este momento. Puedes continuar con tu propia respuesta o intentarlo nuevamente.';
+const POSSIBILITIES_UNAVAILABLE='Las propuestas no están disponibles para esta decisión ahora mismo. Puedes continuar con tu propia respuesta.';
+/**
+ * Failures api() already resolves on its own. Its messages are written for participants, never taken
+ * from the provider, and UNAUTHORIZED also returns the page to sign-in — so these must keep
+ * propagating. Swallowing them would leave an expired session stranded on a dead screen, and would
+ * replace an accurate message ("the daily AI limit was reached") with a useless invitation to retry.
+ */
+const GENERATION_ERRORS_HANDLED_BY_API=new Set([
+ 'UNAUTHORIZED','FORBIDDEN','CONFLICT','NOT_FOUND','INVALID','RATE_LIMITED','UNAVAILABLE','AI_CAP_REACHED','AI_CONSENT_REQUIRED'
+]);
+
+/**
+ * The one and only generation path. Both the assistance panel and the initial-input CTA call this,
+ * so there is a single request, a single loading state and a single failure message.
+ *
+ * It never approves anything: it asks the engine for options and re-renders so the human can compare
+ * them. engine.analyze(token,brandId,questionId) takes no free-text seed, so a draft in progress
+ * cannot be fed to the provider; proposals are shaped by the brand's registered context instead. The
+ * typed draft is therefore preserved, never sent and never overwritten without the participant.
+ */
+async function generatePossibilities(questionId,{locked=false,stage='options',fromDraft=false,afterConsent=false}={}){
+ if(locked){notice(POSSIBILITIES_UNAVAILABLE,true,'assistance');return false;}
+ analytics.send(PILOT_EVENTS.possibilitiesRequested,{pilot_stage:stage});
  activityStart(
   pilotMode?'Brandopolis está preparando opciones…':'Preparando opciones DEMO…',
   pilotMode?'Analizando tu contexto estratégico.':'Preparando alternativas de demostración.'
  );
  let result;
  try{
-  result=await api('/api/recommendations/generate',{brandId,questionId:q.id});
+  result=await api('/api/recommendations/generate',{brandId,questionId});
  }catch(error){
   activityFail();
-  if(error.code==='AI_CONSENT_REQUIRED'&&aiNotice){showAiNotice(q.id);return;}
-  throw error;
+  // Ask for consent once, then resume this same request. afterConsent stops a second prompt.
+  if(error.code==='AI_CONSENT_REQUIRED'&&aiNotice&&!afterConsent){showAiNotice(questionId,{locked,stage,fromDraft});return false;}
+  if(GENERATION_ERRORS_HANDLED_BY_API.has(error.code))throw error;
+  // Anything left is an unmapped provider or transport failure. It gets the generation-specific
+  // message, so nothing raw reaches a participant and nothing ever fails silently.
+  notice(POSSIBILITIES_FAILED,true,'assistance');
+  return false;
  }
  if(result.error){
   activityFail();
-  notice('No se pudo generar una propuesta válida. Puedes continuar con tu decisión.',true,'assistance');
-  return;
+  notice(POSSIBILITIES_FAILED,true,'assistance');
+  return false;
  }
  activityStep('Opciones listas.','Actualizando tu espacio estratégico…');
+ // The comparison surface exists only outside the draft form. Release the draft — already preserved
+ // in this tab — so the options render with Incorporar/Modificar/Descartar on every one of them.
+ if(fromDraft)draft=null;
+ // «Opciones» is a tab panel: without selecting it the options would be generated into a hidden
+ // panel. Requesting possibilities must always land on the possibilities, on every viewport.
+ activeDecisionTab='recommendation';
  await refresh();
  activityDone(
   pilotMode?'Opciones preparadas':'Opciones DEMO preparadas',
   'Ya puedes compararlas antes de decidir.'
  );
-},event.currentTarget));
+ return true;
+}
+function mountRecommendation(q,d,v,reviews,locked){
+ if(draft)return;
+ const facts=context.evidence,assumptions=context.hypotheses.filter(h=>h.status!=='REJECTED');
+ $('#decision').insertAdjacentHTML('beforeend',`<details class="knowledge" open><summary>Lo que sabemos y lo que suponemos</summary><div class="knowledge-grid"><section class="evidence-panel"><p class="eyebrow">Fuentes y observaciones</p><h3>Evidencia registrada</h3>${facts.map(e=>`<p>${escape(e.claim)}<br><span class="hint">${escape(e.source)} · ${escape(e.sourceDate)}. Límites: ${escape(e.limitations.join('; ')||'No declarados')}</span></p>`).join('')||'<p class="hint">Sin evidencia registrada. No confundas una propuesta con un hecho.</p>'}</section><section class="hypothesis-panel"><p class="eyebrow">Supuestos por comprobar</p><h3>Hipótesis explícitas</h3>${assumptions.map(h=>`<p>${escape(h.statement)}<br><span class="badge warn">${h.status==='SUPPORTED'?'Con soporte registrado':'Por validar'}</span></p>`).join('')||'<p class="hint">Aún no declaras hipótesis para esta marca.</p>'}</section></div><p class="hint">Este contexto de marca no implica que cada fuente respalde la propuesta.</p></details>`);
+ const row=context.recommendations?.find(r=>r.questionId===q.id&&r.resolution==='GENERATED'),rec=row?.payload,analysis=context.analyses?.find(a=>a.recommendationId===rec?.id);
+ const list=rows=>`<ul>${rows.map(text=>`<li>${escape(text)}</li>`).join('')}</ul>`;
+ // Scopes a discard to this proposal; a newly generated proposal starts with a clean slate.
+ const discardKey=optionId=>`${rec?.id??'none'}:${optionId}`;
+ $('#decision').insertAdjacentHTML('beforeend',`<section class="recommendation" aria-label="Propuesta de asistencia"><p class="eyebrow">Asistencia estratégica · ${pilotMode?'Piloto':'DEMO'}</p><p class="hint">${pilotMode?'El contexto de esta marca se comparte con el proveedor IA configurado al solicitar una propuesta. Puede no estar disponible; siempre puedes decidir con tu propio criterio. No incluyas secretos ni datos personales innecesarios.':'Opciones fijas de demostración. No son análisis de IA en vivo ni evidencia de mercado.'}</p><button id="generate-recommendation" class="secondary" ${locked?'disabled':''}>Ayúdame a generar posibilidades</button><p class="hint">Opcional. Tu propia respuesta siempre es el punto de partida: la IA sólo propone posibilidades que tú decides.</p>${rec?`<h3>Compara antes de decidir</h3><span class="badge warn">Sin validar · requiere tu revisión</span>${rec.options.map(o=>`<article class="option ${o.id===rec.recommendedOptionId?'is-proposed':''} ${discardedOptions.has(discardKey(o.id))?'is-discarded':''}"><h4>${escape(o.label)}${o.id===rec.recommendedOptionId?(pilotMode?' · propuesta IA':' · propuesta DEMO'):''}</h4><p>${escape(o.rationale)}</p>${list(o.tradeoffs)}<div class="option-actions">${discardedOptions.has(discardKey(o.id))?`<span class="badge muted">Descartada</span><button type="button" class="tertiary" data-option-restore="${escape(o.id)}">Reconsiderar</button>`:`<button type="button" class="secondary" data-option-take="${escape(o.id)}">Incorporar</button><button type="button" class="secondary" data-option-edit="${escape(o.id)}">Modificar</button><button type="button" class="tertiary" data-option-drop="${escape(o.id)}">Descartar</button>`}</div></article>`).join('')}<p>${escape(rec.rationale)}</p><h4>Renuncias y condiciones de fallo</h4>${list([...rec.tradeoffs,...rec.failureConditions])}<h4>Preguntas abiertas</h4>${list(rec.openQuestions)}<p class="hint">Evidencias: ${rec.evidenceReferences.length}. Hipótesis utilizadas: ${rec.hypothesesUsed.length}. Ámbitos: ${escape(rec.affectedDomains.map(x=>labels[x]??x).join(', '))}.</p><details><summary>Evaluación y límites</summary>${list(analysis?.evaluation?.issues.map(i=>i.reason)??[])}</details><div class="human-choice" role="group" aria-labelledby="human-choice-title"><p class="eyebrow" id="human-choice-title">Decisión del Estratega de Marca</p><p class="hint">La propuesta no cambia tu estrategia. Úsala o ajústala como punto de partida, o recházala con un motivo.</p><div class="actions">${rec.recommendedOptionId?'<button id="use-recommendation" class="secondary">Usar propuesta sugerida</button>':''}<button id="modify-recommendation" class="secondary">${rec.recommendedOptionId?'Modificar propuesta':'Construir mi decisión'}</button></div><form id="reject-recommendation"><label for="reject-reason">Motivo para rechazar</label><div class="reject-row"><input id="reject-reason" maxlength="1000" required><button class="secondary" type="submit">Rechazar recomendación</button></div></form></div>`:''}</section>`);
+ $('#generate-recommendation').addEventListener('click',event=>run(
+  ()=>generatePossibilities(q.id,{locked,stage:'options'}),
+  event.currentTarget
+ ));
  let chosenOptionId=null;
  const prepare=async(edit)=>{let receipt;if(reviews.length)receipt=await api('/api/reviews/start',{brandId,decisionId:d.id});activeDecisionTab='overview';draft={questionId:q.id,sourceRecommendationId:rec.id,expectedActiveVersion:v?.id??null,selectedOption:rec.options.find(o=>o.id===(chosenOptionId??rec.recommendedOptionId))?.label??'',rationale:'',idempotencyKey:crypto.randomUUID(),reviewToken:receipt?.reviewToken};await api('/api/questions/prepare',{brandId,questionId:q.id,expectedActiveVersion:draft.expectedActiveVersion});render();$('#option').readOnly=!edit;(edit?$('#option'):$('#rationale')).focus();};
  $('#use-recommendation')?.addEventListener('click',e=>run(()=>{chosenOptionId=null;return prepare(false);},e.currentTarget));$('#modify-recommendation')?.addEventListener('click',e=>run(()=>{chosenOptionId=null;return prepare(true);},e.currentTarget));
  // Every generated option is independently actionable, with real buttons rather than a hover menu.
- // Optional generation from the initial-input state. It delegates to the canonical generation control
- // rendered in this same surface, so there is literally one engine and no automatic approval.
- // Whatever the participant already typed is preserved, never replaced.
- $('#possibilities')?.addEventListener('click',event=>run(async()=>{
-  preserveDraft();
-  analytics.send(PILOT_EVENTS.possibilitiesRequested,{pilot_stage:'initial_input'});
-  const engine=$('#generate-recommendation');
-  if(!engine||engine.disabled){notice('Las propuestas no están disponibles para esta decisión ahora mismo.',true);return;}
-  engine.click();
- },event.currentTarget));
  $('#decision').querySelectorAll('[data-option-take],[data-option-edit],[data-option-drop],[data-option-restore]').forEach(button=>{
   const {optionTake,optionEdit,optionDrop,optionRestore}=button.dataset;
   button.addEventListener('click',event=>run(async()=>{
-   if(optionDrop){discardedOptions.add(optionDrop);analytics.send(PILOT_EVENTS.optionDiscarded,{pilot_stage:'options'});render();notice('Opción descartada. Puedes reconsiderarla mientras la propuesta siga abierta.');return;}
-   if(optionRestore){discardedOptions.delete(optionRestore);render();return;}
+   if(optionDrop){discardedOptions.add(discardKey(optionDrop));analytics.send(PILOT_EVENTS.optionDiscarded,{pilot_stage:'options'});render();notice('Opción descartada. Puedes reconsiderarla mientras la propuesta siga abierta.');return;}
+   if(optionRestore){discardedOptions.delete(discardKey(optionRestore));render();return;}
    chosenOptionId=optionTake??optionEdit;
    analytics.send(optionTake?PILOT_EVENTS.optionIncorporated:PILOT_EVENTS.optionModified,{pilot_stage:'options'});
    await prepare(Boolean(optionEdit));
@@ -1714,15 +1775,16 @@ function bindStrategyLinks(){document.querySelectorAll('[data-strategy-module]')
 function setNavActive(selector){$('#decision').dataset.view=selector?.slice(1)??'decision';document.querySelectorAll('#journey [aria-current]').forEach(b=>b.removeAttribute('aria-current'));if(selector)$(selector).setAttribute('aria-current','page');}
 
 /** Completion hand-off: what to do next, in the page, on every viewport. Shows a continuation only
- *  when a next phase genuinely exists, so it can never point nowhere. */
-function showPhaseHandoff(){
+ *  when a next phase genuinely exists, so it can never point nowhere. Copy is a parameter so every
+ *  workflow can reuse it; the destination always comes from the canonical journey, never a local list. */
+function showPhaseHandoff({done='Tu decisión quedó guardada.',complete='Completaste las decisiones de esta marca.'}={}){
  const host=$('#decision');if(!host)return;
  host.querySelector('.phase-handoff')?.remove();
  const next=nextPhase();
  const label=next?(labels[next]??next):null;
  const panel=document.createElement('section');
  panel.className='phase-handoff';
- panel.innerHTML=`<p class="eyebrow">Fase completada</p><h3>${next?`Tu decisión quedó guardada. Continúa con ${escape(label)}.`:'Completaste las decisiones de esta marca.'}</h3><div class="actions">${next?`<button type="button" id="phase-next" data-next="${escape(next)}">Continuar a ${escape(label)}</button>`:''}<button type="button" id="phase-review" class="secondary">Revisar avance</button></div>`;
+ panel.innerHTML=`<p class="eyebrow">Fase completada</p><h3>${next?`${escape(done)} Continúa con ${escape(label)}.`:escape(complete)}</h3><div class="actions">${next?`<button type="button" id="phase-next" data-next="${escape(next)}">Continuar a ${escape(label)}</button>`:''}<button type="button" id="phase-review" class="secondary">Revisar avance</button></div>`;
  host.prepend(panel);
  $('#phase-next')?.addEventListener('click',event=>run(async()=>{
   analytics.send(PILOT_EVENTS.nextPhaseStarted,{pilot_stage:'next_phase'});
@@ -1740,31 +1802,18 @@ async function showFeedback(){
 }
 
 // PILOT only: one-time acknowledgement before Brand Context is sent to the configured AI provider.
-function showAiNotice(questionId){
+function showAiNotice(questionId,origin={}){
  const section=document.createElement('section');section.className='analysis-item';section.setAttribute('aria-labelledby','ai-notice-title');
  section.innerHTML=`<h3 id="ai-notice-title">Antes de pedir una propuesta IA</h3><p>${escape(aiNotice.text)}</p><button id="ai-notice-accept">Entiendo y acepto</button> <button id="ai-notice-decline" class="secondary">Ahora no</button>`;
  ($('#decision h2')??$('#decision').firstChild).after(section);$('#ai-notice-accept').focus();
  $('#ai-notice-decline').addEventListener('click',()=>{section.remove();notice('Puedes continuar con tu decisión sin propuesta IA.');focusView($('#generate-recommendation'));});
  $('#ai-notice-accept').addEventListener('click',event=>run(async()=>{
- await api('/api/ai-notice/accept',{version:aiNotice.version});
- section.remove();
- activityStart('Brandopolis está preparando opciones…','Analizando tu contexto estratégico.');
- let result;
- try{
-  result=await api('/api/recommendations/generate',{brandId,questionId});
- }catch(error){
-  activityFail();
-  throw error;
- }
- if(result.error){
-  activityFail();
-  notice('No se pudo generar una propuesta válida. Puedes continuar con tu decisión.',true,'assistance');
-  return;
- }
- activityStep('Opciones listas.','Actualizando tu espacio estratégico…');
- await refresh();
- activityDone('Opciones preparadas','Ya puedes compararlas antes de decidir.');
-},event.currentTarget));
+  await api('/api/ai-notice/accept',{version:aiNotice.version});
+  section.remove();
+  // Resume the request the participant originally made, through the one generation path, so the
+  // options land on the visible panel and a draft in progress is released exactly as it would be.
+  await generatePossibilities(questionId,{...origin,afterConsent:true});
+ },event.currentTarget));
 }
 
 /* Keep active brand context visible through long strategic views. */

@@ -25,3 +25,4 @@ Work below is **not** required to start Phase 10 (real testers). Listing it here
 | Collaboration | Real-time collaboration, comments, team analytics, exports, public API | Not part of MVP scope. |
 | Commercial | Billing, subscriptions, CRM | Not needed for testers. |
 | Quality | Formal WCAG audit, browsers beyond Chrome | Keyboard, focus, contrast and reduced motion verified by automated checks. |
+| Hand-off | Completion hand-off for the document-claims review in Brand Context | Found 2026-09-29 while fixing the missing hand-off in Entorno competitivo. Document claims share the same resolvable review shape (CANDIDATE/ACCEPTED/REJECTED) and also offer no next step, but their completion is ambiguous: processing another document reopens it, so a «fase completada» panel there is a product decision, not a defect fix. `showPhaseHandoff()` is already reusable if that decision is taken. The learning loop has no comparable canonical completed state. |

@@ -1,5 +1,60 @@
 # Session State
 
+Current phase: **FINAL FUNCTIONAL PRE-TESTER HOTFIX** (2026-09-29). The previous production hotfix
+is already deployed and was verified manually — the walkthrough showed the populated CoffeePolis, the
+corrected intake layout, working legal routes and the visible possibilities CTA. No production commit
+SHA is asserted here: it was not independently verified from this machine.
+
+Second human production walkthrough. VERIFIED WORKING: populated CoffeePolis, privacy and terms
+routes, intake desktop width, geography, primary market, per-option actions, core-decision phase
+hand-off, admin.
+
+FIXED HERE:
+
+1. **"Ayúdame a generar posibilidades" was a no-op.** The button renders only inside the `draft`
+   branch of `render()`, while its listener lived in `mountRecommendation()`, whose first statement
+   is `if(draft)return;` — button and handler were mutually exclusive, so the listener never bound
+   and the click produced no request, no error and no loading state. Its delegation target
+   `#generate-recommendation` is rendered by that same function, so it did not exist either.
+   `generatePossibilities()` is now the single generation path used by both surfaces, and the CTA is
+   bound in `render()`.
+2. **Options were generated into a hidden tab.** "Opciones" is a tab panel; generating from the
+   initial input left "Decisión" active, so candidates rendered invisibly. Requesting possibilities
+   now always selects the panel holding them.
+3. **A discarded option leaked across phases.** Option ids are positional (`option-1`) and repeat in
+   every proposal, and `discardedOptions` stored them unscoped, so discarding in Primary Customer
+   made an untouched option in later phases render as already discarded, losing
+   Incorporar/Modificar/Descartar. **Pre-existing defect, not introduced here** — found by verifying
+   all four phases, and it blocked defect 1's stated acceptance criteria. Discards are now scoped to
+   their own recommendation.
+4. **The AI-notice acceptance held a third copy of generation.** It released no draft and selected
+   no panel, so the first PILOT participant to ask for possibilities from the initial input and
+   accept the notice would have seen nothing. It now resumes the same request through the shared
+   path, leaving exactly one `/api/recommendations/generate` call site in the client.
+5. **Competitive review had no hand-off.** `showPhaseHandoff()` was reachable only from the
+   decision-form submit. Fixed at the shared layer: the hand-off takes its copy as a parameter and
+   still derives the destination from `nextPhase()`, so there is no second phase ordering.
+   Completion is the human-reviewed state — findings generated AND every one resolved by the
+   participant — never "the AI finished generating".
+
+FAILURE UX: generation failure shows one participant-facing message, leaks no provider or transport
+detail, clears the loading state, keeps the typed draft and leaves retry available. Proven by
+injecting a 500 carrying provider detail and the engine's `{error}` response.
+
+DOCUMENTED GAP, NOT FIXED (scope control): document claims in Brand Context share the same resolvable
+review shape (CANDIDATE/ACCEPTED/REJECTED) and also have no hand-off. Their completion is ambiguous —
+processing another document reopens it — so a "phase completed" panel there is a product decision,
+not a defect fix. The learning loop has no comparable canonical completed state.
+
+Gate (2026-09-29): typecheck/lint PASS; pnpm test 110/110 (5 new, all 5 fail against the defective
+code); test:e2e 50/50 (4 new browser specs); test:visual 10 passed + 1 skipped; focused browser
+verification 192/192 at 390/768/1440 with a test Measurement ID so telemetry is really emitted, plus
+failure UX 20/20. No migration. Foundation, UI and Brand Master validators NOT RUN:
+no Python interpreter on this machine.
+
+---
+
+
 Current phase: **PRODUCTION VERIFICATION HOTFIX** (2026-09-29). Production is live on `2f84d29`; this hotfix is local and uncommitted.
 
 First real human production walkthrough. VERIFIED WORKING: Google auth, required intake, CoffeePolis as Marca demo, Crear mi marca, geographic influence, primary market, phase hand-off, continue to next phase, revisar avance, per-option Incorporar/Modificar/Descartar, admin reachable, demo metric exclusions active.

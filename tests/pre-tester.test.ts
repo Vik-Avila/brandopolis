@@ -153,17 +153,104 @@ describe('production verification hotfix', () => {
     expect(form.slice(0, form.indexOf('}'))).toContain('grid-column: 2');
   });
 
-  it('offers optional possibilities where the participant is asked to write', () => {
+  it('binds the possibilities button in the same function that renders it', () => {
     expect(app).toContain('id="possibilities"');
     expect(app).toContain('Ayúdame a generar posibilidades</button>');
     expect(app).toContain('Escribe tu propia respuesta o pide posibilidades');
-    // It delegates to the canonical control instead of introducing a second engine.
+
+    // THE PRODUCTION DEFECT. The button is rendered only inside the `draft` branch of render(), and
+    // its listener used to live in mountRecommendation(), whose first statement is `if(draft)return;`.
+    // Button and handler were mutually exclusive, so the click did nothing: no request, no error, no
+    // loading state. Binding must therefore happen inside render(), never behind the draft guard.
+    const render = app.slice(app.indexOf('function render() {'), app.indexOf('function mountRecommendation'));
+    expect(render, 'listener must be bound where the button is rendered').toContain("$('#possibilities')?.addEventListener");
+    const mount = app.slice(app.indexOf('function mountRecommendation'));
+    expect(mount.slice(0, mount.indexOf('function showBlueprint')), 'must not sit behind if(draft)return')
+      .not.toContain("$('#possibilities')");
+
+    // One engine, reached by both surfaces: the CTA must call the shared path, not fake a click on a
+    // control that does not exist while the draft form is open.
     const handler = app.slice(app.indexOf("$('#possibilities')?.addEventListener"));
-    expect(handler.slice(0, 600)).toContain("$('#generate-recommendation')");
-    expect(handler.slice(0, 600)).toContain('engine.click();');
-    // Typed content is preserved, never replaced, and nothing is approved automatically.
-    expect(handler.slice(0, 600)).toContain('preserveDraft();');
-    expect(handler.slice(0, 600)).not.toContain('decisions/commit');
+    const body = handler.slice(0, 700);
+    expect(body).toContain('generatePossibilities(q.id');
+    expect(body).toContain("stage:'initial_input'");
+    expect(body).not.toContain('engine.click();');
+    // Typed content is preserved first, and nothing is ever approved automatically.
+    expect(body).toContain('preserveDraft();');
+    expect(body).not.toContain('decisions/commit');
+  });
+
+  it('keeps one generation path that cannot fail silently or leak provider detail', () => {
+    // Exactly one request site in the whole client, so no surface can double-count or diverge. The
+    // AI-notice acceptance used to hold a third copy that never released the draft nor selected the
+    // «Opciones» panel, so a first-time PILOT participant accepting it saw nothing.
+    expect(app.split("api('/api/recommendations/generate'").length - 1, 'one generation request site').toBe(1);
+    const consent = app.slice(app.indexOf('function showAiNotice'));
+    expect(consent).toContain('generatePossibilities(questionId,{...origin,afterConsent:true})');
+    expect(app).toContain('showAiNotice(questionId,{locked,stage,fromDraft})');
+    const engine = app.slice(app.indexOf('async function generatePossibilities'), app.indexOf('function mountRecommendation'));
+    expect(engine).toContain("api('/api/recommendations/generate',{brandId,questionId})");
+    // Failure is announced to the participant in their own words, never as provider or transport text.
+    expect(app).toContain('const POSSIBILITIES_FAILED=');
+    expect(app).toContain('No pudimos generar posibilidades en este momento.');
+    expect(engine).toContain('notice(POSSIBILITIES_FAILED,true,\'assistance\')');
+    expect(engine).toContain("if(error.code==='AI_CONSENT_REQUIRED'");
+    // api() already writes participant-safe messages and returns the page to sign-in on
+    // UNAUTHORIZED, so those failures must keep propagating. Swallowing them stranded an expired
+    // session on a dead screen and replaced the daily-AI-cap message with a pointless retry.
+    expect(engine).toContain('if(GENERATION_ERRORS_HANDLED_BY_API.has(error.code))throw error;');
+    for (const code of ['UNAUTHORIZED', 'AI_CAP_REACHED', 'RATE_LIMITED', 'CONFLICT'])
+      expect(app.slice(app.indexOf('const GENERATION_ERRORS_HANDLED_BY_API'), app.indexOf('async function generatePossibilities')), code).toContain(code);
+    // The result must land on the visible panel: «Opciones» is a tab, so generating into it while the
+    // «Decisión» tab is active rendered candidates that nobody could see.
+    expect(engine).toContain("activeDecisionTab='recommendation'");
+    expect(engine).toContain('if(fromDraft)draft=null;');
+    // Both surfaces call the one path.
+    expect(app).toContain("generatePossibilities(q.id,{locked,stage:'options'})");
+  });
+
+  it('scopes a discarded option to its own proposal', () => {
+    // Option ids are positional ("option-1", "option-2") and repeat in every recommendation, so a
+    // Set keyed by the bare id made an untouched option in a later phase render as already discarded,
+    // replacing Incorporar/Modificar/Descartar with Reconsiderar.
+    expect(app).toContain('const discardKey=optionId=>');
+    expect(app).toContain('discardedOptions.has(discardKey(o.id))');
+    expect(app).toContain('discardedOptions.add(discardKey(optionDrop))');
+    expect(app).toContain('discardedOptions.delete(discardKey(optionRestore))');
+    expect(app, 'no bare-id membership test may remain').not.toContain('discardedOptions.has(o.id)');
+  });
+
+  it('reuses one journey model for every completion hand-off', () => {
+    // The hand-off was reachable only from the decision-form submit, so completing the competitive
+    // review left the participant with no next action at all.
+    expect(app).toContain('function showPhaseHandoff({done=');
+    const competitive = app.slice(app.indexOf('async function showCompetitiveContext'), app.indexOf('async function showBrandContext'));
+    expect(competitive).toContain('showPhaseHandoff({');
+    // Canonical completion is the HUMAN-reviewed state, not "the AI finished generating".
+    expect(competitive).toContain('const reviewComplete=Boolean(activeResult?.findings?.length)&&pendingFindings.length===0');
+    // Destination still comes from the canonical journey; no second ordering is introduced.
+    expect(app.split('function nextPhase()').length - 1).toBe(1);
+    expect(app.slice(app.indexOf('function nextPhase()'))).toContain("document.querySelectorAll('#journey [data-module]')");
+    const handoff = app.slice(app.indexOf('function showPhaseHandoff'));
+    expect(handoff.slice(0, 900)).toContain('const next=nextPhase();');
+    // Completion is reported once per research round, so a re-render cannot inflate it.
+    expect(competitive).toContain('if(competitiveCompletionReported!==brandId)');
+    expect(competitive).toContain("analytics.send(PILOT_EVENTS.phaseCompleted,{pilot_stage:'competitive_review'})");
+    expect(app).toContain('competitiveCompletionReported=null;');
+  });
+
+  it('emits each repaired milestone from exactly one place, with no new event names', () => {
+    // Duplicate call sites double-count in GA4; the previous code had possibilities_requested in two.
+    for (const event of ['possibilitiesRequested', 'phaseCompleted', 'nextPhaseStarted'])
+      expect(app, event).toContain('PILOT_EVENTS.' + event);
+    expect(app.split('PILOT_EVENTS.possibilitiesRequested').length - 1, 'one emit site').toBe(1);
+    expect(app.split('PILOT_EVENTS.nextPhaseStarted').length - 1, 'one emit site').toBe(1);
+    expect(app.split('PILOT_EVENTS.phaseCompleted').length - 1, 'decision commit and competitive review').toBe(2);
+    // Only allowlisted, non-identifying dimensions travel with them. The shared generation path takes
+    // the calling surface as `stage` and is the only thing that turns it into the GA4 dimension.
+    expect(app).toContain('analytics.send(PILOT_EVENTS.possibilitiesRequested,{pilot_stage:stage})');
+    for (const stage of ["stage:'initial_input'", "stage:'options'", "pilot_stage:'competitive_review'", "pilot_stage:'phase_done'", "pilot_stage:'next_phase'"])
+      expect(app, stage).toContain(stage);
   });
 
   it('keeps migration files byte-stable so applied hashes stay valid', () => {

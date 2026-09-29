@@ -14,6 +14,66 @@ Depends on: —
 
 # Registro
 
+## Hotfix funcional pre-tester · 2026-09-29
+
+Segunda verificación humana en producción. **El hotfix de producción anterior ya está desplegado y se
+verificó manualmente**: el recorrido mostró CoffeePolis con contenido, el ancho del intake corregido,
+las rutas legales y el CTA de posibilidades visible. Confirmó además como correctos geografía,
+mercado principal, acciones por opción, entrega de fase en las decisiones núcleo y administración.
+Quedaban dos defectos funcionales; la verificación en navegador destapó otros dos, uno de ellos
+impedía cumplir el criterio de aceptación del primero.
+
+- **«Ayúdame a generar posibilidades» no hacía nada.** El botón se renderiza sólo dentro de la rama
+  `draft` de `render()`, mientras su listener vivía en `mountRecommendation()`, cuya primera
+  instrucción es `if(draft)return;`. Botón y manejador eran **mutuamente excluyentes**: el listener
+  nunca se registraba y el clic no producía nada — ni petición, ni error, ni estado de carga. Su
+  objetivo de delegación, `#generate-recommendation`, se renderiza en la misma función, así que
+  tampoco existía mientras el formulario estaba abierto. Se extrae `generatePossibilities()` como
+  **único camino de generación** —lo usan las dos superficies— y el CTA se registra en `render()`,
+  donde el formulario existe de verdad.
+- **Las opciones se generaban en un panel oculto.** «Opciones» es una pestaña. Al generar desde el
+  input inicial la pestaña activa seguía siendo «Decisión», de modo que las propuestas se creaban
+  correctamente pero **invisibles**. Pedir posibilidades ahora selecciona siempre su panel.
+- **Una opción descartada contaminaba las demás fases.** Los identificadores de opción son
+  posicionales (`option-1`, `option-2`) y se repiten en cada propuesta, y `discardedOptions` los
+  guardaba sin ámbito. Descartar una opción en Cliente principal hacía que una opción intacta de
+  Modelo de valor, Posicionamiento y Mensaje principal apareciera ya «Descartada», sustituyendo
+  Incorporar/Modificar/Descartar por «Reconsiderar». **Defecto previo a este hotfix**, no introducido
+  aquí: se detectó al verificar las cuatro fases. El descarte se acota a su propia propuesta.
+- **El aviso de datos IA tenía una tercera copia de la generación.** Al aceptar «Entiendo y acepto»
+  se generaba sin liberar el borrador ni seleccionar «Opciones», así que el primer participante de
+  PILOT que pidiera posibilidades desde el input inicial y aceptara el aviso **no vería nada**: el
+  mismo defecto en otro sitio. Ahora reanuda la misma petición por el camino compartido. En el
+  cliente queda **un único punto de llamada** a `/api/recommendations/generate`.
+- **Completar el Entorno competitivo no ofrecía paso siguiente.** `showPhaseHandoff()` sólo se
+  invocaba desde el envío del formulario de decisión, así que ningún otro flujo podía alcanzarlo. Se
+  arregla en la **capa compartida**: la entrega recibe su texto por parámetro y sigue derivando el
+  destino de `nextPhase()`, el recorrido canónico — **no se introduce una segunda ordenación de
+  fases**. La finalización es el **estado revisado por una persona**, no «la IA terminó»: exige
+  hallazgos generados y que el Estratega de Marca haya resuelto **todos**, incorporándolos o
+  descartándolos. Con uno sin resolver no se muestra nada.
+- **Fallo de generación**: mensaje propio para el participante, sin filtrar texto del proveedor ni de
+  transporte, con el borrador intacto y el reintento disponible. Verificado inyectando un 500 con
+  detalle de proveedor y la respuesta `{error}` del motor. **Los fallos que `api()` ya resuelve
+  siguen propagándose**: sus mensajes están escritos para participantes y `UNAUTHORIZED` además
+  devuelve la página al acceso. Una primera versión de este arreglo los capturaba todos y dejaba una
+  sesión vencida en una pantalla muerta; lo detectó el contrato de `m1.spec.ts`, que no se relajó.
+
+**Hueco documentado, no corregido** (control de alcance): los hallazgos documentales de Contexto
+estratégico tienen la misma forma de revisión resoluble (CANDIDATE/ACCEPTED/REJECTED) y tampoco
+ofrecen entrega. Su finalización es ambigua —procesar un documento nuevo reabre el estado— así que
+mostrar «fase completada» ahí es una decisión de producto, no la corrección de un defecto. El
+recorrido de aprendizaje no tiene un estado completado canónico comparable.
+
+- Telemetría: `possibilities_requested`, `phase_completed` y `next_phase_started` existentes, sin
+  nombres nuevos y con un único punto de emisión cada uno; `phase_completed` del entorno competitivo
+  se reporta una sola vez por ronda de investigación. Sin PII ni contenido estratégico.
+- Pruebas: typecheck/lint PASS; pnpm test 110/110 (5 nuevas, **las 5 fallan contra el código con el
+  defecto**); test:e2e 50/50 (4 especificaciones nuevas de navegador); test:visual 10 pass + 1 skip;
+  verificación en navegador 192/192 a 390/768/1440 con GA4 de prueba activo para comprobar la
+  telemetría real, y UX de fallo 20/20. **Sin migración.**
+
+
 ## Hotfix de verificación en producción · 2026-09-29
 
 Primera verificación humana real en producción sobre `2f84d29`.
