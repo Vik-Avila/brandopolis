@@ -5,14 +5,33 @@ import * as t from '../persistence/schema.js';
 import { AppError } from '../domain/contracts.js';
 import { Engine,hash } from './engine.js';
 
+/**
+ * Participant access lifecycle. All three states exist in the model from the start so a future
+ * controlled pilot or admin enforcement is a configuration change, not a schema redesign:
+ *   PENDING   - account exists, access withheld until something approves it
+ *   APPROVED  - full access to the participant's private workspace
+ *   SUSPENDED - access withdrawn by an operator, account preserved
+ * Which state a NEW participant starts in is policy, never hardcoded business logic: see
+ * pilotDefaultAccessStatus() in src/transport/pilot-auth.ts.
+ *
+ * The status lives on user_accounts, the self-service participant profile, and deliberately NOT on
+ * pilot_identities: that table is shared with the frozen Pilot build exercised by the release
+ * rehearsal, and widening it breaks that compatibility test. An identity provisioned by an operator
+ * has no profile row and is therefore treated as APPROVED, which preserves existing behaviour exactly;
+ * disable() remains the control for those.
+ */
+export const ACCESS_STATUS=Object.freeze({pending:'PENDING',approved:'APPROVED',suspended:'SUSPENDED'} as const);
+export type AccessStatus=typeof ACCESS_STATUS[keyof typeof ACCESS_STATUS];
+export const ACCESS_STATUSES:readonly AccessStatus[]=Object.freeze(Object.values(ACCESS_STATUS));
 /** Claims taken from a validated ID token. Never populated from anything the browser sends. */
 export interface VerifiedClaims {subject:string;email?:string;emailVerified?:boolean;displayName?:string|null;avatarUrl?:string|null}
 export interface VerifiedProfile {email:string;normalizedEmail:string;displayName:string|null;avatarUrl:string|null}
 
 export class PilotAccess {
   constructor(private db:Database,readonly issuer:string) {}
-  async provision(subject:string,cohort:string,workspaceId?:string,account?:VerifiedProfile) {
+  async provision(subject:string,cohort:string,workspaceId?:string,account?:VerifiedProfile,accessStatus:AccessStatus=ACCESS_STATUS.approved) {
     if(!subject.trim()||subject.length>500||!['A','B'].includes(cohort))throw new AppError('INVALID','Invalid tester');
+    if(!ACCESS_STATUSES.includes(accessStatus))throw new AppError('INVALID','Invalid access status');
     return this.db.transaction(async tx=>{
       if((await tx.select().from(t.pilotIdentities).where(and(eq(t.pilotIdentities.issuer,this.issuer),eq(t.pilotIdentities.subject,subject)))).length)throw new AppError('CONFLICT','Tester already provisioned');
       const userId=randomUUID(),wid=workspaceId??randomUUID(),now=new Date();
@@ -21,7 +40,7 @@ export class PilotAccess {
       await tx.insert(t.users).values({id:userId});
       await tx.insert(t.memberships).values({workspaceId:wid,userId,role:'MEMBER',active:true,canCreateBrand:true});
       await tx.insert(t.pilotIdentities).values({userId,issuer:this.issuer,subject,workspaceId:wid});
-      if(account)await tx.insert(t.userAccounts).values({userId,email:account.email,normalizedEmail:account.normalizedEmail,emailVerifiedAt:now,displayName:account.displayName??null,avatarUrl:account.avatarUrl??null,createdAt:now,lastLoginAt:now});
+      if(account)await tx.insert(t.userAccounts).values({userId,email:account.email,normalizedEmail:account.normalizedEmail,emailVerifiedAt:now,displayName:account.displayName??null,avatarUrl:account.avatarUrl??null,createdAt:now,lastLoginAt:now,accessStatus});
       await tx.insert(t.pilotEvents).values({id:randomUUID(),userId,workspaceId:wid,name:'account_created',cohort,intervention:'NONE',occurredAt:now});
       return {userId,workspaceId:wid};
     });
@@ -33,6 +52,18 @@ export class PilotAccess {
       const [brand]=await tx.select().from(t.brands).where(and(eq(t.brands.id,brandId),eq(t.brands.workspaceId,who.workspaceId),eq(t.brands.dataClass,'PILOT')));
       if(!brand)throw new AppError('NOT_FOUND','Brand unavailable');
       await tx.insert(t.assignments).values({userId,brandId,workspaceId:who.workspaceId}).onConflictDoNothing();
+    });
+  }
+  /** Moves a self-service participant through the access lifecycle. Withdrawing access also drops live
+   *  sessions, so suspension is immediate rather than effective at the next sign-in. */
+  async setAccessStatus(userId:string,status:AccessStatus) {
+    if(!ACCESS_STATUSES.includes(status))throw new AppError('INVALID','Invalid access status');
+    return this.db.transaction(async tx=>{
+      const [profile]=await tx.select().from(t.userAccounts).where(eq(t.userAccounts.userId,userId)).for('update');
+      if(!profile)throw new AppError('NOT_FOUND','Participant profile unavailable');
+      await tx.update(t.userAccounts).set({accessStatus:status}).where(eq(t.userAccounts.userId,userId));
+      if(status!==ACCESS_STATUS.approved)await tx.delete(t.sessions).where(eq(t.sessions.userId,userId));
+      return {userId,accessStatus:status};
     });
   }
   async disable(userId:string) {
@@ -48,11 +79,12 @@ export class PilotAccess {
     const [who]=await this.db.select().from(t.pilotIdentities).where(ref.userId?eq(t.pilotIdentities.userId,ref.userId):and(eq(t.pilotIdentities.issuer,this.issuer),eq(t.pilotIdentities.subject,String(ref.subject??''))));
     if(!who)throw new AppError('NOT_FOUND','Tester unavailable');
     const [member]=await this.db.select().from(t.memberships).where(and(eq(t.memberships.workspaceId,who.workspaceId),eq(t.memberships.userId,who.userId)));
+    const [account]=await this.db.select().from(t.userAccounts).where(eq(t.userAccounts.userId,who.userId));
     const [workspace]=await this.db.select().from(t.pilotWorkspaces).where(eq(t.pilotWorkspaces.workspaceId,who.workspaceId));
     const brands=await this.db.select({id:t.brands.id,name:t.brands.name}).from(t.assignments).innerJoin(t.brands,and(eq(t.brands.id,t.assignments.brandId),eq(t.brands.workspaceId,t.assignments.workspaceId))).where(and(eq(t.assignments.userId,who.userId),eq(t.assignments.workspaceId,who.workspaceId)));
     const sessions=await this.db.select().from(t.sessions).where(and(eq(t.sessions.userId,who.userId),gt(t.sessions.expiresAt,new Date())));
     // Subject is shown for operator correlation only; session tokens are never exposed.
-    return {userId:who.userId,issuer:who.issuer,subject:who.subject,workspaceId:who.workspaceId,cohort:workspace?.cohort??null,identityActive:who.active,membershipActive:member?.active??false,role:member?.role??null,brands,activeSessions:sessions.length};
+    return {userId:who.userId,issuer:who.issuer,subject:who.subject,workspaceId:who.workspaceId,cohort:workspace?.cohort??null,identityActive:who.active,accessStatus:account?.accessStatus??ACCESS_STATUS.approved,membershipActive:member?.active??false,role:member?.role??null,brands,activeSessions:sessions.length};
   }
   async revokeSessions(userId:string) {
     const [who]=await this.db.select().from(t.pilotIdentities).where(eq(t.pilotIdentities.userId,userId));
@@ -120,7 +152,7 @@ export class PilotAccess {
   /** Recognises a verified external identity and, when auto-provisioning is on, creates the account on
    *  first sight. Identity stays (issuer, subject); the verified email is stored as profile metadata.
    *  Fail-closed by default: an unknown identity is denied unless autoProvision is explicitly enabled. */
-  async recognise(claims:VerifiedClaims,autoProvision:boolean) {
+  async recognise(claims:VerifiedClaims,autoProvision:boolean,defaultStatus:AccessStatus=ACCESS_STATUS.approved) {
     const subject=String(claims.subject??'').trim(),email=String(claims.email??'').trim();
     if(!subject)throw new AppError('FORBIDDEN','Identity not authorized');
     const verifiedEmail=Boolean(email)&&claims.emailVerified===true;
@@ -134,7 +166,7 @@ export class PilotAccess {
     // Creating an account from nothing but an assertion demands a verified mailbox.
     if(!verifiedEmail)throw new AppError('FORBIDDEN','Verified email required');
     try {
-      const {userId}=await this.provision(subject,PilotAccess.cohortFor(this.issuer,subject),undefined,profile);
+      const {userId}=await this.provision(subject,PilotAccess.cohortFor(this.issuer,subject),undefined,profile,defaultStatus);
       return userId;
     } catch(error) {
       // A concurrent callback for the same identity loses the unique (issuer, subject) race. The winner's
@@ -155,7 +187,7 @@ export class PilotAccess {
     try {
       await this.db.insert(t.userAccounts)
         .values({userId,email:profile.email,normalizedEmail:profile.normalizedEmail,emailVerifiedAt:now,displayName:profile.displayName,avatarUrl:profile.avatarUrl,createdAt:now,lastLoginAt:now})
-        .onConflictDoUpdate({target:t.userAccounts.userId,set:{email:profile.email,normalizedEmail:profile.normalizedEmail,emailVerifiedAt:now,displayName:profile.displayName,avatarUrl:profile.avatarUrl,lastLoginAt:now}});
+        .onConflictDoUpdate({target:t.userAccounts.userId,set:{email:profile.email,normalizedEmail:profile.normalizedEmail,emailVerifiedAt:now,displayName:profile.displayName,avatarUrl:profile.avatarUrl,lastLoginAt:now}});   // accessStatus deliberately untouched
     } catch {
       await this.db.update(t.userAccounts).set({lastLoginAt:now}).where(eq(t.userAccounts.userId,userId));
     }
@@ -164,6 +196,8 @@ export class PilotAccess {
     return this.db.transaction(async tx=>{
       const [who]=await tx.select().from(t.pilotIdentities).where(and(eq(t.pilotIdentities.issuer,this.issuer),eq(t.pilotIdentities.subject,subject))).for('share');
       if(!who?.active)throw new AppError('FORBIDDEN','Tester not authorized');
+      const [profile]=await tx.select().from(t.userAccounts).where(eq(t.userAccounts.userId,who.userId));
+      if((profile?.accessStatus??ACCESS_STATUS.approved)!==ACCESS_STATUS.approved)throw new AppError('FORBIDDEN','Participant access not approved');
       const [member]=await tx.select().from(t.memberships).where(and(eq(t.memberships.workspaceId,who.workspaceId),eq(t.memberships.userId,who.userId))).for('share');
       if(!member?.active||!['MEMBER','ADMIN'].includes(member.role))throw new AppError('FORBIDDEN','Membership unavailable');
       const token=randomBytes(32).toString('base64url'),sessionId=randomUUID(),now=new Date(),expiresAt=new Date(now.getTime()+8*3600000);
@@ -179,6 +213,8 @@ export class PilotAccess {
     const [identity]=await this.db.select().from(t.pilotIdentities).where(and(eq(t.pilotIdentities.userId,who.userId),eq(t.pilotIdentities.issuer,this.issuer),eq(t.pilotIdentities.active,true)));
     const [session]=await this.db.select().from(t.pilotSessions).where(eq(t.pilotSessions.tokenHash,hash(token)));
     if(!identity||identity.workspaceId!==who.workspaceId||!session)throw new AppError('FORBIDDEN','PILOT session required');
+    const [profile]=await this.db.select().from(t.userAccounts).where(eq(t.userAccounts.userId,who.userId));
+    if((profile?.accessStatus??ACCESS_STATUS.approved)!==ACCESS_STATUS.approved)throw new AppError('FORBIDDEN','Participant access not approved');
     return {...who,sessionId:session.sessionId};
   }
   async logout(token:string){await this.db.delete(t.sessions).where(eq(t.sessions.tokenHash,hash(token)));}

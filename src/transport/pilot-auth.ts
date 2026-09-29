@@ -5,7 +5,7 @@ import type { IncomingMessage,ServerResponse } from 'node:http';
 import type { Database } from '../persistence/database.js';
 import { loginFlows } from '../persistence/schema.js';
 import { hash } from '../application/engine.js';
-import { PilotAccess,type VerifiedClaims } from '../application/pilot-access.js';
+import { ACCESS_STATUS,PilotAccess,type AccessStatus,type VerifiedClaims } from '../application/pilot-access.js';
 import { AppError } from '../domain/contracts.js';
 import { createHash } from 'node:crypto';
 import type { Limiter } from './http.js';
@@ -24,7 +24,7 @@ export interface PilotBoundary {
 }
 /** notice is null when AI is disabled (nothing is sent to a provider, so no acknowledgement is needed). */
 export interface PilotAiPolicy {notice:{version:string;text:string}|null;capPerTester:number;capTotal:number}
-export interface PilotAuthOptions {redirectUri?:string;trustProxy?:boolean;requestAccessUrl?:string|null;limiter?:Limiter;ai?:PilotAiPolicy;autoProvision?:boolean}
+export interface PilotAuthOptions {redirectUri?:string;trustProxy?:boolean;requestAccessUrl?:string|null;limiter?:Limiter;ai?:PilotAiPolicy;autoProvision?:boolean;defaultAccessStatus?:AccessStatus}
 /** Operator-facing configuration error; messages never include secret values. */
 export class ConfigError extends Error {}
 const FLOW='__Host-brandopolis_flow',SESSION='__Host-brandopolis_session';
@@ -32,10 +32,10 @@ const FLOW='__Host-brandopolis_flow',SESSION='__Host-brandopolis_session';
 // signature (JWKS), issuer, audience, expiry and nonce; identity is keyed by (issuer, subject), never email.
 export class PilotAuth implements PilotBoundary {
   private access:PilotAccess;
-  readonly redirectUri:string;readonly trustProxy:boolean;readonly requestAccessUrl:string|null;readonly limiter?:Limiter;readonly ai?:PilotAiPolicy;readonly autoProvision:boolean;
+  readonly redirectUri:string;readonly trustProxy:boolean;readonly requestAccessUrl:string|null;readonly limiter?:Limiter;readonly ai?:PilotAiPolicy;readonly autoProvision:boolean;readonly defaultAccessStatus:AccessStatus;
   constructor(private db:Database,private config:oidc.Configuration,readonly origin:string,options:PilotAuthOptions={}){
     this.access=new PilotAccess(db,config.serverMetadata().issuer);
-    this.redirectUri=options.redirectUri??origin+'/auth/callback';this.trustProxy=options.trustProxy??false;this.requestAccessUrl=options.requestAccessUrl??null;this.limiter=options.limiter;this.ai=options.ai;this.autoProvision=options.autoProvision??false;
+    this.redirectUri=options.redirectUri??origin+'/auth/callback';this.trustProxy=options.trustProxy??false;this.requestAccessUrl=options.requestAccessUrl??null;this.limiter=options.limiter;this.ai=options.ai;this.autoProvision=options.autoProvision??false;this.defaultAccessStatus=options.defaultAccessStatus??ACCESS_STATUS.approved;
     if(new URL(this.redirectUri).origin!==origin||new URL(this.redirectUri).pathname!=='/auth/callback')throw new ConfigError('OIDC_REDIRECT_URI must be PILOT_ORIGIN/auth/callback');
   }
   authorize(token:string){return this.access.authorize(token);}
@@ -78,7 +78,7 @@ export class PilotAuth implements PilotBoundary {
     try {
       // Recognise (or, when enabled, provision) before a session exists: an unknown or unverified
       // identity never reaches issueSession.
-      await this.access.recognise(verified,this.autoProvision);
+      await this.access.recognise(verified,this.autoProvision,this.defaultAccessStatus);
       session=await this.access.issueSession(subject);
     } catch {return this.fail(res,'denied');}
     res.setHeader('Set-Cookie',[`${SESSION}=${session.token}; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age=${Math.max(0,Math.floor((session.expiresAt.getTime()-Date.now())/1000))}`,`${FLOW}=; Secure; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`]);
@@ -103,10 +103,22 @@ export function autoProvisionEnabled(env:NodeJS.ProcessEnv=process.env){
   if(!['true','false'].includes(raw))throw new ConfigError('PILOT_AUTO_PROVISION must be true or false.');
   return raw==='true';
 }
+/**
+ * Which access status a NEW participant starts in. APPROVED for the current validation phase: every
+ * authenticated participant is admitted immediately, with no manual approval step. Set PENDING for a
+ * future controlled pilot; the status model already supports it, so no schema change is involved.
+ * SUSPENDED is rejected here because a default of SUSPENDED would create accounts that can never sign in.
+ */
+export function pilotDefaultAccessStatus(env:NodeJS.ProcessEnv=process.env):AccessStatus {
+  const raw=env.PILOT_DEFAULT_ACCESS_STATUS?.trim();
+  if(!raw)return ACCESS_STATUS.approved;
+  if(raw!==ACCESS_STATUS.approved&&raw!==ACCESS_STATUS.pending)throw new ConfigError('PILOT_DEFAULT_ACCESS_STATUS must be APPROVED or PENDING.');
+  return raw;
+}
 export async function pilotAuth(db:Database,origin:string,options:Omit<PilotAuthOptions,'redirectUri'>={}){
   const s=oidcSettings();
   const config=await oidc.discovery(s.issuer,s.clientId,s.secret,s.secret?undefined:oidc.None(),{timeout:10});
-  return new PilotAuth(db,config,origin,{autoProvision:autoProvisionEnabled(),...options,redirectUri:s.redirectUri});
+  return new PilotAuth(db,config,origin,{autoProvision:autoProvisionEnabled(),defaultAccessStatus:pilotDefaultAccessStatus(),...options,redirectUri:s.redirectUri});
 }
 export function loadAiNotice(file:string){
   const text=readFileSync(file,'utf8').trim();

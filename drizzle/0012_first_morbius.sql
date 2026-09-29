@@ -1,0 +1,1 @@
+ALTER TABLE "user_accounts" ADD COLUMN "accessStatus" text DEFAULT 'APPROVED' NOT NULL;

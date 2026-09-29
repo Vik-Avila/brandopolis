@@ -10,7 +10,11 @@ Production: the approved landing (d43fd4d) is deployed and `brandopolis.ai` now 
 
 Google auth is CERTIFIED for arbitrary verified users: four multi-user tests prove distinct users and private workspaces per identity, tenant isolation across the real product surface, canonical identity at `(issuer, subject)` with email as metadata only, the `PILOT_AUTO_PROVISION` gate, and no duplication under concurrent first logins. No production code change was required. Known limitation: a new `subject` carrying an already-registered email is denied (safe, but blocks a Google account migration that keeps the address) — pending product decision. Config and callback: [GOOGLE_AUTH_PRODUCTION](docs/15-handoff/GOOGLE_AUTH_PRODUCTION.md).
 
-Gate (2026-09-28): typecheck/lint PASS; pnpm test 75/75; test:e2e 30/30; test:visual 10 pass + 1 skip, 0 fail; git diff --check clean. Foundation, UI and Brand Master validators NOT RUN: no Python interpreter on this machine.
+Participant access status is configurable: `PILOT_DEFAULT_ACCESS_STATUS` defaults to APPROVED, so the current validation phase admits every authenticated participant immediately. PENDING and SUSPENDED are live in the model for a future controlled pilot and admin enforcement. Policy applies at first provisioning only; SUSPENDED revokes sessions immediately; `disable()` still outranks any status. The column lives on `user_accounts` and NOT on `pilot_identities`, because putting it there broke the frozen-build release rehearsal (bisected, then redesigned). Migration 0012 is additive; existing rows are APPROVED.
+
+Gate (2026-09-28): typecheck/lint PASS; pnpm test 79/79; test:e2e 30/30; test:visual 10 pass + 1 skip, 0 fail; git diff --check clean. Foundation, UI and Brand Master validators NOT RUN: no Python interpreter on this machine.
+
+NOT BUILT: the participant intake form itself (no fields specified). The status layer is wired so that "intake completed -> APPROVED" is already the configured default when that form lands.
 
 ---
 

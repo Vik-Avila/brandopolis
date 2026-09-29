@@ -15,8 +15,8 @@ import { pathToFileURL } from 'node:url';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { readiness,dataClassViolation } from '../src/persistence/readiness.js';
 import { Engine,hash } from '../src/application/engine.js';
-import { PilotAccess } from '../src/application/pilot-access.js';
-import { PilotAuth,type PilotBoundary } from '../src/transport/pilot-auth.js';
+import { ACCESS_STATUS,ACCESS_STATUSES,PilotAccess } from '../src/application/pilot-access.js';
+import { PilotAuth,pilotDefaultAccessStatus,type PilotBoundary } from '../src/transport/pilot-auth.js';
 import { createApp,RateLimiter } from '../src/transport/http.js';
 import { AnthropicProvider,UnavailableProvider } from '../src/transport/anthropic-provider.js';
 import { ModelGateway,DemoProvider,type GatewayRequest } from '../src/domain/analysis.js';
@@ -194,6 +194,115 @@ export function pilotCases(connection:()=>ReturnType<typeof connect>){
    expect(new Set(users).size).toBe(3);
    const workspaces=await Promise.all(users.map(async u=>(await db.select().from(t.pilotIdentities).where(eq(t.pilotIdentities.userId,u)))[0].workspaceId));
    expect(new Set(workspaces).size).toBe(3);
+  });
+
+  // ACCESS POLICY. The current validation phase admits every authenticated participant immediately, but
+  // the model keeps PENDING and SUSPENDED live so a future controlled pilot is a configuration change.
+  it('admits new participants immediately under the current APPROVED policy, and isolates them',async()=>{
+   const {db}=connection(),issuer='https://accounts.google.com',access=new PilotAccess(db,issuer);
+   const run=randomUUID().slice(0,8),engine=new Engine(db);
+   const claims=(tag:string)=>({subject:`policy-${tag}-${run}`,email:`policy.${tag}.${run}@example.test`,emailVerified:true});
+   const A=claims('a'),B=claims('b');
+
+   // Default policy: no explicit status argument means APPROVED for this phase.
+   const userA=await access.recognise(A,true);
+   const [idA]=await db.select().from(t.userAccounts).where(eq(t.userAccounts.userId,userA));
+   expect(idA.accessStatus).toBe(ACCESS_STATUS.approved);
+
+   // Immediate access to the private workspace: no manual approval step in between.
+   const sessionA=await access.issueSession(A.subject);
+   const brandA=await engine.createBrand(sessionA.token,'Marca A','Contexto de A');
+   expect((await access.authorize(sessionA.token)).userId).toBe(userA);
+
+   // A second auto-approved participant is still a separate tenant.
+   const userB=await access.recognise(B,true);
+   const sessionB=await access.issueSession(B.subject);
+   expect(userB).not.toBe(userA);
+   expect(await engine.listBrands(sessionB.token)).toEqual([]);
+   await expect(engine.context(sessionB.token,brandA.id)).rejects.toMatchObject({code:'NOT_FOUND'});
+
+   // Signing in again preserves the status rather than re-deciding it.
+   expect(await access.recognise(A,true)).toBe(userA);
+   const [again]=await db.select().from(t.userAccounts).where(eq(t.userAccounts.userId,userA));
+   expect(again.accessStatus).toBe(ACCESS_STATUS.approved);
+  });
+
+  it('supports a PENDING gateway and SUSPENDED enforcement without a schema change',async()=>{
+   const {db}=connection(),issuer='https://accounts.google.com',access=new PilotAccess(db,issuer);
+   const run=randomUUID().slice(0,8);
+   const waiting={subject:`pending-${run}`,email:`pending.${run}@example.test`,emailVerified:true};
+
+   // PENDING: the account exists, but access is withheld until something approves it.
+   const userId=await access.recognise(waiting,true,ACCESS_STATUS.pending);
+   const [profile]=await db.select().from(t.userAccounts).where(eq(t.userAccounts.userId,userId));
+   expect(profile.accessStatus).toBe(ACCESS_STATUS.pending);
+   expect((await db.select().from(t.pilotIdentities).where(eq(t.pilotIdentities.userId,userId)))[0].active).toBe(true);                       // not disabled, just not admitted yet
+   await expect(access.issueSession(waiting.subject)).rejects.toMatchObject({code:'FORBIDDEN'});
+   // A repeat sign-in does not silently promote them.
+   expect(await access.recognise(waiting,true,ACCESS_STATUS.pending)).toBe(userId);
+   await expect(access.issueSession(waiting.subject)).rejects.toMatchObject({code:'FORBIDDEN'});
+   // Flipping the default policy must not retroactively approve an existing PENDING participant.
+   expect(await access.recognise(waiting,true,ACCESS_STATUS.approved)).toBe(userId);
+   expect((await db.select().from(t.userAccounts).where(eq(t.userAccounts.userId,userId)))[0].accessStatus).toBe(ACCESS_STATUS.pending);
+   await expect(access.issueSession(waiting.subject)).rejects.toMatchObject({code:'FORBIDDEN'});
+
+   // Approving opens the workspace, and the same account is reused.
+   await access.setAccessStatus(userId,ACCESS_STATUS.approved);
+   const session=await access.issueSession(waiting.subject);
+   expect((await access.authorize(session.token)).userId).toBe(userId);
+
+   // SUSPENDED withdraws access immediately: the live session is revoked outright, so the very next
+   // request fails at session lookup rather than merely being refused authorization.
+   await access.setAccessStatus(userId,ACCESS_STATUS.suspended);
+   await expect(access.authorize(session.token)).rejects.toMatchObject({code:'UNAUTHORIZED'});
+   await expect(access.issueSession(waiting.subject)).rejects.toMatchObject({code:'FORBIDDEN'});
+   // Defence in depth: even a session that somehow outlives the status change is refused, so the guard
+   // does not depend on revocation having happened.
+   await access.setAccessStatus(userId,ACCESS_STATUS.approved);
+   const live=await access.issueSession(waiting.subject);
+   expect((await access.authorize(live.token)).userId).toBe(userId);
+   await db.update(t.userAccounts).set({accessStatus:ACCESS_STATUS.suspended}).where(eq(t.userAccounts.userId,userId));
+   await expect(access.authorize(live.token)).rejects.toMatchObject({code:'FORBIDDEN'});
+   // Signing in again does not resurrect a suspended participant, whatever the default policy says.
+   expect(await access.recognise(waiting,true,ACCESS_STATUS.approved)).toBe(userId);
+   await expect(access.issueSession(waiting.subject)).rejects.toMatchObject({code:'FORBIDDEN'});
+   // The account itself is preserved, not deleted.
+   expect((await db.select().from(t.userAccounts).where(eq(t.userAccounts.userId,userId)))[0].accessStatus).toBe(ACCESS_STATUS.suspended);
+
+   // An invalid status is refused rather than stored.
+   await expect(access.setAccessStatus(userId,'BANNED' as never)).rejects.toMatchObject({code:'INVALID'});
+  });
+
+  it('reads the default access policy from configuration, never from hardcoded logic',async()=>{
+   // Current validation phase: unset means APPROVED.
+   expect(pilotDefaultAccessStatus({})).toBe(ACCESS_STATUS.approved);
+   expect(pilotDefaultAccessStatus({PILOT_DEFAULT_ACCESS_STATUS:''})).toBe(ACCESS_STATUS.approved);
+   expect(pilotDefaultAccessStatus({PILOT_DEFAULT_ACCESS_STATUS:'APPROVED'})).toBe(ACCESS_STATUS.approved);
+   // A future controlled pilot switches with one variable.
+   expect(pilotDefaultAccessStatus({PILOT_DEFAULT_ACCESS_STATUS:'PENDING'})).toBe(ACCESS_STATUS.pending);
+   // A default of SUSPENDED would create accounts that can never sign in.
+   expect(()=>pilotDefaultAccessStatus({PILOT_DEFAULT_ACCESS_STATUS:'SUSPENDED'})).toThrow(/APPROVED or PENDING/);
+   for(const bad of ['approved','Pending','YES','1'])
+    expect(()=>pilotDefaultAccessStatus({PILOT_DEFAULT_ACCESS_STATUS:bad}),bad).toThrow(/PILOT_DEFAULT_ACCESS_STATUS/);
+   // All three states stay part of the model.
+   expect([...ACCESS_STATUSES].sort()).toEqual(['APPROVED','PENDING','SUSPENDED']);
+  });
+
+  it('keeps operator-disabled participants denied regardless of access status',async()=>{
+   const {db}=connection(),issuer='https://accounts.google.com',access=new PilotAccess(db,issuer);
+   const run=randomUUID().slice(0,8);
+   const person={subject:`disabled-${run}`,email:`disabled.${run}@example.test`,emailVerified:true};
+   const userId=await access.recognise(person,true);
+   await access.issueSession(person.subject);
+   await access.disable(userId);
+   // disable() is the hard kill and outranks an APPROVED status.
+   const [identity]=await db.select().from(t.pilotIdentities).where(eq(t.pilotIdentities.userId,userId));
+   expect(identity.active).toBe(false);
+   expect((await db.select().from(t.userAccounts).where(eq(t.userAccounts.userId,userId)))[0].accessStatus).toBe(ACCESS_STATUS.approved);
+   await expect(access.issueSession(person.subject)).rejects.toMatchObject({code:'FORBIDDEN'});
+   // Re-approving does not undo a disable.
+   await access.setAccessStatus(userId,ACCESS_STATUS.approved);
+   await expect(access.issueSession(person.subject)).rejects.toMatchObject({code:'FORBIDDEN'});
   });
 
   it('provisions unique testers, isolates workspaces and brands, and rejects manipulated IDs',async()=>{

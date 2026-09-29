@@ -53,6 +53,7 @@ Define lo que cualquier hosting debe ofrecer. No elige proveedor. PILOT no es pr
 | `TRUST_PROXY` | `false` | `true` sólo si el proxy propio fija `X-Forwarded-For` (límites por IP real). |
 | `OIDC_REDIRECT_URI` | `PILOT_ORIGIN/auth/callback` | Si se define, debe ser exactamente ese valor. |
 | `GA4_MEASUREMENT_ID` | — | `G-XXXXXXXXXX`. Sin definir, GA4 queda desactivado y la CSP conserva su valor original. Mal formada, el proceso falla al arrancar. Amplía `script-src`/`connect-src`/`img-src` sólo con orígenes de Google. Analítica de comportamiento, nunca evidencia canónica. |
+| `PILOT_DEFAULT_ACCESS_STATUS` | `APPROVED` | Estado de acceso de un participante NUEVO. `APPROVED` (fase actual) admite de inmediato a todo participante autenticado. `PENDING` reserva el acceso para un piloto controlado futuro. `SUSPENDED` se rechaza: crearía cuentas que nunca podrían entrar. Cambiar el valor no reevalúa cuentas existentes. |
 | `PILOT_AUTO_PROVISION` | `false` | `true` permite que una identidad OIDC verificada cree su propia cuenta y workspace en el primer acceso. Con `false` (o sin definir) se mantiene el comportamiento fail-closed actual: identidad no aprovisionada = denegada. Exige `email` y `email_verified=true` en el ID token. |
 | `PILOT_REQUEST_ACCESS_URL` | — | `https:` o `mailto:`. Sin él, la entrada pide contactar al organizador (nunca un enlace roto). |
 | `PG_BIN` | PATH | Herramientas cliente PostgreSQL 17 para `pilot:backup`. |

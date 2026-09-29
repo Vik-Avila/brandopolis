@@ -14,6 +14,17 @@ Depends on: —
 
 # Registro
 
+## Estado de acceso configurable del participante · 2026-09-28
+
+- `PILOT_DEFAULT_ACCESS_STATUS` (por defecto `APPROVED`). **Política actual del piloto: todo participante autenticado con éxito queda aprobado automáticamente**, sin paso de aprobación manual. `PENDING` habilita una puerta de aprobación para un piloto controlado futuro sin rediseñar el esquema. `SUSPENDED` se rechaza como valor por defecto: crearía cuentas que nunca podrían entrar.
+- Modelo `PENDING / APPROVED / SUSPENDED` completo desde el principio, con `setAccessStatus()` para administración futura. La política se lee de configuración, nunca de lógica de negocio fija.
+- La política se aplica **sólo al primer aprovisionamiento**: un participante que vuelve conserva su estado, así que cambiar el valor por defecto no aprueba ni reserva retroactivamente a nadie.
+- `SUSPENDED` retira el acceso de inmediato (revoca sesiones vivas) y `authorize` rechaza además cualquier sesión que sobreviviera. `disable()` sigue ganando sobre cualquier estado.
+- El estado vive en `user_accounts`, **no** en `pilot_identities`: la primera implementación lo puso allí y **rompió el ensayo de release contra el build congelado**. Se bisectó (código revertido: seguía fallando; columna revertida: pasaba) y se rediseñó. Una identidad aprovisionada por un operador no tiene perfil y se trata como `APPROVED`, exactamente el comportamiento actual.
+- Migración 0012, aditiva; las filas existentes quedan en `APPROVED`. Recuento de migraciones 12→13 (y 13→14 en el caso de divergencia), nunca relajado.
+- Pruebas: typecheck/lint PASS; pnpm test 79/79 (4 nuevas de política); test:e2e 30/30.
+
+
 ## Certificación multiusuario del acceso con Google · 2026-09-28
 
 - Cuatro pruebas de certificación sobre PostgreSQL real: identidades Google arbitrarias con usuarios y workspaces privados distintos; el correo como metadato y no como identidad; la puerta `PILOT_AUTO_PROVISION` y los claims exigidos; y ausencia de duplicados bajo primeros accesos concurrentes. **No hizo falta cambiar código de producción**: pasaron a la primera.

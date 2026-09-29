@@ -74,6 +74,42 @@ Cuatro pruebas de certificación multiusuario, sobre PostgreSQL real:
 4. **Concurrencia.** Tres personas, tres intentos simultáneos cada una: cada `subject` resuelve a un
    único usuario canónico, una única fila de identidad, tres usuarios y tres workspaces distintos.
 
+## 5.bis Política de acceso de participantes
+
+**POLÍTICA ACTUAL DEL PILOTO: todo participante autenticado con éxito queda aprobado automáticamente.**
+No hay paso de aprobación manual en esta fase de validación.
+
+**POLÍTICA FUTURA:** Brandopolis puede pasar a una puerta de aprobación manual con el mismo modelo de
+estados, cambiando una variable de entorno. No requiere rediseño de esquema.
+
+| Estado | Significado | Acceso |
+|---|---|---|
+| `PENDING` | cuenta creada, acceso reservado | denegado hasta que algo la apruebe |
+| `APPROVED` | admitido | acceso completo a su workspace privado |
+| `SUSPENDED` | acceso retirado por un operador | denegado; la cuenta se conserva |
+
+```
+PILOT_DEFAULT_ACCESS_STATUS=APPROVED    # fase actual; ausente equivale a APPROVED
+PILOT_DEFAULT_ACCESS_STATUS=PENDING     # piloto controlado futuro
+```
+
+`SUSPENDED` se rechaza como valor por defecto: crearía cuentas que nunca podrían entrar.
+
+Reglas que las pruebas fijan:
+
+- La política se aplica **sólo al primer aprovisionamiento**. Un participante que vuelve conserva su
+  estado, así que cambiar el valor por defecto **no aprueba ni reserva retroactivamente** a nadie.
+- `SUSPENDED` retira el acceso de inmediato: revoca las sesiones vivas, y el guardia de `authorize`
+  rechaza igualmente una sesión que sobreviviera. Defensa en profundidad.
+- `disable()` sigue siendo la desactivación dura y **gana sobre cualquier estado**: volver a `APPROVED`
+  no reactiva una identidad desactivada.
+- El estado vive en `user_accounts` (el perfil del participante de autoservicio), **no** en
+  `pilot_identities`. Esa tabla la comparte el build congelado del ensayo de release y ampliarla rompe
+  esa prueba de compatibilidad: se comprobó y se rediseñó por ello. Una identidad aprovisionada por un
+  operador no tiene perfil y se trata como `APPROVED`, que es exactamente el comportamiento actual;
+  para esas, el control sigue siendo `disable()`.
+- Un participante recién auto-aprobado sigue aislado por usuario y workspace, como cualquier otro.
+
 ## 6. Hallazgos de la auditoría de usuario fijo
 
 Se buscaron correos, `subject` de Google, IDs de workspace o usuario fijos y supuestos de usuario único
