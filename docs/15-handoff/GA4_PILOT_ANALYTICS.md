@@ -7,6 +7,61 @@ Depends on: Pilot landing deployed (d43fd4d)
 
 # GA4 · analítica del piloto
 
+## 0. Measurement ID canónico
+
+```
+GA4_MEASUREMENT_ID=G-NTSD86N2LT
+```
+
+**`G-NTSD86N2LT` es la propiedad canónica desde 2026-09-29.** Sustituye a `G-PVKQ2K90EQ`, que quedó
+**obsoleta**. Las secciones fechadas más abajo conservan sus mediciones con el ID antiguo: son registro
+histórico, no instrucciones.
+
+### Estado en producción · CERRADO 2026-09-29
+
+**Producción quedó corregida y verificada el 2026-09-29.** Confirmado por el operador:
+
+| Comprobación | Estado |
+|---|---|
+| `pilot.env` | `GA4_MEASUREMENT_ID=G-NTSD86N2LT` |
+| `brandopolis-pilot.service` | reiniciado correctamente |
+| `GET /api/mode` | devuelve `G-NTSD86N2LT` |
+| GA4 Tiempo real | **recibiendo actividad** |
+
+No queda ninguna acción de configuración pendiente.
+
+#### Diagnóstico previo, para el registro
+
+Antes de la corrección, medido contra `https://pilot.brandopolis.ai` con un navegador real y perfil
+limpio. Se conserva porque explica por qué Tiempo real aparecía vacío:
+
+| Comprobación | Resultado (antes de la corrección) |
+|---|---|
+| `GET /api/mode` | `"ga4MeasurementId":"G-PVKQ2K90EQ"` — **el ID obsoleto** |
+| CSP servida | ya ampliada con `https://www.googletagmanager.com` |
+| Script de gtag | **cargado**: `googletagmanager.com/gtag/js?id=G-PVKQ2K90EQ` |
+| `window.gtag` | `function` |
+| `dataLayer` | `js`, `config`, `event`, `gtm.dom`, `gtm.load` |
+| `config()` | `G-PVKQ2K90EQ` |
+| Envío real | `POST google-analytics.com/g/collect?v=2&tid=G-PVKQ2K90EQ` |
+| `<script>` en línea | 0 |
+| Contenedores GTM | 0 |
+| Errores de consola | ninguno |
+
+**Nunca faltó la instrumentación base: apuntaba a la propiedad equivocada.** El informe en tiempo real
+de `G-NTSD86N2LT` estaba vacío porque ningún hit llegaba a esa propiedad, no porque faltara el Google
+tag. La causa era configuración, no código, y **no se modificó ningún archivo de aplicación**.
+
+Si el ID vuelve a cambiar, el procedimiento es el mismo: poner `GA4_MEASUREMENT_ID` en `pilot.env` y
+**reiniciar `brandopolis-pilot.service`** (la CSP y el ID se resuelven al construir la aplicación y los
+assets se cachean por proceso), y comprobar que `GET /api/mode` devuelve exactamente el ID esperado.
+
+### Alcance de esta fase
+
+Esta fase cubre **sólo recolección base y `page_view` automático**. La **taxonomía de eventos de
+producto es una fase posterior y separada**; los hitos que ya existen (§4) siguen funcionando sin
+cambios y no se añadió ninguno nuevo.
+
 ## 1. Para qué sirve, y para qué no
 
 | | GA4 | Telemetría interna de Brandopolis |
@@ -110,8 +165,12 @@ GA4 en producción:
 - Si se exige consentimiento previo, la vía natural es cargar `/analytics.js` sólo después de la
   aceptación: `init()` ya es perezoso e idempotente, así que basta con retrasar su llamada.
 
-**Estado: pendiente de decisión humana.** Dejar `GA4_MEASUREMENT_ID` sin definir mantiene el piloto
-exactamente como está hoy.
+**Estado: GA4 está activo en producción desde 2026-09-29** con la propiedad canónica `G-NTSD86N2LT`
+(§0), de modo que la opción de «dejarlo sin definir» ya no describe el piloto. Lo que **sigue siendo una
+decisión de producto y legal, no de ingeniería**, es si se exige consentimiento previo; si se exige, la
+palanca es retrasar la llamada a `init()`, que ya es perezosa e idempotente. Quitar
+`GA4_MEASUREMENT_ID` y reiniciar desactiva la analítica por completo y restaura la CSP original byte a
+byte.
 
 ## 7. Despliegue
 
@@ -119,7 +178,7 @@ exactamente como está hoy.
 2. En el entorno de `pilot.brandopolis.ai`, la propiedad de producción es:
 
    ```
-   GA4_MEASUREMENT_ID=G-PVKQ2K90EQ
+   GA4_MEASUREMENT_ID=G-NTSD86N2LT
    ```
 
    Se configura **sólo como variable de entorno**. El Measurement ID no es un secreto (queda visible en el
@@ -175,7 +234,7 @@ verificación manual de abajo, hecha contra producción y en el navegador del re
 ### Lista de verificación manual en producción
 
 ```bash
-# 1. Measurement ID efectivo que publica el proceso: debe ser exactamente G-PVKQ2K90EQ.
+# 1. Measurement ID efectivo que publica el proceso: debe ser exactamente G-NTSD86N2LT.
 curl -sS https://pilot.brandopolis.ai/api/mode
 
 # 2. ¿La CSP se amplió? Debe aparecer googletagmanager.
@@ -187,9 +246,12 @@ curl -sS -o /dev/null -w "%{http_code}\n" https://pilot.brandopolis.ai/analytics
 
 En el navegador, **en una ventana de incógnito sin extensiones**: abre las herramientas de desarrollo,
 pestaña Red, filtra por `collect`, y navega. Debe aparecer una petición a
-`google-analytics.com/g/collect` con `tid=G-PVKQ2K90EQ`. Revisa también la consola y si el script de
+`google-analytics.com/g/collect` con `tid=G-NTSD86N2LT`. Revisa también la consola y si el script de
 `googletagmanager` llega a solicitarse. Después, en GA4 → Administrar → DebugView, con el modo de
 depuración activo, deben verse `pilot_landing_view` y los demás hitos.
+
+> Las mediciones de §7.bis se tomaron con `G-PVKQ2K90EQ`, la propiedad anterior. El ID canónico actual
+> es `G-NTSD86N2LT` (§0); esa sección se conserva como registro histórico.
 
 La verificación manual debe inspeccionar, punto por punto y sin dar ninguno por supuesto:
 

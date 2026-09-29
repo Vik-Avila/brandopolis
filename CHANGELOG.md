@@ -14,6 +14,32 @@ Depends on: —
 
 # Registro
 
+## GA4 · configuración canónica cerrada · 2026-09-29
+
+- **Causa raíz confirmada, y no es código que falte.** Medido contra producción con un navegador real:
+  el Google tag **sí carga** (`gtag/js?id=…`), `window.gtag` existe, `dataLayer` se llena
+  (`js, config, event, gtm.dom, gtm.load`), la CSP ya está ampliada y sale un `POST` real a
+  `g/collect`. Lo que ocurre es que `/api/mode` publica **`G-PVKQ2K90EQ`**, la propiedad anterior,
+  mientras el informe que se está mirando es el de **`G-NTSD86N2LT`**. Ningún hit llega a esa
+  propiedad; de ahí el tiempo real vacío.
+- **Corrección aplicada y verificada en producción el 2026-09-29.** `pilot.env` con
+  `GA4_MEASUREMENT_ID=G-NTSD86N2LT`, `brandopolis-pilot.service` reiniciado, `GET /api/mode`
+  devolviendo `G-NTSD86N2LT` y **GA4 Tiempo real recibiendo actividad**. Era configuración, no código:
+  **no se modificó ningún archivo de aplicación**. La instrumentación base (gtag.js, `dataLayer`,
+  `gtag('js')`, `gtag('config')`, `page_view` automático, inicialización única, sin GTM, sin
+  `<script>` en línea) ya existía y quedó verificada. No hay acciones de configuración pendientes.
+- **`G-NTSD86N2LT` queda como Measurement ID canónico** en
+  [GA4_PILOT_ANALYTICS §0](docs/15-handoff/GA4_PILOT_ANALYTICS.md), con el estado medido en producción
+  y el procedimiento exacto. El ID **no se escribe en el código**: es variable de entorno publicada por
+  `/api/mode`, para que ninguna ejecución DEMO, e2e o de desarrollo emita a una propiedad real.
+- Esta fase cubre **sólo recolección base y `page_view` automático**. La **taxonomía de eventos de
+  producto es una fase posterior**; no se añadió ningún evento nuevo.
+- Pruebas: 5 estructurales nuevas que fijan el ID canónico, prueban que ningún ID real viaja en lo que
+  se sirve, que la inicialización ocurre una sola vez con `page_view` automático, que no hay
+  contenedor GTM y que los contratos de producto/UX no se movieron. typecheck/lint PASS;
+  pnpm test 127/127; git diff --check limpio. **Sin migración, sin dependencias, sin cambios de CSP.**
+
+
 ## Pulido final de QA · terminología y panel derecho · 2026-09-29
 
 Tres correcciones estrechas sobre el PILOT ya funcional. Sin migración, sin dependencias nuevas y sin
@@ -174,7 +200,7 @@ Primera verificación humana real en producción sobre `2f84d29`.
 - **Ancho del intake en escritorio.** `.welcome` declara tres columnas para las tarjetas de acceso; el intake las redefinía a dos teniendo también tres hijos, así que el formulario caía a la fila 2 de la **primera** columna: 288px con campos de 103px, y la mitad derecha vacía. Colocando los tres hijos explícitamente, a 1440px el formulario pasa de **288px a 735px** y los campos de **103px a 327px**.
 - **CoffeePolis estratégicamente vacío.** Existía con su contexto inicial pero con 0/4 decisiones y Blueprint vacío, así que no enseñaba nada. Se añade `ensureDemoContent()`: cuatro decisiones aprobadas, una hipótesis explícita marcada «Sin validar» y una aportación claramente etiquetada como demo. **Contenido determinista escrito en el repositorio**: no se llama a ninguna IA y no se inventa investigación externa.
 - **Faltaba generar posibilidades en el input inicial.** La acción existía junto a las opciones, no donde se pide escribir. Ahora aparece bajo «Tu decisión» y **delega en el control canónico de generación**, así que hay literalmente un solo motor; lo ya escrito se conserva y nada se aprueba automáticamente.
-- **GA4 no observado**: diagnosticado antes de tocar código. **No hay defecto de aplicación confirmado** — ver [GA4_PILOT_ANALYTICS §7.bis](docs/15-handoff/GA4_PILOT_ANALYTICS.md). `GA4_MEASUREMENT_ID` ya estaba en `pilot.env` antes del reinicio, Brandopolis se reinició correctamente y el health devolvió `ready`; aun así Tiempo real no mostró actividad durante el recorrido humano. **Sin causa raíz asignada**: queda abierta una diagnosis de entrega de analítica en runtime/navegador/red, pendiente de la verificación manual documentada.
+- **GA4 no observado**: diagnosticado antes de tocar código. **No hay defecto de aplicación confirmado** — ver [GA4_PILOT_ANALYTICS §7.bis](docs/15-handoff/GA4_PILOT_ANALYTICS.md). `GA4_MEASUREMENT_ID` ya estaba en `pilot.env` antes del reinicio, Brandopolis se reinició correctamente y el health devolvió `ready`; aun así Tiempo real no mostró actividad durante el recorrido humano. **Sin causa raíz asignada** en ese momento: quedaba abierta una diagnosis de entrega de analítica en runtime/navegador/red, pendiente de la verificación manual documentada. **Resuelto el 2026-09-29**: la causa era el Measurement ID obsoleto en producción —`G-PVKQ2K90EQ` en `pilot.env` frente a la propiedad canónica `G-NTSD86N2LT`—, así que los hits llegaban a otra propiedad. Nunca hubo defecto de aplicación. Ver [GA4_PILOT_ANALYTICS §0](docs/15-handoff/GA4_PILOT_ANALYTICS.md).
 
 **Defecto adicional encontrado durante la verificación**: con `core.autocrlf` y sin regla en `.gitattributes`, un checkout reescribía `drizzle/*.sql` a CRLF, cambiando su hash. CLAUDE.md declara esas migraciones inmutables y verificadas por hash, así que una base sana informaba `MIGRATIONS_REQUIRED` y el servidor DEMO local se negaba a arrancar. Se fija `drizzle/** text eol=lf`, igual que ya se hacía con los assets de marca y el frontend servido.
 

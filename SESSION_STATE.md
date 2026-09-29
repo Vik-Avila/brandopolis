@@ -1,5 +1,40 @@
 # Session State
 
+Current phase: **GA4 CANONICAL CONFIGURATION — CLOSED** (2026-09-29).
+
+**Production is corrected and verified.** Confirmed by the operator on 2026-09-29: `pilot.env` carries
+`GA4_MEASUREMENT_ID=G-NTSD86N2LT`, `brandopolis-pilot.service` restarted successfully,
+`GET /api/mode` returns `G-NTSD86N2LT`, and GA4 Realtime is receiving activity. No configuration
+action remains open.
+
+**Root cause: configuration, not missing code.** Measured against `https://pilot.brandopolis.ai` in a
+real browser with a clean profile: the Google tag loads (`gtag/js?id=…`), `window.gtag` is a function,
+`dataLayer` fills with `js, config, event, gtm.dom, gtm.load`, the CSP is already widened for
+googletagmanager, and a real `POST .../g/collect` fires on load — all against **`G-PVKQ2K90EQ`**, the
+previous property, because that is what `/api/mode` publishes. The realtime report being watched is
+**`G-NTSD86N2LT`**, which receives nothing. Base instrumentation was never missing.
+
+The fix was one environment variable, now applied: `GA4_MEASUREMENT_ID=G-NTSD86N2LT` in `pilot.env`
+plus a service restart (CSP and ID resolve at app construction; assets cache per process). **No
+application file was changed**, then or in this commit. Should the ID ever change again, the same two
+steps apply and `GET /api/mode` must return exactly the expected ID.
+
+`G-NTSD86N2LT` is now the canonical Measurement ID, recorded with the measured production state and the
+exact procedure in [GA4_PILOT_ANALYTICS §0](docs/15-handoff/GA4_PILOT_ANALYTICS.md). The ID is never
+written into code: it is environment-driven and published through `/api/mode`, so no DEMO, e2e or
+developer run can emit into a real property.
+
+Scope: **base collection and automatic `page_view` only.** Product-event taxonomy is a separate later
+phase; no new events were added. SPA view changes use `history.replaceState`, which GA4 history
+measurement ignores, so there is nothing to de-duplicate and no manual page_view was introduced.
+
+Gate (2026-09-29): typecheck/lint PASS; pnpm test 127/127 (5 new structural); git diff --check clean.
+No migration, no schema change, no dependency change, no CSP change. Foundation, UI and Brand Master
+validators NOT RUN: no Python interpreter on this machine.
+
+---
+
+
 Current phase: **FINAL QA POLISH — TERMINOLOGY + RIGHT PANEL** (2026-09-29). The previous production
 hotfix is already deployed and was verified manually. This pass is uncommitted.
 

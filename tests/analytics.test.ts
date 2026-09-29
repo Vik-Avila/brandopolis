@@ -110,3 +110,98 @@ describe('GA4 pilot analytics', () => {
     expect(readFileSync('src/transport/public/index.html', 'utf8')).not.toMatch(/<script(?![^>]*\ssrc=)/);
   });
 });
+
+describe('GA4 base instrumentation', () => {
+  const CANONICAL_ID = 'G-NTSD86N2LT';
+  const SUPERSEDED_ID = 'G-PVKQ2K90EQ';
+  const doc = readFileSync('docs/15-handoff/GA4_PILOT_ANALYTICS.md', 'utf8');
+  const app = readFileSync('src/transport/public/app.js', 'utf8');
+  const clientSource = readFileSync('src/transport/public/analytics.js', 'utf8');
+  const html = readFileSync('src/transport/public/index.html', 'utf8');
+  const server = readFileSync('src/transport/analytics.ts', 'utf8');
+  const served = [app, clientSource, html, server];
+
+  it('pins the canonical Measurement ID in the deployment documentation', () => {
+    // The ID is configuration, not code: it reaches the browser through GA4_MEASUREMENT_ID and
+    // /api/mode. Documentation is therefore where the canonical value must be exact, because it is
+    // what an operator copies into pilot.env.
+    expect(doc).toContain('Measurement ID canónico');
+    expect(doc).toContain(`GA4_MEASUREMENT_ID=${CANONICAL_ID}`);
+    // It must satisfy the format the server enforces at boot, or the process would refuse to start.
+    expect(ga4MeasurementId({ GA4_MEASUREMENT_ID: CANONICAL_ID })).toBe(CANONICAL_ID);
+    expect(ga4MeasurementId({ GA4_MEASUREMENT_ID: ` ${CANONICAL_ID} ` })).toBe(CANONICAL_ID);
+  });
+
+  it('never ships a real Measurement ID inside the application', () => {
+    // Hardcoding one would make every DEMO run, e2e run and developer machine emit page_views into a
+    // real property. It stays environment-driven, so only a configured deployment measures anything.
+    for (const source of served) {
+      expect(source, 'canonical id must not be hardcoded').not.toContain(CANONICAL_ID);
+      expect(source, 'superseded id must not linger').not.toContain(SUPERSEDED_ID);
+    }
+    expect(app).toContain('analytics.init(mode.ga4MeasurementId??null)');
+  });
+
+  it('initialises the Google tag exactly once, with automatic page_view left on', () => {
+    // One call site in the application, and the module itself refuses a second initialisation.
+    expect(app.split('analytics.init(').length - 1, 'one init call site').toBe(1);
+
+    // Run the real loader against the canonical id and inspect what the browser would receive.
+    const appended: string[] = [];
+    const doc = { head: { append: (el: { src: string }) => appended.push(el.src) }, createElement: () => ({ async: false, src: '' }) };
+    const win: Record<string, unknown> = {};
+    const globals = globalThis as unknown as { document: unknown; window: unknown };
+    const [realDoc, realWin] = [globals.document, globals.window];
+    globals.document = doc; globals.window = win;
+    try {
+      expect(client.init(CANONICAL_ID)).toBe(true);
+      expect(client.init(CANONICAL_ID), 'a second call is a no-op').toBe(false);
+      // Exactly one gtag.js request, for the canonical property.
+      expect(appended).toEqual([`${GA4_SCRIPT_ORIGIN}/gtag/js?id=${CANONICAL_ID}`]);
+      // The standard base sequence: dataLayer, then gtag('js'), then gtag('config').
+      const layer = win.dataLayer as IArguments[];
+      expect(layer.map(entry => Array.from(entry)[0])).toEqual(['js', 'config']);
+      const config = Array.from(layer[1]) as [string, string, Record<string, unknown>];
+      expect(config[1]).toBe(CANONICAL_ID);
+      // Automatic page_view stays on: config carries no send_page_view override.
+      expect(config[2]).not.toHaveProperty('send_page_view');
+      // Privacy defaults travel with the configuration, and no user id is set.
+      expect(config[2]).toMatchObject({ anonymize_ip: true, allow_google_signals: false, allow_ad_personalization_signals: false });
+      expect(config[2]).not.toHaveProperty('user_id');
+    } finally { globals.document = realDoc; globals.window = realWin; client.reset(); }
+
+    expect(clientSource).toContain('script.async = true');
+    // Automatic page_view must stay enabled: no send_page_view:false anywhere.
+    expect(clientSource).not.toMatch(/send_page_view\s*:\s*false/);
+    // And no manual page_view is emitted, which is what would double-count the initial load.
+    expect(app).not.toMatch(/['"]page_view['"]/);
+    expect(clientSource).not.toMatch(/['"]page_view['"]/);
+    // SPA module changes use replaceState, which GA4 history measurement ignores, so there is nothing
+    // to de-duplicate. pushState would change that and must not appear without revisiting this.
+    expect(app).not.toContain('history.pushState');
+  });
+
+  it('introduces no Google Tag Manager container', () => {
+    for (const source of [...served, doc]) {
+      expect(source).not.toMatch(/GTM-[A-Z0-9]+/);
+      expect(source).not.toContain('gtm.js');
+      expect(source).not.toContain('googletagmanager.com/ns.html');
+    }
+    // The only path ever requested on that origin is gtag.js.
+    const referenced = new Set((clientSource.match(/googletagmanager\.com\/[A-Za-z0-9./_-]*/g) ?? []));
+    expect([...referenced]).toEqual(['googletagmanager.com/gtag/js']);
+    expect(GA4_SCRIPT_ORIGIN).toBe('https://www.googletagmanager.com');
+  });
+
+  it('leaves the product and UX contracts of the workspace untouched', () => {
+    // This patch is instrumentation only: the surfaces the pilot was signed off on must not move.
+    expect(html).toContain('<button id="blueprint" class="secondary">Mapa estratégico</button>');
+    expect(app).toContain('Mapa estratégico · estrategia vigente');
+    expect(app).toContain('<h4 class="context-market-title">Entorno competitivo</h4>');
+    expect(app).toContain('${versions.length} de ${context.questions.length}');
+    expect(app).toContain("document.querySelectorAll('#journey [data-module]')");
+    // Internal telemetry stays the canonical evidence layer, and GA4 keeps its privacy contract.
+    expect(clientSource).toContain('PRIVACY CONTRACT');
+    expect(clientSource).toContain("const ALLOWED_PARAMS = new Set(['cohort', 'auth_method', 'pilot_stage', 'mode'])");
+  });
+});
