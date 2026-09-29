@@ -14,6 +14,19 @@ Depends on: —
 
 # Registro
 
+## Perfiles de participante, sandbox demo y geografía de marca · 2026-09-28
+
+- **Migración 0013**, aditiva: `participant_profiles` (intake del Estratega de Marca) y `brand_profiles` (clasificación e influencia geográfica por marca).
+- **Decisión de esquema forzada por evidencia**: `isDemo`, `geographicInfluence` y `primaryMarket` iban a ser columnas de `brands`, la opción idiomática, y **rompieron el ensayo de release contra el build congelado** con la misma firma que ya rompió `pilot_identities`. Regla confirmada del repositorio: **añadir tablas es seguro; ensanchar una tabla que comparte el build congelado, no**. Se movieron a la tabla lateral `brand_profiles` y el ensayo vuelve a pasar.
+- **CoffeePolis** es un **sandbox editable por workspace**, nunca una marca compartida mutable. Se siembra por la vía canónica `createBrand`, así que sus preguntas, auditoría y eventos son idénticos a los de una marca real y es explorable de verdad. Se clasifica con `isDemo=true`, influencia `LOCAL` y mercado principal `Xalapa, Veracruz`: local por decisión, no inferido.
+- **Integridad de métricas (no negociable)**: `metrics()` resuelve el conjunto de marcas demo desde el servidor y **descarta todo evento con ámbito de marca demo antes de calcular cualquier métrica de participante**. No es filtrado de dashboard: es la agregación canónica. La exploración demo se reporta aparte (`demoBrands`, `demoDecisions`) para que los informes puedan distinguirla sin contarla.
+- **Política de siembra**: sólo cuentas de autoservicio (las que tienen perfil en `user_accounts`). Los workspaces aprovisionados por operador y los fixtures de ingeniería **no se rellenan**. La primera versión sembraba cualquier workspace PILOT vacío y contaminó el fixture de arranque; se acotó en lugar de editar esa prueba.
+- **Geografía estratégica**: seis valores canónicos (`LOCAL/REGIONAL/STATE/NATIONAL/LATAM/GLOBAL`) y mercado principal opcional, por marca, con comprobación de propiedad. **El lugar donde opera una marca nunca implica su mercado estratégico**: se declara, no se deduce.
+- El correo verificado **nunca** procede del formulario: vive en `user_accounts` desde el ID token. Una prueba fija que el perfil guardado no contiene clave de correo.
+- Pruebas: typecheck/lint PASS; pnpm test 88/88 (4 nuevas: integridad de métricas, aislamiento del demo, intake y geografía); test:e2e 30/30; test:visual 10 pass + 1 skip; **ensayo de release PASS**. Recuento de migraciones 13→14 (y 14→15 en divergencia), nunca relajado.
+- **Pendiente, decidido pero no implementado**: el intake será **obligatorio antes de acceder al workspace**, inmediatamente después de la autenticación con Google. Hoy no existe interfaz: el backend está listo y probado, pero ninguna pantalla lo invoca.
+
+
 ## Endurecimiento del workspace antes de las pruebas externas · 2026-09-28
 
 - **Panel de inferencia IA**: desbordaba el viewport 14px exactos a 360/390/430. Causa localizada consultando las reglas aplicadas en el navegador: `product-shell.css` define `.primary-workspace > .ai-activity {width:100%}` **sin media query**, y esa especificidad vence al `width:auto` del móvil; fijado a `left:14px`, el panel medía un viewport entero desde el inset. Corregido igualando la especificidad dentro del breakpoint de teléfono.

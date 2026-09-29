@@ -346,7 +346,7 @@ describe('PostgreSQL M1',()=>{
     const ctx=await s.context();expect(ctx.versions).toHaveLength(3);expect(ctx.reviews[0].status).toBe('OPEN');
   });
   it('M1 migrations have applied exactly once',async()=>{
-    const result=await connection.pool.query('select count(*)::int as n from drizzle.__drizzle_migrations');expect(result.rows[0].n).toBe(13);
+    const result=await connection.pool.query('select count(*)::int as n from drizzle.__drizzle_migrations');expect(result.rows[0].n).toBe(14);
     const server=await connection.pool.query('show server_version');expect(server.rows[0].server_version).toMatch(/^17\./);
   });
   it('superseding without a new current version is rejected by PostgreSQL',async()=>{

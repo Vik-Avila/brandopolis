@@ -16,7 +16,20 @@ Pre-tester hardening (partial): AI inference panel overflow fixed (a no-media-qu
 
 NOT BUILT in that pass, and still open before external testers: participant intake form and persistence, CoffeePolis demo brand with metric exclusions, geographic influence, phase-completion navigation, generate possibilities, per-option Incorporar/Modificar/Descartar, and the related telemetry. Each needs its own migration and metric-definition work; seeding demo activity without exclusions would corrupt pilot evidence. One product decision is pending: whether CoffeePolis is a read-only demonstration brand (recommended for the pilot) or a per-workspace sandbox copy.
 
-Gate (2026-09-28): typecheck/lint PASS; pnpm test 84/84; test:e2e 30/30; test:visual 10 pass + 1 skip, 0 fail; git diff --check clean. Foundation, UI and Brand Master validators NOT RUN: no Python interpreter on this machine.
+CANONICAL DECISIONS (2026-09-28), recorded here because chats are not authoritative:
+
+- CoffeePolis is an **editable per-workspace sandbox**, seeded through the canonical createBrand path. Never a shared mutable brand.
+- CoffeePolis carries `isDemo=true` in `brand_profiles`; classification is server-side, never inferred from the brand name.
+- **Demo activity is excluded from canonical pilot metrics inside the aggregation itself**, not by dashboard filtering. Demo exploration is reported separately as demoBrands/demoDecisions.
+- **Participant intake will be REQUIRED before workspace access**, immediately after successful Google authentication. Decided, NOT yet implemented: the backend exists and is tested, but no screen calls it.
+- Current access policy remains `PILOT_DEFAULT_ACCESS_STATUS=APPROVED`; there is no manual approval gateway in this pilot.
+- Operator-provisioned and legacy/test workspaces are **never** back-filled with CoffeePolis. Seeding requires a self-service account profile.
+- Geography never implies strategic market from physical location: it is declared per brand, never derived.
+- Schema rule, confirmed twice by the release rehearsal: **adding tables is safe; widening a table shared with the frozen Pilot build breaks it.** `brand_profiles` and `participant_profiles` exist for that reason.
+
+NOT BUILT: every screen for the above. Participant intake form, "Marca demo" badge, "Crear mi marca", geography in brand onboarding, phase-completion CTAs, "Ayúdame a generar posibilidades", per-option Incorporar/Modificar/Descartar, their telemetry and GA4 wiring, Google OAuth readiness doc. A participant signing in today is seeded CoffeePolis and sees no intake.
+
+Gate (2026-09-28): typecheck/lint PASS; pnpm test 88/88; test:e2e 30/30; test:visual 10 pass + 1 skip, 0 fail; release rehearsal PASS; git diff --check clean. Foundation, UI and Brand Master validators NOT RUN: no Python interpreter on this machine.
 
 NOT BUILT: the participant intake form itself (no fields specified). The status layer is wired so that "intake completed -> APPROVED" is already the configured default when that form lands.
 

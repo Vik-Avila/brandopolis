@@ -20,6 +20,25 @@ import { Engine,hash } from './engine.js';
  * has no profile row and is therefore treated as APPROVED, which preserves existing behaviour exactly;
  * disable() remains the control for those.
  */
+/**
+ * Strategic market a brand competes in and wants to grow into. Canonical rule: a brand's operating
+ * location is NOT its strategic market, so this is asked rather than inferred.
+ */
+/** Professional profile of the Estratega de Marca, captured once at intake. */
+export const PARTICIPANT_PROFILES=Object.freeze(['EMPRENDEDOR','FUNDADOR','CONSULTOR','AGENCIA','MARKETING','ESTRATEGIA','DIRECCION','DOCENCIA','OTRO'] as const);
+export type ParticipantProfile=typeof PARTICIPANT_PROFILES[number];
+
+export const GEOGRAPHIC_INFLUENCE=Object.freeze(['LOCAL','REGIONAL','STATE','NATIONAL','LATAM','GLOBAL'] as const);
+export type GeographicInfluence=typeof GEOGRAPHIC_INFLUENCE[number];
+
+/** The canonical demonstration brand seeded into every self-service workspace as its own sandbox copy. */
+export const DEMO_BRAND=Object.freeze({
+  name:'CoffeePolis',
+  geographicInfluence:'LOCAL' as GeographicInfluence,
+  primaryMarket:'Xalapa, Veracruz',
+  context:'CoffeePolis es una marca de café urbano en Xalapa, Veracruz, dirigida principalmente a millennials con poder adquisitivo medio. Su experiencia diferenciada combina café de autor con barista, arte curado, Coffee Raves, catas de café, mocktails y experiencias de comunidad alrededor del café. Intención estratégica: ofrecer una experiencia de café y cultura diferenciada en la ciudad de Xalapa, Veracruz.'
+});
+
 export const ACCESS_STATUS=Object.freeze({pending:'PENDING',approved:'APPROVED',suspended:'SUSPENDED'} as const);
 export type AccessStatus=typeof ACCESS_STATUS[keyof typeof ACCESS_STATUS];
 export const ACCESS_STATUSES:readonly AccessStatus[]=Object.freeze(Object.values(ACCESS_STATUS));
@@ -44,6 +63,63 @@ export class PilotAccess {
       await tx.insert(t.pilotEvents).values({id:randomUUID(),userId,workspaceId:wid,name:'account_created',cohort,intervention:'NONE',occurredAt:now});
       return {userId,workspaceId:wid};
     });
+  }
+  /**
+   * Seeds the CoffeePolis sandbox into a PILOT workspace that has no brands yet. Each participant gets
+   * their own editable copy: nothing is shared across workspaces. Idempotent, and never backfills a
+   * workspace that already holds brands, so existing engineering fixtures stay untouched.
+   */
+  async ensureDemoBrand(token:string) {
+    const who=await this.authorize(token) as {userId:string;workspaceId:string};
+    const [pilot]=await this.db.select().from(t.pilotWorkspaces).where(eq(t.pilotWorkspaces.workspaceId,who.workspaceId));
+    if(!pilot)return null;
+    // Self-service participants only. An operator-provisioned identity has no account profile, so
+    // engineering fixtures and manually provisioned testers are never seeded or back-filled.
+    const [account]=await this.db.select().from(t.userAccounts).where(eq(t.userAccounts.userId,who.userId));
+    if(!account)return null;
+    const existing=await this.db.select().from(t.brands).where(eq(t.brands.workspaceId,who.workspaceId));
+    if(existing.length)return null;
+    const brand=await new Engine(this.db).createBrand(token,DEMO_BRAND.name,DEMO_BRAND.context);
+    await this.db.insert(t.brandProfiles).values({workspaceId:who.workspaceId,brandId:brand.id,isDemo:true,
+      geographicInfluence:DEMO_BRAND.geographicInfluence,primaryMarket:DEMO_BRAND.primaryMarket}).onConflictDoNothing();
+    return brand;
+  }
+  /** Strategic geography for a brand the participant owns. Absent row means no declared market. */
+  async setBrandGeography(token:string,brandId:string,influence:GeographicInfluence,primaryMarket?:string|null) {
+    if(!GEOGRAPHIC_INFLUENCE.includes(influence))throw new AppError('INVALID','Invalid geographic influence');
+    if(primaryMarket!=null&&(typeof primaryMarket!=='string'||primaryMarket.length>160))throw new AppError('INVALID','Invalid primary market');
+    const who=await this.authorize(token) as {workspaceId:string};
+    const [brand]=await this.db.select().from(t.brands).where(and(eq(t.brands.id,brandId),eq(t.brands.workspaceId,who.workspaceId)));
+    if(!brand)throw new AppError('NOT_FOUND','Brand unavailable');
+    await this.db.insert(t.brandProfiles).values({workspaceId:who.workspaceId,brandId,isDemo:false,geographicInfluence:influence,primaryMarket:primaryMarket??null})
+      .onConflictDoUpdate({target:[t.brandProfiles.workspaceId,t.brandProfiles.brandId],set:{geographicInfluence:influence,primaryMarket:primaryMarket??null}});
+    return {brandId,geographicInfluence:influence,primaryMarket:primaryMarket??null};
+  }
+  /** Participant intake, once per account. Email is never taken from here: it comes from the ID token. */
+  async saveParticipantProfile(token:string,input:Record<string,unknown>) {
+    const who=await this.authorize(token) as {userId:string};
+    const text=(key:string,max:number,required:boolean)=>{
+      const value=input[key];
+      if(value==null||value===''){if(required)throw new AppError('INVALID',`${key} required`);return null;}
+      if(typeof value!=='string'||value.trim().length===0||value.length>max)throw new AppError('INVALID',`Invalid ${key}`);
+      return value.trim();
+    };
+    if(input.privacyAccepted!==true||input.termsAccepted!==true)throw new AppError('INVALID','Privacy and terms acceptance required');
+    if(!PARTICIPANT_PROFILES.includes(String(input.primaryProfile) as ParticipantProfile))throw new AppError('INVALID','Invalid primaryProfile');
+    const now=new Date();
+    const row={userId:who.userId,firstName:text('firstName',80,true)!,lastName:text('lastName',80,true)!,
+      country:text('country',80,true)!,region:text('region',80,true)!,city:text('city',80,true)!,
+      primaryProfile:String(input.primaryProfile),companyOrProject:text('companyOrProject',160,false),
+      sector:text('sector',120,false),pilotGoal:text('pilotGoal',1200,false),
+      privacyAcceptedAt:now,termsAcceptedAt:now,createdAt:now,updatedAt:now};
+    await this.db.insert(t.participantProfiles).values(row)
+      .onConflictDoUpdate({target:t.participantProfiles.userId,set:{...row,createdAt:undefined,updatedAt:now}});
+    return {complete:true};
+  }
+  async participantProfile(token:string) {
+    const who=await this.authorize(token) as {userId:string};
+    const [row]=await this.db.select().from(t.participantProfiles).where(eq(t.participantProfiles.userId,who.userId));
+    return row??null;
   }
   async assign(userId:string,brandId:string) {
     await this.db.transaction(async tx=>{
@@ -94,10 +170,18 @@ export class PilotAccess {
   // Activation = first strategic Decision approved. Durations in seconds from the tester's first session.
   async metrics() {
     const rows=await this.db.select().from(t.pilotEvents).orderBy(asc(t.pilotEvents.occurredAt));
+    // Demo brands are classified server-side, never inferred from a name. Every brand-scoped event that
+    // belongs to a demo brand is removed before any participant metric is computed, so CoffeePolis can
+    // never fabricate a brand count, an activation, a time-to-first-decision or a second-brand signal.
+    const demo=new Set((await this.db.select().from(t.brandProfiles).where(eq(t.brandProfiles.isDemo,true))).map(b=>b.brandId));
+    const isDemoEvent=(e:{brandId:string|null})=>Boolean(e.brandId&&demo.has(e.brandId));
     const users=new Map<string,typeof rows>();for(const r of rows)users.set(r.userId,[...(users.get(r.userId)??[]),r]);
+    const demoByUser=new Map<string,typeof rows>();for(const r of rows)if(isDemoEvent(r))demoByUser.set(r.userId,[...(demoByUser.get(r.userId)??[]),r]);
     const first=(events:typeof rows,name:string)=>events.find(e=>e.name===name)?.occurredAt;
     const since=(a?:Date,b?:Date)=>a&&b?Math.round((b.getTime()-a.getTime())/1000):null;
-    return [...users].map(([userId,events])=>{
+    return [...users].map(([userId,all])=>{
+      const events=all.filter(e=>!isDemoEvent(e));
+      const demoEvents=demoByUser.get(userId)??[];
       const start=first(events,'session_started'),decisions=events.filter(e=>e.name==='decision_created');
       // Canonical High-Value Strategic Events (Master Context §45); activation is the first approved Decision.
       const activation=decisions[0]?.occurredAt,hve=['strategic_question_started','decision_created','change_impact_review_completed','dependency_triggered','experiment_created','signal_added','learning_created'];
@@ -105,7 +189,10 @@ export class PilotAccess {
       return {userId,cohort:events[0].cohort,sessions:events.filter(e=>e.name==='session_started').length,brands:new Set(events.filter(e=>e.name==='brand_created').map(e=>e.brandId)).size,
         recommendationsRequested:events.filter(e=>e.name==='recommendation_requested').length,recommendationsFailed:events.filter(e=>e.name==='analysis_failed').length,
         decisionsApproved:decisions.length,activated:decisions.length>0,reviewsCompleted:events.filter(e=>e.name==='change_impact_review_completed').length,
-        secondHighValueEvent14d,timeToFirstInsightSeconds:since(start,first(events,'recommendation_generated')),timeToFirstDecisionSeconds:since(start,decisions[0]?.occurredAt)};
+        secondHighValueEvent14d,timeToFirstInsightSeconds:since(start,first(events,'recommendation_generated')),timeToFirstDecisionSeconds:since(start,decisions[0]?.occurredAt),
+        // Demo exploration is reported separately so it stays visible without ever counting as real work.
+        demoBrands:new Set(demoEvents.filter(e=>e.name==='brand_created').map(e=>e.brandId)).size,
+        demoDecisions:demoEvents.filter(e=>e.name==='decision_created').length};
     });
   }
   // AI guardrails for PILOT: one acknowledgement per notice version (append-only event, no schema change)

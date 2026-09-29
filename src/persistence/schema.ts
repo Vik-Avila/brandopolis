@@ -136,4 +136,11 @@ export const pilotEvents=pgTable('pilot_events',{id:text().primaryKey(),userId:t
 // unique so one mailbox cannot end up attached to two accounts.
 export const userAccounts=pgTable('user_accounts',{userId:text().primaryKey().references(()=>users.id),email:text().notNull(),normalizedEmail:text().notNull(),emailVerifiedAt:timestamp({withTimezone:true}),displayName:text(),avatarUrl:text(),createdAt:timestamp({withTimezone:true}).notNull(),lastLoginAt:timestamp({withTimezone:true}),accessStatus:text().notNull().default('APPROVED')},t=>[unique().on(t.normalizedEmail),index().on(t.normalizedEmail)]);
 
+// Brand-level pilot classification and strategic geography. Deliberately NOT columns on `brands`:
+// that table is shared with the frozen Pilot build exercised by the release rehearsal, and widening it
+// breaks that compatibility test. No row means a real brand with no declared market.
+export const brandProfiles=pgTable('brand_profiles',{...scope(),isDemo:boolean().notNull().default(false),geographicInfluence:text(),primaryMarket:text()},t=>[primaryKey({columns:[t.workspaceId,t.brandId]}),foreignKey({columns:[t.workspaceId,t.brandId],foreignColumns:[brands.workspaceId,brands.id]}),index().on(t.isDemo)]);
+
+export const participantProfiles=pgTable('participant_profiles',{userId:text().primaryKey().references(()=>users.id),firstName:text().notNull(),lastName:text().notNull(),country:text().notNull(),region:text().notNull(),city:text().notNull(),primaryProfile:text().notNull(),companyOrProject:text(),sector:text(),pilotGoal:text(),privacyAcceptedAt:timestamp({withTimezone:true}).notNull(),termsAcceptedAt:timestamp({withTimezone:true}).notNull(),createdAt:timestamp({withTimezone:true}).notNull(),updatedAt:timestamp({withTimezone:true}).notNull()});
+
 export const feedback=pgTable('pilot_feedback',{id:text().primaryKey(),userId:text().notNull().references(()=>users.id),workspaceId:text().notNull().references(()=>pilotWorkspaces.workspaceId),brandId:text().notNull(),sessionId:text().notNull(),usefulness:integer().notNull(),clarity:integer().notNull(),confidence:integer().notNull(),comment:text().notNull(),kind:text().notNull(),createdAt:timestamp({withTimezone:true}).notNull()},t=>[foreignKey({columns:[t.workspaceId,t.brandId],foreignColumns:[brands.workspaceId,brands.id]})]);

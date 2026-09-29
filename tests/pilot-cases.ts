@@ -15,7 +15,7 @@ import { pathToFileURL } from 'node:url';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { readiness,dataClassViolation } from '../src/persistence/readiness.js';
 import { Engine,hash } from '../src/application/engine.js';
-import { ACCESS_STATUS,ACCESS_STATUSES,PilotAccess } from '../src/application/pilot-access.js';
+import { ACCESS_STATUS,ACCESS_STATUSES,DEMO_BRAND,GEOGRAPHIC_INFLUENCE,PilotAccess } from '../src/application/pilot-access.js';
 import { PilotAuth,pilotDefaultAccessStatus,type PilotBoundary } from '../src/transport/pilot-auth.js';
 import { createApp,RateLimiter } from '../src/transport/http.js';
 import { AnthropicProvider,UnavailableProvider } from '../src/transport/anthropic-provider.js';
@@ -303,6 +303,147 @@ export function pilotCases(connection:()=>ReturnType<typeof connect>){
    // Re-approving does not undo a disable.
    await access.setAccessStatus(userId,ACCESS_STATUS.approved);
    await expect(access.issueSession(person.subject)).rejects.toMatchObject({code:'FORBIDDEN'});
+  });
+
+  // METRIC INTEGRITY. CoffeePolis exists to teach the product; it must never be presented as work the
+  // participant did. These assertions are the guard on competition evidence.
+  it('seeds a CoffeePolis sandbox that never counts as participant-created strategic work',async()=>{
+   const {db}=connection(),issuer='https://accounts.google.com',access=new PilotAccess(db,issuer);
+   const run=randomUUID().slice(0,8),engine=new Engine(db);
+   const claims={subject:`demo-${run}`,email:`demo.${run}@example.test`,emailVerified:true};
+   const userId=await access.recognise(claims,true);
+   const session=await access.issueSession(claims.subject);
+
+   // First entry seeds the sandbox; a second entry must not seed another.
+   const seeded=await access.ensureDemoBrand(session.token);
+   expect(seeded?.name).toBe(DEMO_BRAND.name);
+   expect(await access.ensureDemoBrand(session.token)).toBeNull();
+   expect(await engine.listBrands(session.token)).toHaveLength(1);
+
+   // Classified server-side, with the canonical geography: a local brand, not a national one.
+   const [profile]=await db.select().from(t.brandProfiles).where(eq(t.brandProfiles.brandId,seeded!.id));
+   expect(profile.isDemo).toBe(true);
+   expect(profile.geographicInfluence).toBe('LOCAL');
+   expect(profile.primaryMarket).toBe('Xalapa, Veracruz');
+
+   // It is explorable: a decision can be taken inside it.
+   const q=(await engine.context(session.token,seeded!.id)).questions.find((x:{module:string})=>x.module==='Primary Customer')!;
+   await engine.prepareQuestion(session.token,seeded!.id,q.id,null);
+   await engine.commitDecision(session.token,{brandId:seeded!.id,questionId:q.id,selectedOption:'Millennials de Xalapa',rationale:'Exploración del demo',expectedActiveVersion:null,actorUserId:userId,sourceRecommendationId:null,idempotencyKey:randomUUID()});
+
+   // ...and none of that demo activity reaches the participant metrics.
+   const only=(await access.metrics()).find(m=>m.userId===userId)!;
+   expect(only.brands,'demo brand must not count as a real brand').toBe(0);
+   expect(only.decisionsApproved,'demo decision must not count').toBe(0);
+   expect(only.activated,'demo activity must not activate a participant').toBe(false);
+   expect(only.timeToFirstDecisionSeconds,'TTFD must ignore demo-only decisions').toBeNull();
+   expect(only.secondHighValueEvent14d).toBe(false);
+   // Demo exploration stays visible, separately, so reports can distinguish it.
+   expect(only.demoBrands).toBe(1);
+   expect(only.demoDecisions).toBe(1);
+
+   // The first REAL brand is the first real brand, and it does activate.
+   const real=await engine.createBrand(session.token,'Mi marca real','Contexto propio');
+   const rq=(await engine.context(session.token,real.id)).questions.find((x:{module:string})=>x.module==='Primary Customer')!;
+   await engine.prepareQuestion(session.token,real.id,rq.id,null);
+   await engine.commitDecision(session.token,{brandId:real.id,questionId:rq.id,selectedOption:'Equipos de marketing',rationale:'Decisión real',expectedActiveVersion:null,actorUserId:userId,sourceRecommendationId:null,idempotencyKey:randomUUID()});
+   const afterReal=(await access.metrics()).find(m=>m.userId===userId)!;
+   expect(afterReal.brands,'CoffeePolis + one real brand is ONE real brand').toBe(1);
+   expect(afterReal.decisionsApproved).toBe(1);
+   expect(afterReal.activated).toBe(true);
+   expect(afterReal.timeToFirstDecisionSeconds).not.toBeNull();
+
+   // A second real brand is what produces a second-brand signal, never the demo.
+   await engine.createBrand(session.token,'Segunda marca real','Otro contexto');
+   expect((await access.metrics()).find(m=>m.userId===userId)!.brands).toBe(2);
+  });
+
+  it('gives every participant their own CoffeePolis and keeps demo work isolated',async()=>{
+   const {db}=connection(),issuer='https://accounts.google.com',access=new PilotAccess(db,issuer);
+   const run=randomUUID().slice(0,8),engine=new Engine(db);
+   const open=async(tag:string)=>{
+    const claims={subject:`iso-${tag}-${run}`,email:`iso.${tag}.${run}@example.test`,emailVerified:true};
+    const userId=await access.recognise(claims,true);
+    const session=await access.issueSession(claims.subject);
+    const demo=await access.ensureDemoBrand(session.token);
+    return {userId,session,demo:demo!};
+   };
+   const A=await open('a'),B=await open('b');
+
+   // Separate instances, not a shared mutable brand.
+   expect(A.demo.id).not.toBe(B.demo.id);
+   expect(A.demo.name).toBe(DEMO_BRAND.name);expect(B.demo.name).toBe(DEMO_BRAND.name);
+   expect((await engine.listBrands(A.session.token)).map((x:{id:string})=>x.id)).toEqual([A.demo.id]);
+   expect((await engine.listBrands(B.session.token)).map((x:{id:string})=>x.id)).toEqual([B.demo.id]);
+
+   // Neither can reach the other's sandbox.
+   await expect(engine.context(B.session.token,A.demo.id)).rejects.toMatchObject({code:'NOT_FOUND'});
+   await expect(engine.context(A.session.token,B.demo.id)).rejects.toMatchObject({code:'NOT_FOUND'});
+
+   // Editing A's demo leaves B's untouched.
+   const q=(await engine.context(A.session.token,A.demo.id)).questions.find((x:{module:string})=>x.module==='Primary Customer')!;
+   await engine.prepareQuestion(A.session.token,A.demo.id,q.id,null);
+   await engine.commitDecision(A.session.token,{brandId:A.demo.id,questionId:q.id,selectedOption:'Sólo en el demo de A',rationale:'A explora',expectedActiveVersion:null,actorUserId:A.userId,sourceRecommendationId:null,idempotencyKey:randomUUID()});
+   expect((await engine.context(A.session.token,A.demo.id)).versions).toHaveLength(1);
+   expect((await engine.context(B.session.token,B.demo.id)).versions).toHaveLength(0);
+
+   // Participant profiles are per account and never readable across accounts.
+   const intake={firstName:'Ana',lastName:'Ruiz',country:'México',region:'Veracruz',city:'Xalapa',primaryProfile:'FUNDADOR',privacyAccepted:true,termsAccepted:true};
+   await access.saveParticipantProfile(A.session.token,intake);
+   expect((await access.participantProfile(A.session.token))?.firstName).toBe('Ana');
+   expect(await access.participantProfile(B.session.token)).toBeNull();
+  });
+
+  it('captures participant intake with acceptances, and refuses incomplete or unaccepted intake',async()=>{
+   const {db}=connection(),issuer='https://accounts.google.com',access=new PilotAccess(db,issuer);
+   const run=randomUUID().slice(0,8);
+   const claims={subject:`intake-${run}`,email:`intake.${run}@example.test`,emailVerified:true};
+   await access.recognise(claims,true);
+   const session=await access.issueSession(claims.subject);
+   const base={firstName:'Luis',lastName:'Mora',country:'México',region:'Veracruz',city:'Xalapa',primaryProfile:'CONSULTOR',privacyAccepted:true,termsAccepted:true};
+
+   expect(await access.participantProfile(session.token)).toBeNull();   // intake still pending
+   await access.saveParticipantProfile(session.token,{...base,companyOrProject:'Estudio Mora',sector:'Servicios',pilotGoal:'Definir a quién sirvo'});
+   const saved=(await access.participantProfile(session.token))!;
+   expect(saved.lastName).toBe('Mora');
+   expect(saved.pilotGoal).toBe('Definir a quién sirvo');
+   expect(saved.privacyAcceptedAt).toBeInstanceOf(Date);
+   expect(saved.termsAcceptedAt).toBeInstanceOf(Date);
+   // The verified email is never taken from the form: it stays on the account from the ID token.
+   expect(Object.keys(saved)).not.toContain('email');
+   const [account]=await db.select().from(t.userAccounts).where(eq(t.userAccounts.userId,saved.userId));
+   expect(account.normalizedEmail).toBe(claims.email.toLowerCase());
+
+   // Both acceptances are mandatory, and required fields are enforced.
+   for(const bad of [{...base,privacyAccepted:false},{...base,termsAccepted:false},{...base,firstName:''},{...base,city:''},{...base,primaryProfile:'ALGO'}])
+    await expect(access.saveParticipantProfile(session.token,bad)).rejects.toMatchObject({code:'INVALID'});
+  });
+
+  it('persists strategic geography without inferring it from where the brand operates',async()=>{
+   const {db}=connection(),issuer='https://accounts.google.com',access=new PilotAccess(db,issuer);
+   const run=randomUUID().slice(0,8),engine=new Engine(db);
+   const claims={subject:`geo-${run}`,email:`geo.${run}@example.test`,emailVerified:true};
+   await access.recognise(claims,true);
+   const session=await access.issueSession(claims.subject);
+   const brand=await engine.createBrand(session.token,'Marca con alcance','Opera en Xalapa');
+
+   // A brand operating in one city may compete nationally: the value is declared, never derived.
+   const set=await access.setBrandGeography(session.token,brand.id,'NATIONAL','México');
+   expect(set.geographicInfluence).toBe('NATIONAL');
+   const [row]=await db.select().from(t.brandProfiles).where(eq(t.brandProfiles.brandId,brand.id));
+   expect(row.geographicInfluence).toBe('NATIONAL');
+   expect(row.primaryMarket).toBe('México');
+   expect(row.isDemo,'declaring geography must not mark a real brand as demo').toBe(false);
+   // Updating replaces the declaration rather than duplicating the row.
+   await access.setBrandGeography(session.token,brand.id,'LATAM',null);
+   expect(await db.select().from(t.brandProfiles).where(eq(t.brandProfiles.brandId,brand.id))).toHaveLength(1);
+   expect(GEOGRAPHIC_INFLUENCE).toEqual(['LOCAL','REGIONAL','STATE','NATIONAL','LATAM','GLOBAL']);
+   await expect(access.setBrandGeography(session.token,brand.id,'CONTINENTAL' as never)).rejects.toMatchObject({code:'INVALID'});
+   // Another participant cannot declare geography on a brand that is not theirs.
+   const other={subject:`geo-other-${run}`,email:`geo.other.${run}@example.test`,emailVerified:true};
+   await access.recognise(other,true);
+   const otherSession=await access.issueSession(other.subject);
+   await expect(access.setBrandGeography(otherSession.token,brand.id,'LOCAL')).rejects.toMatchObject({code:'NOT_FOUND'});
   });
 
   it('provisions unique testers, isolates workspaces and brands, and rejects manipulated IDs',async()=>{
