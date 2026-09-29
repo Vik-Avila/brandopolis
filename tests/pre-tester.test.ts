@@ -125,3 +125,53 @@ describe('final pre-tester workspace UX', () => {
     expect(app).toContain('host.prepend(panel);');
   });
 });
+
+describe('production verification hotfix', () => {
+  it('lets public legal routes outrank the intake gate', () => {
+    // Production defect: an authenticated participant who still owed intake saw the intake form at
+    // /privacidad/ and /terminos/, because showIntake() runs on boot regardless of path and hides them.
+    expect(app).toContain("const LEGAL_PATHS=['/privacidad','/terminos'];");
+    expect(app).toContain('const isLegalPath=()');
+    // A public document is decided before the gate, on boot and after sign-in alike.
+    const boot = app.slice(app.indexOf('if(state.authenticated){'));
+    const legalAt = boot.indexOf('isLegalPath()');
+    const intakeAt = boot.indexOf('state.intakeRequired');
+    expect(legalAt).toBeGreaterThan(-1);
+    expect(legalAt, 'legal routes must be checked before the intake gate').toBeLessThan(intakeAt);
+    // The gate itself still stands for the workspace.
+    expect(app).toContain('if(state.intakeRequired)await showIntake();');
+  });
+
+  it('gives the intake form the content column on desktop', () => {
+    // .welcome declares three column tracks; intake overrode to two while still having three children,
+    // so the form wrapped into column one under the image at ~288px with ~103px fields.
+    const css = readFileSync('src/transport/public/public.css', 'utf8');
+    expect(css).toContain('#intake .access-art');
+    expect(css).toContain('#intake .access-copy');
+    expect(css).toContain('#intake-form');
+    const form = css.slice(css.indexOf('#intake-form {'));
+    expect(form.slice(0, form.indexOf('}'))).toContain('grid-column: 2');
+  });
+
+  it('offers optional possibilities where the participant is asked to write', () => {
+    expect(app).toContain('id="possibilities"');
+    expect(app).toContain('Ayúdame a generar posibilidades</button>');
+    expect(app).toContain('Escribe tu propia respuesta o pide posibilidades');
+    // It delegates to the canonical control instead of introducing a second engine.
+    const handler = app.slice(app.indexOf("$('#possibilities')?.addEventListener"));
+    expect(handler.slice(0, 600)).toContain("$('#generate-recommendation')");
+    expect(handler.slice(0, 600)).toContain('engine.click();');
+    // Typed content is preserved, never replaced, and nothing is approved automatically.
+    expect(handler.slice(0, 600)).toContain('preserveDraft();');
+    expect(handler.slice(0, 600)).not.toContain('decisions/commit');
+  });
+
+  it('keeps migration files byte-stable so applied hashes stay valid', () => {
+    // core.autocrlf rewrote drizzle/*.sql to CRLF on checkout, changing their hashes, and a healthy
+    // database then reported MIGRATIONS_REQUIRED. Applied migrations are immutable and hash-checked.
+    const attrs = readFileSync('.gitattributes', 'utf8');
+    expect(attrs).toContain('drizzle/** text eol=lf');
+    for (const file of ['drizzle/0011_illegal_gertrude_yorkes.sql', 'drizzle/0013_red_thor_girl.sql'])
+      expect(readFileSync(file, 'utf8'), file).not.toContain('\r\n');
+  });
+});

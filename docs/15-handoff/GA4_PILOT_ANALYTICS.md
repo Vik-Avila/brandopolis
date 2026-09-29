@@ -141,6 +141,67 @@ de cada evento son únicamente `cohort`, `auth_method`, `pilot_stage` o `mode`.
 
 Para desactivar: borrar la variable y reiniciar. La CSP vuelve a su valor original.
 
+## 7.bis Verificación en producción · 2026-09-29
+
+GA4 no apareció en Tiempo real tras navegar en producción. **Se diagnosticó antes de tocar código y no
+se encontró ningún defecto de aplicación.** Con `GA4_MEASUREMENT_ID=G-PVKQ2K90EQ` configurado, en un
+servidor local y un navegador real:
+
+| Comprobación | Resultado |
+|---|---|
+| `GET /api/mode` | `"ga4MeasurementId":"G-PVKQ2K90EQ"` — el ID exacto |
+| `GET /analytics.js` | 200 |
+| CSP con GA4 | amplía `script-src`/`connect-src`/`img-src` sólo con orígenes de Google |
+| CSP sin GA4 | idéntica a la original |
+| Script de gtag | solicitado a `googletagmanager.com/gtag/js?id=G-PVKQ2K90EQ` |
+| `window.gtag` | `function` |
+| `dataLayer` | `js`, `config`, `event`, `gtm.dom`, `gtm.load` |
+| Envío real | `POST https://www.google-analytics.com/g/collect?...&tid=G-PVKQ2K90EQ` |
+| Errores de consola | ninguno |
+| `<script>` en línea | ninguno |
+
+**Estado real en producción, sin causa raíz asignada:**
+
+- `GA4_MEASUREMENT_ID=G-PVKQ2K90EQ` estaba presente en `pilot.env` **antes** del reinicio.
+- Brandopolis se reinició correctamente.
+- El health de producción devolvió `ready`.
+- Aun así, Tiempo real de GA4 no mostró actividad durante el recorrido humano.
+- La validación automatizada y de aplicación **no encontró ningún defecto confirmado en el código**.
+- Queda abierta una **diagnosis de entrega de analítica en runtime / navegador / red**.
+
+No se nombra aquí una causa raíz sustituta: la evidencia disponible no la sostiene. Lo que falta es la
+verificación manual de abajo, hecha contra producción y en el navegador del recorrido.
+
+### Lista de verificación manual en producción
+
+```bash
+# 1. Measurement ID efectivo que publica el proceso: debe ser exactamente G-PVKQ2K90EQ.
+curl -sS https://pilot.brandopolis.ai/api/mode
+
+# 2. ¿La CSP se amplió? Debe aparecer googletagmanager.
+curl -sSI https://pilot.brandopolis.ai/ | grep -i content-security-policy
+
+# 3. El módulo del cliente responde.
+curl -sS -o /dev/null -w "%{http_code}\n" https://pilot.brandopolis.ai/analytics.js
+```
+
+En el navegador, **en una ventana de incógnito sin extensiones**: abre las herramientas de desarrollo,
+pestaña Red, filtra por `collect`, y navega. Debe aparecer una petición a
+`google-analytics.com/g/collect` con `tid=G-PVKQ2K90EQ`. Revisa también la consola y si el script de
+`googletagmanager` llega a solicitarse. Después, en GA4 → Administrar → DebugView, con el modo de
+depuración activo, deben verse `pilot_landing_view` y los demás hitos.
+
+La verificación manual debe inspeccionar, punto por punto y sin dar ninguno por supuesto:
+
+1. `/api/mode` y el **Measurement ID efectivo** que devuelve.
+2. `/analytics.js`.
+3. La **carga del Google tag** (`googletagmanager.com/gtag/js`).
+4. La **CSP** servida en producción.
+5. La **consola del navegador**.
+6. Las peticiones de red a **`g/collect`**.
+7. El **comportamiento del navegador**: bloqueadores de anuncios, protección de seguimiento y ajustes
+   de privacidad.
+
 ## 8. Limitaciones
 
 - Bloqueadores de anuncios y el modo de seguimiento reducido eliminan una parte del tráfico; los

@@ -358,6 +358,86 @@ export function pilotCases(connection:()=>ReturnType<typeof connect>){
    expect((await access.metrics()).find(m=>m.userId===userId)!.brands).toBe(2);
   });
 
+  it('fills the demo sandbox with a worked strategy, idempotently, without ever overwriting real work',async()=>{
+   const {db}=connection(),issuer='https://accounts.google.com',access=new PilotAccess(db,issuer);
+   const run=randomUUID().slice(0,8),engine=new Engine(db);
+   const claims={subject:`content-${run}`,email:`content.${run}@example.test`,emailVerified:true};
+   const userId=await access.recognise(claims,true);
+   const session=await access.issueSession(claims.subject);
+   const demo=(await access.ensureDemoBrand(session.token))!;
+
+   // A fresh sandbox is empty until the content runs: that is the production defect being fixed.
+   expect((await engine.context(session.token,demo.id)).versions).toHaveLength(0);
+   const seeded=await access.ensureDemoContent(session.token);
+   expect(seeded?.decisions).toBe(4);
+
+   // All four core decisions are approved, so the Blueprint has something to show.
+   const filled=await engine.context(session.token,demo.id);
+   expect(filled.versions).toHaveLength(4);
+   const modules=filled.questions.filter((q:{id:string})=>filled.decisions.some((d:{questionId:string;activeVersionId:string|null})=>d.questionId===q.id&&d.activeVersionId)).map((q:{module:string})=>q.module);
+   expect(new Set(modules)).toEqual(new Set(['Primary Customer','Value Mechanism','Positioning','Core Message']));
+   // Context: an explicit hypothesis and a labelled demo contribution, never invented research.
+   expect(filled.hypotheses.length).toBeGreaterThanOrEqual(1);
+   expect(JSON.stringify(filled.hypotheses)).toContain('Sin validar');
+   expect(filled.userInputs.length).toBeGreaterThanOrEqual(1);
+   expect((await engine.blueprint(session.token,demo.id)) as unknown).toBeTruthy();
+
+   // Idempotent: running again changes nothing at all.
+   expect(await access.ensureDemoContent(session.token)).toBeNull();
+   expect(await access.ensureDemoContent(session.token)).toBeNull();
+   const again=await engine.context(session.token,demo.id);
+   expect(again.versions).toHaveLength(4);
+   expect(again.hypotheses.length).toBe(filled.hypotheses.length);
+   expect(again.userInputs.length).toBe(filled.userInputs.length);
+
+   // ...and none of it reaches participant evidence.
+   const metrics=(await access.metrics()).find(m=>m.userId===userId)!;
+   expect(metrics.brands,'seeded demo is not a real brand').toBe(0);
+   expect(metrics.decisionsApproved,'seeded demo decisions do not count').toBe(0);
+   expect(metrics.activated,'a seeded demo never activates a participant').toBe(false);
+   expect(metrics.timeToFirstDecisionSeconds).toBeNull();
+   expect(metrics.timeToFirstInsightSeconds).toBeNull();
+   expect(metrics.secondHighValueEvent14d).toBe(false);
+   expect(metrics.demoDecisions).toBeGreaterThanOrEqual(4);
+  });
+
+  it('upgrades an older empty demo but never touches one the participant has worked in',async()=>{
+   const {db}=connection(),issuer='https://accounts.google.com',access=new PilotAccess(db,issuer);
+   const run=randomUUID().slice(0,8),engine=new Engine(db);
+
+   // A CoffeePolis created before this content existed: seeded, but strategically empty.
+   const older={subject:`older-${run}`,email:`older.${run}@example.test`,emailVerified:true};
+   await access.recognise(older,true);
+   const olderSession=await access.issueSession(older.subject);
+   const olderDemo=(await access.ensureDemoBrand(olderSession.token))!;
+   expect((await engine.context(olderSession.token,olderDemo.id)).versions).toHaveLength(0);
+   expect((await access.ensureDemoContent(olderSession.token))?.decisions).toBe(4);
+   expect((await engine.context(olderSession.token,olderDemo.id)).versions).toHaveLength(4);
+
+   // A participant who already decided something inside their demo keeps it, untouched.
+   const edited={subject:`edited-${run}`,email:`edited.${run}@example.test`,emailVerified:true};
+   const editedUser=await access.recognise(edited,true);
+   const editedSession=await access.issueSession(edited.subject);
+   const editedDemo=(await access.ensureDemoBrand(editedSession.token))!;
+   const q=(await engine.context(editedSession.token,editedDemo.id)).questions.find((x:{module:string})=>x.module==='Primary Customer')!;
+   await engine.prepareQuestion(editedSession.token,editedDemo.id,q.id,null);
+   await engine.commitDecision(editedSession.token,{brandId:editedDemo.id,questionId:q.id,selectedOption:'Mi propia exploración',rationale:'Lo decidí yo',expectedActiveVersion:null,actorUserId:editedUser,sourceRecommendationId:null,idempotencyKey:randomUUID()});
+   expect(await access.ensureDemoContent(editedSession.token),'must not seed over existing work').toBeNull();
+   const kept=await engine.context(editedSession.token,editedDemo.id);
+   expect(kept.versions).toHaveLength(1);
+   expect(kept.versions[0].selectedOption).toBe('Mi propia exploración');
+
+   // A workspace whose only brand is real is never seeded with demo content.
+   const real={subject:`realonly-${run}`,email:`realonly.${run}@example.test`,emailVerified:true};
+   const realUser=await access.recognise(real,true);
+   const realSession=await access.issueSession(real.subject);
+   const realBrand=await engine.createBrand(realSession.token,'Marca propia','Contexto propio');
+   // No demo brand exists here, so the upgrade is a no-op and the real brand is untouched.
+   expect(await access.ensureDemoContent(realSession.token)).toBeNull();
+   expect((await engine.context(realSession.token,realBrand.id)).versions).toHaveLength(0);
+   expect((await access.metrics()).find(m=>m.userId===realUser)!.brands).toBe(1);
+  });
+
   it('gives every participant their own CoffeePolis and keeps demo work isolated',async()=>{
    const {db}=connection(),issuer='https://accounts.google.com',access=new PilotAccess(db,issuer);
    const run=randomUUID().slice(0,8),engine=new Engine(db);

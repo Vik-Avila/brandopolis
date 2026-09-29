@@ -581,6 +581,12 @@ async function loadBrands(preferred) {
   if(brandId)$('#brands').value=brandId;
   activeDecisionTab='overview';draft=null;await refresh();
 }
+/** Routes that are public documents. Google requires them reachable, and a participant must be able
+ *  to read what they are accepting BEFORE accepting it, so no gate may ever intercept them. */
+const LEGAL_PATHS=['/privacidad','/terminos'];
+const currentPath=()=>location.pathname.replace(/\/$/,'')||'/';
+const isLegalPath=()=>LEGAL_PATHS.includes(currentPath());
+
 /** Administration. A separate surface: authorization is the server's; this renders what it returns. */
 let adminView='resumen';
 const adminNum=value=>value==null?'—':typeof value==='number'?value.toLocaleString('es-MX'):String(value);
@@ -670,7 +676,8 @@ async function showAdmin(){
 /** Single entry to the product: required intake first, workspace second. Used by every sign-in path. */
 async function enterWorkspace(){
  const state=await api('/api/session-state');
- if(location.pathname.replace(/\/$/,'')==='/admin')return showAdmin();
+ if(isLegalPath())return;
+ if(currentPath()==='/admin')return showAdmin();
  if(state.intakeRequired)return showIntake();
  return authenticated();
 }
@@ -713,7 +720,7 @@ function render() {
   const versions=context.versions.filter(v=>v.decisionId===d?.id).sort((a,b)=>b.sequence-a.sequence);
   const why=user.learningMoments?.[q.module]?.why;
   const reviewChoices='<h3 id="review-choice-title" tabindex="-1">¿Qué quieres hacer?</h3><div class="review-options" role="group" aria-label="Opciones de revisión"><button type="button" id="keep" class="option-card" aria-pressed="false" aria-label="Mantener sin cambios" aria-describedby="keep-hint"><strong>Mantener sin cambios</strong><span id="keep-hint">La decisión sigue siendo válida con el nuevo contexto.</span></button><button type="button" id="modify" class="option-card" aria-pressed="false" aria-label="Modificar" aria-describedby="modify-hint"><strong>Modificar</strong><span id="modify-hint">Ajustas la decisión a lo que cambió.</span></button></div><p class="hint" id="review-choice-hint">Elige una opción para confirmar la revisión. Editar tu decisión cuenta como «Modificar».</p>';
-  $('#decision').innerHTML=`<p class="eyebrow">${escape(labels[selected])}</p><h2>${escape(q.text)}</h2><p class="decision-meta">${stateBadge(v,reviews.length>0)}${v?`<span>Última actualización: ${escape(fmt(v.approvedAt))}</span><span>Decidido por: ${v.actorUserId===user.userId?'Tú':'Persona autorizada'}</span>`:''}</p>${why?`<p class="why"><span class="label">Por qué es importante:</span> ${escape(why)}</p>`:''}${pending?'<section class="review"><h3>Impacto pendiente</h3><p>La decisión se guardó. Falta calcular su efecto antes de otro cambio.</p><button id="retry-impact">Reintentar impacto</button></section>':''}${warn}${draft?`<form id="decision-form" class="decision-form">${draft.reviewToken?reviewChoices:''}<label for="option">Tu decisión</label><textarea id="option" name="selectedOption" required maxlength="12000" aria-describedby="form-hint">${escape(draft.selectedOption)}</textarea><label for="rationale">¿Por qué eliges esta opción?</label><textarea id="rationale" name="rationale" required maxlength="12000">${escape(draft.rationale)}</textarea><div class="form-footer"><p class="hint" id="form-hint">${draft.reviewToken?'Nada se reescribe sin tu confirmación: «Confirmar revisión» registra una nueva versión y conserva las anteriores.':'Tu elección y tu criterio dan forma a la estrategia. Aprobar crea una versión nueva y conserva las anteriores.'}</p><div class="actions"><button id="cancel" type="button" class="secondary">Cancelar</button><button type="submit" id="submit-decision" ${draft.reviewToken?'disabled aria-describedby="review-choice-hint"':''}>${draft.reviewToken?'Confirmar revisión':'Aprobar decisión'}</button></div></div></form>`:`${v?`<p class="current">${escape(v.selectedOption)}</p><p class="rationale"><span class="label">Por qué:</span> ${escape(v.rationale)}</p>`:`<p class="empty">${locked?'Aprueba primero tu cliente prioritario.':'Todavía no hay una decisión aprobada. Define tu elección y explica tu criterio.'}</p>`}`}<div class="actions">${!draft&&!reviews.length?editButton:''}<button id="reload" class="tertiary">Revisar versión más reciente</button>${sessionStorage.getItem(`draft:${user.userId}:${brandId}:${selected}`)?'<button id="restore-draft" class="tertiary">Ver borrador conservado</button>':''}</div>`;
+  $('#decision').innerHTML=`<p class="eyebrow">${escape(labels[selected])}</p><h2>${escape(q.text)}</h2><p class="decision-meta">${stateBadge(v,reviews.length>0)}${v?`<span>Última actualización: ${escape(fmt(v.approvedAt))}</span><span>Decidido por: ${v.actorUserId===user.userId?'Tú':'Persona autorizada'}</span>`:''}</p>${why?`<p class="why"><span class="label">Por qué es importante:</span> ${escape(why)}</p>`:''}${pending?'<section class="review"><h3>Impacto pendiente</h3><p>La decisión se guardó. Falta calcular su efecto antes de otro cambio.</p><button id="retry-impact">Reintentar impacto</button></section>':''}${warn}${draft?`<form id="decision-form" class="decision-form">${draft.reviewToken?reviewChoices:''}<label for="option">Tu decisión</label><textarea id="option" name="selectedOption" required maxlength="12000" aria-describedby="form-hint">${escape(draft.selectedOption)}</textarea><p class="input-assist"><button type="button" id="possibilities" class="secondary">Ayúdame a generar posibilidades</button><span class="hint">Opcional. Escribe tu propia respuesta o pide posibilidades y decide cuál incorporar.</span></p><label for="rationale">¿Por qué eliges esta opción?</label><textarea id="rationale" name="rationale" required maxlength="12000">${escape(draft.rationale)}</textarea><div class="form-footer"><p class="hint" id="form-hint">${draft.reviewToken?'Nada se reescribe sin tu confirmación: «Confirmar revisión» registra una nueva versión y conserva las anteriores.':'Tu elección y tu criterio dan forma a la estrategia. Aprobar crea una versión nueva y conserva las anteriores.'}</p><div class="actions"><button id="cancel" type="button" class="secondary">Cancelar</button><button type="submit" id="submit-decision" ${draft.reviewToken?'disabled aria-describedby="review-choice-hint"':''}>${draft.reviewToken?'Confirmar revisión':'Aprobar decisión'}</button></div></div></form>`:`${v?`<p class="current">${escape(v.selectedOption)}</p><p class="rationale"><span class="label">Por qué:</span> ${escape(v.rationale)}</p>`:`<p class="empty">${locked?'Aprueba primero tu cliente prioritario.':'Todavía no hay una decisión aprobada. Define tu elección y explica tu criterio.'}</p>`}`}<div class="actions">${!draft&&!reviews.length?editButton:''}<button id="reload" class="tertiary">Revisar versión más reciente</button>${sessionStorage.getItem(`draft:${user.userId}:${brandId}:${selected}`)?'<button id="restore-draft" class="tertiary">Ver borrador conservado</button>':''}</div>`;
   composeDecision(q,d,v,reviews);
   mountRecommendation(q,d,v,reviews,pending||locked);
   mountLearningMoment(q);
@@ -933,8 +940,10 @@ Promise.all([api('/api/mode'),api('/api/session-state')]).then(async([mode,state
  }
  // Booting only covers the session probe; the app shell is interactive while brands load.
  if(state.authenticated){
-  // One entry point on boot too: /admin, then required intake, then the workspace.
-  if(location.pathname.replace(/\/$/,'')==='/admin')await showAdmin();
+  // Public documents first: a participant who still owes intake must still be able to read the very
+  // policy and terms they are being asked to accept. Then /admin, then intake, then the workspace.
+  if(isLegalPath())document.body.classList.remove('booting');
+  else if(currentPath()==='/admin')await showAdmin();
   else if(state.intakeRequired)await showIntake();
   else await authenticated();
  }
@@ -1561,6 +1570,16 @@ function mountRecommendation(q,d,v,reviews,locked){
  const prepare=async(edit)=>{let receipt;if(reviews.length)receipt=await api('/api/reviews/start',{brandId,decisionId:d.id});activeDecisionTab='overview';draft={questionId:q.id,sourceRecommendationId:rec.id,expectedActiveVersion:v?.id??null,selectedOption:rec.options.find(o=>o.id===(chosenOptionId??rec.recommendedOptionId))?.label??'',rationale:'',idempotencyKey:crypto.randomUUID(),reviewToken:receipt?.reviewToken};await api('/api/questions/prepare',{brandId,questionId:q.id,expectedActiveVersion:draft.expectedActiveVersion});render();$('#option').readOnly=!edit;(edit?$('#option'):$('#rationale')).focus();};
  $('#use-recommendation')?.addEventListener('click',e=>run(()=>{chosenOptionId=null;return prepare(false);},e.currentTarget));$('#modify-recommendation')?.addEventListener('click',e=>run(()=>{chosenOptionId=null;return prepare(true);},e.currentTarget));
  // Every generated option is independently actionable, with real buttons rather than a hover menu.
+ // Optional generation from the initial-input state. It delegates to the canonical generation control
+ // rendered in this same surface, so there is literally one engine and no automatic approval.
+ // Whatever the participant already typed is preserved, never replaced.
+ $('#possibilities')?.addEventListener('click',event=>run(async()=>{
+  preserveDraft();
+  analytics.send(PILOT_EVENTS.possibilitiesRequested,{pilot_stage:'initial_input'});
+  const engine=$('#generate-recommendation');
+  if(!engine||engine.disabled){notice('Las propuestas no están disponibles para esta decisión ahora mismo.',true);return;}
+  engine.click();
+ },event.currentTarget));
  $('#decision').querySelectorAll('[data-option-take],[data-option-edit],[data-option-drop],[data-option-restore]').forEach(button=>{
   const {optionTake,optionEdit,optionDrop,optionRestore}=button.dataset;
   button.addEventListener('click',event=>run(async()=>{

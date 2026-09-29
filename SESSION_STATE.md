@@ -1,5 +1,22 @@
 # Session State
 
+Current phase: **PRODUCTION VERIFICATION HOTFIX** (2026-09-29). Production is live on `2f84d29`; this hotfix is local and uncommitted.
+
+First real human production walkthrough. VERIFIED WORKING: Google auth, required intake, CoffeePolis as Marca demo, Crear mi marca, geographic influence, primary market, phase hand-off, continue to next phase, revisar avance, per-option Incorporar/Modificar/Descartar, admin reachable, demo metric exclusions active.
+
+FIXED HERE: (1) `/privacidad/` and `/terminos/` rendered the intake form for an authenticated participant who still owed intake — boot called `showIntake()` without checking the path, and `showIntake()` hides both sections; public documents now outrank the gate while the workspace stays gated. (2) Intake desktop layout — `.welcome` has three column tracks and intake overrode to two with three children, so the form wrapped under the image at 288px with 103px fields; at 1440px it is now 735px with 327px fields. (3) CoffeePolis was strategically empty (0/4 decisions, empty Blueprint); `ensureDemoContent()` seeds four approved decisions, one explicit hypothesis and a labelled demo contribution from deterministic repository fixtures, never an AI call and never invented research. (4) "Ayúdame a generar posibilidades" now appears under the initial input and delegates to the canonical generation control, so there is one engine and no automatic approval.
+
+GA4: diagnosed before changing code and **no application defect exists**. With the ID configured, `/api/mode` returns it exactly, the CSP widens only for Google, gtag loads, dataLayer fills and a real `g/collect` POST fires with `tid=G-PVKQ2K90EQ`, with no console errors and no inline script. In production, `GA4_MEASUREMENT_ID` was already present in `pilot.env` before the restart, Brandopolis restarted successfully and health returned `ready`, yet GA4 Realtime still showed zero activity during the human walkthrough. **No root cause is assigned**: what remains is an unresolved runtime/browser/network analytics-delivery diagnosis. Manual verification must inspect `/api/mode`, `/analytics.js`, Google tag loading, the CSP, the browser console, `g/collect` network requests, browser ad-block and privacy behaviour, and the effective Measurement ID — checklist in [GA4_PILOT_ANALYTICS §7.bis](docs/15-handoff/GA4_PILOT_ANALYTICS.md).
+
+ALSO FIXED: `core.autocrlf` rewrote `drizzle/*.sql` to CRLF on checkout, changing hashes that applied migrations are checked against, so a healthy database reported MIGRATIONS_REQUIRED and the local DEMO server refused to start. `.gitattributes` now pins `drizzle/** text eol=lf`, as it already did for brand assets and the served frontend. Production on Linux is unlikely to have hit this, but the invariant is now protected everywhere.
+
+DEMO UPGRADE RULE: `ensureDemoContent()` only touches a brand classified `isDemo=true`, only when it has no approved decision version at all, never resets or rewrites, and is safe on every sign-in. A participant who already decided inside their sandbox keeps that work; a CoffeePolis created before this content existed is upgraded on next sign-in; real brands are never touched.
+
+Gate (2026-09-29): typecheck/lint PASS; pnpm test 106/106; release rehearsal PASS; demo-metric regression PASS; browser verification 39/39. Foundation, UI and Brand Master validators NOT RUN: no Python interpreter on this machine.
+
+---
+
+
 Current phase: **PILOT AUTH + ANALYTICS** — branch `feat/pilot-auth-admin`, from d43fd4d. Not pushed, not deployed.
 
 Delivered on this branch: mobile header defect closed; OIDC self-provisioning foundation (scope `openid email profile`, verified-claim enforcement on the provisioning path, `PILOT_AUTO_PROVISION` fail-closed by default, deterministic cohort, `user_accounts` + migration 0011); privacy-safe GA4 analytics behind `GA4_MEASUREMENT_ID`; production reconciliation and root-domain runbooks; consolidated handoff state.

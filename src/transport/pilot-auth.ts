@@ -107,7 +107,10 @@ export class PilotAuth implements PilotBoundary {
       session=await this.access.issueSession(subject);
       // Each participant gets their own CoffeePolis sandbox on first entry. Seeding must never block a
       // sign-in, so a failure here is logged by category and the session still stands.
-      try{await this.access.ensureDemoBrand(session.token);}catch{console.log(JSON.stringify({event:'demo_seed_failed'}));}
+      // Seed the sandbox and, idempotently, its demonstration strategy. Existing CoffeePolis
+      // instances created before this content existed are upgraded on the next sign-in.
+      try{await this.access.ensureDemoBrand(session.token);await this.access.ensureDemoContent(session.token);}
+      catch{console.log(JSON.stringify({event:'demo_seed_failed'}));}
     } catch {return this.fail(res,'denied');}
     res.setHeader('Set-Cookie',[`${SESSION}=${session.token}; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age=${Math.max(0,Math.floor((session.expiresAt.getTime()-Date.now())/1000))}`,`${FLOW}=; Secure; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`]);
     res.writeHead(302,{Location:'/?login=ok'});res.end();return true;

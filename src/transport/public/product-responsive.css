@@ -872,3 +872,11 @@
     grid-template-columns: minmax(0px, 1fr);
   }
 }
+
+/* Intake below desktop: a single column, with the explicit desktop placement released. */
+@media (max-width: 1023px) {
+  #intake .access-art, #intake .access-copy, #intake-form {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}

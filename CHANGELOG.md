@@ -14,6 +14,25 @@ Depends on: —
 
 # Registro
 
+## Hotfix de verificación en producción · 2026-09-29
+
+Primera verificación humana real en producción sobre `2f84d29`.
+
+**Funcionó**: acceso con Google · intake obligatorio · CoffeePolis como Marca demo · Crear mi marca · influencia geográfica · mercado principal · entrega de fin de fase · continuar a la siguiente fase · revisar avance · Incorporar/Modificar/Descartar · administración accesible · exclusiones de métricas demo activas.
+
+**Corregido en este hotfix**:
+
+- **Rutas legales interceptadas por el intake.** `/privacidad/` y `/terminos/` devolvían 200 pero pintaban el formulario de intake a un participante autenticado que aún lo debía: en el arranque, `state.intakeRequired` llamaba a `showIntake()` sin mirar la ruta, y `showIntake()` oculta explícitamente ambas secciones. Ahora un documento público se decide **antes** que la puerta, en el arranque y tras iniciar sesión. El workspace sigue protegido.
+- **Ancho del intake en escritorio.** `.welcome` declara tres columnas para las tarjetas de acceso; el intake las redefinía a dos teniendo también tres hijos, así que el formulario caía a la fila 2 de la **primera** columna: 288px con campos de 103px, y la mitad derecha vacía. Colocando los tres hijos explícitamente, a 1440px el formulario pasa de **288px a 735px** y los campos de **103px a 327px**.
+- **CoffeePolis estratégicamente vacío.** Existía con su contexto inicial pero con 0/4 decisiones y Blueprint vacío, así que no enseñaba nada. Se añade `ensureDemoContent()`: cuatro decisiones aprobadas, una hipótesis explícita marcada «Sin validar» y una aportación claramente etiquetada como demo. **Contenido determinista escrito en el repositorio**: no se llama a ninguna IA y no se inventa investigación externa.
+- **Faltaba generar posibilidades en el input inicial.** La acción existía junto a las opciones, no donde se pide escribir. Ahora aparece bajo «Tu decisión» y **delega en el control canónico de generación**, así que hay literalmente un solo motor; lo ya escrito se conserva y nada se aprueba automáticamente.
+- **GA4 no observado**: diagnosticado antes de tocar código. **No hay defecto de aplicación confirmado** — ver [GA4_PILOT_ANALYTICS §7.bis](docs/15-handoff/GA4_PILOT_ANALYTICS.md). `GA4_MEASUREMENT_ID` ya estaba en `pilot.env` antes del reinicio, Brandopolis se reinició correctamente y el health devolvió `ready`; aun así Tiempo real no mostró actividad durante el recorrido humano. **Sin causa raíz asignada**: queda abierta una diagnosis de entrega de analítica en runtime/navegador/red, pendiente de la verificación manual documentada.
+
+**Defecto adicional encontrado durante la verificación**: con `core.autocrlf` y sin regla en `.gitattributes`, un checkout reescribía `drizzle/*.sql` a CRLF, cambiando su hash. CLAUDE.md declara esas migraciones inmutables y verificadas por hash, así que una base sana informaba `MIGRATIONS_REQUIRED` y el servidor DEMO local se negaba a arrancar. Se fija `drizzle/** text eol=lf`, igual que ya se hacía con los assets de marca y el frontend servido.
+
+- Pruebas: typecheck/lint PASS; pnpm test 106/106 (6 nuevas); **ensayo de release PASS**; **regresión de métricas demo PASS**; verificación en navegador de las rutas legales y del intake **39/39** a 390/768/1024/1440/1600/1920. Sin migración.
+
+
 ## Administración V1 y centro de evidencia del piloto · 2026-09-29
 
 - Superficie de operador en `/admin`, **separada del workspace del participante**, con Resumen, Estrategas de Marca, Evidencia y un marcador de Configuración.

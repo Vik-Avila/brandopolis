@@ -603,8 +603,34 @@
 
 /* Participant intake: one concise screen, never a wizard. */
 
+/* .welcome declares three column tracks for the access cards, which have three children. Intake also
+   has three (art, copy, form) but only two tracks, so the form wrapped to row 2 of the FIRST column:
+   352px minus its 32px margins, with 103px fields, while the right half sat empty. Placing the three
+   children explicitly keeps the art full-height on the left and gives copy and form the whole right
+   column. */
+
 #intake.welcome {
-  grid-template-columns: minmax(0px, 0.7fr) minmax(0px, 1.6fr);
+  grid-template-columns: minmax(0px, 0.62fr) minmax(0px, 1.38fr);
+  grid-template-rows: auto 1fr;
+  align-items: start;
+}
+
+#intake .access-art {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  height: 100%;
+}
+
+#intake .access-copy {
+  grid-column: 2;
+  grid-row: 1;
+  padding-bottom: 0px;
+}
+
+#intake-form {
+  grid-column: 2;
+  grid-row: 2;
+  margin-top: 8px;
 }
 
 .intake-grid {

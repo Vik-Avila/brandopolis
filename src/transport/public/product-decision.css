@@ -1034,3 +1034,18 @@ details[open] > summary::after {
 .option.is-discarded {
   opacity: 0.62;
 }
+
+/* Optional AI path beside the participant's own answer. Their answer stays first-class. */
+
+.input-assist {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 8px 0 0;
+}
+
+.input-assist .hint {
+  flex: 1 1 220px;
+  margin: 0;
+}
