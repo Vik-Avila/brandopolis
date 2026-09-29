@@ -14,6 +14,17 @@ Depends on: —
 
 # Registro
 
+## Endurecimiento del workspace antes de las pruebas externas · 2026-09-28
+
+- **Panel de inferencia IA**: desbordaba el viewport 14px exactos a 360/390/430. Causa localizada consultando las reglas aplicadas en el navegador: `product-shell.css` define `.primary-workspace > .ai-activity {width:100%}` **sin media query**, y esa especificidad vence al `width:auto` del móvil; fijado a `left:14px`, el panel medía un viewport entero desde el inset. Corregido igualando la especificidad dentro del breakpoint de teléfono.
+- **Cabecera móvil**: dos de los tres reportes no se confirmaron. El objetivo táctil del menú ya medía **44×44** exactos; sólo se agrandó el glifo, sin tocar la caja. La insignia de modo no estaba tapada: la ocultaba una corrección anterior propia. Remedido por modo, **PILOT cuesta 38px y cabe**, mientras que «DEMO LOCAL» cuesta 74px de una fila de 358px y ahoga el selector: ahora la etiqueta se ve en PILOT (`body[data-mode="PILOT"]`) y sigue oculta en DEMO de ingeniería. «Nueva marca» seguía siendo pulsable en todos los anchos.
+- **Terminología**: 28 sustituciones en la copia servida. La prosa nombra el rol («Aportación del Estratega de Marca», «requiere la revisión del Estratega de Marca»); botones e insignias pierden el calificativo en lugar de cargar una frase larga («Iniciar revisión», «Requiere revisión»), que en un teléfono no cabría. La doctrina no se toca.
+- **Rutas legales públicas** `/privacidad/` y `/terminos/`, requisito para publicar la app OAuth de Google en Producción. Cubren identidad Google, perfil de participante, GA4 y sus exclusiones explícitas, telemetría interna, documentos, procesamiento con IA, conservación, derechos, categorías de encargados y ausencia de venta de datos; y estado piloto, uso aceptable, contenido del participante, IA como asistencia con la decisión final del Estratega de Marca, suspensión, feedback y propiedad intelectual. Sin promesas legales no respaldadas.
+- **contacto@brandopolis.ai** como contacto público canónico: no existía ninguna dirección en el repositorio. Enlazado desde el pie y ambos documentos; una prueba fija que es la única dirección `@brandopolis.ai` del documento público.
+- Pruebas: typecheck/lint PASS; pnpm test 84/84 (5 nuevas); test:e2e 30/30; test:visual 10 pass + 1 skip. Tres specs que fijaban la etiqueta `Iniciar revisión humana` se actualizaron al cambio intencional de copia, nunca relajadas.
+- **No incluido en esta pasada**: intake de participante, CoffeePolis, influencia geográfica, navegación de fin de fase, generar posibilidades, acciones por opción de IA y su telemetría.
+
+
 ## Estado de acceso configurable del participante · 2026-09-28
 
 - `PILOT_DEFAULT_ACCESS_STATUS` (por defecto `APPROVED`). **Política actual del piloto: todo participante autenticado con éxito queda aprobado automáticamente**, sin paso de aprobación manual. `PENDING` habilita una puerta de aprobación para un piloto controlado futuro sin rediseñar el esquema. `SUSPENDED` se rechaza como valor por defecto: crearía cuentas que nunca podrían entrar.

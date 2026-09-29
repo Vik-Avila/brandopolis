@@ -12,7 +12,11 @@ Google auth is CERTIFIED for arbitrary verified users: four multi-user tests pro
 
 Participant access status is configurable: `PILOT_DEFAULT_ACCESS_STATUS` defaults to APPROVED, so the current validation phase admits every authenticated participant immediately. PENDING and SUSPENDED are live in the model for a future controlled pilot and admin enforcement. Policy applies at first provisioning only; SUSPENDED revokes sessions immediately; `disable()` still outranks any status. The column lives on `user_accounts` and NOT on `pilot_identities`, because putting it there broke the frozen-build release rehearsal (bisected, then redesigned). Migration 0012 is additive; existing rows are APPROVED.
 
-Gate (2026-09-28): typecheck/lint PASS; pnpm test 79/79; test:e2e 30/30; test:visual 10 pass + 1 skip, 0 fail; git diff --check clean. Foundation, UI and Brand Master validators NOT RUN: no Python interpreter on this machine.
+Pre-tester hardening (partial): AI inference panel overflow fixed (a no-media-query `.primary-workspace > .ai-activity {width:100%}` in product-shell.css outranked the phone rule); mobile header re-audited by measurement, with the PILOT label restored on phones because it costs 38px while only the engineering DEMO label costs 74px; Estratega de Marca terminology sweep across served copy; public `/privacidad/` and `/terminos/` routes; `contacto@brandopolis.ai` as the canonical public contact.
+
+NOT BUILT in that pass, and still open before external testers: participant intake form and persistence, CoffeePolis demo brand with metric exclusions, geographic influence, phase-completion navigation, generate possibilities, per-option Incorporar/Modificar/Descartar, and the related telemetry. Each needs its own migration and metric-definition work; seeding demo activity without exclusions would corrupt pilot evidence. One product decision is pending: whether CoffeePolis is a read-only demonstration brand (recommended for the pilot) or a per-workspace sandbox copy.
+
+Gate (2026-09-28): typecheck/lint PASS; pnpm test 84/84; test:e2e 30/30; test:visual 10 pass + 1 skip, 0 fail; git diff --check clean. Foundation, UI and Brand Master validators NOT RUN: no Python interpreter on this machine.
 
 NOT BUILT: the participant intake form itself (no fields specified). The status layer is wired so that "intake completed -> APPROVED" is already the configured default when that form lands.
 

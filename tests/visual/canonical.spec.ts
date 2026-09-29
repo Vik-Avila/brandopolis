@@ -67,8 +67,8 @@ test('canonical screenshots (desktop 1440×900, mobile 390×844)',async({browser
     if(suffix==='desktop')await shot(page,'decision-card-desktop');
     await page.getByText(/Historial · \d versiones/).click();await expect(page.locator('.history-item.is-current')).toBeVisible();await page.locator('details:has(.history-item)').scrollIntoViewIfNeeded();await shot(page,`history-${suffix}`);
     await signIn(page,seeded.brand.id,'Positioning');await page.getByRole('button',{name:'Ver impacto',exact:true}).click();await expect(page.locator('.impact-pair')).toBeVisible();await shot(page,`m1-needs-review-${suffix}`);
-    await page.getByRole('button',{name:'Iniciar revisión humana',exact:true}).click();await expect(page.getByRole('button',{name:'Modificar',exact:true})).toBeVisible();
-    await page.getByLabel('¿Por qué eliges esta opción?').fill('Revisión humana tras el cambio de cliente.');await shot(page,`m1-guided-review-${suffix}`);
+    await page.getByRole('button',{name:'Iniciar revisión',exact:true}).click();await expect(page.getByRole('button',{name:'Modificar',exact:true})).toBeVisible();
+    await page.getByLabel('¿Por qué eliges esta opción?').fill('Revisión tras el cambio de cliente.');await shot(page,`m1-guided-review-${suffix}`);
     await page.getByRole('button',{name:'Cancelar',exact:true}).click();
     if(suffix==='mobile')await page.getByRole('button',{name:'Abrir navegación',exact:true}).click();
     await page.getByRole('button',{name:'Blueprint estratégico',exact:true}).click();await expect(page.locator('.blueprint-grid')).toBeVisible();await shot(page,`blueprint-${suffix}`);

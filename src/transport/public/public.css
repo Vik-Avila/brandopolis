@@ -569,3 +569,34 @@
   margin-top: 24px;
   margin-bottom: 88px;
 }
+
+/* Legal documents: a single readable column, same editorial system as the rest of the public site. */
+
+.legal {
+  max-width: 820px;
+  margin: 48px auto 88px;
+  padding: 0px 32px;
+}
+
+.legal-copy h1 {
+  font-size: clamp(28px, 3vw, 40px);
+}
+
+.legal-copy h2 {
+  margin-top: 32px;
+  font-size: clamp(18px, 1.6vw, 22px);
+}
+
+.legal-copy p {
+  color: var(--text-secondary);
+  max-width: 68ch;
+}
+
+.legal-updated {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.footer-links a {
+  white-space: nowrap;
+}

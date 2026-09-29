@@ -33,7 +33,7 @@ test('human connected proof survives reload without console errors or overflow',
     await page.getByRole('button',{name:button,exact:true}).click();
     await page.getByLabel('Tu decisión',{exact:true}).fill(option);
     await page.getByLabel('¿Por qué eliges esta opción?').fill(rationale);
-    await page.getByRole('button',{name:button==='Iniciar revisión humana'?'Confirmar revisión':'Aprobar decisión',exact:true}).click();
+    await page.getByRole('button',{name:button==='Iniciar revisión'?'Confirmar revisión':'Aprobar decisión',exact:true}).click();
     await expect(page.locator('#decision .current')).toHaveText(option);
   }
   await approve('Agencies','Servicio recurrente para múltiples marcas');
@@ -55,7 +55,7 @@ test('human connected proof survives reload without console errors or overflow',
   await page.screenshot({path:`test-results/m1-impact-${testInfo.project.name}.png`,fullPage:true});
   await page.reload();
   await expect(page.locator('#decision')).toContainText('Requiere revisión');
-  await approve('Strategic OS for Internal Marketing Teams','Revisión humana tras el cambio de cliente','Iniciar revisión humana');
+  await approve('Strategic OS for Internal Marketing Teams','Revisión tras el cambio de cliente','Iniciar revisión');
   await page.reload();
   await expect(page.locator('#decision')).toContainText('Vigente · v2');
   await expect(page.locator('#decision')).not.toContainText('Requiere revisión');
@@ -101,7 +101,7 @@ test('DEMO recommendation can be rejected and then explicitly approved',async({p
  }
  await navigate(page,'01 Cliente principal');await page.getByRole('tab',{name:'Opciones',exact:true}).click();await page.getByRole('button',{name:'Comparar opciones DEMO',exact:true}).click();await page.getByRole('button',{name:'Modificar propuesta',exact:true}).click();await page.getByLabel('Tu decisión',{exact:true}).fill('Equipos internos');await page.getByLabel('¿Por qué eliges esta opción?').fill('Nueva prioridad humana DEMO');await page.getByRole('button',{name:'Aprobar decisión',exact:true}).click();await expect(page.locator('#decision .current')).toHaveText('Equipos internos');
  await navigate(page,'Qué necesita atención');await expect(page.locator('#decision')).toContainText('Tu estrategia hoy');await page.getByRole('button',{name:'Abrir posicionamiento',exact:true}).click();await expect(page.locator('#decision')).toContainText('Requiere revisión');await expect(page.locator('#decision .current')).toHaveText('Continuidad para agencias');
- await page.getByRole('button',{name:'Iniciar revisión humana',exact:true}).click();await page.getByRole('button',{name:'Modificar',exact:true}).click();await page.getByLabel('Tu decisión',{exact:true}).fill('Continuidad para equipos internos');await page.getByLabel('¿Por qué eliges esta opción?').fill('Alineación humana con cliente');await page.getByRole('button',{name:'Confirmar revisión',exact:true}).click();await expect(page.locator('#decision .current')).toHaveText('Continuidad para equipos internos');
+ await page.getByRole('button',{name:'Iniciar revisión',exact:true}).click();await page.getByRole('button',{name:'Modificar',exact:true}).click();await page.getByLabel('Tu decisión',{exact:true}).fill('Continuidad para equipos internos');await page.getByLabel('¿Por qué eliges esta opción?').fill('Alineación humana con cliente');await page.getByRole('button',{name:'Confirmar revisión',exact:true}).click();await expect(page.locator('#decision .current')).toHaveText('Continuidad para equipos internos');
  await navigate(page,'Contexto estratégico');await page.getByLabel('Tipo de aportación').selectOption('hypothesis');await page.getByLabel('Contenido',{exact:true}).fill('Las agencias volverán a revisar sus decisiones');await page.getByRole('button',{name:'Guardar contexto',exact:true}).click();await expect(page.locator('#decision')).toContainText('Las agencias volverán a revisar sus decisiones');
  await navigate(page,'Experimentos y aprendizajes');await page.getByLabel('Objetivo del experimento').fill('Validar recurrencia');await page.getByLabel('Criterio de éxito').fill('Una segunda visita voluntaria en siete días');await page.getByLabel('¿Qué señal esperas observar?').fill('Segunda sesión voluntaria');await page.getByRole('button',{name:'Crear experimento',exact:true}).click();await page.getByRole('button',{name:'Iniciar experimento',exact:true}).click();await expect(page.locator('#decision')).toContainText('En curso');
  await page.getByText('Registrar una señal',{exact:true}).click();await page.getByLabel('¿Qué ocurrió?').fill('Una agencia regresó');await page.getByLabel('Fuente de la observación').fill('Registro consentido DEMO');await page.getByLabel('Fecha y hora observada').fill('2026-09-23T12:00');await page.getByRole('button',{name:'Guardar señal',exact:true}).click();await expect(page.locator('#decision')).toContainText('Una agencia regresó');

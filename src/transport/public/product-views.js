@@ -14,7 +14,7 @@ const capabilityLabels={'Customer Understanding':'Comprensión del cliente','Bus
 export const capabilityLabel=key=>capabilityLabels[key]??key;
 const plural=(n,one,many)=>`${n} ${n===1?one:many}`;
 
-const legacyCapabilityBehavior='Explicitó una elección y su criterio en una decisión humana.';
+const legacyCapabilityBehavior='Explicitó una elección y su criterio como Estratega de Marca.';
 const personalizedCapabilityBehavior={
  'Customer Understanding':'Identificaste y priorizaste el segmento de cliente que consideras más relevante para tu marca.',
  'Business Model Thinking':'Relacionaste lo que ofreces con una necesidad concreta del cliente que quieres atender.',
@@ -125,7 +125,7 @@ export function impactPair(context,review,question,version){
 export function historyHtml(versions,decision,userId){
  if(!versions.length)return '<section class="empty-state"><p class="eyebrow">Memoria por construir</p><h3>Tu primera decisión inicia esta historia.</h3><p>Cuando apruebes, podrás volver a tu elección, su criterio y cada versión anterior.</p></section>';
  const items=versions.map(h=>{const current=h.versionStatus!=='SUPERSEDED',next=versions.find(x=>x.previousVersionId===h.id);return `<li class="history-item ${current?'is-current':''}"><div class="version-marker">v${h.sequence}</div><article><div class="history-meta"><span class="badge ${current?'':'muted'}">${current?'Vigente':'Sustituida'}</span><time datetime="${escape(h.approvedAt)}">${escape(fmt(h.approvedAt))}</time><span>${h.actorUserId===userId?'Tú':'Persona autorizada'}</span></div><h4>${escape(h.selectedOption)}</h4><p><span class="label">Criterio de esta versión</span><br>${escape(h.rationale)}</p>${next?`<p class="lineage-note">Continúa en v${next.sequence} · esta versión permanece en el historial.</p>`:'<p class="lineage-note">Esta es la versión vigente de tu decisión.</p>'}</article></li>`;}).join('');
- return `<details class="history" open><summary>Versiones registradas</summary><div class="history-intro"><p class="eyebrow">Evolución estratégica</p><h3>El criterio detrás de cada cambio.</h3><p>Tu estrategia evoluciona. Su historia permanece.</p></div><ol class="timeline">${items}</ol>${decision?.reviewStatus==='NEEDS_REVIEW'?'<p class="hint">La versión actual requiere revisión humana por un cambio en una decisión conectada.</p>':''}</details>`;
+ return `<details class="history" open><summary>Versiones registradas</summary><div class="history-intro"><p class="eyebrow">Evolución estratégica</p><h3>El criterio detrás de cada cambio.</h3><p>Tu estrategia evoluciona. Su historia permanece.</p></div><ol class="timeline">${items}</ol>${decision?.reviewStatus==='NEEDS_REVIEW'?'<p class="hint">La versión actual requiere la revisión del Estratega de Marca por un cambio en una decisión conectada.</p>':''}</details>`;
 }
 export function homeHtml(context,documentState={total:0,pending:0,processed:0,candidateClaims:0}){
  const documentAttention=documentState.pending

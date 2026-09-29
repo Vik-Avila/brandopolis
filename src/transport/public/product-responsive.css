@@ -673,12 +673,16 @@
 /* BRANDOPOLIS: mobile AI activity stays visible without consuming
    the strategic workspace header. */
 @media (max-width: 760px) {
-  .ai-activity {
+  /* product-shell.css sets `.primary-workspace > .ai-activity {width:100%}` with no media query, and that
+     specificity beats a bare `.ai-activity` here. Pinned to left/right, a 100% width made the panel one
+     viewport wide starting at x=14 and it overflowed by exactly that inset. Matching the selector settles it. */
+  .ai-activity, .primary-workspace > .ai-activity {
     position: fixed;
     left: 14px;
     right: 14px;
     bottom: calc(14px + env(safe-area-inset-bottom));
     width: auto;
+    max-width: none;
     margin: 0;
     padding: 13px 15px;
     border-radius: 15px;
@@ -747,8 +751,21 @@
 }
 
 @media (max-width: 767px) {
+  /* Measured on a phone: the PILOT label costs 38px and everything still fits, so production keeps its
+     mode visible. The engineering-only "DEMO LOCAL" label costs 74px of a 358px row and starved the
+     active-brand selector, so it stays hidden there. */
   .app header #mode-badge {
     display: none;
+  }
+
+  body[data-mode="PILOT"].app header #mode-badge {
+    display: inline-block;
+  }
+
+  /* The tap target is already 44x44; only the glyph was hard to see. */
+  .app header #menu {
+    font-size: 20px;
+    line-height: 1;
   }
 
   .app header #new-brand {
