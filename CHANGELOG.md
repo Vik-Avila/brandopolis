@@ -14,6 +14,19 @@ Depends on: —
 
 # Registro
 
+## Intake obligatorio y primera experiencia con la marca demo · 2026-09-28
+
+- **Intake requerido** en una sola pantalla: seis campos obligatorios en dos columnas que colapsan a una en teléfono, tres opcionales, y las dos aceptaciones enlazando `/privacidad/` y `/terminos/`. CTA «Continuar a Brandopolis». El correo verificado de Google se muestra en sólo lectura y **nunca se teclea**. Sin lenguaje de aprobación: una expresión regular sobre la pantalla renderizada lo comprueba en los cinco anchos.
+- **API autenticada**: `GET`/`POST /api/participant`. Validación y marcas de tiempo de aceptación en el servidor; el correo nunca se toma del formulario.
+- **Puerta en el servidor, no en la interfaz**: `/api/session-state` informa `intakeRequired`, y cualquier llamada PILOT autenticada fuera de una lista mínima devuelve **403 `INTAKE_REQUIRED`** hasta que exista el perfil.
+- **Bypass real encontrado y corregido durante la verificación**: la puerta sólo corría en el arranque y el manejador de acceso llamaba a `authenticated()` directamente, saltándosela. Ambas vías pasan ahora por un único `enterWorkspace()`. Afectaba menos a PILOT (el callback OIDC vuelve por el arranque), pero era un agujero y sólo apareció porque falló la comprobación en navegador.
+- **Exención de operador y legado**: el intake lo debe únicamente una cuenta de autoservicio, reconocida por tener perfil en `user_accounts`. Las identidades aprovisionadas por operador y los fixtures de ingeniería quedan exentos y se comportan igual que antes; no se inventa perfil para ellos. El ensayo de release pasa.
+- **CoffeePolis visible como lo que es**: insignia «Marca demo», una explicación corta y el botón «Crear mi marca», sólo mientras la marca activa es el sandbox. El selector añade «· Marca demo». `isDemo` viaja desde `brand_profiles` por `listBrands`, así que la interfaz nunca lo adivina por el nombre. «Crear mi marca» abre el diálogo canónico de nueva marca: una sola vía de creación.
+- **Telemetría**: `pilot_intake_started`, `pilot_intake_completed` y `demo_brand_opened`, sobre el mismo envelope y la misma allowlist. Sin PII: sólo llevan `pilot_stage`.
+- Verificación en navegador **28/28** a 360/390/430/768/1440. Pruebas: typecheck/lint PASS; pnpm test 88/88; test:e2e 30/30; test:visual 10 pass + 1 skip; **ensayo de release PASS**. Dos contratos de prueba actualizados por cambios intencionales de API (sonda de sesión con `intakeRequired`, lista de eventos GA4), ninguno relajado. **Sin migración**: esta pasada va encima de 0013.
+- **No incluido**: geografía en el alta de marca, navegación de fin de fase, generar posibilidades, acciones por opción de IA y el documento de preparación de Google.
+
+
 ## Perfiles de participante, sandbox demo y geografía de marca · 2026-09-28
 
 - **Migración 0013**, aditiva: `participant_profiles` (intake del Estratega de Marca) y `brand_profiles` (clasificación e influencia geográfica por marca).

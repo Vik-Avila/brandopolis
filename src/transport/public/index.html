@@ -117,7 +117,35 @@
 <p><a href="mailto:contacto@brandopolis.ai">contacto@brandopolis.ai</a></p>
 <p><a href="/">Volver al inicio</a></p>
 </div></section>
-<section id="workspace" hidden><div class="workspace-head"><div class="workspace-intro"><p class="eyebrow">Espacio estratégico</p><h1>Una decisión conecta con la siguiente.</h1></div></div><dialog id="brand-dialog" aria-labelledby="brand-dialog-title"><p class="eyebrow">Un nuevo punto de partida</p><h2 id="brand-dialog-title">Dale un espacio a tu marca.</h2><p>Cada marca conserva sus propias decisiones, contexto e historial.</p><form id="create-brand" class="new-brand">
+<section id="intake" class="welcome" hidden aria-labelledby="intake-title">
+<div class="access-art" aria-hidden="true"></div>
+<div class="access-copy">
+<img class="access-logo" src="/brand/logo-premium.webp" alt="Brandopolis" width="660" height="151">
+<p class="eyebrow">Tu perfil de Estratega de Marca</p>
+<h1 id="intake-title">Antes de empezar, cuéntanos quién eres.</h1>
+<p>Tu espacio privado ya está listo. Esto nos ayuda a entender a quién acompaña Brandopolis durante el piloto.</p>
+<p class="access-note" id="intake-identity" hidden>Entrando como <strong id="intake-email"></strong></p>
+</div>
+<form id="intake-form" novalidate>
+<div class="intake-grid">
+<div><label for="intake-first">Nombre</label><input id="intake-first" name="firstName" maxlength="80" autocomplete="given-name" required></div>
+<div><label for="intake-last">Apellido</label><input id="intake-last" name="lastName" maxlength="80" autocomplete="family-name" required></div>
+<div><label for="intake-country">País</label><input id="intake-country" name="country" maxlength="80" autocomplete="country-name" required></div>
+<div><label for="intake-region">Estado / región</label><input id="intake-region" name="region" maxlength="80" autocomplete="address-level1" required></div>
+<div><label for="intake-city">Ciudad</label><input id="intake-city" name="city" maxlength="80" autocomplete="address-level2" required></div>
+<div><label for="intake-profile">Perfil profesional principal</label><select id="intake-profile" name="primaryProfile" required><option value="">Elige una opción</option><option value="EMPRENDEDOR">Emprendedor/a</option><option value="FUNDADOR">Fundador/a</option><option value="CONSULTOR">Consultor/a</option><option value="AGENCIA">Agencia</option><option value="MARKETING">Marketing</option><option value="ESTRATEGIA">Estrategia</option><option value="DIRECCION">Dirección / management</option><option value="DOCENCIA">Docencia / academia</option><option value="OTRO">Otro</option></select></div>
+</div>
+<label for="intake-company">Empresa / proyecto <span class="hint">opcional</span></label>
+<input id="intake-company" name="companyOrProject" maxlength="160" autocomplete="organization">
+<label for="intake-sector">Sector / industria <span class="hint">opcional</span></label>
+<input id="intake-sector" name="sector" maxlength="120">
+<label for="intake-goal">¿Qué esperas explorar, resolver o mejorar usando Brandopolis? <span class="hint">opcional</span></label>
+<textarea id="intake-goal" name="pilotGoal" maxlength="1200"></textarea>
+<label class="intake-consent"><input id="intake-privacy" type="checkbox" required> He leído y acepto la <a href="/privacidad/" target="_blank" rel="noopener">Política de Privacidad</a></label>
+<label class="intake-consent"><input id="intake-terms" type="checkbox" required> Acepto los <a href="/terminos/" target="_blank" rel="noopener">Términos del piloto</a></label>
+<button type="submit">Continuar a Brandopolis</button>
+</form></section>
+<section id="workspace" hidden><div id="demo-banner" class="demo-banner" hidden><span class="badge-demo">Marca demo</span><p>CoffeePolis es una marca demo para explorar cómo funciona Brandopolis. Puedes recorrerla y experimentar sin afectar tu propia marca.</p><button type="button" id="demo-create" class="secondary">Crear mi marca</button></div><div class="workspace-head"><div class="workspace-intro"><p class="eyebrow">Espacio estratégico</p><h1>Una decisión conecta con la siguiente.</h1></div></div><dialog id="brand-dialog" aria-labelledby="brand-dialog-title"><p class="eyebrow">Un nuevo punto de partida</p><h2 id="brand-dialog-title">Dale un espacio a tu marca.</h2><p>Cada marca conserva sus propias decisiones, contexto e historial.</p><form id="create-brand" class="new-brand">
 
 <label for="brand-stage">Tu punto de partida</label>
 <select id="brand-stage">

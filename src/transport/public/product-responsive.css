@@ -859,3 +859,16 @@
     min-width: 0;
   }
 }
+
+/* Intake is mobile-first: one column of fields on a phone. */
+@media (max-width: 1023px) {
+  #intake.welcome {
+    grid-template-columns: minmax(0px, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .intake-grid {
+    grid-template-columns: minmax(0px, 1fr);
+  }
+}

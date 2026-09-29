@@ -19,7 +19,10 @@ export const PILOT_EVENTS = Object.freeze({
   onboardingStarted: 'onboarding_started',
   brandCreated: 'brand_created',
   firstDecision: 'first_strategic_decision',
-  feedbackOpened: 'pilot_feedback_opened'
+  feedbackOpened: 'pilot_feedback_opened',
+  intakeStarted: 'pilot_intake_started',
+  intakeCompleted: 'pilot_intake_completed',
+  demoBrandOpened: 'demo_brand_opened'
 });
 
 let enabled = false, loaded = false, fired = new Set();

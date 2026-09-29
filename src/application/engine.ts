@@ -56,9 +56,14 @@ export class Engine {
     return this.db.transaction(async tx=>{
       const who=await this.identity(tx,token);
       const rows=await tx.select().from(t.brands).where(eq(t.brands.workspaceId,who.workspaceId));
-      if(who.member.role==='ADMIN') return rows;
+      // Demo classification travels with the brand so the interface can label the sandbox without
+      // guessing from its name. Absent profile row means a real brand.
+      const profiles=await tx.select().from(t.brandProfiles).where(eq(t.brandProfiles.workspaceId,who.workspaceId));
+      const demo=new Set(profiles.filter(p=>p.isDemo).map(p=>p.brandId));
+      const withKind=rows.map(b=>({...b,isDemo:demo.has(b.id)}));
+      if(who.member.role==='ADMIN') return withKind;
       const grants=await tx.select().from(t.assignments).where(and(eq(t.assignments.workspaceId,who.workspaceId),eq(t.assignments.userId,who.userId)));
-      return rows.filter(b=>grants.some(g=>g.brandId===b.id));
+      return withKind.filter(b=>grants.some(g=>g.brandId===b.id));
     });
   }
   async documentUploadScope(token:string,brandId:string) {

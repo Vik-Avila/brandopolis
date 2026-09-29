@@ -27,7 +27,9 @@ CANONICAL DECISIONS (2026-09-28), recorded here because chats are not authoritat
 - Geography never implies strategic market from physical location: it is declared per brand, never derived.
 - Schema rule, confirmed twice by the release rehearsal: **adding tables is safe; widening a table shared with the frozen Pilot build breaks it.** `brand_profiles` and `participant_profiles` exist for that reason.
 
-NOT BUILT: every screen for the above. Participant intake form, "Marca demo" badge, "Crear mi marca", geography in brand onboarding, phase-completion CTAs, "Ayúdame a generar posibilidades", per-option Incorporar/Modificar/Descartar, their telemetry and GA4 wiring, Google OAuth readiness doc. A participant signing in today is seeded CoffeePolis and sees no intake.
+BUILT since: required participant intake (screen, authenticated API, server-side gate returning 403 INTAKE_REQUIRED, unified enterWorkspace entry after a real bypass was found in the login path), operator/legacy exemption via the account-profile signal, session-state `intakeRequired`, CoffeePolis "Marca demo" badge with its short explanation and "Crear mi marca", isDemo propagated to the interface through listBrands, and the pilot_intake_started / pilot_intake_completed / demo_brand_opened events.
+
+STILL NOT BUILT before external testers: geography question in the new-brand dialog (persistence and endpoint exist and are tested, but nothing asks it, so a real brand is still created without a declared market), phase-completion CTAs, "Ayúdame a generar posibilidades", per-option Incorporar/Modificar/Descartar, and the Google OAuth readiness document. AI options still lack visible per-option controls on mobile, which was the original usability complaint.
 
 Gate (2026-09-28): typecheck/lint PASS; pnpm test 88/88; test:e2e 30/30; test:visual 10 pass + 1 skip, 0 fail; release rehearsal PASS; git diff --check clean. Foundation, UI and Brand Master validators NOT RUN: no Python interpreter on this machine.
 

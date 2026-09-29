@@ -179,8 +179,11 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
       // Session probe for public pages: answers without an error status so anonymous visits stay clean.
       // Full checks still apply (expiry, membership, PILOT identity); it never reveals why a session is invalid.
       if(req.method==='GET'&&path==='/api/session-state'){
-        try{if(pilot)await pilot.authorize(token);else await engine.me(token);return send(res,200,{authenticated:true});}
-        catch(error){if(error instanceof AppError)return send(res,200,{authenticated:false});throw error;}
+        try{
+          if(pilot){await pilot.authorize(token);return send(res,200,{authenticated:true,intakeRequired:await pilot.intakeRequired?.(token)??false});}
+          await engine.me(token);return send(res,200,{authenticated:true,intakeRequired:false});
+        }
+        catch(error){if(error instanceof AppError)return send(res,200,{authenticated:false,intakeRequired:false});throw error;}
       }
       if(pilot){
         if(req.method==='POST'&&req.headers.origin!==pilot.origin)throw new AppError('FORBIDDEN','Same-origin action required');
@@ -196,6 +199,11 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         }
         if(req.method==='POST'&&path==='/api/ai-notice/accept'){const input=await body(req);return send(res,200,await pilot.acceptAiNotice!(token,string(input.version)));}
         if(req.method==='POST'&&path==='/api/feedback'&&limited('feedback:'+subject,pilotLimits.feedback))return;
+        // Required intake is enforced server-side, not by hiding a screen. Only the endpoints needed to
+        // complete it, read identity or leave stay open until the profile exists.
+        const intakeOpen=['/api/participant','/api/logout','/api/me','/api/session-state','/api/mode'];
+        if(!intakeOpen.includes(path)&&await pilot.intakeRequired?.(token))
+          return send(res,403,{code:'INTAKE_REQUIRED',message:'Completa tu perfil de Estratega de Marca para continuar.'});
       }
       if(req.method==='POST') {
         if(!pilot&&!bearer&&req.headers.origin!==`http://${req.headers.host}`) throw new AppError('FORBIDDEN','Same-origin human action required');
@@ -319,6 +327,8 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         }
         if(path==='/api/logout') {if(pilot)await pilot.logout(token);res.setHeader('Set-Cookie',`${cookieName}=; ${pilot?'Secure; ':''}HttpOnly; SameSite=Strict; Path=/; Max-Age=0`);return send(res,200,{authenticated:false});}
         if(pilot&&path==='/api/feedback')return send(res,201,await pilot.feedback(token,input));
+        if(pilot&&path==='/api/participant')return send(res,201,await pilot.saveParticipantProfile!(token,input));
+        if(pilot&&path==='/api/brands/geography')return send(res,200,await pilot.setBrandGeography!(token,string(input.brandId),string(input.geographicInfluence) as never,input.primaryMarket==null?null:string(input.primaryMarket)));
         if(path==='/api/brands') return send(res,201,await engine.createBrand(token,string(input.name),input.initialContext===undefined?undefined:string(input.initialContext)));
         if(path==='/api/context/capture') return send(res,201,await engine.captureContext(
           token,
@@ -505,6 +515,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(path==='/api/document-claims') return send(res,200,await engine.listDocumentClaims(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/documents') return send(res,200,await engine.listSourceDocuments(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/me') return send(res,200,await engine.me(token));
+        if(pilot&&path==='/api/participant') return send(res,200,{profile:await pilot.participantProfile!(token)});
         if(path==='/api/practice') return send(res,200,await engine.practice(token));
         if(path==='/api/blueprint') return send(res,200,await engine.blueprint(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/brands') return send(res,200,await engine.listBrands(token));

@@ -600,3 +600,35 @@
 .footer-links a {
   white-space: nowrap;
 }
+
+/* Participant intake: one concise screen, never a wizard. */
+
+#intake.welcome {
+  grid-template-columns: minmax(0px, 0.7fr) minmax(0px, 1.6fr);
+}
+
+.intake-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0px, 1fr));
+  gap: 0px 16px;
+}
+
+.intake-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 14px 0px 0px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.intake-consent input {
+  width: auto;
+  min-height: 0px;
+  margin: 2px 0px 0px;
+  flex: 0 0 auto;
+}
+
+#intake-form button[type="submit"] {
+  margin-top: 22px;
+}

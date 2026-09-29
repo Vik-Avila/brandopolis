@@ -8,6 +8,9 @@ export declare const PILOT_EVENTS: Readonly<{
   brandCreated: 'brand_created';
   firstDecision: 'first_strategic_decision';
   feedbackOpened: 'pilot_feedback_opened';
+  intakeStarted: 'pilot_intake_started';
+  intakeCompleted: 'pilot_intake_completed';
+  demoBrandOpened: 'demo_brand_opened';
 }>;
 /** Drops every parameter outside the low-risk allowlist and every unsafe value. */
 export declare function sanitise(params?: Record<string, unknown>): Record<string, string | number | boolean>;

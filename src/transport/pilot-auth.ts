@@ -5,7 +5,7 @@ import type { IncomingMessage,ServerResponse } from 'node:http';
 import type { Database } from '../persistence/database.js';
 import { loginFlows } from '../persistence/schema.js';
 import { hash } from '../application/engine.js';
-import { ACCESS_STATUS,PilotAccess,type AccessStatus,type VerifiedClaims } from '../application/pilot-access.js';
+import { ACCESS_STATUS,PilotAccess,type AccessStatus,type GeographicInfluence,type VerifiedClaims } from '../application/pilot-access.js';
 import { AppError } from '../domain/contracts.js';
 import { createHash } from 'node:crypto';
 import type { Limiter } from './http.js';
@@ -21,6 +21,10 @@ export interface PilotBoundary {
   authorize(token:string):Promise<unknown>;
   logout(token:string):Promise<void>;
   feedback(token:string,input:Record<string,unknown>):Promise<unknown>;
+  intakeRequired?(token:string):Promise<boolean>;
+  participantProfile?(token:string):Promise<unknown>;
+  saveParticipantProfile?(token:string,input:Record<string,unknown>):Promise<unknown>;
+  setBrandGeography?(token:string,brandId:string,influence:GeographicInfluence,primaryMarket?:string|null):Promise<unknown>;
 }
 /** notice is null when AI is disabled (nothing is sent to a provider, so no acknowledgement is needed). */
 export interface PilotAiPolicy {notice:{version:string;text:string}|null;capPerTester:number;capTotal:number}
@@ -41,6 +45,10 @@ export class PilotAuth implements PilotBoundary {
   authorize(token:string){return this.access.authorize(token);}
   logout(token:string){return this.access.logout(token);}
   feedback(token:string,input:Record<string,unknown>){return this.access.saveFeedback(token,input);}
+  intakeRequired(token:string){return this.access.intakeRequired(token);}
+  participantProfile(token:string){return this.access.participantProfile(token);}
+  saveParticipantProfile(token:string,input:Record<string,unknown>){return this.access.saveParticipantProfile(token,input);}
+  setBrandGeography(token:string,brandId:string,influence:GeographicInfluence,primaryMarket?:string|null){return this.access.setBrandGeography(token,brandId,influence,primaryMarket);}
   async aiGate(token:string){return this.ai?this.access.aiGate(token,{noticeVersion:this.ai.notice?.version??null,capPerTester:this.ai.capPerTester,capTotal:this.ai.capTotal}):'OK' as const;}
   acceptAiNotice(token:string,version:string){
     if(!this.ai?.notice||version!==this.ai.notice.version)throw new AppError('CONFLICT','Notice changed; reload');

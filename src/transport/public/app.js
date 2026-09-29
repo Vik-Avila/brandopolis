@@ -5,7 +5,9 @@ import * as analytics from './analytics.js';
 import {PILOT_EVENTS} from './analytics.js';
 let activeDecisionTab='overview';
 let user,brandId,context,selected=Object.hasOwn(labels,new URL(location.href).searchParams.get('module'))?new URL(location.href).searchParams.get('module'):'Primary Customer',draft=null,impactVisible=false;
-let pilotMode=false,aiNotice=null;
+let pilotMode=false,aiNotice=null,demoBrandIds=new Set();
+/** True while the active brand is the CoffeePolis sandbox rather than the participant's own work. */
+const activeBrandIsDemo=()=>demoBrandIds.has(brandId);
 let noticeTimer;
 const notice=(text,error=false,kind)=>{const n=$('#notice');clearTimeout(noticeTimer);n.textContent=text;n.className=error?'error':'';n.dataset.kind=kind??(error?'technical':'status');if(text&&!error)noticeTimer=setTimeout(()=>{if(n.textContent===text)n.textContent='';},10000);};
 
@@ -558,10 +560,39 @@ async function loadBrands(preferred) {
   const brands=await api('/api/brands');
   // An empty selector says nothing: the control appears with the first brand and hides again if none remain.
   $('.header-brand-control').hidden=brands.length===0;
-  $('#brands').innerHTML=brands.map(b=>`<option value="${escape(b.id)}">${escape(b.name)}</option>`).join('');
+  demoBrandIds=new Set(brands.filter(b=>b.isDemo).map(b=>b.id));
+  $('#brands').innerHTML=brands.map(b=>`<option value="${escape(b.id)}">${escape(b.name)}${b.isDemo?' · Marca demo':''}</option>`).join('');
   brandId=brands.some(b=>b.id===preferred)?preferred:brands[0]?.id;
   if(brandId)$('#brands').value=brandId;
   activeDecisionTab='overview';draft=null;await refresh();
+}
+/** Single entry to the product: required intake first, workspace second. Used by every sign-in path. */
+async function enterWorkspace(){
+ const state=await api('/api/session-state');
+ if(state.intakeRequired)return showIntake();
+ return authenticated();
+}
+/** Required intake. The server enforces it; this renders it and keeps the workspace out of reach. */
+async function showIntake(){
+ document.body.classList.remove('booting');
+ for(const id of ['#gateway','#request-access-view','#login','#workspace','#privacidad','#terminos'])$(id).hidden=true;
+ $('#intake').hidden=false;setTitle('Tu perfil de Estratega de Marca');
+ analytics.sendOnce(PILOT_EVENTS.intakeStarted,{pilot_stage:'intake'});
+ try{const me=await api('/api/me');if(me?.email){$('#intake-email').textContent=me.email;$('#intake-identity').hidden=false;}}catch{/* identity panel is a courtesy */}
+ $('#intake-form').addEventListener('submit',event=>run(async()=>{
+  event.preventDefault();
+  if(!$('#intake-privacy').checked||!$('#intake-terms').checked){notice('Acepta la Política de Privacidad y los Términos del piloto para continuar.',true);return;}
+  const value=id=>$(id).value.trim();
+  const payload={firstName:value('#intake-first'),lastName:value('#intake-last'),country:value('#intake-country'),
+   region:value('#intake-region'),city:value('#intake-city'),primaryProfile:$('#intake-profile').value,
+   companyOrProject:value('#intake-company')||null,sector:value('#intake-sector')||null,pilotGoal:value('#intake-goal')||null,
+   privacyAccepted:true,termsAccepted:true};
+  if(!payload.firstName||!payload.lastName||!payload.country||!payload.region||!payload.city||!payload.primaryProfile){
+   notice('Completa los campos requeridos para continuar.',true);return;}
+  await api('/api/participant',payload);
+  analytics.send(PILOT_EVENTS.intakeCompleted,{pilot_stage:'intake_done'});
+  $('#intake').hidden=true;await authenticated();
+ },event.submitter));
 }
 async function authenticated() {const directModule=new URL(location.href).searchParams.has('module');document.body.classList.add('app');for(const id of ['#gateway','#request-access-view'])$(id).hidden=true;$('#login').hidden=true;document.body.classList.remove('booting');user=await api('/api/me');$('#workspace').hidden=false;$('#logout').hidden=false;$('#menu').hidden=false;$('#new-brand').hidden=false;$('#mode-badge').hidden=false;await loadBrands(new URL(location.href).searchParams.get('brand'));if(!directModule&&context)await showHome();}
 async function refresh(){if(brandId)context=await api(`/api/context?brandId=${encodeURIComponent(brandId)}`);else context=null;render();}
@@ -610,7 +641,7 @@ function render() {
   $('#show-impact')?.addEventListener('click',event=>run(async()=>{impactVisible=true;render();await api('/api/impacts/shown',{brandId});focusView($('.impact-pair'));},event.currentTarget));
   $('#retry-impact')?.addEventListener('click',event=>run(async()=>{const result=await api('/api/impacts/retry',{brandId});await refresh();notice(result.pending?'El impacto sigue pendiente.':'Impacto calculado.',result.pending);},event.currentTarget));
 }
-$('#login-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{await api('/api/session',{token:$('#token').value});$('#token').value='';await authenticated();notice('Workspace disponible.');},event.submitter);});
+$('#login-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{await api('/api/session',{token:$('#token').value});$('#token').value='';await enterWorkspace();notice('Workspace disponible.');},event.submitter);});
 $('#logout').addEventListener('click',event=>run(async()=>{await api('/api/logout',{});location.reload();},event.currentTarget));
 $('#create-brand').addEventListener('submit',event=>{event.preventDefault();run(async()=>{
  preserveDraft();
@@ -724,6 +755,7 @@ function preserveDraft(){if(draft&&brandId)sessionStorage.setItem(`draft:${user.
 const narrow=matchMedia('(max-width:1279px)');
 function drawerBackground(inert){for(const selector of ['header','.skip','.workspace-head','#create-brand','#decision','#context','footer'])$(selector).inert=inert;}
 function closeMenu(returnFocus=true){const nav=$('#journey'),wasOpen=nav.classList.contains('open');nav.classList.remove('open');nav.removeAttribute('role');nav.removeAttribute('aria-modal');$('#nav-backdrop').hidden=true;$('#menu').setAttribute('aria-expanded','false');drawerBackground(false);nav.inert=narrow.matches;if(wasOpen&&returnFocus&&narrow.matches)$('#menu').focus();}
+$('#demo-create')?.addEventListener('click',()=>$('#new-brand').click());
 $('#menu').addEventListener('click',()=>{$('#journey').inert=false;$('#journey').classList.add('open');$('#journey').setAttribute('role','dialog');$('#journey').setAttribute('aria-modal','true');$('#nav-backdrop').hidden=false;$('#menu').setAttribute('aria-expanded','true');drawerBackground(true);$('#close-menu').focus();});
 narrow.addEventListener('change',()=>closeMenu(false));$('#journey').inert=narrow.matches;
 $('#close-menu').addEventListener('click',closeMenu);$('#nav-backdrop').addEventListener('click',closeMenu);
@@ -787,7 +819,8 @@ Promise.all([api('/api/mode'),api('/api/session-state')]).then(async([mode,state
   const feedback=document.createElement('button');feedback.id='pilot-feedback';feedback.className='secondary';feedback.textContent='Compartir feedback';feedback.addEventListener('click',()=>run(showFeedback));$('#journey').append(feedback);
  }
  // Booting only covers the session probe; the app shell is interactive while brands load.
- if(state.authenticated)await authenticated();else document.body.classList.remove('booting');
+ if(state.authenticated){if(state.intakeRequired)await showIntake();else await authenticated();}
+ else document.body.classList.remove('booting');
 }).catch(error=>{if(error.code!=='UNAUTHORIZED')notice(error.message,true);}).finally(()=>document.body.classList.remove('booting'));
 $('#brand-context').addEventListener('click',()=>run(showBrandContext));
 $('#competitive-context').addEventListener('click',()=>run(showCompetitiveContext));
@@ -1493,8 +1526,16 @@ function renderContext(){
   $('#context').innerHTML=`<div class="context-cover"><p class="eyebrow">Memoria estratégica</p><h3>Contexto vigente</h3><p>${escape($('#brands').selectedOptions[0]?.textContent?.replace(/ · (DEMO|PILOT)$/,''))}</p></div><details class="context-details" open><summary>Lo que ya decidiste <span class="context-count">${versions.length} de ${context.questions.length}${pendingReview?` · ${pendingReview} por revisar`:''}</span></summary><ol class="context-lineage">${context.questions.map((q,index)=>{const d=context.decisions.find(d=>d.questionId===q.id),v=context.versions.find(v=>v.id===d?.activeVersionId);return `<li${$('#decision').dataset.view==='decision'&&q.module===selected?' aria-current="step"':''}><span class="context-number">${String(index+1).padStart(2,'0')}</span><div><strong>${escape(labels[q.module]??q.module)}</strong><p>${v?escape(v.selectedOption):'Tu siguiente decisión comienza aquí.'}</p>${v?`<span class="context-version">v${v.sequence} · Decisión del Estratega de Marca</span>`:''}${needsReview(context,d)?'<span class="badge warn">Requiere revisión</span>':''}</div></li>`;}).join('')}</ol></details>${latest?`<p class="context-updated">Última decisión<br><strong>${escape(fmt(latest.approvedAt))}</strong></p>`:''}<p class="hint context-note">Los cambios conservan su historia.<br>Nada se reescribe sin tu criterio.</p>`;
 }
 function updateShell(){
- const name=$('#brands').selectedOptions[0]?.textContent?.replace(/ · (DEMO|PILOT)$/,'')??'Tu espacio estratégico';
+ const name=$('#brands').selectedOptions[0]?.textContent?.replace(/ · (DEMO|PILOT|Marca demo)$/,'')??'Tu espacio estratégico';
  $('#brands').title=name;
+ // CoffeePolis is a sandbox: say so wherever the participant is working, and explain it once.
+ const demo=activeBrandIsDemo();
+ $('#workspace').classList.toggle('is-demo',demo);
+ const banner=$('#demo-banner');
+ if(banner){
+  banner.hidden=!demo;
+  if(demo)analytics.sendOnce(PILOT_EVENTS.demoBrandOpened,{pilot_stage:'demo'});
+ }
  if(!context)return;
  document.querySelectorAll('[data-module]').forEach(button=>{const q=context.questions.find(q=>q.module===button.dataset.module),d=context.decisions.find(d=>d.questionId===q?.id);button.classList.toggle('needs-attention',needsReview(context,d));button.title=needsReview(context,d)?'Requiere revisión':d?'Decisión vigente':'Por decidir';button.setAttribute('aria-label',button.textContent.trim());button.setAttribute('aria-description',button.title);});
 }

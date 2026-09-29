@@ -116,6 +116,18 @@ export class PilotAccess {
       .onConflictDoUpdate({target:t.participantProfiles.userId,set:{...row,createdAt:undefined,updatedAt:now}});
     return {complete:true};
   }
+  /**
+   * Whether the participant still owes intake. Only self-service accounts do: an operator-provisioned
+   * identity has no account profile, so legacy testers and engineering fixtures are exempt and keep
+   * working exactly as before. Never invents profile data for them.
+   */
+  async intakeRequired(token:string) {
+    const who=await this.authorize(token) as {userId:string};
+    const [account]=await this.db.select().from(t.userAccounts).where(eq(t.userAccounts.userId,who.userId));
+    if(!account)return false;
+    const [profile]=await this.db.select().from(t.participantProfiles).where(eq(t.participantProfiles.userId,who.userId));
+    return !profile;
+  }
   async participantProfile(token:string) {
     const who=await this.authorize(token) as {userId:string};
     const [row]=await this.db.select().from(t.participantProfiles).where(eq(t.participantProfiles.userId,who.userId));

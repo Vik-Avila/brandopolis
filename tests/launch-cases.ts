@@ -133,10 +133,10 @@ export function launchCases(connection:()=>ReturnType<typeof connect>){
    const {db}=connection(),p=await pilotApp(db),subject=randomUUID();await p.access.provision(subject,'A');const demo=await seedIdentity(db);
    try{
     const probe=async(cookie:string|null)=>{const r=await p.call(cookie,'/api/session-state');expect(r.status).toBe(200);return r.json();};
-    expect(await probe(null)).toEqual({authenticated:false});
-    expect(await probe(`__Host-brandopolis_session=${demo.token}`)).toEqual({authenticated:false});
-    const {cookie}=await p.fixture.login(p.base,subject);expect(await probe(cookie)).toEqual({authenticated:true});
-    await p.access.revokeSessions((await p.access.inspect({subject})).userId);expect(await probe(cookie)).toEqual({authenticated:false});
+    expect(await probe(null)).toEqual({authenticated:false,intakeRequired:false});
+    expect(await probe(`__Host-brandopolis_session=${demo.token}`)).toEqual({authenticated:false,intakeRequired:false});
+    const {cookie}=await p.fixture.login(p.base,subject);expect(await probe(cookie)).toEqual({authenticated:true,intakeRequired:false});
+    await p.access.revokeSessions((await p.access.inspect({subject})).userId);expect(await probe(cookie)).toEqual({authenticated:false,intakeRequired:false});
    }finally{await p.close();}
   });
   it('launch smoke passes against a PILOT server and fails against DEMO',async()=>{
