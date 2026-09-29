@@ -6,8 +6,23 @@ import {PILOT_EVENTS} from './analytics.js';
 let activeDecisionTab='overview';
 let user,brandId,context,selected=Object.hasOwn(labels,new URL(location.href).searchParams.get('module'))?new URL(location.href).searchParams.get('module'):'Primary Customer',draft=null,impactVisible=false;
 let pilotMode=false,aiNotice=null,demoBrandIds=new Set();
+/** Options the Estratega de Marca set aside. Kept for the session so nothing is silently erased: the
+ *  canonical, audited rejection remains the recommendation-level form with its reason. */
+const discardedOptions=new Set();
 /** True while the active brand is the CoffeePolis sandbox rather than the participant's own work. */
 const activeBrandIsDemo=()=>demoBrandIds.has(brandId);
+/** The next phase in canonical journey order that still has no approved version, or null when the
+ *  journey is complete. Dependencies are untouched: this only navigates, it never skips a decision. */
+function nextPhase(){
+ if(!context)return null;
+ const order=[...document.querySelectorAll('#journey [data-module]')].map(b=>b.dataset.module);
+ for(const module of order){
+  const q=context.questions.find(x=>x.module===module);if(!q)continue;
+  const d=context.decisions.find(x=>x.questionId===q.id);
+  if(!d?.activeVersionId)return module;
+ }
+ return null;
+}
 let noticeTimer;
 const notice=(text,error=false,kind)=>{const n=$('#notice');clearTimeout(noticeTimer);n.textContent=text;n.className=error?'error':'';n.dataset.kind=kind??(error?'technical':'status');if(text&&!error)noticeTimer=setTimeout(()=>{if(n.textContent===text)n.textContent='';},10000);};
 
@@ -630,7 +645,9 @@ function render() {
   $('#decision-form')?.addEventListener('submit',event=>{event.preventDefault();run(async()=>{
     const command={brandId,questionId:draft.questionId,sourceRecommendationId:draft.sourceRecommendationId??null,selectedOption:draft.selectedOption,rationale:draft.rationale,expectedActiveVersion:draft.expectedActiveVersion,idempotencyKey:draft.idempotencyKey,actorUserId:user.userId};
     const result=await api('/api/decisions/commit',{command,reviewToken:draft.reviewToken});draft=null;await refresh();
-    if((context?.versions?.length??0)===1)analytics.sendOnce(PILOT_EVENTS.firstDecision,{pilot_stage:'activated'});notice(result.impactPending?'Decisión guardada. El impacto está pendiente; reinténtalo.':'Decisión aprobada. Su versión y su historial quedaron guardados.');
+    if((context?.versions?.length??0)===1)analytics.sendOnce(PILOT_EVENTS.firstDecision,{pilot_stage:'activated'});
+    analytics.send(PILOT_EVENTS.phaseCompleted,{pilot_stage:'phase_done'});
+    showPhaseHandoff();notice(result.impactPending?'Decisión guardada. El impacto está pendiente; reinténtalo.':'Decisión aprobada. Su versión y su historial quedaron guardados.');
   },event.submitter);});
   function choose(id,focus=true){for(const b of ['#keep','#modify'])$(b).setAttribute('aria-pressed',String(b===id));$('#submit-decision').disabled=false;if(id==='#keep'){draft.selectedOption=v.selectedOption;$('#option').value=v.selectedOption;$('#option').readOnly=true;if(focus)$('#rationale').focus();}else{$('#option').readOnly=false;if(focus)$('#option').focus();}}
   $('#keep')?.addEventListener('click',()=>choose('#keep',false));
@@ -730,6 +747,7 @@ $('#create-brand').addEventListener('submit',event=>{event.preventDefault();run(
   }else{
    analytics.send(PILOT_EVENTS.brandCreated,{pilot_stage:'brand_created'});
    notice('Marca creada. Tu contexto inicial quedó guardado. Comienza con tu cliente principal.');
+   await saveBrandGeography(brand.id);
   }
  }
 },event.submitter);});
@@ -755,6 +773,14 @@ function preserveDraft(){if(draft&&brandId)sessionStorage.setItem(`draft:${user.
 const narrow=matchMedia('(max-width:1279px)');
 function drawerBackground(inert){for(const selector of ['header','.skip','.workspace-head','#create-brand','#decision','#context','footer'])$(selector).inert=inert;}
 function closeMenu(returnFocus=true){const nav=$('#journey'),wasOpen=nav.classList.contains('open');nav.classList.remove('open');nav.removeAttribute('role');nav.removeAttribute('aria-modal');$('#nav-backdrop').hidden=true;$('#menu').setAttribute('aria-expanded','false');drawerBackground(false);nav.inert=narrow.matches;if(wasOpen&&returnFocus&&narrow.matches)$('#menu').focus();}
+/** Declared strategic market for a brand the participant just created. Optional, never inferred. */
+async function saveBrandGeography(id){
+ const influence=$('#brand-geography')?.value??'';
+ if(!influence)return;
+ const market=$('#brand-market')?.value.trim()||null;
+ try{await api('/api/brands/geography',{brandId:id,geographicInfluence:influence,primaryMarket:market});}
+ catch{/* geography is context, never a reason to lose a created brand */}
+}
 $('#demo-create')?.addEventListener('click',()=>$('#new-brand').click());
 $('#menu').addEventListener('click',()=>{$('#journey').inert=false;$('#journey').classList.add('open');$('#journey').setAttribute('role','dialog');$('#journey').setAttribute('aria-modal','true');$('#nav-backdrop').hidden=false;$('#menu').setAttribute('aria-expanded','true');drawerBackground(true);$('#close-menu').focus();});
 narrow.addEventListener('change',()=>closeMenu(false));$('#journey').inert=narrow.matches;
@@ -1413,7 +1439,7 @@ function mountRecommendation(q,d,v,reviews,locked){
  $('#decision').insertAdjacentHTML('beforeend',`<details class="knowledge" open><summary>Lo que sabemos y lo que suponemos</summary><div class="knowledge-grid"><section class="evidence-panel"><p class="eyebrow">Fuentes y observaciones</p><h3>Evidencia registrada</h3>${facts.map(e=>`<p>${escape(e.claim)}<br><span class="hint">${escape(e.source)} · ${escape(e.sourceDate)}. Límites: ${escape(e.limitations.join('; ')||'No declarados')}</span></p>`).join('')||'<p class="hint">Sin evidencia registrada. No confundas una propuesta con un hecho.</p>'}</section><section class="hypothesis-panel"><p class="eyebrow">Supuestos por comprobar</p><h3>Hipótesis explícitas</h3>${assumptions.map(h=>`<p>${escape(h.statement)}<br><span class="badge warn">${h.status==='SUPPORTED'?'Con soporte registrado':'Por validar'}</span></p>`).join('')||'<p class="hint">Aún no declaras hipótesis para esta marca.</p>'}</section></div><p class="hint">Este contexto de marca no implica que cada fuente respalde la propuesta.</p></details>`);
  const row=context.recommendations?.find(r=>r.questionId===q.id&&r.resolution==='GENERATED'),rec=row?.payload,analysis=context.analyses?.find(a=>a.recommendationId===rec?.id);
  const list=rows=>`<ul>${rows.map(text=>`<li>${escape(text)}</li>`).join('')}</ul>`;
- $('#decision').insertAdjacentHTML('beforeend',`<section class="recommendation" aria-label="Propuesta de asistencia"><p class="eyebrow">Asistencia estratégica · ${pilotMode?'Piloto':'DEMO'}</p><p class="hint">${pilotMode?'El contexto de esta marca se comparte con el proveedor IA configurado al solicitar una propuesta. Puede no estar disponible; siempre puedes decidir con tu propio criterio. No incluyas secretos ni datos personales innecesarios.':'Opciones fijas de demostración. No son análisis de IA en vivo ni evidencia de mercado.'}</p><button id="generate-recommendation" class="secondary" ${locked?'disabled':''}>${pilotMode?'Solicitar propuesta IA':'Comparar opciones DEMO'}</button>${rec?`<h3>Compara antes de decidir</h3><span class="badge warn">Sin validar · requiere tu revisión</span>${rec.options.map(o=>`<article class="option ${o.id===rec.recommendedOptionId?'is-proposed':''}"><h4>${escape(o.label)}${o.id===rec.recommendedOptionId?(pilotMode?' · propuesta IA':' · propuesta DEMO'):''}</h4><p>${escape(o.rationale)}</p>${list(o.tradeoffs)}</article>`).join('')}<p>${escape(rec.rationale)}</p><h4>Renuncias y condiciones de fallo</h4>${list([...rec.tradeoffs,...rec.failureConditions])}<h4>Preguntas abiertas</h4>${list(rec.openQuestions)}<p class="hint">Evidencias: ${rec.evidenceReferences.length}. Hipótesis utilizadas: ${rec.hypothesesUsed.length}. Ámbitos: ${escape(rec.affectedDomains.map(x=>labels[x]??x).join(', '))}.</p><details><summary>Evaluación y límites</summary>${list(analysis?.evaluation?.issues.map(i=>i.reason)??[])}</details><div class="human-choice" role="group" aria-labelledby="human-choice-title"><p class="eyebrow" id="human-choice-title">Decisión del Estratega de Marca</p><p class="hint">La propuesta no cambia tu estrategia. Úsala o ajústala como punto de partida, o recházala con un motivo.</p><div class="actions">${rec.recommendedOptionId?'<button id="use-recommendation" class="secondary">Usar propuesta sugerida</button>':''}<button id="modify-recommendation" class="secondary">${rec.recommendedOptionId?'Modificar propuesta':'Construir mi decisión'}</button></div><form id="reject-recommendation"><label for="reject-reason">Motivo para rechazar</label><div class="reject-row"><input id="reject-reason" maxlength="1000" required><button class="secondary" type="submit">Rechazar recomendación</button></div></form></div>`:''}</section>`);
+ $('#decision').insertAdjacentHTML('beforeend',`<section class="recommendation" aria-label="Propuesta de asistencia"><p class="eyebrow">Asistencia estratégica · ${pilotMode?'Piloto':'DEMO'}</p><p class="hint">${pilotMode?'El contexto de esta marca se comparte con el proveedor IA configurado al solicitar una propuesta. Puede no estar disponible; siempre puedes decidir con tu propio criterio. No incluyas secretos ni datos personales innecesarios.':'Opciones fijas de demostración. No son análisis de IA en vivo ni evidencia de mercado.'}</p><button id="generate-recommendation" class="secondary" ${locked?'disabled':''}>Ayúdame a generar posibilidades</button><p class="hint">Opcional. Tu propia respuesta siempre es el punto de partida: la IA sólo propone posibilidades que tú decides.</p>${rec?`<h3>Compara antes de decidir</h3><span class="badge warn">Sin validar · requiere tu revisión</span>${rec.options.map(o=>`<article class="option ${o.id===rec.recommendedOptionId?'is-proposed':''} ${discardedOptions.has(o.id)?'is-discarded':''}"><h4>${escape(o.label)}${o.id===rec.recommendedOptionId?(pilotMode?' · propuesta IA':' · propuesta DEMO'):''}</h4><p>${escape(o.rationale)}</p>${list(o.tradeoffs)}<div class="option-actions">${discardedOptions.has(o.id)?`<span class="badge muted">Descartada</span><button type="button" class="tertiary" data-option-restore="${escape(o.id)}">Reconsiderar</button>`:`<button type="button" class="secondary" data-option-take="${escape(o.id)}">Incorporar</button><button type="button" class="secondary" data-option-edit="${escape(o.id)}">Modificar</button><button type="button" class="tertiary" data-option-drop="${escape(o.id)}">Descartar</button>`}</div></article>`).join('')}<p>${escape(rec.rationale)}</p><h4>Renuncias y condiciones de fallo</h4>${list([...rec.tradeoffs,...rec.failureConditions])}<h4>Preguntas abiertas</h4>${list(rec.openQuestions)}<p class="hint">Evidencias: ${rec.evidenceReferences.length}. Hipótesis utilizadas: ${rec.hypothesesUsed.length}. Ámbitos: ${escape(rec.affectedDomains.map(x=>labels[x]??x).join(', '))}.</p><details><summary>Evaluación y límites</summary>${list(analysis?.evaluation?.issues.map(i=>i.reason)??[])}</details><div class="human-choice" role="group" aria-labelledby="human-choice-title"><p class="eyebrow" id="human-choice-title">Decisión del Estratega de Marca</p><p class="hint">La propuesta no cambia tu estrategia. Úsala o ajústala como punto de partida, o recházala con un motivo.</p><div class="actions">${rec.recommendedOptionId?'<button id="use-recommendation" class="secondary">Usar propuesta sugerida</button>':''}<button id="modify-recommendation" class="secondary">${rec.recommendedOptionId?'Modificar propuesta':'Construir mi decisión'}</button></div><form id="reject-recommendation"><label for="reject-reason">Motivo para rechazar</label><div class="reject-row"><input id="reject-reason" maxlength="1000" required><button class="secondary" type="submit">Rechazar recomendación</button></div></form></div>`:''}</section>`);
  $('#generate-recommendation').addEventListener('click',event=>run(async()=>{
  activityStart(
   pilotMode?'Brandopolis está preparando opciones…':'Preparando opciones DEMO…',
@@ -1439,8 +1465,20 @@ function mountRecommendation(q,d,v,reviews,locked){
   'Ya puedes compararlas antes de decidir.'
  );
 },event.currentTarget));
- const prepare=async(edit)=>{let receipt;if(reviews.length)receipt=await api('/api/reviews/start',{brandId,decisionId:d.id});activeDecisionTab='overview';draft={questionId:q.id,sourceRecommendationId:rec.id,expectedActiveVersion:v?.id??null,selectedOption:rec.options.find(o=>o.id===rec.recommendedOptionId)?.label??'',rationale:'',idempotencyKey:crypto.randomUUID(),reviewToken:receipt?.reviewToken};await api('/api/questions/prepare',{brandId,questionId:q.id,expectedActiveVersion:draft.expectedActiveVersion});render();$('#option').readOnly=!edit;(edit?$('#option'):$('#rationale')).focus();};
- $('#use-recommendation')?.addEventListener('click',e=>run(()=>prepare(false),e.currentTarget));$('#modify-recommendation')?.addEventListener('click',e=>run(()=>prepare(true),e.currentTarget));
+ let chosenOptionId=null;
+ const prepare=async(edit)=>{let receipt;if(reviews.length)receipt=await api('/api/reviews/start',{brandId,decisionId:d.id});activeDecisionTab='overview';draft={questionId:q.id,sourceRecommendationId:rec.id,expectedActiveVersion:v?.id??null,selectedOption:rec.options.find(o=>o.id===(chosenOptionId??rec.recommendedOptionId))?.label??'',rationale:'',idempotencyKey:crypto.randomUUID(),reviewToken:receipt?.reviewToken};await api('/api/questions/prepare',{brandId,questionId:q.id,expectedActiveVersion:draft.expectedActiveVersion});render();$('#option').readOnly=!edit;(edit?$('#option'):$('#rationale')).focus();};
+ $('#use-recommendation')?.addEventListener('click',e=>run(()=>{chosenOptionId=null;return prepare(false);},e.currentTarget));$('#modify-recommendation')?.addEventListener('click',e=>run(()=>{chosenOptionId=null;return prepare(true);},e.currentTarget));
+ // Every generated option is independently actionable, with real buttons rather than a hover menu.
+ $('#decision').querySelectorAll('[data-option-take],[data-option-edit],[data-option-drop],[data-option-restore]').forEach(button=>{
+  const {optionTake,optionEdit,optionDrop,optionRestore}=button.dataset;
+  button.addEventListener('click',event=>run(async()=>{
+   if(optionDrop){discardedOptions.add(optionDrop);analytics.send(PILOT_EVENTS.optionDiscarded,{pilot_stage:'options'});render();notice('Opción descartada. Puedes reconsiderarla mientras la propuesta siga abierta.');return;}
+   if(optionRestore){discardedOptions.delete(optionRestore);render();return;}
+   chosenOptionId=optionTake??optionEdit;
+   analytics.send(optionTake?PILOT_EVENTS.optionIncorporated:PILOT_EVENTS.optionModified,{pilot_stage:'options'});
+   await prepare(Boolean(optionEdit));
+  },event.currentTarget));
+ });
  $('#reject-recommendation')?.addEventListener('submit',event=>{event.preventDefault();run(async()=>{await api('/api/recommendations/reject',{brandId,recommendationId:rec.id,rationale:$('#reject-reason').value});await refresh();notice('Recomendación rechazada. Tu estrategia permanece como la aprobaste.');},event.submitter);});
 }
 const statusTone=status=>['INCONCLUSIVE','CANDIDATE','REVIEWED'].includes(status)?'warn':['CANCELLED','REJECTED'].includes(status)?'muted':'';
@@ -1564,6 +1602,24 @@ function bindStrategyLinks(){document.querySelectorAll('[data-strategy-module]')
 
 function setNavActive(selector){$('#decision').dataset.view=selector?.slice(1)??'decision';document.querySelectorAll('#journey [aria-current]').forEach(b=>b.removeAttribute('aria-current'));if(selector)$(selector).setAttribute('aria-current','page');}
 
+/** Completion hand-off: what to do next, in the page, on every viewport. Shows a continuation only
+ *  when a next phase genuinely exists, so it can never point nowhere. */
+function showPhaseHandoff(){
+ const host=$('#decision');if(!host)return;
+ host.querySelector('.phase-handoff')?.remove();
+ const next=nextPhase();
+ const label=next?(labels[next]??next):null;
+ const panel=document.createElement('section');
+ panel.className='phase-handoff';
+ panel.innerHTML=`<p class="eyebrow">Fase completada</p><h3>${next?`Tu decisión quedó guardada. Continúa con ${escape(label)}.`:'Completaste las decisiones de esta marca.'}</h3><div class="actions">${next?`<button type="button" id="phase-next" data-next="${escape(next)}">Continuar a ${escape(label)}</button>`:''}<button type="button" id="phase-review" class="secondary">Revisar avance</button></div>`;
+ host.prepend(panel);
+ $('#phase-next')?.addEventListener('click',event=>run(async()=>{
+  analytics.send(PILOT_EVENTS.nextPhaseStarted,{pilot_stage:'next_phase'});
+  await openModule(event.currentTarget.dataset.next);
+ },event.currentTarget));
+ $('#phase-review')?.addEventListener('click',event=>run(showHome,event.currentTarget));
+ panel.scrollIntoView({block:'nearest'});
+}
 async function showFeedback(){
  analytics.send(PILOT_EVENTS.feedbackOpened);
  closeMenu(false);setTitle('Feedback');preserveDraft();if(!brandId){notice('Selecciona una marca para compartir feedback.');return;}

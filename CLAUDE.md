@@ -2,6 +2,17 @@
 
 Brandopolis is **the Brand Operating System**: connected Strategic Decisions with evidence, hypotheses, human rationale, versions, dependencies and Change Impact. **AI proposes. Humans decide. Brandopolis remembers.**
 
+## Pilot freeze (2026-09-29)
+
+> The current PILOT workspace is functionally frozen for external validation.
+> Do not continue opportunistic UI or strategic-workflow polishing.
+> Only defects discovered by regression or external testing may change the frozen workspace before validation.
+
+Pre-tester UX is complete: participant intake, CoffeePolis demo sandbox, brand geography, optional AI
+possibilities, per-option Incorporar/Modificar/Descartar, and the phase-completion hand-off. See
+[CURRENT_IMPLEMENTATION_STATE_2026-09-28](docs/15-handoff/CURRENT_IMPLEMENTATION_STATE_2026-09-28.md)
+and [GOOGLE_AUTH_PRODUCTION](docs/15-handoff/GOOGLE_AUTH_PRODUCTION.md).
+
 ## Pilot freeze (2026-09-28)
 
 The PILOT workspace is **functionally complete for this validation phase**. Do not modify its UI or

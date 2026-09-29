@@ -29,7 +29,15 @@ CANONICAL DECISIONS (2026-09-28), recorded here because chats are not authoritat
 
 BUILT since: required participant intake (screen, authenticated API, server-side gate returning 403 INTAKE_REQUIRED, unified enterWorkspace entry after a real bypass was found in the login path), operator/legacy exemption via the account-profile signal, session-state `intakeRequired`, CoffeePolis "Marca demo" badge with its short explanation and "Crear mi marca", isDemo propagated to the interface through listBrands, and the pilot_intake_started / pilot_intake_completed / demo_brand_opened events.
 
-STILL NOT BUILT before external testers: geography question in the new-brand dialog (persistence and endpoint exist and are tested, but nothing asks it, so a real brand is still created without a declared market), phase-completion CTAs, "Ayúdame a generar posibilidades", per-option Incorporar/Modificar/Descartar, and the Google OAuth readiness document. AI options still lack visible per-option controls on mobile, which was the original usability complaint.
+BUILT: the last four pre-tester UX blockers are closed. Geography is asked in the canonical new-brand dialog and persisted through the existing endpoint; "Ayúdame a generar posibilidades" renames the existing recommendation engine as an explicitly optional path; every generated option exposes Incorporar/Modificar/Descartar (plus Reconsiderar for a discarded one) with provenance preserved and no automatic Decision; and a phase-completion hand-off panel offers "Continuar a <siguiente fase>" and "Revisar avance" inside the decision surface, with the next phase derived from canonical navigation. GOOGLE_AUTH_PRODUCTION.md carries the real publication state, and the Privacy Policy was cross-checked against the implemented intake fields (they match).
+
+**PILOT WORKSPACE FREEZE (2026-09-29)**
+
+> The current PILOT workspace is functionally frozen for external validation.
+> Do not continue opportunistic UI or strategic-workflow polishing.
+> Only defects discovered by regression or external testing may change the frozen workspace before validation.
+
+Remaining before external testers is operational, not code: deploy this branch (migrations 0011-0013 via `pnpm pilot:migrate` before the new version starts), set `PILOT_AUTO_PROVISION=true`, `GA4_MEASUREMENT_ID` and the Google OIDC credentials, and publish the Google OAuth app to Production — the longest-lead item, since external Google sign-in does not work for arbitrary users until that review completes.
 
 Gate (2026-09-28): typecheck/lint PASS; pnpm test 88/88; test:e2e 30/30; test:visual 10 pass + 1 skip, 0 fail; release rehearsal PASS; git diff --check clean. Foundation, UI and Brand Master validators NOT RUN: no Python interpreter on this machine.
 

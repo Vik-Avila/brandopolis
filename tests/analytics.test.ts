@@ -95,7 +95,13 @@ describe('GA4 pilot analytics', () => {
       feedbackOpened: 'pilot_feedback_opened',
       intakeStarted: 'pilot_intake_started',
       intakeCompleted: 'pilot_intake_completed',
-      demoBrandOpened: 'demo_brand_opened'
+      demoBrandOpened: 'demo_brand_opened',
+      possibilitiesRequested: 'possibilities_requested',
+      optionIncorporated: 'ai_option_incorporated',
+      optionModified: 'ai_option_modified',
+      optionDiscarded: 'ai_option_discarded',
+      phaseCompleted: 'phase_completed',
+      nextPhaseStarted: 'next_phase_started'
     });
     expect(Object.isFrozen(client.PILOT_EVENTS)).toBe(true);
     // A new runtime file is only reachable once it is on the allowlist.

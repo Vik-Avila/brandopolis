@@ -22,7 +22,13 @@ export const PILOT_EVENTS = Object.freeze({
   feedbackOpened: 'pilot_feedback_opened',
   intakeStarted: 'pilot_intake_started',
   intakeCompleted: 'pilot_intake_completed',
-  demoBrandOpened: 'demo_brand_opened'
+  demoBrandOpened: 'demo_brand_opened',
+  possibilitiesRequested: 'possibilities_requested',
+  optionIncorporated: 'ai_option_incorporated',
+  optionModified: 'ai_option_modified',
+  optionDiscarded: 'ai_option_discarded',
+  phaseCompleted: 'phase_completed',
+  nextPhaseStarted: 'next_phase_started'
 });
 
 let enabled = false, loaded = false, fired = new Set();

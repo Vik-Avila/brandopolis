@@ -53,7 +53,7 @@ test('Phase10A complete real browser evidence',async({browser,request})=>{
   for(const [slug,module] of [['primary-customer','Primary Customer'],['value-mechanism','Value Mechanism'],['positioning','Positioning'],['core-message','Core Message']]){await signIn(page,seeded.brand.id,module);await shot(page,`${slug}-${suffix}`);await sound(page,module);}
   if(phase==='final'){
     await signIn(page,seeded.brand.id,'Primary Customer');await page.getByRole('tab',{name:'Evidencia e hipótesis',exact:true}).click();await expect(page.locator('#decision')).toContainText('Hipótesis DEMO:');await shot(page,`evidence-populated-${suffix}`);await sound(page,'populated evidence');
-    await page.getByRole('tab',{name:'Opciones',exact:true}).click();await page.getByRole('button',{name:'Comparar opciones DEMO',exact:true}).click();await expect(page.getByRole('heading',{name:'Compara antes de decidir'})).toBeVisible();await shot(page,`options-generated-${suffix}`);await sound(page,'generated DEMO options');
+    await page.getByRole('tab',{name:'Opciones',exact:true}).click();await page.getByRole('button',{name:'Ayúdame a generar posibilidades',exact:true}).click();await expect(page.getByRole('heading',{name:'Compara antes de decidir'})).toBeVisible();await shot(page,`options-generated-${suffix}`);await sound(page,'generated DEMO options');
   }
   await signIn(page,seeded.brand.id,'Primary Customer');await page.getByText(/Historial · \d versiones/).click();await expect(page.locator('.history-item.is-current')).toBeVisible();await shot(page,`history-${suffix}`);
   await signIn(page,seeded.brand.id,'Positioning');await expect(page.locator('#decision')).toContainText('Requiere revisión');await shot(page,`needs-review-${suffix}`);

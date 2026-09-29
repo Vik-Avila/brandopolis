@@ -1000,3 +1000,37 @@ details[open] > summary::after {
   font-size: 13px;
   color: rgb(93, 104, 85);
 }
+
+/* Completion hand-off: the next step lives in the page, never behind the drawer. */
+
+.phase-handoff {
+  margin: 0 0 20px;
+  padding: 16px 18px;
+  border: 1px solid var(--border-glass-strong);
+  border-radius: var(--bp-radius-lg);
+  background: var(--status-approved-bg);
+}
+
+.phase-handoff h3 {
+  margin: 4px 0 14px;
+}
+
+.phase-handoff .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Per-option decision controls: real buttons, visible without hover, wrapping on a phone. */
+
+.option-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.option.is-discarded {
+  opacity: 0.62;
+}

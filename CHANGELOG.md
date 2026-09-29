@@ -14,6 +14,24 @@ Depends on: —
 
 # Registro
 
+## UX final del workspace antes de las pruebas externas · 2026-09-29
+
+- **Geografía estratégica en el alta canónica de marca**: la pregunta, los seis valores y «Mercado principal» opcional, con la ayuda «La ubicación de tu empresa no siempre es el mercado donde compite tu marca». Persiste por el endpoint existente `/api/brands/geography`: **una sola implementación**. Es opcional por decisión: no declararla nunca impide crear la marca, y un fallo al guardarla nunca pierde la marca creada.
+- **«Ayúdame a generar posibilidades»**: el mismo motor de recomendación de siempre, nombrado por lo que ofrece, con una nota de que es opcional y que la respuesta propia es el punto de partida. Sin motor paralelo ni endpoint nuevo.
+- **Controles por opción**: cada opción generada expone **Incorporar · Modificar · Descartar** como botones reales, visibles sin hover. `Incorporar` y `Modificar` abren un borrador humano a través de `prepare()` conservando `sourceRecommendationId`; **ninguna crea una decisión aprobada** (verificado en navegador: el contador de versiones no cambia). `Descartar` aparta la opción con «Reconsiderar» y **nunca borra**: el rechazo auditado sigue siendo el formulario con motivo a nivel de recomendación.
+- **Entrega de fin de fase**: al aprobar una decisión aparece un panel **dentro de la superficie de decisión**, nunca detrás del menú, con «Continuar a ‹siguiente fase›» y «Revisar avance». La siguiente fase se lee del recorrido canónico en la navegación, sin duplicar la secuencia, y sólo se ofrece cuando existe de verdad.
+- Seis eventos nuevos sobre el envelope y la allowlist existentes: `possibilities_requested`, `ai_option_incorporated`, `ai_option_modified`, `ai_option_discarded`, `phase_completed`, `next_phase_started`. Sólo llevan `pilot_stage`.
+- `GOOGLE_AUTH_PRODUCTION.md` §7.bis con el estado real de publicación: audiencia, objetivo Production, las cuatro URL, origen, redirección, scopes y la política vigente (intake obligatorio tras autenticarse, sin aprobación manual). **Cotejo de la Política de Privacidad contra los campos implementados: coinciden exactamente, no hubo discrepancia que corregir.**
+- **Regresión real detectada por la suite**: la primera ejecución completa de e2e devolvió **20 pass / 10 fallos**. Seis specs fijaban la etiqueta anterior del control de generación, que esta pasada renombra. No era una rotura funcional, pero sí una señal legítima: se actualizaron esas seis aserciones a la etiqueta canónica nueva y se volvió a 30/30. Ninguna prueba se relajó.
+- Verificación en navegador **38/38** a 360/390/430/768/1440. Pruebas: typecheck/lint PASS; pnpm test 92/92 (4 nuevas); test:e2e 30/30; test:visual 10 pass + 1 skip; **ensayo de release PASS**; **regresión de métricas demo PASS**. Sin migración.
+
+### Congelación del workspace PILOT
+
+> The current PILOT workspace is functionally frozen for external validation.
+> Do not continue opportunistic UI or strategic-workflow polishing.
+> Only defects discovered by regression or external testing may change the frozen workspace before validation.
+
+
 ## Intake obligatorio y primera experiencia con la marca demo · 2026-09-28
 
 - **Intake requerido** en una sola pantalla: seis campos obligatorios en dos columnas que colapsan a una en teléfono, tres opcionales, y las dos aceptaciones enlazando `/privacidad/` y `/terminos/`. CTA «Continuar a Brandopolis». El correo verificado de Google se muestra en sólo lectura y **nunca se teclea**. Sin lenguaje de aprobación: una expresión regular sobre la pantalla renderizada lo comprueba en los cinco anchos.

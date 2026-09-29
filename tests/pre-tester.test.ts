@@ -72,3 +72,56 @@ describe('pre-tester hardening', () => {
     expect(phoneRules).toContain('.app header #mode-badge');
   });
 });
+
+describe('final pre-tester workspace UX', () => {
+  it('asks for strategic geography in the canonical new-brand dialog, optionally', () => {
+    // One implementation: the dialog posts to the existing endpoint rather than duplicating persistence.
+    expect(html).toContain('id="brand-geography"');
+    expect(html).toContain('id="brand-market"');
+    expect(html).toContain('¿En qué mercado geográfico compite y quiere crecer esta marca?');
+    expect(html).toContain('La ubicación de tu empresa no siempre es el mercado donde compite tu marca.');
+    for (const value of ['LOCAL', 'REGIONAL', 'STATE', 'NATIONAL', 'LATAM', 'GLOBAL'])
+      expect(html, value).toContain(`value="${value}"`);
+    // Never required: a missing declaration must not block creating a brand.
+    expect(html).not.toMatch(/<select id="brand-geography"[^>]*\srequired/);
+    expect(app).toContain("api('/api/brands/geography'");
+    // The seed never runs this path; only the participant's own creation does.
+    expect(app).toContain('await saveBrandGeography(brand.id);');
+  });
+
+  it('offers AI possibilities as an optional path beside the participant own answer', () => {
+    expect(app).toContain('Ayúdame a generar posibilidades');
+    expect(app).toContain('Opcional. Tu propia respuesta siempre es el punto de partida');
+    // It reuses the canonical recommendation endpoint: no parallel engine.
+    expect(app).toContain("api('/api/recommendations/generate'");
+  });
+
+  it('gives every generated option its own visible decision controls', () => {
+    for (const marker of ['data-option-take', 'data-option-edit', 'data-option-drop'])
+      expect(app, marker).toContain(marker);
+    expect(app).toContain('>Incorporar<');
+    expect(app).toContain('>Modificar<');
+    expect(app).toContain('>Descartar<');
+    // Incorporar and Modificar open a draft through prepare(); neither commits a decision.
+    expect(app).toContain('await prepare(Boolean(optionEdit));');
+    expect(app).not.toMatch(/data-option-take[\s\S]{0,400}decisions\/commit/);
+    // Provenance survives: the draft still carries the recommendation it came from.
+    expect(app).toContain('sourceRecommendationId:rec.id');
+    // Descartar sets aside and can be reconsidered; the audited rejection keeps its own reasoned form.
+    expect(app).toContain('data-option-restore');
+    expect(app).toContain("api('/api/recommendations/reject'");
+  });
+
+  it('hands off to the next phase without depending on the drawer', () => {
+    expect(app).toContain('function nextPhase()');
+    // Journey order is read from the canonical navigation, never duplicated in a second list.
+    expect(app).toContain("document.querySelectorAll('#journey [data-module]')");
+    // A continuation appears only when a next phase genuinely exists.
+    expect(app).toContain('const next=nextPhase();');
+    expect(app).toContain('Continuar a ${escape(label)}');
+    expect(app).toContain('Completaste las decisiones de esta marca.');
+    expect(app).toContain('Revisar avance');
+    // It is rendered into the decision surface, not behind the hamburger.
+    expect(app).toContain('host.prepend(panel);');
+  });
+});

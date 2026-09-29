@@ -137,6 +137,52 @@ cuenta de Google conservando la dirección (por ejemplo al migrar a Workspace) o
 nuevo y quedará bloqueado. Hasta que exista administración, la salida es que un operador libere o
 reasigne la cuenta anterior. **Decisión de producto pendiente**, no un fallo del código.
 
+## 7.bis Estado de publicación en Google Cloud
+
+Configuración objetivo de la aplicación OAuth. **Vive en Google Cloud, fuera del repositorio**, y debe
+verificarse allí: nada de esto puede comprobarlo el código.
+
+| Campo | Valor |
+|---|---|
+| Audiencia | **External** |
+| Estado de publicación objetivo | **Production** |
+| Página principal | `https://brandopolis.ai/` |
+| Política de Privacidad | `https://brandopolis.ai/privacidad/` |
+| Términos | `https://brandopolis.ai/terminos/` |
+| Origen JavaScript autorizado | `https://pilot.brandopolis.ai` |
+| URI de redirección | `https://pilot.brandopolis.ai/auth/callback` |
+| Scopes | `openid` · `email` · `profile` |
+| Scopes sensibles o restringidos | **ninguno** |
+
+Las dos páginas legales ya se sirven desde la aplicación del piloto y responden 200 con y sin barra
+final. Publicarlas en el dominio raíz depende de la remediación del 403
+([ROOT_DOMAIN_403_REMEDIATION](ROOT_DOMAIN_403_REMEDIATION.md)): hoy el apex redirige al piloto, así que
+las URL de arriba resuelven, pero conviene comprobarlo antes de enviar la app a revisión.
+
+### Política de acceso vigente
+
+```
+PILOT_AUTO_PROVISION=true
+PILOT_DEFAULT_ACCESS_STATUS=APPROVED
+```
+
+- Toda identidad de Google verificada se aprovisiona y queda **aprobada automáticamente**.
+- **El intake del participante es obligatorio después de autenticarse** y antes de entrar al workspace:
+  el servidor responde `403 INTAKE_REQUIRED` a cualquier llamada fuera de una lista mínima hasta que el
+  perfil existe. No es una solicitud de acceso ni una aprobación pendiente.
+- **No hay aprobación manual** en este piloto. `PENDING` y `SUSPENDED` siguen en el modelo para un piloto
+  controlado futuro, sin rediseño de esquema.
+- Las identidades aprovisionadas por operador están exentas del intake y se comportan como siempre.
+
+### Datos que recoge el intake, frente a la Política de Privacidad
+
+Campos implementados: nombre, apellido, país, estado/región, ciudad y perfil profesional (obligatorios);
+empresa/proyecto, sector y objetivo en el piloto (opcionales); y las marcas de tiempo de aceptación de
+privacidad y términos. El correo verificado procede del ID token, **nunca del formulario**.
+
+La Política de Privacidad §«Perfil de participante» describe exactamente ese conjunto, así que **no hubo
+discrepancia factual que corregir** en esta pasada.
+
 ## 8. Configuración de producción
 
 Para abrir el piloto a cualquier Estratega de Marca con cuenta de Google verificada:
