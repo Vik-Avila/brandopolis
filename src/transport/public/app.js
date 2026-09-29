@@ -660,8 +660,12 @@ async function loadBrands(preferred) {
 /** Routes that are public documents. Google requires them reachable, and a participant must be able
  *  to read what they are accepting BEFORE accepting it, so no gate may ever intercept them. */
 const LEGAL_PATHS=['/privacidad','/terminos'];
+/** Public documents: readable without a session and never intercepted by the intake gate. The legal
+ *  routes are here because a participant must be able to read what they are accepting; the survey
+ *  thank-you page is here because it is shown to whoever just finished the survey, signed in or not. */
+const PUBLIC_DOCUMENT_PATHS=[...LEGAL_PATHS,'/gracias-encuesta'];
 const currentPath=()=>location.pathname.replace(/\/$/,'')||'/';
-const isLegalPath=()=>LEGAL_PATHS.includes(currentPath());
+const isPublicDocument=()=>PUBLIC_DOCUMENT_PATHS.includes(currentPath());
 
 /** Administration. A separate surface: authorization is the server's; this renders what it returns. */
 let adminView='resumen';
@@ -752,7 +756,7 @@ async function showAdmin(){
 /** Single entry to the product: required intake first, workspace second. Used by every sign-in path. */
 async function enterWorkspace(){
  const state=await api('/api/session-state');
- if(isLegalPath())return;
+ if(isPublicDocument())return;
  if(currentPath()==='/admin')return showAdmin();
  if(state.intakeRequired)return showIntake();
  return authenticated();
@@ -989,11 +993,14 @@ function showPublicView(){
  const path=location.pathname;
  const legalPath=path.replace(/\/$/,'')||'/';
  const isLegal=['/privacidad','/terminos'].includes(legalPath);
+ // Any public document takes the surface over: no gateway, no access card competing with it.
+ const isDocument=isLegal||legalPath==='/gracias-encuesta';
  $('#privacidad').hidden=legalPath!=='/privacidad';$('#terminos').hidden=legalPath!=='/terminos';
- $('#gateway').hidden=path!=='/'||isLegal;$('#login').hidden=path==='/request-access'||isLegal;$('#request-access-view').hidden=path!=='/request-access';
+ $('#gracias-encuesta').hidden=legalPath!=='/gracias-encuesta';
+ $('#gateway').hidden=path!=='/'||isDocument;$('#login').hidden=path==='/request-access'||isDocument;$('#request-access-view').hidden=path!=='/request-access';
  // On the gateway the access card is a section of the page, not a second top-level heading.
  if(path==='/')$('#login-title').setAttribute('aria-level','2');else $('#login-title').removeAttribute('aria-level');
- setTitle(legalPath==='/privacidad'?'Política de Privacidad':legalPath==='/terminos'?'Términos del piloto':path==='/login'?'Entrar al piloto':path==='/request-access'?'Acceso al piloto':'');
+ setTitle(legalPath==='/privacidad'?'Política de Privacidad':legalPath==='/terminos'?'Términos del piloto':legalPath==='/gracias-encuesta'?'Gracias por compartir tu experiencia':path==='/login'?'Entrar al piloto':path==='/request-access'?'Acceso al piloto':'');
 }
 showPublicView();
 // Motion is an enhancement: the poster stays when reduced motion is requested or the video cannot play.
@@ -1043,7 +1050,7 @@ Promise.all([api('/api/mode'),api('/api/session-state')]).then(async([mode,state
  if(state.authenticated){
   // Public documents first: a participant who still owes intake must still be able to read the very
   // policy and terms they are being asked to accept. Then /admin, then intake, then the workspace.
-  if(isLegalPath())document.body.classList.remove('booting');
+  if(isPublicDocument())document.body.classList.remove('booting');
   else if(currentPath()==='/admin')await showAdmin();
   else if(state.intakeRequired)await showIntake();
   else await authenticated();

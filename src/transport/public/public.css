@@ -798,3 +798,96 @@ body.admin-mode > header, body.admin-mode > footer {
 body.admin-mode .admin-head > a {
   flex: 0 0 auto;
 }
+
+/* Survey thank-you (/gracias-encuesta). A closing moment, not a "form submitted" screen: one column,
+   generous air, one action. The H1 uses the sans at hero scale so the page belongs to the landing,
+   and the closing line takes the display serif in emerald, the same voice as the principle lines. */
+.gratitude {
+  max-width: 900px;
+  margin: 0px auto;
+  padding: clamp(56px, 9vh, 120px) 32px clamp(72px, 12vh, 140px);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 48px;
+}
+
+.gratitude-copy {
+  max-width: 62ch;
+}
+
+.gratitude-copy h1 {
+  font-size: clamp(30px, 3.2vw, 44px);
+  line-height: 1.08;
+  margin: 14px 0px 28px;
+  color: var(--bp-brand-charcoal);
+  text-wrap: balance;
+}
+
+.gratitude-copy > p {
+  color: var(--text-secondary);
+  max-width: 62ch;
+  margin: 0px 0px 18px;
+}
+
+.gratitude-closing {
+  font-family: var(--font-display);
+  font-size: clamp(17px, 1.5vw, 20px);
+  color: var(--bp-brand-emerald) !important;
+  margin: 30px 0px 0px !important;
+}
+
+.gratitude-actions {
+  margin: 36px 0px 0px !important;
+}
+
+.gratitude-actions .cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0px 26px;
+  border-radius: var(--bp-radius-pill);
+  background: var(--action-primary);
+  color: var(--text-inverse);
+  font-weight: 650;
+  text-decoration: none;
+  transition: background var(--bp-motion-normal) var(--bp-ease);
+}
+
+.gratitude-actions .cta:hover {
+  background: var(--action-primary-hover);
+  color: var(--text-inverse);
+}
+
+/* The canonical symbol, decorative only: a quiet mark, never a redrawn Ribbon B. */
+.gratitude-mark {
+  opacity: 0.5;
+  margin-top: 6px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gratitude-copy {
+    animation: gratitude-settle 520ms var(--bp-ease) both;
+  }
+}
+
+@keyframes gratitude-settle {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (max-width: 767px) {
+  .gratitude {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    padding: 40px 22px 72px;
+  }
+
+  .gratitude-mark {
+    order: -1;
+    margin-top: 0px;
+    width: 42px;
+    height: 52px;
+  }
+}

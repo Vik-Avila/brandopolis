@@ -1,5 +1,50 @@
 # Session State
 
+Current phase: **PUBLIC SURVEY THANK-YOU PAGE** (2026-09-29). Uncommitted.
+
+New public page at `/gracias-encuesta`, shown to whoever finishes the Brandopolis survey.
+
+- **Existing routing architecture, no new framework.** The route is declared in `views`
+  (`src/transport/assets.ts`) with and without a trailing slash; the server returns the single
+  document and the client picks the view, exactly as the legal pages do. `/gracias` and
+  `/gracias-encuesta/extra` still 404.
+- **It is a public document.** `LEGAL_PATHS` generalises to `PUBLIC_DOCUMENT_PATHS`: readable with no
+  session and **never intercepted by the intake gate** — the rule the legal routes needed, for the same
+  reason. Verified anonymous and signed-in: neither is redirected into the pilot.
+- One action only, «Volver al inicio →» to `/` (same origin, no redirect hop; it resolves to
+  `https://brandopolis.ai/` when served from the root domain). The gateway hero and access card are
+  hidden while the document is open.
+- Editorial composition from the existing design system: inherited canonical public header, H1 in the
+  sans at hero scale (44px desktop, 30px mobile), closing line in the display serif in emerald like the
+  principle lines, 67-character measure on desktop and 46 on mobile at 15px/24px. No cards, no hero
+  gradient, no photography. The canonical symbol is reused as a decorative mark (`alt=""`); **the
+  Ribbon B is not redrawn.**
+- Accessibility: single `h1`, section labelled by its title, visible keyboard focus, 48px target,
+  measured contrast 7.32:1 body / 6.15:1 closing / 6.81:1 CTA / 15.74:1 H1, and the entrance animation
+  exists only under `prefers-reduced-motion: no-preference`.
+- Analytics: no new system and **no Product Analytics events**. A full document load produces the
+  existing base `page_view` — verified as exactly one hit with zero custom events. `pilot_landing_view`
+  stays scoped to `/`. No survey or participant data reaches GA4.
+- Document title uses the existing `setTitle` convention. `<link rel="canonical">` and the meta
+  description remain the single document's static tags: **no dynamic meta-tag architecture** was
+  introduced for this page.
+- **Non-indexable, per route.** The server sends `X-Robots-Tag: noindex, follow` **only** for
+  `/gracias-encuesta` and `/gracias-encuesta/`, from the header block that already existed and
+  conditioned on `NON_INDEXABLE_VIEWS`, declared beside the route table so paths live in one place.
+  **Never global**: verified against a real server that `/`, `/login`, `/request-access`,
+  `/privacidad`, `/terminos`, `/admin`, `/workspace` and static assets carry no such header. No
+  `robots` meta tag was added to the document.
+- Canonical survey redirect URL is `https://brandopolis.ai/gracias-encuesta`. The root-domain 302
+  preserves the path, so it resolves to the page served by the pilot; **domain and proxy architecture
+  were not changed** in this patch.
+
+Gate (2026-09-29): typecheck/lint PASS; pnpm test 130/130 (3 new structural); focused browser
+verification 210/210 at 390/768/1366×768/1440×900/1920×1080. No migration, no schema change, no
+dependency change. Product Analytics reconciliation remains untouched and unstarted.
+
+---
+
+
 Current phase: **GA4 CANONICAL CONFIGURATION — CLOSED** (2026-09-29).
 
 **Production is corrected and verified.** Confirmed by the operator on 2026-09-29: `pilot.env` carries

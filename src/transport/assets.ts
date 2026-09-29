@@ -43,7 +43,13 @@ export const runtimeAssets={
   '/brand/web/og.webp':['public/brand/web/og.webp','image/webp']
 } satisfies Record<string,[string,string]>;
 // Client-side views of the single page; the server always returns the same document.
-const views=new Set(['/','/login','/request-access','/workspace','/privacidad','/privacidad/','/terminos','/terminos/','/admin','/admin/']);
+const views=new Set(['/','/login','/request-access','/workspace','/privacidad','/privacidad/','/terminos','/terminos/','/gracias-encuesta','/gracias-encuesta/','/admin','/admin/']);
+/**
+ * Views that must never be indexed. The survey thank-you page is reached once, from a redirect after
+ * completing the survey: it has no standalone search value and should not surface in results. Kept
+ * beside the route table so the paths are declared in exactly one place.
+ */
+export const NON_INDEXABLE_VIEWS=new Set(['/gracias-encuesta','/gracias-encuesta/']);
 export function assetPath(path:string):keyof typeof runtimeAssets|undefined {
   const key=views.has(path)?'/':path;
   return Object.hasOwn(runtimeAssets,key)?key as keyof typeof runtimeAssets:undefined;

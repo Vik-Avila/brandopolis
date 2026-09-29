@@ -96,6 +96,31 @@ describe('PostgreSQL M1',()=>{
     expect(after.impacts).toEqual(before.impacts);
     expect((await connection.db.select().from(t.telemetry).where(eq(t.telemetry.brandId,s.brand.id))).length).toBe(telemetryBefore);
   });
+  it('sends X-Robots-Tag only for the survey thank-you page',async()=>{
+    // The page is reached once from a post-survey redirect, so it must not be indexed. The directive
+    // is route-specific: every other public and product route keeps its SEO behaviour untouched.
+    const server=createApp(engine,loadAsset);await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));
+    const base=`http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    try {
+      for(const route of ['/gracias-encuesta','/gracias-encuesta/']){
+        const response=await fetch(base+route);
+        expect(response.status,route).toBe(200);
+        expect(response.headers.get('x-robots-tag'),route).toBe('noindex, follow');
+        expect(response.headers.get('content-type'),route).toBe('text/html; charset=utf-8');
+      }
+      // The homepage serves the very same document and must not inherit the directive.
+      const home=await fetch(base+'/');
+      expect(home.status).toBe(200);
+      expect(home.headers.get('x-robots-tag'),'the homepage must stay indexable').toBeNull();
+      // Neither may any other public view, product route or static asset.
+      for(const route of ['/login','/request-access','/privacidad','/privacidad/','/terminos','/terminos/','/admin','/workspace','/app.js','/public.css','/brand/logo.svg','/favicon.ico']){
+        const response=await fetch(base+route);
+        expect(response.status,route).toBe(200);
+        expect(response.headers.get('x-robots-tag'),route).toBeNull();
+      }
+    } finally {await new Promise<void>(r=>server.close(()=>r()));}
+  });
+
   it('media assets declare their length and answer a single byte range for video playback',async()=>{
     const server=createApp(engine,loadAsset);await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));
     const url=`http://127.0.0.1:${(server.address() as AddressInfo).port}/brand/web/flow-loop.mp4`,size=loadAsset('/brand/web/flow-loop.mp4')!.content.length;

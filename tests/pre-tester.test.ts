@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { assetPath } from '../src/transport/assets.js';
+import { assetPath, NON_INDEXABLE_VIEWS } from '../src/transport/assets.js';
 
 const html = readFileSync('src/transport/public/index.html', 'utf8');
 const app = readFileSync('src/transport/public/app.js', 'utf8');
@@ -133,13 +133,19 @@ describe('production verification hotfix', () => {
     // Production defect: an authenticated participant who still owed intake saw the intake form at
     // /privacidad/ and /terminos/, because showIntake() runs on boot regardless of path and hides them.
     expect(app).toContain("const LEGAL_PATHS=['/privacidad','/terminos'];");
-    expect(app).toContain('const isLegalPath=()');
+    // The rule generalised when /gracias-encuesta joined: every public document, legal or not, is
+    // readable without a session and is never intercepted by the gate.
+    expect(app).toContain('const PUBLIC_DOCUMENT_PATHS=[...LEGAL_PATHS,');
+    expect(app).toContain('const isPublicDocument=()');
     // A public document is decided before the gate, on boot and after sign-in alike.
     const boot = app.slice(app.indexOf('if(state.authenticated){'));
-    const legalAt = boot.indexOf('isLegalPath()');
+    const legalAt = boot.indexOf('isPublicDocument()');
     const intakeAt = boot.indexOf('state.intakeRequired');
     expect(legalAt).toBeGreaterThan(-1);
-    expect(legalAt, 'legal routes must be checked before the intake gate').toBeLessThan(intakeAt);
+    expect(legalAt, 'public documents must be checked before the intake gate').toBeLessThan(intakeAt);
+    // The same precedence holds on the shared sign-in entry point.
+    const enter = app.slice(app.indexOf('async function enterWorkspace()'));
+    expect(enter.indexOf('isPublicDocument()')).toBeLessThan(enter.indexOf('state.intakeRequired'));
     // The gate itself still stands for the workspace.
     expect(app).toContain('if(state.intakeRequired)await showIntake();');
   });
@@ -414,6 +420,100 @@ describe('production verification hotfix', () => {
     // The fix is structural, not a paint-over of the inherited rule.
     const marketBlock = context.slice(context.indexOf('.context-market {'), context.indexOf('.context-lineage'));
     expect(marketBlock).not.toContain('!important');
+  });
+
+  it('serves the public survey thank-you page without a session', () => {
+    // Same routing architecture as the legal documents: the server returns the one document and the
+    // client decides the view. Both the bare path and the trailing slash must resolve.
+    for (const route of ['/gracias-encuesta', '/gracias-encuesta/'])
+      expect(assetPath(route), route).toBe('/');
+    // Nothing else moved: the homepage and the pilot routes resolve exactly as before.
+    for (const route of ['/', '/login', '/request-access', '/privacidad', '/terminos', '/admin'])
+      expect(assetPath(route), route).toBe('/');
+    expect(assetPath('/gracias')).toBeUndefined();
+    expect(assetPath('/gracias-encuesta/extra')).toBeUndefined();
+
+    // It is a public document, so it outranks the intake gate and never pulls anyone into the pilot.
+    expect(app).toContain("PUBLIC_DOCUMENT_PATHS=[...LEGAL_PATHS,'/gracias-encuesta']");
+    // The section starts hidden and is revealed by the client router, like every other view.
+    expect(html).toMatch(/<section id="gracias-encuesta"[^>]*\shidden/);
+    expect(app).toContain("$('#gracias-encuesta').hidden=legalPath!=='/gracias-encuesta'");
+    // Opening it takes the surface over: no gateway hero and no access card competing with it.
+    expect(app).toContain("const isDocument=isLegal||legalPath==='/gracias-encuesta';");
+    expect(app).toContain("$('#gateway').hidden=path!=='/'||isDocument");
+    expect(app).toContain("$('#login').hidden=path==='/request-access'||isDocument");
+    // Document title follows the existing setTitle convention, which appends the brand.
+    expect(app).toContain("legalPath==='/gracias-encuesta'?'Gracias por compartir tu experiencia'");
+    expect(app).toContain("document.title=text?`${text} · Brandopolis`");
+  });
+
+  it('carries the approved thank-you copy and a single way onward', () => {
+    const page = html.slice(html.indexOf('<section id="gracias-encuesta"'), html.indexOf('<section id="admin"'));
+    expect(page).toContain('<p class="eyebrow">Gracias por compartir tu experiencia</p>');
+    expect(page).toContain('<h1 id="gratitude-title">Tu experiencia también construye lo que sigue.</h1>');
+    expect(page).toContain('Gracias por dedicar unos minutos a compartir tu experiencia con Brandopolis. Cada respuesta nos ayuda a comprender mejor cómo acompañar a quienes están construyendo marcas con más claridad, criterio y propósito.');
+    expect(page).toContain('Convertirse en un mejor Estratega de Marca es un proceso continuo: cada decisión, cada aprendizaje y cada nueva evidencia amplían tu capacidad para construir marcas más sólidas y relevantes.');
+    expect(page).toContain('Esperamos seguir acompañándote en esa evolución. Seguiremos en contacto para compartir contigo los próximos pasos de Brandopolis.');
+    expect(page).toContain('Gracias por ser parte de esta etapa.');
+
+    // Exactly one action, and it returns to the homepage on the same origin.
+    expect(page).toContain('<a class="cta" href="/">Volver al inicio <span aria-hidden="true">→</span></a>');
+    expect(page.match(/<a\s/g) ?? []).toHaveLength(1);
+    expect(page.match(/<button/g), 'no competing actions on the page').toBeNull();
+
+    // Semantic structure: one h1, labelled section, and the decorative mark is hidden from AT.
+    expect(page.match(/<h1/g) ?? []).toHaveLength(1);
+    expect(page).toContain('aria-labelledby="gratitude-title"');
+    expect(page).toContain('class="gratitude-mark" src="/brand/symbol.svg" alt=""');
+    // The canonical symbol is reused as-is; the Ribbon B is never redrawn here.
+    expect(page).not.toContain('<svg');
+    // No participant or survey data can appear on a page the server renders identically for everyone.
+    for (const leak of ['email', 'token', 'userId', 'workspaceId', 'brandId', 'respuesta='])
+      expect(page.toLowerCase(), leak).not.toContain(leak.toLowerCase());
+  });
+
+  it('styles the thank-you page from the existing design system only', () => {
+    const css = readFileSync('src/transport/public/public.css', 'utf8');
+    const rules = css.slice(css.indexOf('.gratitude {'));
+    // Palette and tokens come from the design system, never new colour literals.
+    expect(rules).toContain('var(--bp-brand-charcoal)');
+    expect(rules).toContain('var(--bp-brand-emerald)');
+    expect(rules).toContain('var(--action-primary)');
+    expect(rules).toContain('var(--font-display)');
+    expect(rules).not.toMatch(/#[0-9a-fA-F]{6}/);
+    // Editorial restraint: a readable measure, one column on phones, no hero gradient, no card.
+    expect(rules).toContain('max-width: 62ch');
+    expect(rules).toContain('grid-template-columns: 1fr');
+    expect(rules).not.toContain('linear-gradient');
+    // Motion is opt-in: the entrance only exists where reduced motion is not requested.
+    expect(rules).toContain('@media (prefers-reduced-motion: no-preference)');
+    const animated = rules.indexOf('animation: gratitude-settle');
+    expect(animated).toBeGreaterThan(rules.indexOf('@media (prefers-reduced-motion: no-preference)'));
+    // The CTA keeps a real target size for touch.
+    expect(rules).toContain('min-height: 48px');
+  });
+
+  it('marks only the survey thank-you page non-indexable', () => {
+    // The page is reached once, from a redirect after the survey: it has no standalone search value.
+    // The directive is route-specific and must never become global.
+    expect(NON_INDEXABLE_VIEWS.has('/gracias-encuesta')).toBe(true);
+    expect(NON_INDEXABLE_VIEWS.has('/gracias-encuesta/')).toBe(true);
+    // Nothing else may be swept in: the landing, the legal documents, access and the product routes
+    // keep their SEO behaviour exactly as before.
+    for (const route of ['/', '/login', '/request-access', '/privacidad', '/privacidad/', '/terminos', '/terminos/', '/admin', '/workspace', '/app.js', '/public.css', '/brand/logo.svg'])
+      expect(NON_INDEXABLE_VIEWS.has(route), route).toBe(false);
+    expect(NON_INDEXABLE_VIEWS.size, 'only the thank-you page is non-indexable').toBe(2);
+
+    // Served from the existing header path, conditioned on the declared set, with no new meta-tag
+    // architecture and no global directive.
+    const http = readFileSync('src/transport/http.ts', 'utf8');
+    expect(http).toContain("NON_INDEXABLE_VIEWS.has(path)?{'X-Robots-Tag':'noindex, follow'}:{}");
+    expect(http.split('X-Robots-Tag').length - 1, 'one place sets the header').toBe(1);
+    // It must sit inside the per-request header object, not among the headers set for every response.
+    const global = http.slice(http.indexOf("res.setHeader('Cache-Control','no-store')"), http.indexOf("res.setHeader('Content-Security-Policy',csp)"));
+    expect(global).not.toContain('X-Robots-Tag');
+    // No robots meta tag was introduced into the single document either.
+    expect(html).not.toMatch(/<meta[^>]+name="robots"/);
   });
 
   it('keeps migration files byte-stable so applied hashes stay valid', () => {

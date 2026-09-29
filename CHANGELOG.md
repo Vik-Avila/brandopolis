@@ -14,6 +14,54 @@ Depends on: —
 
 # Registro
 
+## Página pública de agradecimiento de encuesta · 2026-09-29
+
+Nueva página pública en `/gracias-encuesta`, mostrada a quien termina la encuesta de Brandopolis.
+
+- **Misma arquitectura de rutas que los documentos legales**, sin framework ni enrutador paralelo: la
+  ruta se declara en `views` (`src/transport/assets.ts`) con y sin barra final, el servidor devuelve
+  el documento único y el cliente decide la vista. `/gracias` y `/gracias-encuesta/extra` siguen
+  devolviendo 404.
+- **Es un documento público.** `LEGAL_PATHS` se generaliza a `PUBLIC_DOCUMENT_PATHS`: legibles sin
+  sesión y **nunca interceptados por la puerta de intake**, la misma regla que necesitaron
+  `/privacidad` y `/terminos` por el mismo motivo. Verificado con visitante anónimo y con sesión
+  activa: en ninguno de los dos casos se redirige al piloto ni se pierde la página.
+- **No compite con nada**: abrir la página oculta el hero de la portada y la tarjeta de acceso, y hay
+  **una sola acción**, «Volver al inicio →», que apunta a `/` (mismo origen, sin salto de redirección;
+  resuelve a `https://brandopolis.ai/` cuando se sirve desde el dominio raíz).
+- **Composición editorial con el sistema de diseño existente.** Cabecera pública canónica heredada,
+  H1 en la sans a escala del hero (44px escritorio, 30px móvil) para que pertenezca a la landing, y la
+  línea de cierre en la serif de display en esmeralda, la misma voz que las líneas de principio. Medida
+  de lectura de **67 caracteres** en escritorio y **46** en móvil, a 15px/24px. Sin tarjetas, sin
+  degradados de hero, sin fotografía, sin confeti. El símbolo canónico se reutiliza tal cual como marca
+  discreta y decorativa (`alt=""`): **no se redibuja la Ribbon B**.
+- **Accesibilidad**: un solo `h1`, sección etiquetada por su título, foco de teclado visible en el CTA,
+  objetivo de 48px, contraste medido **7.32:1** en el cuerpo, **6.15:1** en el cierre, **6.81:1** en el
+  CTA y **15.74:1** en el H1, y la entrada animada existe sólo bajo
+  `prefers-reduced-motion: no-preference`.
+- **Analítica**: sin sistema nuevo y **sin eventos de Product Analytics**. Una carga completa de
+  `/gracias-encuesta` produce el `page_view` automático de la instrumentación base ya existente —
+  verificado: un único hit, cero eventos personalizados—. El `pilot_landing_view` sigue acotado a `/`,
+  así que no se dispara aquí. El Measurement ID sigue siendo de entorno y no aparece en el código.
+  **Ningún dato de la encuesta ni del participante llega a GA4**; la página se sirve idéntica para todos.
+- Título de documento por la convención existente `setTitle`: «Gracias por compartir tu experiencia ·
+  Brandopolis». `<link rel="canonical">` y la meta description siguen siendo estáticas del documento
+  único: **no se introdujo arquitectura de meta dinámica** para esta página.
+- **No indexable, por ruta.** El servidor envía `X-Robots-Tag: noindex, follow` **sólo** en
+  `/gracias-encuesta` y `/gracias-encuesta/`, desde el mismo bloque de cabeceras que ya existía y
+  condicionado a `NON_INDEXABLE_VIEWS`, declarado junto a la tabla de rutas para que las rutas vivan en
+  un solo sitio. **Nunca global**: verificado contra un servidor real que `/`, `/login`,
+  `/request-access`, `/privacidad`, `/terminos`, `/admin`, `/workspace` y los assets estáticos no
+  reciben la cabecera. Sin meta `robots` en el documento.
+- **URL canónica de redirección de la encuesta**: `https://brandopolis.ai/gracias-encuesta`. El 302 del
+  dominio raíz preserva la ruta, así que resuelve a la página servida por el piloto; **no se cambió
+  dominio ni arquitectura de proxy** en este parche.
+- Pruebas: 3 estructurales nuevas (ruta pública, copia exacta y acción única, estilos sólo desde el
+  sistema de diseño) y la prueba de precedencia del intake generalizada a documentos públicos.
+  typecheck/lint PASS; pnpm test 130/130; verificación en navegador **210/210** a
+  390/768/1366×768/1440×900/1920×1080. **Sin migración, sin dependencias, sin cambios de esquema.**
+
+
 ## GA4 · configuración canónica cerrada · 2026-09-29
 
 - **Causa raíz confirmada, y no es código que falte.** Medido contra producción con un navegador real:

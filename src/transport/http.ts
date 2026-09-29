@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import type { Engine } from '../application/engine.js';
 import { contentSecurityPolicy,ga4MeasurementId } from './analytics.js';
 import { buildBlueprintPdf,blueprintFilename } from '../application/blueprint-pdf.js';
+import { NON_INDEXABLE_VIEWS } from './assets.js';
 import { AppError, type CommitCommand } from '../domain/contracts.js';
 import type { PilotBoundary } from './pilot-auth.js';
 import type { CompetitiveResearchService } from './competitive-research.js';
@@ -163,7 +164,9 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         const cache=media?'public, max-age=86400':document?'no-store':'no-cache';
         if(asset.etag&&!document&&req.headers['if-none-match']===asset.etag){res.writeHead(304,{'Cache-Control':cache,ETag:asset.etag});res.end();return;}
         const body=typeof asset.content==='string'?Buffer.from(asset.content):asset.content;
-        const headers={'Content-Type':asset.type,'Cache-Control':cache,'Content-Length':String(body.length),...(media?{'Accept-Ranges':'bytes'}:{}),...(asset.etag&&!document?{ETag:asset.etag}:{})};
+        // Route-specific, never global: only the views declared non-indexable carry the directive, so
+        // the landing, the legal documents, access and every product route keep their SEO behaviour.
+        const headers={'Content-Type':asset.type,'Cache-Control':cache,'Content-Length':String(body.length),...(NON_INDEXABLE_VIEWS.has(path)?{'X-Robots-Tag':'noindex, follow'}:{}),...(media?{'Accept-Ranges':'bytes'}:{}),...(asset.etag&&!document?{ETag:asset.etag}:{})};
         // Media honours a single byte range: Safari/iOS only plays MP4 video from servers that answer 206.
         const range=media&&req.headers.range?/^bytes=(\d*)-(\d*)$/.exec(req.headers.range):null;
         if(range&&(range[1]||range[2])){
