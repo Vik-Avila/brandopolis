@@ -1,5 +1,38 @@
 # Session State
 
+Current phase: **FINAL QA POLISH — TERMINOLOGY + RIGHT PANEL** (2026-09-29). The previous production
+hotfix is already deployed and was verified manually. This pass is uncommitted.
+
+1. **«Blueprint estratégico» is now «Mapa estratégico»** wherever a participant reads it: navigation,
+   view eyebrow, notices and the exported document («Mapa estratégico de la marca»). Technical names
+   are deliberately unchanged — `#blueprint`, `/api/blueprint`, `/api/blueprint/pdf`,
+   `engine.blueprint()` and the PDF filename — so no URL breaks and already-downloaded files keep
+   their name. Decision recorded in [BLUEPRINT_PDF_EXPORT](docs/15-handoff/BLUEPRINT_PDF_EXPORT.md).
+2. **Right-panel hierarchy restored.** «Contexto del mercado» and «Lo que ya decidiste» now share one
+   section-label treatment (9.5px, 0.18em, weight 700, neutral) one level below the panel heading,
+   which keeps its emerald. «Entorno competitivo» is its section's title (`<h4>`, 14px, 600) with the
+   status badge clearly secondary at 10px. The market block stops being a bordered, tinted card that
+   competed with the heading, and a hairline gives the decisions their own section break. Hierarchy
+   comes from type and spacing, never a heavy block. The «X de 4» count is untouched.
+3. **Dark hover band on «Entorno competitivo» fixed at its source.** It was a class-less `<button>`,
+   so `base.css` gave it `background: var(--action-primary)` and, on hover,
+   `var(--action-primary-hover)`; the local rule reset the resting state but **not `:hover`**, and
+   because it was `display:block; width:100%` the primary colour painted a full-width dark band. It is
+   a status title, not navigation — the left navigation already goes there — so it became static text
+   (`<h4>`). No `!important`, no painting over the inherited rule: the background is gone, the cursor
+   is `auto`, it is no longer focusable, and the duplicated accessible name is gone too. No static
+   label in the panel reacts to the cursor; genuinely interactive controls keep their hover.
+
+Gate (2026-09-29): typecheck/lint PASS; pnpm test 122/122 (3 new); test:e2e 80/80 (16 per
+project, five projects, run one at a time for memory); test:visual 10
+passed + 1 skipped; focused browser verification 168/168 at 390/768/1366×768/1440×900/1920×1080,
+measuring hover background luminance rather than trusting a selector. No migration, no schema change,
+no dependency change. Foundation, UI and Brand Master validators NOT RUN: no Python interpreter on
+this machine.
+
+---
+
+
 Current phase: **PRE-TESTER UX MICRO-HOTFIX** (2026-09-29). The previous production hotfix is already
 deployed and was verified manually. This pass is uncommitted.
 

@@ -1,5 +1,5 @@
 /**
- * The Blueprint estratégico export.
+ * The Mapa estratégico export (the Blueprint view, in the words participants actually read).
  *
  * This is a strategic document built from canonical state, not a picture of a screen. Everything in
  * it is something the Estratega de Marca decided or registered: the current approved version of each
@@ -93,7 +93,7 @@ export function buildBlueprintPdf(input: BlueprintInput): Uint8Array {
   pdf.gap(120);
   pdf.text('BRANDOPOLIS', { size: 12, font: 'bold', colour: emerald });
   pdf.gap(6);
-  pdf.text('Blueprint estratégico', { size: 30, font: 'bold', colour: emerald });
+  pdf.text('Mapa estratégico de la marca', { size: 26, font: 'bold', colour: emerald });
   pdf.gap(10);
   pdf.text(brand.name, { size: 18, colour: [0.16, 0.18, 0.17] });
   if (brand.isDemo) {
@@ -216,5 +216,5 @@ export function buildBlueprintPdf(input: BlueprintInput): Uint8Array {
   }
 
   pdf.footer(`Brandopolis · ${brand.isDemo ? 'Marca demo · ' : ''}Este documento refleja el estado estratégico vigente al momento de su generación (${longDate(input.generatedAt)}).`);
-  return pdf.build({ title: `Blueprint estratégico · ${brand.name}`, created: input.generatedAt });
+  return pdf.build({ title: `Mapa estratégico · ${brand.name}`, created: input.generatedAt });
 }

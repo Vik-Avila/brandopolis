@@ -147,12 +147,16 @@ arquitectura de información, no un cambio de dominio:
 - Al resolver **todos** los hallazgos se muestra la entrega «Contexto competitivo revisado», cuyo
   destino sale de `nextPhase()`, el recorrido canónico: no existe una segunda ordenación de fases.
 
-La navegación se compactó para que «Mi aprendizaje» y «Blueprint estratégico» no queden fuera de
+La navegación se compactó para que «Mi aprendizaje» y «Mapa estratégico» no queden fuera de
 vista al añadir un cuarto grupo. **No se eliminó ni se colapsó ningún elemento**: el ahorro es de
 espaciado, y el objetivo táctil de 44px se conserva donde el puntero puede ser grueso (se reduce a
 36px sólo bajo `(pointer: fine)`). Medido: a **1366×768 el Blueprint entra sin scroll**.
 
-Exportación del Blueprint en PDF: [BLUEPRINT_PDF_EXPORT](BLUEPRINT_PDF_EXPORT.md).
+Terminología (2026-09-29): la vista conectada se llama **«Mapa estratégico»** para participantes.
+«Blueprint» es jerga del oficio. Los nombres técnicos no cambian: `#blueprint`, `/api/blueprint`,
+`/api/blueprint/pdf`, `engine.blueprint()` y el nombre de archivo del PDF siguen igual, así que
+ninguna URL se rompe. Exportación en PDF y la decisión completa:
+[BLUEPRINT_PDF_EXPORT](BLUEPRINT_PDF_EXPORT.md).
 
 ## 7. Congelación del producto PILOT
 

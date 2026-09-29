@@ -66,7 +66,7 @@ test('human connected proof survives reload without console errors or overflow',
   await page.emulateMedia({reducedMotion:'reduce'});expect(await page.locator('#journey').evaluate(e=>getComputedStyle(e).transitionDuration)).toBe('0s');
   await page.screenshot({path:`test-results/m1-completed-${testInfo.project.name}.png`,fullPage:true});
   if(await page.getByRole('button',{name:'Abrir navegación',exact:true}).isVisible())await page.getByRole('button',{name:'Abrir navegación',exact:true}).click();
-  await page.getByRole('button',{name:'Blueprint estratégico',exact:true}).click();
+  await page.getByRole('button',{name:'Mapa estratégico',exact:true}).click();
   await expect(page.locator('#decision')).toContainText('Suscripción por marca activa');
   await expect(page.locator('#decision')).toContainText('Decisiones conectadas, criterio compartido');
   await expect(page.locator('#decision')).toContainText('Requiere revisión');
@@ -107,7 +107,7 @@ test('DEMO recommendation can be rejected and then explicitly approved',async({p
  await page.getByText('Registrar una señal',{exact:true}).click();await page.getByLabel('¿Qué ocurrió?').fill('Una agencia regresó');await page.getByLabel('Fuente de la observación').fill('Registro consentido DEMO');await page.getByLabel('Fecha y hora observada').fill('2026-09-23T12:00');await page.getByRole('button',{name:'Guardar señal',exact:true}).click();await expect(page.locator('#decision')).toContainText('Una agencia regresó');
  await page.getByRole('button',{name:'Completar experimento',exact:true}).click();await expect(page.locator('#decision')).toContainText('Completado');await page.getByText('Proponer un aprendizaje',{exact:true}).click();await page.getByLabel('Interpretación',{exact:true}).fill('Posible interés recurrente');await page.getByLabel('Límites de esta interpretación').fill('Un caso de demostración');await page.getByRole('button',{name:'Crear aprendizaje candidato',exact:true}).click();await expect(page.locator('#decision')).toContainText('Candidato');
  await page.getByRole('button',{name:'Confirmar revisión',exact:true}).click();await page.getByRole('button',{name:'Aceptar aprendizaje',exact:true}).click();await expect(page.locator('#decision')).toContainText('Aceptado');await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:`test-results/learning-${info.project.name}.png`,fullPage:true});
- await navigate(page,'Blueprint estratégico');await expect(page.locator('#decision')).toContainText('Posible interés recurrente');await navigate(page,'Mi aprendizaje');await expect(page.locator('#decision')).toContainText('Comprensión del cliente');expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await navigate(page,'Mapa estratégico');await expect(page.locator('#decision')).toContainText('Posible interés recurrente');await navigate(page,'Mi aprendizaje');await expect(page.locator('#decision')).toContainText('Comprensión del cliente');expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await navigate(page,'Contexto estratégico');await expect(page.locator('#decision')).toContainText('Posible interés recurrente');await navigate(page,'Qué necesita atención');await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:`test-results/home-${info.project.name}.png`,fullPage:true});
 });
 test('intake and brand switch preserve isolated context and human draft',async({page},info)=>{

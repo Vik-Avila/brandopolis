@@ -45,10 +45,12 @@
   overflow-wrap: anywhere;
 }
 
+/* One hairline gives «Lo que ya decidiste» its own section break below the market section. */
 .context-details {
   margin: 0px;
   border: 0px;
-  padding: 12px 20px;
+  border-top: 1px solid rgb(228, 223, 210);
+  padding: 16px 20px 12px;
 }
 
 .context-details > summary {
@@ -477,38 +479,40 @@
 /* Market context: strategic preparation, shown above the decisions and deliberately outside their
    count. Research informs the four decisions; it is never a fifth one. */
 .context-market {
-  margin: 0 0 14px;
-  padding: 12px 14px;
-  border: 1px solid rgb(226, 223, 213);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.55);
+  margin: 0;
+  padding: 16px 20px 14px;
 }
 
-.context-market .eyebrow {
-  margin: 0 0 6px;
-}
-
-.context-market-link {
+/* Shared label for the panel's sections, so «Contexto del mercado» and «Lo que ya decidiste» read as
+   siblings one level below «Contexto vigente». Deliberately quieter than the cover eyebrow: the
+   emerald there marks the panel heading, these are neutral. */
+.context-section {
   display: block;
-  width: 100%;
-  margin: 0 0 6px;
-  padding: 0;
-  border: 0;
-  background: none;
-  box-shadow: none;
-  text-align: left;
-  font-size: 13px;
-  font-weight: 650;
-  color: var(--bp-brand-emerald-deep);
-  cursor: pointer;
-  min-height: 0;
+  margin: 0 0 7px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: rgb(96, 104, 93);
 }
 
-.context-market-link:hover {
-  text-decoration: underline;
+/* The section's main item. Subordinate to the 25px panel heading, dominant within its section. */
+.context-market-title {
+  margin: 0;
+  font: 600 14px / 1.35 var(--font-sans);
+  color: var(--text-primary);
+}
+
+.context-market-status {
+  margin: 6px 0 0;
+}
+
+.context-market-status .badge {
+  font-size: 10px;
 }
 
 .context-market .hint {
-  margin: 6px 0 0;
-  font-size: 11px;
+  margin: 7px 0 0;
+  font-size: 10.5px;
+  line-height: 1.45;
 }

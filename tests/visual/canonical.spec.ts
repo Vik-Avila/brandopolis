@@ -49,7 +49,7 @@ for(const [name,viewport] of Object.entries(viewports)){
     await signIn(page,seeded.brand.id,'Positioning');await sound(page,`${name} needs review`);
     await expect(page.locator('#decision')).toContainText('Requiere revisión');
     await page.getByRole('button',{name:'Ver impacto',exact:true}).click();await expect(page.locator('.impact-pair')).toBeVisible();await sound(page,`${name} impact`);
-    if(name==='mobile'){const menu=page.getByRole('button',{name:'Abrir navegación',exact:true});await menu.click();await expect(page.getByRole('button',{name:'Blueprint estratégico',exact:true})).toBeVisible();await page.keyboard.press('Escape');await expect(menu).toBeFocused();}
+    if(name==='mobile'){const menu=page.getByRole('button',{name:'Abrir navegación',exact:true});await menu.click();await expect(page.getByRole('button',{name:'Mapa estratégico',exact:true})).toBeVisible();await page.keyboard.press('Escape');await expect(menu).toBeFocused();}
     expect(errors).toEqual([]);await context.close();
   });
 }
@@ -71,7 +71,7 @@ test('canonical screenshots (desktop 1440×900, mobile 390×844)',async({browser
     await page.getByLabel('¿Por qué eliges esta opción?').fill('Revisión tras el cambio de cliente.');await shot(page,`m1-guided-review-${suffix}`);
     await page.getByRole('button',{name:'Cancelar',exact:true}).click();
     if(suffix==='mobile')await page.getByRole('button',{name:'Abrir navegación',exact:true}).click();
-    await page.getByRole('button',{name:'Blueprint estratégico',exact:true}).click();await expect(page.locator('.blueprint-grid')).toBeVisible();await shot(page,`blueprint-${suffix}`);
+    await page.getByRole('button',{name:'Mapa estratégico',exact:true}).click();await expect(page.locator('.blueprint-grid')).toBeVisible();await shot(page,`blueprint-${suffix}`);
     await context.close();
   }
 });

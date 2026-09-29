@@ -14,6 +14,42 @@ Depends on: —
 
 # Registro
 
+## Pulido final de QA · terminología y panel derecho · 2026-09-29
+
+Tres correcciones estrechas sobre el PILOT ya funcional. Sin migración, sin dependencias nuevas y sin
+tocar workflows estratégicos, auth, intake, legales, Admin, CoffeePolis, GA4, política de acceso,
+esquema, máquina de estados, métricas demo ni la arquitectura del PDF.
+
+- **«Blueprint estratégico» pasa a «Mapa estratégico».** Era preciso pero es jerga del oficio: un
+  emprendedor no debería necesitar que se le explique. Una sola terminología donde se lee —navegación,
+  encabezado de la vista, avisos y el documento exportado («Mapa estratégico de la marca»)—. **Los
+  nombres técnicos no cambian**: `#blueprint`, `/api/blueprint`, `/api/blueprint/pdf`,
+  `engine.blueprint()` y el nombre de archivo del PDF siguen estables, así que **ninguna URL se rompe**
+  y los archivos ya descargados conservan su nombre. Decisión documentada en
+  [BLUEPRINT_PDF_EXPORT](docs/15-handoff/BLUEPRINT_PDF_EXPORT.md).
+- **Jerarquía restaurada en Contexto vigente.** «Contexto del mercado» y «Lo que ya decidiste» comparten
+  ahora un mismo tratamiento de etiqueta de sección —9.5px, 0.18em, peso 700, neutro—, un nivel por
+  debajo del encabezado del panel, que conserva su verde. «Entorno competitivo» es el **título de su
+  sección** (`<h4>`, 14px, peso 600) y el estado queda claramente secundario (badge de 10px). El
+  bloque de mercado deja de ser una tarjeta con borde y fondo que competía con el encabezado, y una
+  hairline devuelve a «Lo que ya decidiste» su propio corte de sección. La jerarquía viene de tipo y
+  espaciado, no de bloques oscuros ni chips dominantes. El conteo «X de 4» no cambia.
+- **Corregida la mancha oscura al pasar el cursor sobre «Entorno competitivo».** Era un `<button>` sin
+  clase, así que heredaba de `base.css` `background: var(--action-primary)` y, al hover,
+  `var(--action-primary-hover)`; la regla local reseteaba el estado en reposo pero **no `:hover`**, y
+  al ser `display:block; width:100%` el color pintaba una banda oscura de ancho completo. Es un título
+  de estado, no navegación —la navegación izquierda ya lleva ahí—, así que **pasa a ser texto estático
+  (`<h4>`)**. Se corrige en el origen, sin `!important` y sin repintar encima: desaparece el fondo, el
+  cursor vuelve a `auto`, deja de ser enfocable y termina el nombre accesible duplicado. Ninguna
+  etiqueta estática del panel reacciona al cursor; los controles realmente interactivos conservan su
+  hover.
+
+- Pruebas: typecheck/lint PASS; pnpm test 122/122 (3 nuevas); test:e2e 80/80 (16 por proyecto,
+  en cinco proyectos, ejecutados uno a uno por memoria); test:visual 10 pass + 1
+  skip; verificación en navegador **168/168** a 390/768/1366×768/1440×900/1920×1080, midiendo
+  luminancia del fondo en hover en lugar de confiar en un selector. **Sin migración.**
+
+
 ## Micro-hotfix de UX pre-tester · 2026-09-29
 
 Cuatro ajustes de producto sobre el PILOT ya verificado. Sin migración y sin tocar esquema, auth,

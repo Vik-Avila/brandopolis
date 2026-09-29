@@ -5,18 +5,31 @@ Last reviewed: 2026-09-29
 Related: docs/15-handoff/CURRENT_IMPLEMENTATION_STATE_2026-09-28.md, docs/04-domain-model/invariants.md
 Depends on: Pre-tester UX micro-hotfix (2026-09-29)
 
-# Blueprint estratégico · exportación en PDF
+# Mapa estratégico · exportación en PDF
 
-El Estratega de Marca puede llevarse el Blueprint como documento. **No es una captura de pantalla**:
+## Terminología (decisión, 2026-09-29)
+
+El nombre **visible para participantes es «Mapa estratégico»**. «Blueprint» es jerga del oficio y un
+emprendedor no debería necesitar que se le explique. Una sola terminología, en todas partes donde se
+lee: navegación izquierda, encabezado de la vista, avisos y **el documento exportado**
+(«Mapa estratégico de la marca»).
+
+**Los nombres técnicos no cambian** y ninguna URL se rompe: la ruta y el id siguen siendo
+`#blueprint`, los endpoints `GET /api/blueprint` y `GET /api/blueprint/pdf`, el
+método `engine.blueprint()` y el nombre de archivo
+`Brandopolis-Blueprint-<slug>-YYYY-MM-DD.pdf` —
+deliberadamente estable para no invalidar archivos ya descargados ni enlaces guardados.
+
+El Estratega de Marca puede llevarse su mapa estratégico como documento. **No es una captura de pantalla**:
 es un documento estratégico generado en el servidor desde el **estado canónico vigente** de la marca.
 
-Acción: **Descargar PDF**, junto al encabezado de *Blueprint estratégico*.
+Acción: **Descargar PDF**, junto al encabezado de *Mapa estratégico*.
 
 ## Qué contiene
 
 | Sección | Contenido |
 |---|---|
-| Portada | Brandopolis · nombre de la marca · «Blueprint estratégico» · fecha de generación · «Marca demo» cuando aplica |
+| Portada | Brandopolis · nombre de la marca · «Mapa estratégico de la marca» · fecha de generación · «Marca demo» cuando aplica |
 | Estado estratégico | Decisiones aprobadas (X de 4) · influencia geográfica · mercado principal · estado del contexto competitivo |
 | Decisiones estratégicas | Las cuatro decisiones núcleo: opción vigente, «Por qué», versión vigente y fecha de aprobación |
 | Cómo se conectan | Dependencias entre decisiones (estricta / sugerida / informativa) |

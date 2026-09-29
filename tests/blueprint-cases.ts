@@ -85,8 +85,10 @@ export function blueprintCases(connection: () => ReturnType<typeof connect>) {
         const { pages, text } = await pdfText(bytes);
         expect(pages).toBeGreaterThanOrEqual(2);
         // Canonical sections.
-        for (const section of ['Blueprint estratégico', 'Estado estratégico', 'Decisiones estratégicas', 'Cómo se conectan', 'Contexto competitivo', 'Contexto estratégico'])
+        for (const section of ['Mapa estratégico de la marca', 'Estado estratégico', 'Decisiones estratégicas', 'Cómo se conectan', 'Contexto competitivo', 'Contexto estratégico'])
           expect(text, section).toContain(section);
+        // The old jargon must not survive anywhere a participant reads.
+        expect(text, 'the exported document uses the participant-facing name').not.toContain('Blueprint');
         expect(text).toContain('Marca Exportación');
         // Current state only: the active version appears, the superseded one never does.
         expect(text).toContain('DECISION-VIGENTE-DOS');

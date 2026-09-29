@@ -6,6 +6,8 @@ const html = readFileSync('src/transport/public/index.html', 'utf8');
 const app = readFileSync('src/transport/public/app.js', 'utf8');
 const views = readFileSync('src/transport/public/product-views.js', 'utf8');
 const responsive = readFileSync('src/transport/public/product-responsive.css', 'utf8');
+const context = readFileSync('src/transport/public/product-context.css', 'utf8');
+const pdf = readFileSync('src/application/blueprint-pdf.ts', 'utf8');
 
 describe('pre-tester hardening', () => {
   it('serves the public legal routes Google OAuth production requires', () => {
@@ -333,12 +335,12 @@ describe('production verification hotfix', () => {
     expect(app.slice(app.indexOf('function showPhaseHandoff'), app.indexOf('function showPhaseHandoff') + 900)).toContain('const next=nextPhase();');
   });
 
-  it('offers the Blueprint as a downloaded document, not a navigation', () => {
+  it('offers the Mapa estratégico as a downloaded document, not a navigation', () => {
     expect(app).toContain('id="blueprint-pdf"');
     expect(app).toContain('>Descargar PDF<');
     const handler = app.slice(app.indexOf("$('#blueprint-pdf')?.addEventListener"));
     const body = handler.slice(0, 1400);
-    expect(body).toContain("button.textContent='Preparando Blueprint…'");
+    expect(body).toContain("button.textContent='Preparando tu mapa…'");
     expect(body).toContain('/api/blueprint/pdf?brandId=');
     expect(body).toContain("credentials:'same-origin'");
     // The participant stays in Brandopolis: a blob download, then the object URL is released.
@@ -346,8 +348,72 @@ describe('production verification hotfix', () => {
     expect(body).toContain('URL.revokeObjectURL');
     expect(body).toContain('link.download=');
     // Failure is safe and retryable, and never carries transport detail.
-    expect(body).toContain('No pudimos preparar el Blueprint en este momento. Vuelve a intentarlo.');
+    expect(body).toContain('No pudimos preparar tu mapa estratégico en este momento. Vuelve a intentarlo.');
     expect(body).not.toContain('response.statusText');
+  });
+
+  it('names the connected view «Mapa estratégico» wherever a participant reads it', () => {
+    // «Blueprint» is industry jargon an entrepreneur should not need explained. One vocabulary is used
+    // everywhere it is read, including the exported document.
+    const nav = html.slice(html.indexOf('<nav id="journey"'), html.indexOf('</nav>', html.indexOf('<nav id="journey"')));
+    expect(nav).toContain('<button id="blueprint" class="secondary">Mapa estratégico</button>');
+    expect(nav, 'no jargon left in the navigation').not.toContain('Blueprint');
+    expect(app).toContain("enterView('#blueprint','Mapa estratégico')");
+    expect(app).toContain('Mapa estratégico · estrategia vigente');
+    expect(app).toContain('Mapa estratégico descargado.');
+    expect(pdf).toContain("pdf.text('Mapa estratégico de la marca'");
+    expect(pdf).toContain('Mapa estratégico · ${brand.name}');
+    // The heading that already read plainly is left alone.
+    expect(app).toContain('Una visión conectada de tu marca.');
+
+    // Routes, ids, endpoints and the download filename keep their technical names: no URL changes.
+    expect(app).toContain("$('#blueprint')");
+    expect(app).toContain('/api/blueprint/pdf?brandId=');
+    expect(app).toContain("api(`/api/blueprint?brandId=");
+    expect(pdf).toContain('Brandopolis-Blueprint-${slug}');
+  });
+
+  it('ranks the right panel: heading, section label, section item, then status', () => {
+    const market = app.slice(app.indexOf('<section class="context-market"'), app.indexOf('<details class="context-details"'));
+    // «Contexto del mercado» is a section label; «Entorno competitivo» is the section's item.
+    expect(market).toContain('<p class="context-section"');
+    expect(market).toContain('<h4 class="context-market-title">Entorno competitivo</h4>');
+    expect(market).toContain('<p class="context-market-status">');
+    // «Lo que ya decidiste» shares the same label treatment, so the two sections read as siblings.
+    expect(app).toContain('<summary><span class="context-section">Lo que ya decidiste</span>');
+    // Hierarchy comes from type and spacing, never from a heavy block.
+    const label = context.slice(context.indexOf('.context-section {'), context.indexOf('}', context.indexOf('.context-section {')));
+    expect(label).toContain('letter-spacing: 0.18em');
+    expect(label).toContain('font-weight: 700');
+    expect(label).not.toContain('background');
+    const details = context.slice(context.indexOf('.context-details {'), context.indexOf('}', context.indexOf('.context-details {')));
+    expect(details, 'the decisions section gets its own break').toContain('border-top: 1px solid');
+    // The market section is no longer a card competing with the panel heading.
+    const section = context.slice(context.indexOf('.context-market {'), context.indexOf('}', context.indexOf('.context-market {')));
+    expect(section).not.toContain('border-radius');
+    expect(section).not.toContain('background');
+    // And the decision count is untouched by any of it.
+    expect(app).toContain('${versions.length} de ${context.questions.length}');
+  });
+
+  it('leaves no interactive styling on the static market title', () => {
+    // THE DEFECT. It was a bare <button>, so base.css gave it background:var(--action-primary) and,
+    // on hover, var(--action-primary-hover). The local rule reset the resting state but not :hover,
+    // and the element was display:block;width:100%, so hovering painted a dark band across the panel.
+    // It is a status title, not navigation — the left navigation already goes there — so it is static.
+    expect(app, 'the rail title must not be a button').not.toContain('context-market-link');
+    expect(app).not.toContain('data-open-competitive');
+    expect(context).not.toContain('.context-market-link');
+    // No click wiring and no needless focus stop remain in the rail.
+    const rail = app.slice(app.indexOf('function renderContext()'), app.indexOf('function updateShell()'));
+    expect(rail).not.toContain('addEventListener');
+    expect(rail).not.toContain('aria-label="Abrir Entorno competitivo"');
+    // Nothing in the market section carries a hover rule at all.
+    const marketCss = context.slice(context.indexOf('.context-market {'));
+    expect(marketCss.slice(0, marketCss.indexOf('.context-lineage')), 'no hover treatment on static labels').not.toContain(':hover');
+    // The fix is structural, not a paint-over of the inherited rule.
+    const marketBlock = context.slice(context.indexOf('.context-market {'), context.indexOf('.context-lineage'));
+    expect(marketBlock).not.toContain('!important');
   });
 
   it('keeps migration files byte-stable so applied hashes stay valid', () => {
