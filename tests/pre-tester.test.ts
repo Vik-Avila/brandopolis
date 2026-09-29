@@ -223,7 +223,10 @@ describe('production verification hotfix', () => {
   it('reuses one journey model for every completion hand-off', () => {
     // The hand-off was reachable only from the decision-form submit, so completing the competitive
     // review left the participant with no next action at all.
-    expect(app).toContain('function showPhaseHandoff({done=');
+    // Copy is parameterised so every workflow reuses one hand-off; the signature grew an eyebrow and a
+    // secondary action when Entorno competitivo started using it.
+    expect(app).toContain('function showPhaseHandoff({');
+    expect(app.slice(app.indexOf('function showPhaseHandoff({'), app.indexOf('function showPhaseHandoff({') + 400)).toContain('done=');
     const competitive = app.slice(app.indexOf('async function showCompetitiveContext'), app.indexOf('async function showBrandContext'));
     expect(competitive).toContain('showPhaseHandoff({');
     // Canonical completion is the HUMAN-reviewed state, not "the AI finished generating".
@@ -251,6 +254,100 @@ describe('production verification hotfix', () => {
     expect(app).toContain('analytics.send(PILOT_EVENTS.possibilitiesRequested,{pilot_stage:stage})');
     for (const stage of ["stage:'initial_input'", "stage:'options'", "pilot_stage:'competitive_review'", "pilot_stage:'phase_done'", "pilot_stage:'next_phase'"])
       expect(app, stage).toContain(stage);
+  });
+
+  it('places Entorno competitivo under strategic preparation without making it a decision', () => {
+    // The public header has its own <nav>, so the closing tag must be found after this one opens.
+    const navStart = html.indexOf('<nav id="journey"');
+    const nav = html.slice(navStart, html.indexOf('</nav>', navStart));
+    const groups = [...nav.matchAll(/<p class="nav-group">([^<]+)<\/p>/g)].map(m => m[1]);
+    expect(groups).toEqual(['Preparación estratégica', 'Estrategia', 'Contexto y aprendizaje', 'Práctica y visión']);
+    // Research informs the four decisions, so it sits above them.
+    expect(nav.indexOf('Preparación estratégica')).toBeLessThan(nav.indexOf('id="competitive-context"'));
+    expect(nav.indexOf('id="competitive-context"')).toBeLessThan(nav.indexOf('>Estrategia<'));
+    // It is NOT a decision: no number, no data-module, so the Decision Spine keeps exactly four.
+    expect([...nav.matchAll(/data-module="/g)]).toHaveLength(4);
+    const competitive = nav.slice(nav.indexOf('id="competitive-context"'), nav.indexOf('</button>', nav.indexOf('id="competitive-context"')));
+    expect(competitive).not.toMatch(/<span>\d/);
+    expect(competitive).not.toContain('data-module');
+    // Every item survives the move, in its new home.
+    const learning = nav.slice(nav.indexOf('>Contexto y aprendizaje<'), nav.indexOf('>Práctica y visión<'));
+    expect(learning).toContain('id="brand-context"');
+    expect(learning).toContain('id="learning-loop"');
+    expect(learning).not.toContain('id="competitive-context"');
+    const practice = nav.slice(nav.indexOf('>Práctica y visión<'));
+    expect(practice).toContain('id="practice"');
+    expect(practice).toContain('id="blueprint"');
+  });
+
+  it('mirrors one AI activity state beside the control that started it', () => {
+    // The global panel sits at the top of the workspace, so asking for possibilities further down the
+    // page looked like a freeze. This is a second VIEW of the same state, never a second process.
+    expect(app).toContain('id="possibilities-activity"');
+    expect(app).toContain('class="local-activity"');
+    const block = app.slice(app.indexOf('id="possibilities-activity"'), app.indexOf('id="possibilities-activity"') + 200);
+    expect(block).toContain('aria-live="polite"');
+    expect(block).toContain('role="status"');
+    // Driven by the existing lifecycle, so no extra request, timer or generation state exists.
+    for (const hook of ['const activityStart=', 'const activityStep=', 'const activityDone=', 'const activityFail='])
+      expect(app.slice(app.indexOf(hook), app.indexOf(hook) + 160), hook).toContain('paintMirror(');
+    expect(app).toContain('setActivityMirror($(\'#possibilities-activity\'))');
+    expect(app.split("api('/api/recommendations/generate'").length - 1, 'still one request site').toBe(1);
+    // The button says what is happening rather than only spinning.
+    expect(app).toContain("cta.textContent='Generando posibilidades…'");
+    // And the result is brought into view instead of rendering off-screen.
+    expect(app).toContain('function revealRecommendation()');
+    expect(app).toContain('if(fromDraft)revealRecommendation();');
+  });
+
+  it('reports competitive context separately from the four decisions', () => {
+    expect(app).toContain('class="context-market"');
+    expect(app).toContain('Contexto del mercado');
+    // Status words come from one canonical vocabulary.
+    expect(app).toContain("NONE:'Sin investigar'");
+    expect(app).toContain("PENDING:'Pendiente de revisión'");
+    expect(app).toContain("REVIEWED:'Revisado'");
+    // Derived from stored state and the open round, never from what the screen happens to show.
+    const derive = app.slice(app.indexOf('function competitiveStatus()'), app.indexOf('function competitiveStatus()') + 700);
+    expect(derive).toContain('competitiveFindingAccepted');
+    expect(derive).toContain('competitiveFindingRejected');
+    expect(derive).toContain('competitiveEvidence()');
+    expect(derive).toContain('competitiveRejectedClaims.size');
+    // Preparation, not a decision: the X de 4 count is computed from approved versions alone.
+    expect(app).toContain('No cuenta como decisión.');
+    const count = app.slice(app.indexOf('<span class="context-count">'), app.indexOf('<span class="context-count">') + 160);
+    expect(count).toContain('${versions.length} de ${context.questions.length}');
+    expect(count).not.toContain('competitive');
+  });
+
+  it('gives the competitive hand-off its own words while reusing the journey', () => {
+    const handoff = app.slice(app.indexOf('function showPhaseHandoff({'), app.indexOf('function showPhaseHandoff({') + 400);
+    for (const parameter of ['eyebrow=', 'done=', 'complete=', 'secondaryLabel=', 'secondaryAction='])
+      expect(handoff, parameter).toContain(parameter);
+    const competitive = app.slice(app.indexOf('async function showCompetitiveContext'), app.indexOf('async function showBrandContext'));
+    expect(competitive).toContain("eyebrow:'Contexto competitivo revisado'");
+    expect(competitive).toContain("secondaryLabel:'Revisar contexto'");
+    expect(competitive).toContain('secondaryAction:showBrandContext');
+    // One journey model still decides where «Continuar» goes.
+    expect(app.split('function nextPhase()').length - 1).toBe(1);
+    expect(app.slice(app.indexOf('function showPhaseHandoff'), app.indexOf('function showPhaseHandoff') + 900)).toContain('const next=nextPhase();');
+  });
+
+  it('offers the Blueprint as a downloaded document, not a navigation', () => {
+    expect(app).toContain('id="blueprint-pdf"');
+    expect(app).toContain('>Descargar PDF<');
+    const handler = app.slice(app.indexOf("$('#blueprint-pdf')?.addEventListener"));
+    const body = handler.slice(0, 1400);
+    expect(body).toContain("button.textContent='Preparando Blueprint…'");
+    expect(body).toContain('/api/blueprint/pdf?brandId=');
+    expect(body).toContain("credentials:'same-origin'");
+    // The participant stays in Brandopolis: a blob download, then the object URL is released.
+    expect(body).toContain('URL.createObjectURL');
+    expect(body).toContain('URL.revokeObjectURL');
+    expect(body).toContain('link.download=');
+    // Failure is safe and retryable, and never carries transport detail.
+    expect(body).toContain('No pudimos preparar el Blueprint en este momento. Vuelve a intentarlo.');
+    expect(body).not.toContain('response.statusText');
   });
 
   it('keeps migration files byte-stable so applied hashes stay valid', () => {

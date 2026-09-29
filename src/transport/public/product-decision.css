@@ -1049,3 +1049,67 @@ details[open] > summary::after {
   flex: 1 1 220px;
   margin: 0;
 }
+
+/* Local mirror of the global AI activity, rendered beside the control that started the work. The
+   panel at the top of the workspace is easy to miss from a decision further down the page, which
+   made a running generation look like a freeze. Same state, shown where the participant is looking. */
+.local-activity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 4px;
+  padding: 10px 14px;
+  border: 1px solid rgba(7, 61, 45, 0.16);
+  border-radius: 12px;
+  background: rgba(7, 61, 45, 0.05);
+  color: var(--text-primary);
+}
+
+.local-activity[hidden] {
+  display: none;
+}
+
+.local-activity.is-complete {
+  border-color: rgba(7, 61, 45, 0.3);
+  background: rgba(7, 61, 45, 0.08);
+}
+
+.local-activity-mark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(7, 61, 45, 0.12);
+  color: var(--bp-brand-emerald-deep);
+  font-size: 14px;
+}
+
+.local-activity.is-active .local-activity-mark {
+  animation: local-activity-pulse 1.4s ease-in-out infinite;
+}
+
+.local-activity-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--bp-brand-emerald-deep);
+}
+
+.local-activity-detail {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+@keyframes local-activity-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .local-activity.is-active .local-activity-mark {
+    animation: none;
+  }
+}

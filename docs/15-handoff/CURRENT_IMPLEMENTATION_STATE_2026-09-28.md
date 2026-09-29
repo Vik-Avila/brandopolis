@@ -129,6 +129,31 @@ capacidad (`capability_events`). **No instrumentado todavía**: `account_created
 `email_delivery_failed`. Cualquier métrica de evidencia que dependa de ellos debe declararse
 **no disponible** hasta que existan; no se inventan cifras.
 
+## 6.bis Entorno competitivo es preparación, no una quinta decisión · 2026-09-29
+
+La investigación competitiva **informa** a Cliente principal, Modelo de valor y Posicionamiento, así
+que vive en la navegación bajo **PREPARACIÓN ESTRATÉGICA**, por encima de «Estrategia». Esto es
+arquitectura de información, no un cambio de dominio:
+
+- **No es una decisión.** No tiene número, no tiene `data-module`, no entra en la Decision Spine y
+  **no suma al conteo «X de 4»**. Las métricas de activación no cambian.
+- En **Contexto vigente** aparece en su propio bloque, «Contexto del mercado», con estado
+  **Sin investigar · Pendiente de revisión · Revisado**, separado de «Lo que ya decidiste».
+- El estado se **deriva de estado canónico**, no de lo que muestre la pantalla: los hallazgos
+  incorporados son evidencia del Brand Context y los descartados son rechazos registrados; ambos
+  sobreviven a una recarga. Los candidatos sin resolver existen sólo dentro de la ronda que los
+  produjo — nunca son estrategia — así que el estado almacenado se lee como *Revisado* o
+  *Sin investigar*, jamás como una revisión pendiente sin nada que revisar.
+- Al resolver **todos** los hallazgos se muestra la entrega «Contexto competitivo revisado», cuyo
+  destino sale de `nextPhase()`, el recorrido canónico: no existe una segunda ordenación de fases.
+
+La navegación se compactó para que «Mi aprendizaje» y «Blueprint estratégico» no queden fuera de
+vista al añadir un cuarto grupo. **No se eliminó ni se colapsó ningún elemento**: el ahorro es de
+espaciado, y el objetivo táctil de 44px se conserva donde el puntero puede ser grueso (se reduce a
+36px sólo bajo `(pointer: fine)`). Medido: a **1366×768 el Blueprint entra sin scroll**.
+
+Exportación del Blueprint en PDF: [BLUEPRINT_PDF_EXPORT](BLUEPRINT_PDF_EXPORT.md).
+
 ## 7. Congelación del producto PILOT
 
 > **El workspace PILOT está funcionalmente completo para esta fase de validación.**

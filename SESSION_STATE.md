@@ -1,5 +1,57 @@
 # Session State
 
+Current phase: **PRE-TESTER UX MICRO-HOTFIX** (2026-09-29). The previous production hotfix is already
+deployed and was verified manually. This pass is uncommitted.
+
+DELIVERED HERE:
+
+1. **Local inference feedback.** The global activity panel sits at the top of the workspace, so asking
+   for possibilities from a decision further down the page looked like a freeze. A local mirror of the
+   SAME state now renders beside the control: `activityStart/Step/Done/Fail` paint both. It is a second
+   view, never a second process — no extra request, timer or generation state, and the client still has
+   exactly one `/api/recommendations/generate` call site. The button disables and reads «Generando
+   posibilidades…»; the block announces through `role="status"` + `aria-live="polite"` rather than a
+   spinner alone; on completion the options are revealed without a jarring jump, honouring
+   `prefers-reduced-motion`. Failure clears the state, keeps the draft and leaves retry available.
+2. **Entorno competitivo is strategic preparation.** Moved out of «Contexto y aprendizaje» into a new
+   first group, PREPARACIÓN ESTRATÉGICA, above the four decisions it informs. It is NOT a decision: no
+   number, no `data-module`; the Decision Spine still has four, and neither the «X de 4» count nor the
+   activation metrics changed.
+3. **Market status in Contexto vigente**, in its own block and deliberately outside the decision count.
+   Sin investigar / Pendiente de revisión / Revisado, derived from canonical state: incorporated
+   findings are Brand Context evidence, discarded ones are recorded rejections, and both survive a
+   reload. Unresolved candidates live only inside the round that produced them — they are never
+   strategy — so stored state reads as Revisado or Sin investigar, never a pending review with nothing
+   left to review. The server derives the same status for the PDF from stored state alone.
+   Rail status loads **without blocking the workspace**: `refresh()` still issues one request and the
+   rail repaints when the extra data arrives. An earlier version chained that request inside
+   `refresh()` — the hottest path, run after every mutation — which delayed each subsequent render
+   enough that, on a loaded machine, a click could be swallowed. `phase10a.spec.ts` caught it and the
+   visual suite was not relaxed.
+4. **Competitive hand-off in its own words**: «Contexto competitivo revisado», «Continuar a <next
+   pending decision>» from `nextPhase()` (one journey model, no second ordering), «Revisar contexto»
+   as the secondary action.
+5. **Denser sidebar.** The fourth group pushed «Mi aprendizaje» and «Blueprint estratégico» below the
+   fold at laptop heights. Nothing was removed or collapsed; the savings are spacing only, and the 44px
+   touch target is kept wherever a coarse pointer is possible (36px only under `(pointer: fine)`).
+   Measured: at 1366×768 the Blueprint now fits with no sidebar scrolling.
+6. **Blueprint PDF export**, generated server-side from canonical state — see
+   [BLUEPRINT_PDF_EXPORT](docs/15-handoff/BLUEPRINT_PDF_EXPORT.md). Only active versions; AI proposals
+   are never exported as decisions; hypotheses are printed under an explicit «not facts» heading;
+   discarded findings are absent; missing sections say «Aún no definido»; the demo brand is labelled.
+   No new dependency: `pdf-writer.ts` is a minimal writer using the standard Helvetica fonts, with no
+   headless browser. Authorization is `scope()` unchanged — foreign workspace 404, unassigned member
+   403, no session 401 — and there is no public or temporary URL.
+
+Gate (2026-09-29): typecheck/lint PASS; pnpm test 119/119 (9 new); test:e2e 75/75 (5 new browser
+specs), run project by project because one full invocation exhausts this machine's memory;
+test:visual 10 passed + 1 skipped; focused browser verification 193/193 at
+390/768/1366×768/1440×900/1920×1080. No migration, no schema change. Foundation, UI and Brand Master
+validators NOT RUN: no Python interpreter on this machine.
+
+---
+
+
 Current phase: **FINAL FUNCTIONAL PRE-TESTER HOTFIX** (2026-09-29). The previous production hotfix
 is already deployed and was verified manually — the walkthrough showed the populated CoffeePolis, the
 corrected intake layout, working legal routes and the visible possibilities CTA. No production commit

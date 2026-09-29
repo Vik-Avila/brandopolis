@@ -1257,3 +1257,17 @@
 .document-claim-review-note {
   margin-top: 12px;
 }
+
+/* Blueprint export lives with the view heading, where the strategic document it produces belongs. */
+.blueprint-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin: 14px 0 18px;
+}
+
+.blueprint-actions .hint {
+  margin: 0;
+  flex: 1 1 260px;
+}

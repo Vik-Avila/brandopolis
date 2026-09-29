@@ -473,3 +473,42 @@
 .context-cover::after {
   display: none !important;
 }
+
+/* Market context: strategic preparation, shown above the decisions and deliberately outside their
+   count. Research informs the four decisions; it is never a fifth one. */
+.context-market {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid rgb(226, 223, 213);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.context-market .eyebrow {
+  margin: 0 0 6px;
+}
+
+.context-market-link {
+  display: block;
+  width: 100%;
+  margin: 0 0 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--bp-brand-emerald-deep);
+  cursor: pointer;
+  min-height: 0;
+}
+
+.context-market-link:hover {
+  text-decoration: underline;
+}
+
+.context-market .hint {
+  margin: 6px 0 0;
+  font-size: 11px;
+}

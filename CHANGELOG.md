@@ -14,6 +14,58 @@ Depends on: —
 
 # Registro
 
+## Micro-hotfix de UX pre-tester · 2026-09-29
+
+Cuatro ajustes de producto sobre el PILOT ya verificado. Sin migración y sin tocar esquema, auth,
+intake, legales, Admin, la estrategia demo de CoffeePolis, las exclusiones de métricas demo, la
+política de acceso ni GA4.
+
+- **La inferencia ahora se ve donde se pide.** El panel global de actividad vive arriba del workspace,
+  así que pedir posibilidades desde una decisión más abajo parecía un cuelgue: clic, nada, y minutos
+  después aparecían opciones. Se añade un **espejo local del MISMO estado** junto al control:
+  `activityStart/Step/Done/Fail` pintan los dos. Es una segunda **vista**, nunca un segundo proceso —
+  no hay petición, temporizador ni estado de generación extra, y en el cliente sigue habiendo **un
+  único punto de llamada** a `/api/recommendations/generate`. El botón se deshabilita y dice
+  «Generando posibilidades…»; el bloque local anuncia con `role="status"` y `aria-live="polite"`, no
+  sólo con una animación. Al terminar, las opciones se traen a la vista sin saltos bruscos y
+  respetando `prefers-reduced-motion`.
+- **Entorno competitivo pasa a ser preparación estratégica.** Estaba bajo «Contexto y aprendizaje», lo
+  que lo hacía parecer trabajo posterior a decidir, cuando en realidad informa a Cliente principal,
+  Modelo de valor y Posicionamiento. Ahora encabeza la navegación bajo **PREPARACIÓN ESTRATÉGICA**.
+  **No es una decisión**: no lleva número ni `data-module`, la Decision Spine sigue teniendo cuatro y
+  ni el conteo «X de 4» ni las métricas de activación cambian.
+- **Contexto vigente separa el mercado de las decisiones.** Un bloque propio, «Contexto del mercado»,
+  con el estado del Entorno competitivo —**Sin investigar · Pendiente de revisión · Revisado**—
+  derivado de estado canónico: los hallazgos incorporados son evidencia del Brand Context y los
+  descartados son rechazos registrados; ambos sobreviven a una recarga. Los candidatos sin resolver
+  existen sólo dentro de la ronda que los produjo, que es justamente el punto: nunca son estrategia.
+  El estado del mercado se carga **sin bloquear el workspace**: `refresh()` sigue haciendo una sola
+  petición y repinta sólo el rail cuando llega. Una primera versión encadenaba la petición dentro de
+  `refresh()` —la ruta más caliente de la aplicación, que corre tras cada mutación— y retrasaba cada
+  render posterior lo suficiente para que, con la máquina cargada, un clic quedara sin efecto; lo
+  detectó `phase10a.spec.ts` y el suite visual no se relajó.
+- **La entrega del Entorno competitivo habla su propio idioma**: «Contexto competitivo revisado», con
+  «Continuar a <siguiente decisión pendiente>» derivado de `nextPhase()` —el recorrido canónico, sin
+  una segunda ordenación— y «Revisar contexto» como acción secundaria.
+- **Navegación más compacta.** El cuarto grupo dejaba «Mi aprendizaje» y «Blueprint estratégico» fuera
+  de vista en pantallas de portátil. **No se quitó ni se colapsó nada**: el ahorro viene del espaciado
+  (padding del panel, márgenes entre ítems, separación entre grupos) y el objetivo táctil de 44px se
+  conserva donde el puntero puede ser grueso, reduciéndose a 36px sólo bajo `(pointer: fine)`. Medido:
+  a **1366×768 el Blueprint entra sin scroll** (borde inferior en 664px de 768).
+- **Blueprint estratégico se puede descargar en PDF.** Documento estratégico generado en el servidor
+  desde el estado canónico vigente, **no una captura**. Ver
+  [BLUEPRINT_PDF_EXPORT](docs/15-handoff/BLUEPRINT_PDF_EXPORT.md). Sólo la versión vigente de cada
+  decisión; una propuesta de IA nunca aparece como decisión; las hipótesis se imprimen bajo «SIN
+  VALIDAR, NO SON HECHOS»; los hallazgos descartados no aparecen; lo que no está definido dice «Aún no
+  definido». **Sin dependencia nueva**: `src/application/pdf-writer.ts` es un escritor mínimo con las
+  fuentes estándar Helvetica, sin navegador headless. Autorización: la de `scope()`, **sin cambios**.
+
+- Pruebas: typecheck/lint PASS; pnpm test 119/119 (9 nuevas, incluida la exportación por HTTP releída
+  con `pdfjs-dist`); test:e2e 75/75 (5 especificaciones nuevas de navegador), ejecutado proyecto
+  por proyecto porque una sola invocación agota la memoria de esta máquina; test:visual 10 pass + 1
+  skip; verificación en navegador **193/193** a 390/768/1366×768/1440×900/1920×1080. **Sin migración.**
+
+
 ## Hotfix funcional pre-tester · 2026-09-29
 
 Segunda verificación humana en producción. **El hotfix de producción anterior ya está desplegado y se

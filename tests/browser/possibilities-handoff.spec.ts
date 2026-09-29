@@ -169,7 +169,8 @@ test('competitive review hands off only once the human has resolved every findin
   await expect(page.locator('[data-competitive-reject]').first()).toBeEnabled();
   await page.locator('[data-competitive-reject]').first().click();
   await expect(page.locator('.phase-handoff')).toHaveCount(1);
-  await expect(page.locator('.phase-handoff')).toContainText('entorno competitivo');
+  // The hand-off speaks this workflow's language (the eyebrow is uppercased by CSS only).
+  await expect(page.locator('.phase-handoff')).toContainText(/contexto competitivo revisado/i);
   await expect(page.locator('.phase-handoff')).toBeVisible();
 
   // The destination comes from the canonical journey: no decision is approved on this brand yet, so
@@ -179,10 +180,11 @@ test('competitive review hands off only once the human has resolved every findin
   await page.locator('#phase-next').click();
   await expect(page.locator('#decision')).toContainText('Por decidir');
 
-  // "Revisar avance" works from this surface too, with no dependency on the drawer.
+  // The secondary action works from this surface too, with no dependency on the drawer. For the
+  // competitive review it is «Revisar contexto», which opens the Brand Context it just fed.
   await navigate(page, 'Entorno competitivo');
-  await expect(page.locator('#phase-review')).toHaveCount(1);
+  await expect(page.locator('#phase-review')).toHaveText('Revisar contexto');
   await page.locator('#phase-review').click();
-  await expect(page.locator('#decision')).toHaveAttribute('data-view', 'home');
+  await expect(page.locator('#decision')).toHaveAttribute('data-view', 'brand-context');
   expect(errors).toEqual([]);
 });

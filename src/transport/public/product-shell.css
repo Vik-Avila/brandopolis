@@ -194,11 +194,12 @@ body.app .public-nav {
   left: 0px;
   bottom: 0px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   z-index: 20;
   top: var(--shell-height);
   width: var(--sidebar-width);
   background: linear-gradient(rgba(247, 244, 237, 0.98), rgba(241, 238, 229, 0.95));
-  padding: 24px 16px;
+  padding: 16px 16px 20px;
   border-right: 1px solid rgb(217, 215, 205);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
@@ -219,8 +220,8 @@ body.app .public-nav {
   font-size: 13px;
   min-height: 44px;
   border-radius: 7px;
-  padding: 10px 12px;
-  margin: 4px 0px;
+  padding: 8px 12px;
+  margin: 1px 0px;
   font-weight: 500;
   color: rgb(68, 78, 71);
   gap: 8px;
@@ -268,21 +269,29 @@ body.app .public-nav {
 }
 
 #journey #home {
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 .nav-group {
   text-transform: uppercase;
   font-weight: 700;
-  margin: 27px 12px 10px;
+  margin: 14px 12px 5px;
   font-size: 10.5px;
   color: var(--text-secondary);
   letter-spacing: 0.15em;
 }
 
+/* A precise pointer does not need a 44px target, and four groups do not fit at laptop heights with
+   one. Coarse pointers keep the full target, so the drawer on a phone is unchanged. */
+@media (pointer: fine) {
+  #journey button {
+    min-height: 36px;
+  }
+}
+
 .nav-principle {
-  margin: 38px 12px 16px;
-  padding-top: 20px;
+  margin: 18px 12px 4px;
+  padding-top: 12px;
   border-top: 1px solid rgb(217, 215, 205);
   display: flex;
   align-items: flex-start;
@@ -302,6 +311,24 @@ body.app .public-nav {
 .nav-principle strong {
   color: rgb(7, 61, 45);
   font-weight: 400;
+}
+
+@media (max-height: 860px) {
+  .nav-principle {
+    margin-top: 12px;
+    padding-top: 10px;
+    gap: 10px;
+  }
+
+  .nav-principle img {
+    width: 20px;
+    height: 25px;
+  }
+
+  .nav-principle p {
+    font-size: 13px;
+    line-height: 1.45;
+  }
 }
 
 #nav-backdrop {

@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { Engine } from '../application/engine.js';
 import { contentSecurityPolicy,ga4MeasurementId } from './analytics.js';
+import { buildBlueprintPdf,blueprintFilename } from '../application/blueprint-pdf.js';
 import { AppError, type CommitCommand } from '../domain/contracts.js';
 import type { PilotBoundary } from './pilot-auth.js';
 import type { CompetitiveResearchService } from './competitive-research.js';
@@ -535,6 +536,39 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         }
         if(path==='/api/practice') return send(res,200,await engine.practice(token));
         if(path==='/api/blueprint') return send(res,200,await engine.blueprint(token,string(url.searchParams.get('brandId'))));
+        if(path==='/api/blueprint/pdf') {
+          // Every read below is the authorized, workspace-scoped one the Blueprint view already uses,
+          // so the export carries exactly the strategy this participant can already see — no more.
+          const brandId=string(url.searchParams.get('brandId'));
+          const [projection,brand,rejections]=await Promise.all([
+            engine.blueprint(token,brandId),
+            engine.brandDossier(token,brandId),
+            engine.competitiveRejections(token,brandId)
+          ]);
+          // Canonical competitive status from stored state alone: incorporated findings are evidence,
+          // discarded ones are recorded rejections. Unresolved candidates live only inside the session
+          // that produced them and are never strategy, so they cannot appear here.
+          const incorporated=projection.evidence.filter(item=>{
+            const row=item as {provenance?:string;claim?:string};
+            return String(row.provenance??'').toLowerCase().includes('entorno competitivo')
+              ||String(row.claim??'').startsWith('Entorno competitivo —');
+          });
+          const competitiveStatus=incorporated.length||(rejections.claims?.length??0)?'Revisado':'Sin investigar';
+          const generatedAt=new Date();
+          const pdf=buildBlueprintPdf({
+            brand,
+            context:projection as unknown as Parameters<typeof buildBlueprintPdf>[0]['context'],
+            competitiveStatus,
+            generatedAt
+          });
+          res.writeHead(200,{
+            'Content-Type':'application/pdf',
+            'Content-Length':String(pdf.byteLength),
+            'Content-Disposition':`attachment; filename="${blueprintFilename(brand.name,generatedAt)}"`,
+            'Cache-Control':'no-store'
+          });
+          return res.end(Buffer.from(pdf));
+        }
         if(path==='/api/brands') return send(res,200,await engine.listBrands(token));
         if(path==='/api/context') return send(res,200,await engine.context(token,string(url.searchParams.get('brandId'))));
       }

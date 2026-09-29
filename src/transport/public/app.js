@@ -34,7 +34,76 @@ let competitiveRejectedClaims=new Set();
 let competitiveResearchBrandId=null;
 /** Brand whose competitive review has already reported completion, so a re-render cannot re-report. */
 let competitiveCompletionReported=null;
+/** Brand whose rejected competitive claims are already loaded, so the status is canonical anywhere. */
+let competitiveRejectionsBrandId=null;
+
+const COMPETITIVE_STATUS=Object.freeze({
+ NONE:'Sin investigar',
+ PENDING:'Pendiente de revisión',
+ REVIEWED:'Revisado'
+});
+
+/** Evidence carrying the competitive provenance, i.e. findings the participant actually incorporated. */
+function competitiveEvidence(){
+ return (context?.evidence??[]).filter(item=>
+  String(item?.provenance??'').toLowerCase().includes('entorno competitivo')
+  ||String(item?.claim??'').startsWith('Entorno competitivo —'));
+}
+
+/**
+ * Competitive status from canonical state, never from what the screen happens to show.
+ *
+ *  - REVIEWED  research produced findings and every one is resolved: incorporated ones are evidence
+ *              in the Brand Context, discarded ones are recorded rejections. Both survive a reload.
+ *  - PENDING   a research round is open in this session with findings still awaiting the human.
+ *  - NONE      nothing has been researched and nothing resolved.
+ *
+ * Unresolved candidates exist only inside the round that produced them — they are never persisted as
+ * strategy, which is the point — so after a reload the honest reading of stored state is REVIEWED or
+ * NONE, never a pending review that no longer has anything to review.
+ */
+function competitiveStatus(){
+ const live=competitiveResearchBrandId===brandId?competitiveResearchResult:null;
+ const findings=live?.findings??[];
+ const unresolved=findings.filter(f=>!competitiveFindingAccepted(f)&&!competitiveFindingRejected(f));
+ if(unresolved.length)return COMPETITIVE_STATUS.PENDING;
+ if(findings.length||competitiveEvidence().length||competitiveRejectedClaims.size)return COMPETITIVE_STATUS.REVIEWED;
+ return COMPETITIVE_STATUS.NONE;
+}
+
+/** Loads the recorded rejections once per brand so the status is right even before the view opens. */
+async function ensureCompetitiveRejections(){
+ if(!brandId||competitiveRejectionsBrandId===brandId)return false;
+ try{
+  const rejected=await api(`/api/competitive/rejections?brandId=${encodeURIComponent(brandId)}`);
+  competitiveRejectedClaims=new Set(rejected.claims??[]);
+  competitiveRejectionsBrandId=brandId;
+  return true;
+ }catch{/* the status falls back to what the Brand Context already proves; never block a render */}
+ return false;
+}
+/** Element mirroring the global activity panel beside whichever control started the work. */
+let activityMirror=null;
+
+/** Points the mirror at a host element (or clears it). The caller owns the element's lifetime. */
+const setActivityMirror=element=>{activityMirror=element??null;};
+
+/** Writes the current activity state into the mirror. One state, rendered in two places. */
+const paintMirror=(state,title,detail)=>{
+ if(!activityMirror?.isConnected){activityMirror=null;return;}
+ activityMirror.hidden=state==='idle';
+ activityMirror.classList.toggle('is-active',state==='active');
+ activityMirror.classList.toggle('is-complete',state==='complete');
+ const mark=activityMirror.querySelector('.local-activity-mark');
+ if(mark)mark.textContent=state==='complete'?'✓':'✦';
+ const heading=activityMirror.querySelector('.local-activity-title');
+ if(heading)heading.textContent=title??'';
+ const body=activityMirror.querySelector('.local-activity-detail');
+ if(body)body.textContent=detail??'';
+};
+
 const activityStart=(title,detail)=>{
+ paintMirror('active',title,detail);
  const box=$('#ai-activity');
  if(!box)return;
  clearTimeout(activityTimer);
@@ -48,6 +117,7 @@ const activityStart=(title,detail)=>{
 };
 
 const activityStep=(title,detail)=>{
+ paintMirror('active',title,detail);
  const box=$('#ai-activity');
  if(!box||box.hidden)return;
  $('#ai-activity-title').textContent=title;
@@ -55,6 +125,7 @@ const activityStep=(title,detail)=>{
 };
 
 const activityDone=(title,detail)=>{
+ paintMirror('complete',title,detail);
  const box=$('#ai-activity');
  if(!box)return;
  clearTimeout(activityTimer);
@@ -68,6 +139,7 @@ const activityDone=(title,detail)=>{
 };
 
 const activityFail=()=>{
+ paintMirror('idle');
  const box=$('#ai-activity');
  if(!box)return;
  clearTimeout(activityTimer);
@@ -708,7 +780,16 @@ async function showIntake(){
  },event.submitter));
 }
 async function authenticated() {const directModule=new URL(location.href).searchParams.has('module');document.body.classList.add('app');for(const id of ['#gateway','#request-access-view'])$(id).hidden=true;$('#login').hidden=true;document.body.classList.remove('booting');user=await api('/api/me');$('#workspace').hidden=false;$('#logout').hidden=false;$('#menu').hidden=false;$('#new-brand').hidden=false;$('#mode-badge').hidden=false;await loadBrands(new URL(location.href).searchParams.get('brand'));if(!directModule&&context)await showHome();}
-async function refresh(){if(brandId)context=await api(`/api/context?brandId=${encodeURIComponent(brandId)}`);else context=null;render();}
+/**
+ * Reloads the brand context and repaints. Deliberately ONE request: this runs after every mutation,
+ * so anything added here delays the whole workspace. Market status is auxiliary rail information and
+ * is fetched WITHOUT blocking the render, repainting only the rail when it arrives.
+ */
+async function refresh(){
+ if(brandId)context=await api(`/api/context?brandId=${encodeURIComponent(brandId)}`);else context=null;
+ render();
+ if(brandId)ensureCompetitiveRejections().then(loaded=>{if(loaded&&context)renderContext();});
+}
 function render() {
   setNavActive();$('#decision').dataset.view='decision';updateShell();
   document.querySelectorAll('[data-module]').forEach(b=>{if(b.dataset.module===selected)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
@@ -724,7 +805,7 @@ function render() {
   const versions=context.versions.filter(v=>v.decisionId===d?.id).sort((a,b)=>b.sequence-a.sequence);
   const why=user.learningMoments?.[q.module]?.why;
   const reviewChoices='<h3 id="review-choice-title" tabindex="-1">¿Qué quieres hacer?</h3><div class="review-options" role="group" aria-label="Opciones de revisión"><button type="button" id="keep" class="option-card" aria-pressed="false" aria-label="Mantener sin cambios" aria-describedby="keep-hint"><strong>Mantener sin cambios</strong><span id="keep-hint">La decisión sigue siendo válida con el nuevo contexto.</span></button><button type="button" id="modify" class="option-card" aria-pressed="false" aria-label="Modificar" aria-describedby="modify-hint"><strong>Modificar</strong><span id="modify-hint">Ajustas la decisión a lo que cambió.</span></button></div><p class="hint" id="review-choice-hint">Elige una opción para confirmar la revisión. Editar tu decisión cuenta como «Modificar».</p>';
-  $('#decision').innerHTML=`<p class="eyebrow">${escape(labels[selected])}</p><h2>${escape(q.text)}</h2><p class="decision-meta">${stateBadge(v,reviews.length>0)}${v?`<span>Última actualización: ${escape(fmt(v.approvedAt))}</span><span>Decidido por: ${v.actorUserId===user.userId?'Tú':'Persona autorizada'}</span>`:''}</p>${why?`<p class="why"><span class="label">Por qué es importante:</span> ${escape(why)}</p>`:''}${pending?'<section class="review"><h3>Impacto pendiente</h3><p>La decisión se guardó. Falta calcular su efecto antes de otro cambio.</p><button id="retry-impact">Reintentar impacto</button></section>':''}${warn}${draft?`<form id="decision-form" class="decision-form">${draft.reviewToken?reviewChoices:''}<label for="option">Tu decisión</label><textarea id="option" name="selectedOption" required maxlength="12000" aria-describedby="form-hint">${escape(draft.selectedOption)}</textarea><p class="input-assist"><button type="button" id="possibilities" class="secondary">Ayúdame a generar posibilidades</button><span class="hint">Opcional. Escribe tu propia respuesta o pide posibilidades y decide cuál incorporar.</span></p><label for="rationale">¿Por qué eliges esta opción?</label><textarea id="rationale" name="rationale" required maxlength="12000">${escape(draft.rationale)}</textarea><div class="form-footer"><p class="hint" id="form-hint">${draft.reviewToken?'Nada se reescribe sin tu confirmación: «Confirmar revisión» registra una nueva versión y conserva las anteriores.':'Tu elección y tu criterio dan forma a la estrategia. Aprobar crea una versión nueva y conserva las anteriores.'}</p><div class="actions"><button id="cancel" type="button" class="secondary">Cancelar</button><button type="submit" id="submit-decision" ${draft.reviewToken?'disabled aria-describedby="review-choice-hint"':''}>${draft.reviewToken?'Confirmar revisión':'Aprobar decisión'}</button></div></div></form>`:`${v?`<p class="current">${escape(v.selectedOption)}</p><p class="rationale"><span class="label">Por qué:</span> ${escape(v.rationale)}</p>`:`<p class="empty">${locked?'Aprueba primero tu cliente prioritario.':'Todavía no hay una decisión aprobada. Define tu elección y explica tu criterio.'}</p>`}`}<div class="actions">${!draft&&!reviews.length?editButton:''}<button id="reload" class="tertiary">Revisar versión más reciente</button>${sessionStorage.getItem(`draft:${user.userId}:${brandId}:${selected}`)?'<button id="restore-draft" class="tertiary">Ver borrador conservado</button>':''}</div>`;
+  $('#decision').innerHTML=`<p class="eyebrow">${escape(labels[selected])}</p><h2>${escape(q.text)}</h2><p class="decision-meta">${stateBadge(v,reviews.length>0)}${v?`<span>Última actualización: ${escape(fmt(v.approvedAt))}</span><span>Decidido por: ${v.actorUserId===user.userId?'Tú':'Persona autorizada'}</span>`:''}</p>${why?`<p class="why"><span class="label">Por qué es importante:</span> ${escape(why)}</p>`:''}${pending?'<section class="review"><h3>Impacto pendiente</h3><p>La decisión se guardó. Falta calcular su efecto antes de otro cambio.</p><button id="retry-impact">Reintentar impacto</button></section>':''}${warn}${draft?`<form id="decision-form" class="decision-form">${draft.reviewToken?reviewChoices:''}<label for="option">Tu decisión</label><textarea id="option" name="selectedOption" required maxlength="12000" aria-describedby="form-hint">${escape(draft.selectedOption)}</textarea><p class="input-assist"><button type="button" id="possibilities" class="secondary">Ayúdame a generar posibilidades</button><span class="hint">Opcional. Escribe tu propia respuesta o pide posibilidades y decide cuál incorporar.</span></p><div id="possibilities-activity" class="local-activity" role="status" aria-live="polite" aria-atomic="true" hidden><span class="local-activity-mark" aria-hidden="true">✦</span><div><strong class="local-activity-title"></strong><p class="local-activity-detail"></p></div></div><label for="rationale">¿Por qué eliges esta opción?</label><textarea id="rationale" name="rationale" required maxlength="12000">${escape(draft.rationale)}</textarea><div class="form-footer"><p class="hint" id="form-hint">${draft.reviewToken?'Nada se reescribe sin tu confirmación: «Confirmar revisión» registra una nueva versión y conserva las anteriores.':'Tu elección y tu criterio dan forma a la estrategia. Aprobar crea una versión nueva y conserva las anteriores.'}</p><div class="actions"><button id="cancel" type="button" class="secondary">Cancelar</button><button type="submit" id="submit-decision" ${draft.reviewToken?'disabled aria-describedby="review-choice-hint"':''}>${draft.reviewToken?'Confirmar revisión':'Aprobar decisión'}</button></div></div></form>`:`${v?`<p class="current">${escape(v.selectedOption)}</p><p class="rationale"><span class="label">Por qué:</span> ${escape(v.rationale)}</p>`:`<p class="empty">${locked?'Aprueba primero tu cliente prioritario.':'Todavía no hay una decisión aprobada. Define tu elección y explica tu criterio.'}</p>`}`}<div class="actions">${!draft&&!reviews.length?editButton:''}<button id="reload" class="tertiary">Revisar versión más reciente</button>${sessionStorage.getItem(`draft:${user.userId}:${brandId}:${selected}`)?'<button id="restore-draft" class="tertiary">Ver borrador conservado</button>':''}</div>`;
   composeDecision(q,d,v,reviews);
   mountRecommendation(q,d,v,reviews,pending||locked);
   mountLearningMoment(q);
@@ -754,8 +835,17 @@ function render() {
   // is preserved in this tab first, so asking for possibilities can never lose what they wrote.
   $('#possibilities')?.addEventListener('click',event=>run(async()=>{
     preserveDraft();
-    const generated=await generatePossibilities(q.id,{locked:pending||locked,stage:'initial_input',fromDraft:true});
-    if(generated)notice('Compara las posibilidades y decide cuál incorporar. Tu borrador quedó conservado en esta pestaña; nada se aprueba sin ti.');
+    const cta=event.currentTarget,original=cta.textContent;
+    cta.textContent='Generando posibilidades…';
+    setActivityMirror($('#possibilities-activity'));
+    try{
+      const generated=await generatePossibilities(q.id,{locked:pending||locked,stage:'initial_input',fromDraft:true});
+      if(generated)notice('Compara las posibilidades y decide cuál incorporar. Tu borrador quedó conservado en esta pestaña; nada se aprueba sin ti.');
+    }finally{
+      // On success the form is replaced by the options, so this only matters when it is still here.
+      setActivityMirror(null);
+      if(cta.isConnected)cta.textContent=original;
+    }
   },event.currentTarget));
   $('#cancel')?.addEventListener('click',()=>{draft=null;render();focusView($('#edit')??undefined);});
   $('#reload').addEventListener('click',event=>run(async()=>{if(draft)sessionStorage.setItem(`draft:${user.userId}:${brandId}:${selected}`,JSON.stringify(draft));draft=null;await refresh();notice('Borrador conservado en esta pestaña. Contexto recargado. Revisa la versión vigente antes de volver a editar.');},event.currentTarget));
@@ -1222,6 +1312,7 @@ async function showCompetitiveContext(){
  );
 
  competitiveRejectedClaims=new Set(rejected.claims??[]);
+ competitiveRejectionsBrandId=brandId;
 
  renderContext();
 
@@ -1355,8 +1446,11 @@ async function showCompetitiveContext(){
    analytics.send(PILOT_EVENTS.phaseCompleted,{pilot_stage:'competitive_review'});
   }
   showPhaseHandoff({
-   done:'Revisaste todos los hallazgos del entorno competitivo.',
-   complete:'Revisaste el entorno competitivo y ya decidiste cada fase de esta marca.'
+   eyebrow:'Contexto competitivo revisado',
+   done:'Ya incorporaste las señales que quieres considerar.',
+   complete:'Ya incorporaste las señales que quieres considerar. Además, cada decisión estratégica de esta marca ya está tomada.',
+   secondaryLabel:'Revisar contexto',
+   secondaryAction:showBrandContext
   });
  }
 }
@@ -1622,7 +1716,17 @@ async function generatePossibilities(questionId,{locked=false,stage='options',fr
   pilotMode?'Opciones preparadas':'Opciones DEMO preparadas',
   'Ya puedes compararlas antes de decidir.'
  );
+ if(fromDraft)revealRecommendation();
  return true;
+}
+
+/** Brings the freshly generated options into view without yanking the page if they already are. */
+function revealRecommendation(){
+ const panel=$('#decision')?.querySelector('.recommendation');
+ if(!panel)return;
+ const box=panel.getBoundingClientRect();
+ if(box.top>=0&&box.top<=window.innerHeight*0.6)return;
+ panel.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
 }
 function mountRecommendation(q,d,v,reviews,locked){
  if(draft)return;
@@ -1658,8 +1762,35 @@ const statusLabels={PLANNED:'Planeado',RUNNING:'En curso',COMPLETED:'Completado'
 async function showBlueprint(){
  if(!enterView('#blueprint','Blueprint estratégico'))return;context=await api(`/api/blueprint?brandId=${encodeURIComponent(brandId)}`);renderContext();
  const name=id=>labels[context.questions.find(q=>q.id===context.decisions.find(d=>d.id===id)?.questionId)?.module]??'Decisión';
- $('#decision').innerHTML=`<p class="eyebrow">Blueprint · estrategia vigente</p><h2>Una visión conectada de tu marca.</h2><p>Esta vista reúne tus decisiones actuales. Cada cambio se realiza desde su decisión y conserva su historial.</p>${context.impacts.some(i=>i.status==='IMPACT_PENDING')?'<p class="review">Hay un cálculo de impacto pendiente. Revisa el estado antes de continuar.</p>':''}<div class="blueprint-grid">${context.questions.map(q=>{const d=context.decisions.find(d=>d.questionId===q.id),v=context.versions.find(v=>v.id===d?.activeVersionId);return `<section class="analysis-item blueprint-pillar"><p class="eyebrow">${String(context.questions.indexOf(q)+1).padStart(2,'0')} · Pilar estratégico</p><h3>${escape(labels[q.module])}</h3>${stateBadge(v,needsReview(context,d))}<p class="current">${escape(v?.selectedOption??'Aún no hay una decisión aprobada.')}</p><p>${escape(v?.rationale??'')}</p><button class="secondary" data-open-module="${escape(q.module)}">Abrir decisión</button></section>`;}).join('')}</div><h3>Conexiones</h3>${context.dependencies.map(d=>`<p class="dependency-path"><span>${escape(name(d.upstreamDecisionId))}</span><span class="edge ${d.kind==='HARD'?'':'is-soft'}">${d.kind==='HARD'?'Dependencia estricta':d.kind==='SOFT'?'Dependencia sugerida':'Informativa'}</span><span>${escape(name(d.downstreamDecisionId))}</span>${needsReview(context,context.decisions.find(x=>x.id===d.downstreamDecisionId))?'<span class="badge warn">Requiere revisión</span>':''}</p>`).join('')||'<p class="hint">Aún no hay decisiones conectadas.</p>'}<h3>Hipótesis abiertas</h3>${context.hypotheses.filter(h=>!['SUPPORTED','REJECTED'].includes(h.status)).map(h=>`<p>${escape(h.statement)}</p>`).join('')||'<p class="hint">Sin hipótesis abiertas registradas.</p>'}<h3>Aprendizajes aceptados</h3>${context.learnings.filter(l=>l.status==='ACCEPTED').map(l=>`<p>${escape(l.interpretation)}<br><span class="hint">Límites: ${escape(l.limitations.join('; '))}</span></p>`).join('')||'<p class="hint">Aún no hay aprendizajes aceptados.</p>'}`;
- document.querySelectorAll('[data-open-module]').forEach(button=>button.addEventListener('click',()=>openModule(button.dataset.openModule)));
+ $('#decision').innerHTML=`<p class="eyebrow">Blueprint · estrategia vigente</p><h2>Una visión conectada de tu marca.</h2><p>Esta vista reúne tus decisiones actuales. Cada cambio se realiza desde su decisión y conserva su historial.</p><div class="blueprint-actions"><button type="button" id="blueprint-pdf" class="secondary">Descargar PDF</button><span class="hint">Un documento con el estado estratégico vigente de esta marca.</span></div>${context.impacts.some(i=>i.status==='IMPACT_PENDING')?'<p class="review">Hay un cálculo de impacto pendiente. Revisa el estado antes de continuar.</p>':''}<div class="blueprint-grid">${context.questions.map(q=>{const d=context.decisions.find(d=>d.questionId===q.id),v=context.versions.find(v=>v.id===d?.activeVersionId);return `<section class="analysis-item blueprint-pillar"><p class="eyebrow">${String(context.questions.indexOf(q)+1).padStart(2,'0')} · Pilar estratégico</p><h3>${escape(labels[q.module])}</h3>${stateBadge(v,needsReview(context,d))}<p class="current">${escape(v?.selectedOption??'Aún no hay una decisión aprobada.')}</p><p>${escape(v?.rationale??'')}</p><button class="secondary" data-open-module="${escape(q.module)}">Abrir decisión</button></section>`;}).join('')}</div><h3>Conexiones</h3>${context.dependencies.map(d=>`<p class="dependency-path"><span>${escape(name(d.upstreamDecisionId))}</span><span class="edge ${d.kind==='HARD'?'':'is-soft'}">${d.kind==='HARD'?'Dependencia estricta':d.kind==='SOFT'?'Dependencia sugerida':'Informativa'}</span><span>${escape(name(d.downstreamDecisionId))}</span>${needsReview(context,context.decisions.find(x=>x.id===d.downstreamDecisionId))?'<span class="badge warn">Requiere revisión</span>':''}</p>`).join('')||'<p class="hint">Aún no hay decisiones conectadas.</p>'}<h3>Hipótesis abiertas</h3>${context.hypotheses.filter(h=>!['SUPPORTED','REJECTED'].includes(h.status)).map(h=>`<p>${escape(h.statement)}</p>`).join('')||'<p class="hint">Sin hipótesis abiertas registradas.</p>'}<h3>Aprendizajes aceptados</h3>${context.learnings.filter(l=>l.status==='ACCEPTED').map(l=>`<p>${escape(l.interpretation)}<br><span class="hint">Límites: ${escape(l.limitations.join('; '))}</span></p>`).join('')||'<p class="hint">Aún no hay aprendizajes aceptados.</p>'}`;
+ bindStrategyLinks();
+ $('#blueprint-pdf')?.addEventListener('click',event=>run(async()=>{
+  const button=event.currentTarget,original=button.textContent,brand=brandId;
+  button.textContent='Preparando Blueprint…';
+  let response;
+  try{
+   response=await fetch(`/api/blueprint/pdf?brandId=${encodeURIComponent(brand)}`,{credentials:'same-origin'});
+  }catch{
+   button.textContent=original;
+   throw Object.assign(new Error('No pudimos preparar el Blueprint en este momento. Vuelve a intentarlo.'),{code:'UNAVAILABLE'});
+  }
+  if(!response.ok){
+   button.textContent=original;
+   // Never surface the transport detail: the participant gets one safe, retryable sentence.
+   throw Object.assign(new Error(response.status===401
+    ?'Tu sesión venció. Vuelve a entrar y descarga el Blueprint de nuevo.'
+    :'No pudimos preparar el Blueprint en este momento. Vuelve a intentarlo.'),{code:response.status===401?'UNAUTHORIZED':'UNAVAILABLE'});
+  }
+  const blob=await response.blob();
+  const named=/filename="([^"]+)"/.exec(response.headers.get('content-disposition')??'');
+  const href=URL.createObjectURL(blob);
+  const link=document.createElement('a');
+  link.href=href;link.download=named?.[1]??'Brandopolis-Blueprint.pdf';
+  document.body.append(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(href),2000);
+  if(button.isConnected)button.textContent=original;
+  notice('Blueprint descargado. Refleja el estado estratégico vigente al momento de generarlo.');
+ },event.currentTarget));
 }
 function currentStrategySummary(){return `<details><summary>Lo que decidiste y lo que requiere revisión</summary>${context.questions.map(q=>{const d=context.decisions.find(d=>d.questionId===q.id),v=context.versions.find(v=>v.id===d?.activeVersionId);return `<p><strong>${escape(labels[q.module])}</strong><br>${escape(v?.selectedOption??'Pregunta estratégica abierta')}${needsReview(context,d)?'<br><span class="badge warn">Requiere revisión</span>':''}</p>`;}).join('')}</details>`;}
 async function showHome(){
@@ -1730,10 +1861,14 @@ $('#practice').addEventListener('click',()=>run(async()=>{
 
 function renderContext(){
   updateShell();
+  queueMicrotask(()=>$('#context')?.querySelector('[data-open-competitive]')
+   ?.addEventListener('click',event=>run(showCompetitiveContext,event.currentTarget)));
   const versions=context.versions.filter(v=>context.decisions.some(d=>d.activeVersionId===v.id));
   const latest=versions.slice().sort((a,b)=>new Date(b.approvedAt)-new Date(a.approvedAt))[0];
   const pendingReview=context.questions.filter(q=>needsReview(context,context.decisions.find(d=>d.questionId===q.id))).length;
-  $('#context').innerHTML=`<div class="context-cover"><p class="eyebrow">Memoria estratégica</p><h3>Contexto vigente</h3><p>${escape($('#brands').selectedOptions[0]?.textContent?.replace(/ · (DEMO|PILOT)$/,''))}</p></div><details class="context-details" open><summary>Lo que ya decidiste <span class="context-count">${versions.length} de ${context.questions.length}${pendingReview?` · ${pendingReview} por revisar`:''}</span></summary><ol class="context-lineage">${context.questions.map((q,index)=>{const d=context.decisions.find(d=>d.questionId===q.id),v=context.versions.find(v=>v.id===d?.activeVersionId);return `<li${$('#decision').dataset.view==='decision'&&q.module===selected?' aria-current="step"':''}><span class="context-number">${String(index+1).padStart(2,'0')}</span><div><strong>${escape(labels[q.module]??q.module)}</strong><p>${v?escape(v.selectedOption):'Tu siguiente decisión comienza aquí.'}</p>${v?`<span class="context-version">v${v.sequence} · Decisión del Estratega de Marca</span>`:''}${needsReview(context,d)?'<span class="badge warn">Requiere revisión</span>':''}</div></li>`;}).join('')}</ol></details>${latest?`<p class="context-updated">Última decisión<br><strong>${escape(fmt(latest.approvedAt))}</strong></p>`:''}<p class="hint context-note">Los cambios conservan su historia.<br>Nada se reescribe sin tu criterio.</p>`;
+  const marketStatus=competitiveStatus();
+  const marketTone=marketStatus===COMPETITIVE_STATUS.REVIEWED?'':marketStatus===COMPETITIVE_STATUS.PENDING?'warn':'muted';
+  $('#context').innerHTML=`<div class="context-cover"><p class="eyebrow">Memoria estratégica</p><h3>Contexto vigente</h3><p>${escape($('#brands').selectedOptions[0]?.textContent?.replace(/ · (DEMO|PILOT)$/,''))}</p></div><section class="context-market" aria-label="Contexto del mercado"><p class="eyebrow">Contexto del mercado</p><button type="button" class="context-market-link" data-open-competitive aria-label="Abrir Entorno competitivo">Entorno competitivo</button><span class="badge ${marketTone}">${escape(marketStatus)}</span><p class="hint">Preparación estratégica. No cuenta como decisión.</p></section><details class="context-details" open><summary>Lo que ya decidiste <span class="context-count">${versions.length} de ${context.questions.length}${pendingReview?` · ${pendingReview} por revisar`:''}</span></summary><ol class="context-lineage">${context.questions.map((q,index)=>{const d=context.decisions.find(d=>d.questionId===q.id),v=context.versions.find(v=>v.id===d?.activeVersionId);return `<li${$('#decision').dataset.view==='decision'&&q.module===selected?' aria-current="step"':''}><span class="context-number">${String(index+1).padStart(2,'0')}</span><div><strong>${escape(labels[q.module]??q.module)}</strong><p>${v?escape(v.selectedOption):'Tu siguiente decisión comienza aquí.'}</p>${v?`<span class="context-version">v${v.sequence} · Decisión del Estratega de Marca</span>`:''}${needsReview(context,d)?'<span class="badge warn">Requiere revisión</span>':''}</div></li>`;}).join('')}</ol></details>${latest?`<p class="context-updated">Última decisión<br><strong>${escape(fmt(latest.approvedAt))}</strong></p>`:''}<p class="hint context-note">Los cambios conservan su historia.<br>Nada se reescribe sin tu criterio.</p>`;
 }
 function updateShell(){
  const name=$('#brands').selectedOptions[0]?.textContent?.replace(/ · (DEMO|PILOT|Marca demo)$/,'')??'Tu espacio estratégico';
@@ -1777,20 +1912,26 @@ function setNavActive(selector){$('#decision').dataset.view=selector?.slice(1)??
 /** Completion hand-off: what to do next, in the page, on every viewport. Shows a continuation only
  *  when a next phase genuinely exists, so it can never point nowhere. Copy is a parameter so every
  *  workflow can reuse it; the destination always comes from the canonical journey, never a local list. */
-function showPhaseHandoff({done='Tu decisión quedó guardada.',complete='Completaste las decisiones de esta marca.'}={}){
+function showPhaseHandoff({
+ eyebrow='Fase completada',
+ done='Tu decisión quedó guardada.',
+ complete='Completaste las decisiones de esta marca.',
+ secondaryLabel='Revisar avance',
+ secondaryAction=showHome
+}={}){
  const host=$('#decision');if(!host)return;
  host.querySelector('.phase-handoff')?.remove();
  const next=nextPhase();
  const label=next?(labels[next]??next):null;
  const panel=document.createElement('section');
  panel.className='phase-handoff';
- panel.innerHTML=`<p class="eyebrow">Fase completada</p><h3>${next?`${escape(done)} Continúa con ${escape(label)}.`:escape(complete)}</h3><div class="actions">${next?`<button type="button" id="phase-next" data-next="${escape(next)}">Continuar a ${escape(label)}</button>`:''}<button type="button" id="phase-review" class="secondary">Revisar avance</button></div>`;
+ panel.innerHTML=`<p class="eyebrow">${escape(eyebrow)}</p><h3>${next?`${escape(done)} Continúa con ${escape(label)}.`:escape(complete)}</h3><div class="actions">${next?`<button type="button" id="phase-next" data-next="${escape(next)}">Continuar a ${escape(label)}</button>`:''}<button type="button" id="phase-review" class="secondary">${escape(secondaryLabel)}</button></div>`;
  host.prepend(panel);
  $('#phase-next')?.addEventListener('click',event=>run(async()=>{
   analytics.send(PILOT_EVENTS.nextPhaseStarted,{pilot_stage:'next_phase'});
   await openModule(event.currentTarget.dataset.next);
  },event.currentTarget));
- $('#phase-review')?.addEventListener('click',event=>run(showHome,event.currentTarget));
+ $('#phase-review')?.addEventListener('click',event=>run(secondaryAction,event.currentTarget));
  panel.scrollIntoView({block:'nearest'});
 }
 async function showFeedback(){

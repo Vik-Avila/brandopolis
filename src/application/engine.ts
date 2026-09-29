@@ -1140,6 +1140,26 @@ export class Engine {
     await this.db.transaction(async tx=>{const s=await this.scope(tx,token,brandId);await this.event(tx,s,'blueprint_viewed');});
     return projection;
   }
+  /**
+   * Identity of a brand the caller may read: name, demo classification and declared geography.
+   *
+   * Authorization is scope() itself, unchanged — the brand must belong to the caller's workspace and,
+   * unless they are a workspace ADMIN, be assigned to them. Cross-tenant reads are impossible because
+   * workspaceId is part of the lookup, not a filter applied afterwards.
+   */
+  async brandDossier(token:string,brandId:string) {
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId,false);
+      const [brand]=await tx.select().from(t.brands).where(and(eq(t.brands.workspaceId,s.workspaceId),eq(t.brands.id,brandId)));
+      const [profile]=await tx.select().from(t.brandProfiles).where(and(eq(t.brandProfiles.workspaceId,s.workspaceId),eq(t.brandProfiles.brandId,brandId)));
+      return {
+        name:brand.name,
+        isDemo:profile?.isDemo??false,
+        geographicInfluence:profile?.geographicInfluence??null,
+        primaryMarket:profile?.primaryMarket??null
+      };
+    });
+  }
   private reviewFingerprint(rows:{triggerVersionId:string;ruleVersion:string}[]) {return hash(JSON.stringify(rows.map(r=>[r.triggerVersionId,r.ruleVersion]).sort()));}
   async beginReview(token:string,brandId:string,decisionId:string) {
     await this.retryImpact(token,brandId);
