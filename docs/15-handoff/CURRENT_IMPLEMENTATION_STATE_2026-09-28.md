@@ -27,15 +27,15 @@ cascada automática.
 |---|---|---|
 | Fases 1–9 (dominio, decisiones, impacto, versiones) | CERRADO para MVP | semántica congelada |
 | Workspace PILOT | **CONGELADO FUNCIONALMENTE** | ver §7 |
-| Landing pública | **APROBADA (2026-09-28)**, en `origin/main` `d43fd4d` | **no desplegada** |
+| Landing pública | **APROBADA (2026-09-28)**, en `origin/main` `d43fd4d` | **desplegada** (SESSION_STATE 2026-09-29) |
 | Corpus documental de origen | implementado | `source_documents`, `document_extractions`, `document_claims` |
 | Investigación competitiva | implementada, con revisión humana | hallazgos requieren aceptación explícita |
 | Autenticación | **autoservicio OIDC verificado + intake obligatorio** | ver §4 |
 | Administración | **V1 implementada** en `/admin` | ver §5.bis |
 | Telemetría / evidencia | parcial | ver §6 |
 | Defecto de cabecera móvil | **CORREGIDO 2026-09-28** | ver §8 |
-| `brandopolis.ai` (raíz) | **BLOQUEADO — 403 de Apache/cPanel** | ver §9 |
-| Despliegue de producción | **NO REALIZADO** para `d43fd4d` | ver §9 |
+| `brandopolis.ai` (raíz) | redirige al piloto (SESSION_STATE 2026-09-29); el 403 es histórico | ver §9 |
+| Despliegue de producción | **en producción** desde `2f84d29` (landing, auth, admin), con hotfixes posteriores | commit exacto: SESSION_STATE |
 
 ## 3. Landing pública aprobada (`d43fd4d`)
 
@@ -212,22 +212,24 @@ horizontal, con 54 marcas y nombres de 45 caracteres en la base.
 
 ## 9. Dominio raíz y despliegue
 
-`https://brandopolis.ai` devuelve **403 de Apache/cPanel**. El repositorio **no documenta ninguna
+**Actualización 2026-10-04 (evidencia: SESSION_STATE 2026-09-29):** la landing aprobada está desplegada, `brandopolis.ai` redirige al piloto (302 que conserva la ruta) y producción corrió `2f84d29` con hotfixes posteriores. El resto de esta sección es el diagnóstico histórico.
+
+Histórico: `https://brandopolis.ai` devolvía **403 de Apache/cPanel**. El repositorio **no documenta ninguna
 arquitectura Apache/cPanel**; la topología canónica es Node detrás de un proxy que conserva el
 `Host`. Diagnóstico completo, restricciones de código que lo condicionan y runbook de servidor:
 [ROOT_DOMAIN_403_REMEDIATION](ROOT_DOMAIN_403_REMEDIATION.md).
 
-**Commit y push no son despliegue.** `d43fd4d` está en `origin/main` y **no** en producción.
+**Commit y push no son despliegue.** El commit desplegado exacto sólo consta en SESSION_STATE.
 
 ## 10. Prioridades canónicas
 
-1. Remediación del dominio raíz y publicación de la landing.
-2. Despliegue de Auth/Admin en producción tras revisión.
+1. ~~Remediación del dominio raíz y publicación de la landing.~~ Resuelto (SESSION_STATE 2026-09-29).
+2. ~~Despliegue de Auth/Admin en producción tras revisión.~~ Resuelto: incluido en `2f84d29`.
 3. Recolección de evidencia del piloto.
 4. Integración de comentarios e incidencias en el admin.
 5. Zona geográfica de influencia en onboarding y Brand Context (captura en nueva marca ya implementada; ver §11).
 6. Controles de administración más ricos.
-7. Refinamientos restantes del workspace.
+7. Refinamientos restantes del workspace (congelados: [CLAUDE.md § Pilot freeze](../../CLAUDE.md#pilot-freeze)).
 8. Trabajo de validación y escala.
 
 ## 11. Trabajo diferido (no implementado)
@@ -248,7 +250,7 @@ Pendiente de una pasada dedicada, con su propio diseño, migraciones y pruebas:
   reportados, abiertos y resueltos. **No implementar sin instrucción explícita.**
 - **Zona geográfica de influencia** (onboarding y Brand Context). **Parcialmente implementada**: el
   diálogo canónico de nueva marca la pregunta de forma opcional y se persiste en `brand_profiles`
-  (`geographicInfluence`, `primaryMarket`; `tests/pre-tester.test.ts`). No está verificado que se
+  (`geographicInfluence`, `primaryMarket`; el diálogo en `tests/pre-tester.test.ts`, la persistencia en `tests/pilot-cases.ts`). No está verificado que se
   propague a recomendaciones, investigación ni Brand Context; eso sigue pendiente. Pregunta estratégica
   *¿En qué mercado geográfico compite y quiere crecer esta marca?* con valores sugeridos
   Local/ciudad · Regional · Nacional · LATAM · Internacional/global, y «Mercados prioritarios»

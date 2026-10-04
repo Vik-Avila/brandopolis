@@ -30,3 +30,5 @@ playwright/.cache/
 *.trace.zip
 # Claude Code per-user settings (the shared skill copy in .claude/skills/ is versioned)
 .claude/settings.local.json
+# Claude Code git worktrees (checkouts of other branches)
+.claude/worktrees/

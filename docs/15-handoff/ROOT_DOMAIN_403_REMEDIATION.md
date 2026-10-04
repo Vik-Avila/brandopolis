@@ -1,11 +1,13 @@
 Status: derived
 Owner: Engineering
 Canonical: no
-Last reviewed: 2026-09-28
+Last reviewed: 2026-10-04
 Related: docs/15-handoff/DOMAIN_DNS_LAUNCH.md, docs/15-handoff/PILOT_DEPLOYMENT_CONTRACT.md, docs/15-handoff/LIVE_HOSTING_DECISION.md
 Depends on: Landing commit d43fd4d (2026-09-28)
 
 # brandopolis.ai · 403 en el dominio raíz · diagnóstico y runbook
+
+> **Estado 2026-10-04: histórico.** [SESSION_STATE](../../SESSION_STATE.md) (2026-09-29) registra la landing aprobada desplegada y `brandopolis.ai` redirigiendo al piloto. Este documento conserva el diagnóstico y el runbook tal como se escribieron el 2026-09-28.
 
 `https://brandopolis.ai` devuelve **403 Forbidden** de Apache/cPanel desde dispositivos externos.
 `https://pilot.brandopolis.ai` sirve la aplicación PILOT.

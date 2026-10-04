@@ -14,6 +14,26 @@ Depends on: —
 
 # Registro
 
+## Endurecimiento del Skill Pack tras la revisión · 2026-10-04
+
+Correcciones de la revisión local de `main...HEAD`. **Sin cambios de runtime, schema, migraciones ni
+despliegue.**
+
+- Matriz de checks sin rutas de comportamiento que pasen sólo con Foundation; suites de navegador
+  ligadas a sus specs, configs y superficies servidas.
+- `skills:check` no destructivo y primero; `skills:sync` rechaza argumentos desconocidos y raíces
+  enlazadas o solapadas, y sustituye la copia con staging verificado y restauración.
+- Una sola definición de la congelación en `CLAUDE.md`, con la regla de defectos de seguridad del
+  2026-10-04; `AGENTS.md` sólo enlaza. Comandos de revisión neutrales entre agentes.
+- [ADR-0016](docs/14-decisions/ADR-0016.md): autoaprovisionamiento PILOT y acceso de operador
+  (supersede sólo el aprovisionamiento de ADR-0013). Estado de producción reconciliado con evidencia;
+  riesgo de descompresión de documentos registrado como deuda técnica.
+- Pasada final: baseline typecheck/lint/test para todo cambio salvo registros históricos; sync que se
+  niega ante archivos que sólo existen en la copia y no confunde alias por encima del repo con enlaces;
+  rollback y backup probados con fallos inyectados; los skills sólo enlazan la congelación; refrescar
+  hashes de marca exige decisión humana. Deuda registrada en `known-risks.md`. Resultados reales en
+  [SESSION_STATE](SESSION_STATE.md).
+
 ## Engineering Skill Pack · 2026-10-04
 
 Tooling de ingeniería autorizado por la excepción de hardening del 2026-10-04. **Sin cambios en

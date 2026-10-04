@@ -9,10 +9,10 @@ This skill is procedure only. The rules live in the canonical sources linked bel
 
 ## 1. Freeze and scope gate (always first)
 
-1. Read [CLAUDE.md § Pilot freeze](../../../CLAUDE.md#pilot-freeze) and the current state in [CURRENT_IMPLEMENTATION_STATE](../../../docs/15-handoff/CURRENT_IMPLEMENTATION_STATE_2026-09-28.md) and [SESSION_STATE](../../../SESSION_STATE.md).
-2. Classify the request: (a) defect found by regression or external testing, (b) documentation, tooling, skills or validators with no runtime effect, or (c) anything else.
-3. (c) is not code work: record it for the backlog, tell the human, stop.
-4. Check [POST_MVP_DEFERRED_SCOPE](../../../docs/15-handoff/POST_MVP_DEFERRED_SCOPE.md) and [scope-mvp](../../../docs/01-product/scope-mvp.md). Deferred or P1/P2 items need an explicit human decision.
+1. Read [CLAUDE.md § Pilot freeze](../../../CLAUDE.md#pilot-freeze) (the only freeze definition; if a human has changed or lifted it, that text is the authority) and the current state in [CURRENT_IMPLEMENTATION_STATE](../../../docs/15-handoff/CURRENT_IMPLEMENTATION_STATE_2026-09-28.md) and [SESSION_STATE](../../../SESSION_STATE.md).
+2. Apply that gate to the request, including every precondition it sets (evidence, human authorization).
+3. If the request does not pass, or a precondition is missing, write no code: record it for the backlog or ask, tell the human, stop. Security-type defects continue through brandopolis-security.
+4. Check [POST_MVP_DEFERRED_SCOPE](../../../docs/15-handoff/POST_MVP_DEFERRED_SCOPE.md) and [scope-mvp](../../../docs/01-product/scope-mvp.md). New deferred or P1/P2 scope needs an explicit human decision; a regression in a capability already shipped is a defect, not new scope.
 
 ## 2. Find the canonical source
 
@@ -35,29 +35,29 @@ If the request truly contradicts an approved source, stop and ask (AGENTS.md rul
 
 ## 4. Implement
 
-- Layers: domain in `src/domain/` (no I/O, no provider SDK), use cases in `src/application/engine.ts`, transport in `src/transport/`. Map in [NEXT_DEVELOPER_START_HERE](../../../docs/15-handoff/NEXT_DEVELOPER_START_HERE.md).
+- Layers: domain in `src/domain/` (no provider SDK, no network or database I/O; it does read versioned config and schemas from disk), use cases in `src/application/engine.ts`, transport in `src/transport/`. Map in [NEXT_DEVELOPER_START_HERE](../../../docs/15-handoff/NEXT_DEVELOPER_START_HERE.md).
 - Human Authority (INV-001, INV-002, INV-006), tenancy (INV-004), concurrency (INV-009) and idempotency (INV-010) are enforced in the engine and DB guards. Keep them there.
-- Contract change: canonical docs + schema/config + test + ADR when architecture changes + CHANGELOG + SESSION_STATE (AGENTS.md rule 6). Run Foundation before and after.
+- Contract change: canonical docs + schema/config + test + ADR when architecture changes + `CHANGELOG.md` + `SESSION_STATE.md` (AGENTS.md rule 6). Run Foundation before and after.
 - No new framework, dependency or infrastructure without an ADR. The domain never imports an AI SDK.
 
 ## 5. Database gate (internal)
 
 Any edit to `src/persistence/schema.ts`, `drizzle/` or versioned SQL guards:
 
-1. During the PILOT freeze migrations and product schema changes are **not authorized**. Stop and ask.
+1. Any migration or product schema change must pass the [freeze gate](../../../CLAUDE.md#pilot-freeze); stop and ask the human before writing it.
 2. If authorized: change `schema.ts`, then `pnpm db:generate`; custom guards in versioned SQL. Forward-only.
 3. Never edit an applied migration (hash-checked; `.gitattributes` pins `drizzle/**` to LF). Never `drizzle-kit push`.
-4. Prefer adding tables over widening tables shared with the running PILOT build (see SESSION_STATE).
+4. Prefer adding tables over widening tables shared with the running PILOT build (see `SESSION_STATE.md`).
 5. Never run `pnpm pilot:migrate` or any production migration from a local task.
 6. Prove INV-008, INV-009 and INV-010 still hold on a fresh database.
 
 ## Escalate to a human
 
-Anything outside the freeze categories; contradictions between sources; deferred scope; new dependencies; any migration; anything touching production.
+Anything that does not pass the freeze gate; contradictions between sources; deferred scope; new dependencies; any migration; anything touching production.
 
 ## Never
 
-Add P1/P2 features, chat that writes strategy, graph engines or integrations on your own initiative; weaken or skip a test to pass; edit applied migrations; commit, push or deploy without being asked.
+Let a conversation or AI write strategy (INV-006 is absolute, even if asked); add P1/P2 features, graph engines or integrations without an explicit human decision; weaken or skip a test to pass; edit applied migrations; commit, push or deploy without being asked.
 
 ## Checks
 

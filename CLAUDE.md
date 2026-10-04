@@ -6,22 +6,28 @@ Brandopolis is **the Brand Operating System**: connected Strategic Decisions wit
 
 ## Pilot freeze
 
-Single canonical definition (frozen 2026-09-29; hardening exception added by human decision
-2026-10-04). It supersedes the 2026-09-28 list of permitted change categories. Other documents link
-here instead of restating it.
+Single canonical definition (frozen 2026-09-29; hardening exception and security-defect rule added by
+human decisions on 2026-10-04). It supersedes the 2026-09-28 list of permitted change categories.
+Other documents link here instead of restating it.
 
 > The current PILOT workspace is functionally frozen for external validation.
 > Do not continue opportunistic UI or strategic-workflow polishing.
-> Only defects discovered by regression or external testing may change the frozen workspace before validation.
 
-- **Authorized during this hardening (2026-10-04):** canonical documentation reconciliation,
-  engineering tooling, creation of agent skills, and validators/checks that do not change runtime
-  behaviour.
-- **Not authorized:** changing PILOT behaviour, runtime UI, migrations, product schema, deploy,
-  production, or functional strategic changes.
-- Deferred product improvements go to the backlog, never straight into the code. Do not redesign
-  approved UI without an explicit instruction. Repository docs are authoritative; chat history is not
-  a source of truth.
+1. **Frozen:** features, product improvements and functional strategic changes, including runtime UI.
+2. **Runtime exceptions** (the only reasons to change PILOT runtime behaviour):
+   - a defect discovered by regression or external testing;
+   - a confirmed security, authentication, authorization, tenant-isolation or data-exposure defect,
+     even if found by code review. It needs reproducible evidence and explicit human authorization
+     before implementation, and never carries product improvements.
+3. **Allowed during this hardening (2026-10-04):** documentation reconciliation, engineering tooling,
+   agent skills, and validators/checks without runtime effect.
+4. **Not authorized without a new human decision:** migrations, product schema changes, deploy and
+   production operations.
+
+INV-006 stays absolute: no conversation or AI modifies strategy silently, whatever is requested.
+Deferred product improvements go to the backlog, never straight into the code. Do not redesign approved
+UI without an explicit instruction. Repository docs are authoritative; chat history is not a source of
+truth.
 
 Pre-tester UX is complete: participant intake, CoffeePolis demo sandbox, brand geography, optional AI
 possibilities, per-option Incorporar/Modificar/Descartar, and the phase-completion hand-off. See
@@ -30,9 +36,11 @@ and [GOOGLE_AUTH_PRODUCTION](docs/15-handoff/GOOGLE_AUTH_PRODUCTION.md).
 
 Operational entry point, including what is implemented vs deferred:
 [CURRENT_IMPLEMENTATION_STATE_2026-09-28](docs/15-handoff/CURRENT_IMPLEMENTATION_STATE_2026-09-28.md).
-Public landing is approved and committed but **not deployed**; `brandopolis.ai` still returns 403 —
-see [ROOT_DOMAIN_403_REMEDIATION](docs/15-handoff/ROOT_DOMAIN_403_REMEDIATION.md). Commit and push are
-not deployment.
+Production PILOT is live: per [SESSION_STATE](SESSION_STATE.md) (2026-09-29) the approved landing is
+deployed, `brandopolis.ai` redirects to the pilot and production ran `2f84d29` (landing, auth and
+admin), with later hotfix deployments recorded there; the 403 diagnosis in
+[ROOT_DOMAIN_403_REMEDIATION](docs/15-handoff/ROOT_DOMAIN_403_REMEDIATION.md) is historical. The exact
+deployed commit is recorded only in SESSION_STATE. Commit and push are not deployment.
 
 User-facing term for pilot participants is **Estratega de Marca / Estrategas de Marca**, never
 "tester". Internal identifiers (schema, telemetry, tests, env vars) keep `tester` where renaming

@@ -20,5 +20,6 @@ public/brand/symbols/brandopolis-symbol.svg -text
 public/brand/ui/site.webmanifest -text
 
 # Engineering Skill Pack: .claude/skills must stay byte-identical to .agents/skills on every OS.
-.agents/skills/** text eol=lf
-.claude/skills/** text eol=lf
+# text=auto: text files are checked out with LF; binaries (PNG, fonts) are left untouched.
+.agents/skills/** text=auto eol=lf
+.claude/skills/** text=auto eol=lf

@@ -1,7 +1,7 @@
 Status: canonical
 Owner: Engineering
 Canonical: yes
-Last reviewed: 2026-09-25
+Last reviewed: 2026-10-04
 Related: README.md, docs/15-handoff/FINAL_MVP_HANDOFF_2026-09-25.md, LOCAL_HANDOFF.md, CLAUDE.md, AGENTS.md
 Depends on: docs/00-index/source-of-truth.md
 
@@ -26,7 +26,7 @@ Brandopolis is **the Brand Operating System**: a B2B web product where a brand's
 - Local DEMO: complete and deterministic (no external services).
 - PILOT mode (HTTPS, OIDC, per-tester workspaces, optional AI with notice and caps, feedback, telemetry): engineering-ready, **external configuration not performed** ([checklist](LIVE_PILOT_LAUNCH_CHECKLIST.md)).
 - Frontend: final polish (Phase 10A + 10B) complete; **founder visual acceptance pending**.
-- Not in production. No real testers, customers or revenue yet.
+- Production PILOT is live since 2026-09-29; the deployed commit and participant status are recorded in [SESSION_STATE](../../SESSION_STATE.md). No customers or revenue yet.
 
 ## Final handoff branch
 
@@ -283,7 +283,7 @@ Not configured. PILOT authenticates through any standards-compliant OIDC provide
 
 ## Deployment state
 
-Nothing is deployed. Hosting, production PostgreSQL, DNS/TLS for `pilot.brandopolis.ai` and backups are external decisions: [LIVE_HOSTING_DECISION](LIVE_HOSTING_DECISION.md), [DOMAIN_DNS_LAUNCH](DOMAIN_DNS_LAUNCH.md), [LIVE_PILOT_LAUNCH_CHECKLIST](LIVE_PILOT_LAUNCH_CHECKLIST.md). The DEMO server refuses `NODE_ENV=production` by design.
+Production PILOT is live (see [SESSION_STATE](../../SESSION_STATE.md) for the deployed commit); hosting, production PostgreSQL, DNS/TLS for `pilot.brandopolis.ai` and backups remain external operations: [LIVE_HOSTING_DECISION](LIVE_HOSTING_DECISION.md), [DOMAIN_DNS_LAUNCH](DOMAIN_DNS_LAUNCH.md), [LIVE_PILOT_LAUNCH_CHECKLIST](LIVE_PILOT_LAUNCH_CHECKLIST.md). The DEMO server refuses `NODE_ENV=production` by design.
 
 ## Known limitations
 

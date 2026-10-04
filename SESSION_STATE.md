@@ -1,5 +1,39 @@
 # Session State
 
+Current phase: **SKILL PACK POST-REVIEW HARDENING** (2026-10-04). Branch
+`chore/brandopolis-engineering-skills` on top of 65a6a9a. Uncommitted. Fixes from the local `/code-review`
+of `main...HEAD` (findings 1–10, 12–15) plus a final controlled pass. Deferred and registered in
+[known-risks](docs/15-handoff/known-risks.md): Skill Pack routing gaps (one-way routing between
+feature/security/brando, no coverage for document upload and parsing) and handoff-doc debt.
+
+
+- Review: typecheck, lint and test are the baseline for every change except historical records; the
+  matrix only adds checks (brand assets keep `pnpm test`, PILOT-reachable frontend adds pilot e2e,
+  auth/admin/tenancy/endpoints add the agent's built-in security review); read the whole diff first. Diff scope (`main...HEAD`,
+  `--cached`, untracked), prepend rule, `.env.example`, historical CLAUDE_START_HERE and the `pnpm` on
+  PATH precondition are explicit.
+- Mirror tooling: `skills:check` is read-only and runs first; `skills:sync` refuses unknown arguments,
+  links inside the repository (aliases above it are fine), overlapping roots and copy-only files, and
+  swaps a verified staging copy with rollback.
+- Single freeze definition in CLAUDE.md with the 2026-10-04 security-defect rule; AGENTS.md and the five
+  skills only link and apply it. Brand hash refresh needs an explicit human decision. Agent-neutral review commands. Brando lists the three real provider
+  surfaces.
+- State guard: Unicode terms, contextual states per object and qualified noun, vigente/Current only as
+  declared display vocabulary, document names only when quoted, more negative cases, anchor-only links and GitHub slugs. Foundation keeps only the light mirror gate and skips
+  `.claude/worktrees/`. `.gitattributes` uses `text=auto` for skills.
+- Docs reconciled with evidence: production live since 2026-09-29 (landing, auth, admin), ADR-0016
+  supersedes only the provisioning part of ADR-0013 (deferred scope and authorization matrix aligned),
+  extractor decompression risk registered.
+
+Gate (2026-10-04): typecheck PASS; lint PASS; pnpm test 207/207 (72 skill pack: real junctions,
+aliases above the repository, read-only check, unknown flags, copy-only refusal, backup cleanup, swap
+rollback and staging verification; mutants removing backup cleanup, verification, rollback or the
+copy-only refusal each fail the suite); `pnpm skills:check` PASS; Foundation 0 errors (229 Markdown);
+git diff --check clean. Browser suites not run: no runtime or UI change.
+
+---
+
+
 Current phase: **ENGINEERING SKILL PACK** (2026-10-04). Branch `chore/brandopolis-engineering-skills`
 from f47e4dd. Uncommitted. Engineering tooling only, authorized by the 2026-10-04 hardening exception
 ([CLAUDE.md § Pilot freeze](CLAUDE.md#pilot-freeze)).
