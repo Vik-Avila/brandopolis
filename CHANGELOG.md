@@ -14,6 +14,22 @@ Depends on: —
 
 # Registro
 
+## Engineering Skill Pack · 2026-10-04
+
+Tooling de ingeniería autorizado por la excepción de hardening del 2026-10-04. **Sin cambios en
+`src/`, `schemas/`, `drizzle/`, assets de runtime, comportamiento del PILOT ni despliegue.**
+
+- Cinco skills en `.agents/skills/` (fuente canónica): `brandopolis-feature` (punto de entrada, con
+  el gate de base de datos), `brandopolis-ui`, `brandopolis-brando`, `brandopolis-security` y
+  `brandopolis-review` (matriz única de checks y gate de cierre). Procedimientos que remiten a las
+  fuentes canónicas por enlace e ID; no copian contratos.
+- `.claude/skills/` es una copia generada byte a byte: `pnpm skills:sync` / `pnpm skills:check`
+  (`scripts/skill-pack.ts`, `scripts/sync-skills.ts`). Sin symlinks; LF fijado en `.gitattributes`.
+- `tests/skill-pack.test.ts` y un check de sólo lectura en Foundation protegen la copia, el frontmatter,
+  las referencias y el vocabulario de estados. `AGENTS.md` incluye la tabla de enrutado.
+
+Verificación: ver la entrada del 2026-10-04 (Engineering Skill Pack) en [SESSION_STATE](SESSION_STATE.md).
+
 ## Reconciliación documental canónica · 2026-10-04
 
 Decisiones humanas del 2026-10-04 aplicadas a la documentación canónica antes de crear skills de

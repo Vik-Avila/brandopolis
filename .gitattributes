@@ -18,3 +18,7 @@ design/brandopolis-ui/reference/screenshots/README.md -text
 public/brand/logo/brandopolis-logo-horizontal.svg -text
 public/brand/symbols/brandopolis-symbol.svg -text
 public/brand/ui/site.webmanifest -text
+
+# Engineering Skill Pack: .claude/skills must stay byte-identical to .agents/skills on every OS.
+.agents/skills/** text eol=lf
+.claude/skills/** text eol=lf

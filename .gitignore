@@ -28,3 +28,5 @@ __pycache__/
 blob-report/
 playwright/.cache/
 *.trace.zip
+# Claude Code per-user settings (the shared skill copy in .claude/skills/ is versioned)
+.claude/settings.local.json

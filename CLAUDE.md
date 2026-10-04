@@ -2,6 +2,8 @@
 
 Brandopolis is **the Brand Operating System**: connected Strategic Decisions with evidence, hypotheses, human rationale, versions, dependencies and Change Impact. **AI proposes. Humans decide. Brandopolis remembers.**
 
+@AGENTS.md
+
 ## Pilot freeze
 
 Single canonical definition (frozen 2026-09-29; hardening exception added by human decision
