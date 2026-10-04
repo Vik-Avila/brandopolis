@@ -33,8 +33,3 @@ Los diez [principios](product-principles.md) son restricciones de diseño. Imple
 ## Correcciones finales de contrato
 
 Strategic Question: OPEN, IN_ANALYSIS, READY_FOR_DECISION, DECIDED, REOPENED. Hypothesis: UNTESTED, TESTING, SUPPORTED, WEAKENED, REJECTED; Assumption in Use es relación. Experiment conserva INCONCLUSIVE. Dependency incorpora INFORMATIVE. Evidence tiene calidad, relevancia y vigencia. EvaluatorResult y ConsistencySeverity son conceptos separados. Telemetría permite workspaceId=null antes de crear Workspace. Fuente canónica detallada: [state machines](../04-domain-model/state-machines.md).
-
-
-## Correcciones finales de contrato
-
-Strategic Question: OPEN, IN_ANALYSIS, READY_FOR_DECISION, DECIDED, REOPENED. Hypothesis: UNTESTED, TESTING, SUPPORTED, WEAKENED, REJECTED; Assumption in Use es relación. Experiment conserva INCONCLUSIVE. Dependency incorpora INFORMATIVE. Evidence tiene calidad, relevancia y vigencia. EvaluatorResult y ConsistencySeverity son conceptos separados. Telemetría permite workspaceId=null antes de crear Workspace. Fuente canónica detallada: [state machines](../04-domain-model/state-machines.md).

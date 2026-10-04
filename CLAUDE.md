@@ -2,30 +2,45 @@
 
 Brandopolis is **the Brand Operating System**: connected Strategic Decisions with evidence, hypotheses, human rationale, versions, dependencies and Change Impact. **AI proposes. Humans decide. Brandopolis remembers.**
 
-## Pilot freeze (2026-09-29)
+@AGENTS.md
+
+## Pilot freeze
+
+Single canonical definition (frozen 2026-09-29; hardening exception and security-defect rule added by
+human decisions on 2026-10-04). It supersedes the 2026-09-28 list of permitted change categories.
+Other documents link here instead of restating it.
 
 > The current PILOT workspace is functionally frozen for external validation.
 > Do not continue opportunistic UI or strategic-workflow polishing.
-> Only defects discovered by regression or external testing may change the frozen workspace before validation.
+
+1. **Frozen:** features, product improvements and functional strategic changes, including runtime UI.
+2. **Runtime exceptions** (the only reasons to change PILOT runtime behaviour):
+   - a defect discovered by regression or external testing;
+   - a confirmed security, authentication, authorization, tenant-isolation or data-exposure defect,
+     even if found by code review. It needs reproducible evidence and explicit human authorization
+     before implementation, and never carries product improvements.
+3. **Allowed during this hardening (2026-10-04):** documentation reconciliation, engineering tooling,
+   agent skills, and validators/checks without runtime effect.
+4. **Not authorized without a new human decision:** migrations, product schema changes, deploy and
+   production operations.
+
+INV-006 stays absolute: no conversation or AI modifies strategy silently, whatever is requested.
+Deferred product improvements go to the backlog, never straight into the code. Do not redesign approved
+UI without an explicit instruction. Repository docs are authoritative; chat history is not a source of
+truth.
 
 Pre-tester UX is complete: participant intake, CoffeePolis demo sandbox, brand geography, optional AI
 possibilities, per-option Incorporar/Modificar/Descartar, and the phase-completion hand-off. See
 [CURRENT_IMPLEMENTATION_STATE_2026-09-28](docs/15-handoff/CURRENT_IMPLEMENTATION_STATE_2026-09-28.md)
 and [GOOGLE_AUTH_PRODUCTION](docs/15-handoff/GOOGLE_AUTH_PRODUCTION.md).
 
-## Pilot freeze (2026-09-28)
-
-The PILOT workspace is **functionally complete for this validation phase**. Do not modify its UI or
-strategic workflow except to: unblock authentication, support administration, support
-telemetry/evidence, fix a critical defect, or maintain security/tenant isolation. Deferred product
-improvements go to the backlog, never straight into the code. Do not redesign approved UI without an
-explicit instruction. Repository docs are authoritative; chat history is not a source of truth.
-
 Operational entry point, including what is implemented vs deferred:
 [CURRENT_IMPLEMENTATION_STATE_2026-09-28](docs/15-handoff/CURRENT_IMPLEMENTATION_STATE_2026-09-28.md).
-Public landing is approved and committed but **not deployed**; `brandopolis.ai` still returns 403 —
-see [ROOT_DOMAIN_403_REMEDIATION](docs/15-handoff/ROOT_DOMAIN_403_REMEDIATION.md). Commit and push are
-not deployment.
+Production PILOT is live: per [SESSION_STATE](SESSION_STATE.md) (2026-09-29) the approved landing is
+deployed, `brandopolis.ai` redirects to the pilot and production ran `2f84d29` (landing, auth and
+admin), with later hotfix deployments recorded there; the 403 diagnosis in
+[ROOT_DOMAIN_403_REMEDIATION](docs/15-handoff/ROOT_DOMAIN_403_REMEDIATION.md) is historical. The exact
+deployed commit is recorded only in SESSION_STATE. Commit and push are not deployment.
 
 User-facing term for pilot participants is **Estratega de Marca / Estrategas de Marca**, never
 "tester". Internal identifiers (schema, telemetry, tests, env vars) keep `tester` where renaming

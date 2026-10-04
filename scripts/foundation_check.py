@@ -10,6 +10,7 @@ ROOT=Path(__file__).resolve().parents[1];errors=[]
 def files(suffix):
  for directory, dirs, names in os.walk(ROOT):
   dirs[:] = [d for d in dirs if d not in {'.git','.venv','node_modules','.pnpm-store','.next','dist','coverage','.local','test-results','playwright-report'}]
+  if Path(directory)==ROOT/'.claude':dirs[:]=[d for d in dirs if d!='worktrees']
   for name in names:
    if name.endswith(suffix): yield Path(directory)/name
 required=['README.md','AGENTS.md','CLAUDE.md','CONTRIBUTING.md','SESSION_STATE.md','CHANGELOG.md','.gitignore','.env.example','LOCAL_HANDOFF.md','docs/01-product/product-bible-v1.md','docs/00-index/source-of-truth.md','docs/04-domain-model/state-machines.md']
@@ -57,6 +58,32 @@ for n in ('0001','0002','0003','0005','0006','0007','0008','0009','0010'):
  if not (ROOT/f'docs/14-decisions/ADR-{n}.md').read_text(encoding='utf-8').startswith('Status: accepted'):errors.append('ADR accepted drift '+n)
 for n in ('0004',):
  if not (ROOT/f'docs/14-decisions/ADR-{n}.md').read_text(encoding='utf-8').startswith('Status: open'):errors.append('ADR open drift '+n)
+# Engineering Skill Pack: light gate only. .claude/skills must be a byte-identical copy of .agents/skills
+# (pnpm skills:sync). Inside the repository no path segment may be a symlink or junction, and linked entries are
+# reported, never followed; aliases above the repository are ignored. Frontmatter, references and vocabulary are
+# checked semantically in tests/skill-pack.test.ts, never here.
+def linked(p):return p.is_symlink() or (hasattr(os.path,'isjunction') and os.path.isjunction(p))
+def skill_root(rel):
+ p=ROOT
+ for part in rel.split('/'):
+  p=p/part
+  if linked(p):errors.append('Skill pack path is a symlink or junction: '+rel);return None
+  if not p.is_dir():errors.append('Skill pack root missing: '+rel);return None
+ return p
+def skill_tree(d):
+ out=[]
+ for directory,dirs,names in os.walk(d,followlinks=False):
+  for n in list(dirs):
+   if linked(Path(directory)/n):errors.append('Skill pack linked entry: '+(Path(directory)/n).relative_to(ROOT).as_posix());dirs.remove(n)
+  out+=[(Path(directory)/n).relative_to(d).as_posix() for n in names if not linked(Path(directory)/n)]
+ return sorted(out)
+skills_src,skills_copy=skill_root('.agents/skills'),skill_root('.claude/skills')
+if skills_src and skills_copy:
+ src_files,copy_files=skill_tree(skills_src),skill_tree(skills_copy)
+ if not src_files:errors.append('Skill pack source is empty')
+ if src_files!=copy_files:errors.append('Skill pack copy diverges from .agents/skills (run pnpm skills:check)')
+ for rel in src_files:
+  if rel in copy_files and (skills_src/rel).read_bytes()!=(skills_copy/rel).read_bytes():errors.append('Skill pack bytes differ '+rel)
 print('Markdown',len(list(files('.md'))),'JSON',len(list(files('.json'))),'schemas',len(schemas),'requirements',len(reqs),'golden cases',len(cases),'errors',len(errors))
 for e in errors:print('ERROR:',e)
 sys.exit(1 if errors else 0)

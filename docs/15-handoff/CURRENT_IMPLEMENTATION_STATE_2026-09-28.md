@@ -1,9 +1,9 @@
 Status: derived
 Owner: Product / Engineering
 Canonical: no
-Last reviewed: 2026-09-28
+Last reviewed: 2026-10-04
 Related: docs/15-handoff/NEXT_DEVELOPER_START_HERE.md, docs/15-handoff/ROOT_DOMAIN_403_REMEDIATION.md, docs/15-handoff/POST_MVP_DEFERRED_SCOPE.md
-Depends on: Landing commit d43fd4d (2026-09-28)
+Depends on: Landing commit d43fd4d (2026-09-28); §4, §5, §5.bis, §6, §7 and §11 reconciled against `main` 4329292 (2026-10-04)
 
 # Estado de implementación · 2026-09-28
 
@@ -27,15 +27,15 @@ cascada automática.
 |---|---|---|
 | Fases 1–9 (dominio, decisiones, impacto, versiones) | CERRADO para MVP | semántica congelada |
 | Workspace PILOT | **CONGELADO FUNCIONALMENTE** | ver §7 |
-| Landing pública | **APROBADA (2026-09-28)**, en `origin/main` `d43fd4d` | **no desplegada** |
+| Landing pública | **APROBADA (2026-09-28)**, en `origin/main` `d43fd4d` | **desplegada** (SESSION_STATE 2026-09-29) |
 | Corpus documental de origen | implementado | `source_documents`, `document_extractions`, `document_claims` |
 | Investigación competitiva | implementada, con revisión humana | hallazgos requieren aceptación explícita |
 | Autenticación | **autoservicio OIDC verificado + intake obligatorio** | ver §4 |
 | Administración | **V1 implementada** en `/admin` | ver §5.bis |
 | Telemetría / evidencia | parcial | ver §6 |
 | Defecto de cabecera móvil | **CORREGIDO 2026-09-28** | ver §8 |
-| `brandopolis.ai` (raíz) | **BLOQUEADO — 403 de Apache/cPanel** | ver §9 |
-| Despliegue de producción | **NO REALIZADO** para `d43fd4d` | ver §9 |
+| `brandopolis.ai` (raíz) | redirige al piloto (SESSION_STATE 2026-09-29); el 403 es histórico | ver §9 |
+| Despliegue de producción | **en producción** desde `2f84d29` (landing, auth, admin), con hotfixes posteriores | commit exacto: SESSION_STATE |
 
 ## 3. Landing pública aprobada (`d43fd4d`)
 
@@ -50,29 +50,33 @@ La landing **vive dentro de la app Node** (`src/transport/public/`, servida por
 `src/transport/assets.ts`). No es un sitio estático: `app.js` llama a `/api/mode` y
 `/api/session-state` al arrancar. Esto condiciona cómo puede publicarse en el dominio raíz (§9).
 
-## 4. Autenticación — estado actual, sin cambios en esta tarea
+## 4. Autenticación — estado en `main`
 
-Implementación en `src/transport/pilot-auth.ts` (102 líneas) y `src/application/pilot-access.ts`.
+Implementación en `src/transport/pilot-auth.ts` y `src/application/pilot-access.ts`. La rama
+`feat/pilot-auth-admin` está integrada en `main`; lo que sigue describe `main` (4329292).
 
 - OIDC **neutral al proveedor** mediante `openid-client`: discovery sobre `OIDC_ISSUER`.
 - Authorization Code + PKCE (S256) + `state` + `nonce` + `prompt=login`.
 - Validación de firma (JWKS), issuer, audiencia, expiración y nonce.
 - **Identidad canónica = `(issuer, subject)`. Nunca el email.**
-- `scope` solicitado: **`openid` únicamente** — no se piden `email` ni `profile`.
-- **Fail-closed**: una identidad no aprovisionada previamente es rechazada. No hay autoservicio.
+- `scope` solicitado: `openid email profile`; los claims se toman sólo del ID token validado.
+- **Fail-closed por defecto**: una identidad desconocida es rechazada salvo que `PILOT_AUTO_PROVISION=true`.
+  El autoservicio crea cuenta sólo con `email_verified === true`, sin duplicados bajo concurrencia, y
+  asigna cohorte determinista por hash de `issuer+subject`. Una identidad ya aprovisionada sigue
+  entrando por `(issuer, subject)` aunque el proveedor deje de enviar el email.
+- Existen `user_accounts` y `participant_profiles`; el **intake del participante es obligatorio tras
+  autenticarse** y se aplica en el servidor.
 - Sesión en cookie `__Host-brandopolis_session` (Secure, HttpOnly, SameSite=Strict, host-only).
 - DEMO LOCAL usa un token de sesión local, sólo para ingeniería.
 
-**Actualizado en la rama `feat/pilot-auth-admin`**: el scope es `openid email profile`, los claims se
-toman sólo del ID token validado, `PILOT_AUTO_PROVISION` permite el autoservicio (fail-closed por
-defecto), la cohorte es determinista, existen `user_accounts` y `participant_profiles`, y el **intake
-del participante es obligatorio tras autenticarse**. Detalle y certificación multiusuario:
+Evidencia: `tests/pilot-cases.ts` (identidad verificada, autoservicio sólo si está habilitado, sin
+duplicados, cohorte estable). Detalle y certificación multiusuario:
 [GOOGLE_AUTH_PRODUCTION](GOOGLE_AUTH_PRODUCTION.md). **Siguen sin implementarse**: contraseña propia,
 recuperación y SMTP — ver §11.
 
 ## 5. Administración
 
-Implementada en la rama `feat/pilot-auth-admin` — ver **§5.bis**. La regla que la gobierna sigue siendo
+Implementada en `main` (`src/application/pilot-admin.ts`, `tests/admin.test.ts`) — ver **§5.bis**. La regla que la gobierna sigue siendo
 la de siempre: las métricas de adopción viven en `src/application/pilot-access.ts` y la administración
 **reutiliza esas definiciones**, nunca crea otras que compitan.
 
@@ -105,7 +109,10 @@ desde registros clasificados, nunca inferido de un nombre.
 
 - **Marcas reales** y **marcas demo** se reportan por separado, siempre.
 - Métricas que la arquitectura **no puede derivar hoy** se devuelven en `unavailable` y se muestran como
-  tales: `documentEngagement`, `phaseCompletionCounts`, `optionActionCounts`. No se inventan.
+  tales: `aiCostPerDecision`, `aiCostPerActiveBrand`, `willingnessToPay`, `pilotPaidConversion`. No se
+  inventan. `documentEngagement`, `phaseCompletionCounts` y `optionActionCounts` se derivan desde
+  2026-09-29 (ver §6.ter; `optionActionCounts.discarded` sigue en `null`). Evidencia:
+  `src/application/pilot-admin.ts`, `tests/admin.test.ts`.
 - La evidencia agregada no contiene filas identificables: sólo conteos por categoría. **La ciudad se
   omite incluso en agregado**, porque en un piloto pequeño un conteo de uno señala a una persona.
 
@@ -118,16 +125,19 @@ auditado contra el operador que lo hizo.
 tokens de sesión, OIDC o recuperación, ni hashes.
 
 **Pendiente para una iteración posterior**: filtros de fecha en la interfaz (el endpoint ya los acepta),
-estados de flujo para comentarios (`NEW/IN_REVIEW/RESOLVED/DISMISSED`), exportación operativa del padrón,
-y métricas de retención D7/D14/D30.
+estados de flujo para comentarios (`NEW/IN_REVIEW/RESOLVED/DISMISSED`) y exportación operativa del
+padrón. Las métricas de retención D7/D14/D30 ya se derivan (§6.ter) y devuelven `null` mientras la
+ventana no ha transcurrido.
 
 ## 6. Telemetría y evidencia
 
 Envelope canónico en `telemetry` (`schemas/`), `workspaceId` anulable. Existen eventos de producto y
-capacidad (`capability_events`). **No instrumentado todavía**: `account_created`, `session_started`,
-`password_created`, `password_reset_requested`, `password_reset_completed`, `login_failed`,
-`email_delivery_failed`. Cualquier métrica de evidencia que dependa de ellos debe declararse
-**no disponible** hasta que existan; no se inventan cifras.
+capacidad (`capability_events`). `account_created` y `session_started` se registran en `pilot_events`
+(`src/application/pilot-access.ts`) y figuran como READY en
+[FOUNDING_PILOT_ANALYTICS_READINESS](../09-validation/FOUNDING_PILOT_ANALYTICS_READINESS.md).
+**No instrumentado todavía**: `password_created`, `password_reset_requested`,
+`password_reset_completed`, `login_failed`, `email_delivery_failed`. Cualquier métrica de evidencia que
+dependa de ellos debe declararse **no disponible** hasta que existan; no se inventan cifras.
 
 ## 6.bis Entorno competitivo es preparación, no una quinta decisión · 2026-09-29
 
@@ -177,11 +187,10 @@ Definiciones canonicas: [metrics.md](../09-validation/metrics.md), que no se red
 
 ## 7. Congelación del producto PILOT
 
-> **El workspace PILOT está funcionalmente completo para esta fase de validación.**
->
-> No modifiques su UI ni su flujo estratégico salvo para: desbloquear autenticación, soportar
-> administración, soportar telemetría/evidencia, corregir un defecto crítico, o mantener
-> seguridad/aislamiento. Toda mejora de producto va al backlog, no al código.
+El workspace PILOT está congelado para comportamiento de producto. La definición única y vigente
+(incluida la excepción de hardening documental y de tooling del 2026-10-04) está en
+[CLAUDE.md § Pilot freeze](../../CLAUDE.md#pilot-freeze); no se repite aquí. La lista de categorías
+permitidas que figuraba en esta sección (2026-09-28) quedó sustituida por esa definición.
 
 ## 8. Defecto de cabecera móvil — corregido
 
@@ -203,45 +212,46 @@ horizontal, con 54 marcas y nombres de 45 caracteres en la base.
 
 ## 9. Dominio raíz y despliegue
 
-`https://brandopolis.ai` devuelve **403 de Apache/cPanel**. El repositorio **no documenta ninguna
+**Actualización 2026-10-04 (evidencia: SESSION_STATE 2026-09-29):** la landing aprobada está desplegada, `brandopolis.ai` redirige al piloto (302 que conserva la ruta) y producción corrió `2f84d29` con hotfixes posteriores. El resto de esta sección es el diagnóstico histórico.
+
+Histórico: `https://brandopolis.ai` devolvía **403 de Apache/cPanel**. El repositorio **no documenta ninguna
 arquitectura Apache/cPanel**; la topología canónica es Node detrás de un proxy que conserva el
 `Host`. Diagnóstico completo, restricciones de código que lo condicionan y runbook de servidor:
 [ROOT_DOMAIN_403_REMEDIATION](ROOT_DOMAIN_403_REMEDIATION.md).
 
-**Commit y push no son despliegue.** `d43fd4d` está en `origin/main` y **no** en producción.
+**Commit y push no son despliegue.** El commit desplegado exacto sólo consta en SESSION_STATE.
 
 ## 10. Prioridades canónicas
 
-1. Remediación del dominio raíz y publicación de la landing.
-2. Despliegue de Auth/Admin en producción tras revisión.
+1. ~~Remediación del dominio raíz y publicación de la landing.~~ Resuelto (SESSION_STATE 2026-09-29).
+2. ~~Despliegue de Auth/Admin en producción tras revisión.~~ Resuelto: incluido en `2f84d29`.
 3. Recolección de evidencia del piloto.
 4. Integración de comentarios e incidencias en el admin.
-5. Zona geográfica de influencia en onboarding y Brand Context.
+5. Zona geográfica de influencia en onboarding y Brand Context (captura en nueva marca ya implementada; ver §11).
 6. Controles de administración más ricos.
-7. Refinamientos restantes del workspace.
+7. Refinamientos restantes del workspace (congelados: [CLAUDE.md § Pilot freeze](../../CLAUDE.md#pilot-freeze)).
 8. Trabajo de validación y escala.
 
 ## 11. Trabajo diferido (no implementado)
 
 Pendiente de una pasada dedicada, con su propio diseño, migraciones y pruebas:
 
-- **Autenticación**: `scope` `openid email profile`; exigir `email_verified === true`;
-  `PILOT_AUTO_PROVISION` (por defecto `false`, fail-closed cuando está apagado); aprovisionamiento
-  transaccional sin duplicados bajo concurrencia; cohorte determinista por hash de `issuer+subject`
-  (nunca `Math.random()`); perfil de cuenta; contraseña propia opcional (Argon2id o scrypt, nunca
-  texto plano, nunca contraseñas generadas por email); login email+contraseña resolviendo al mismo
-  usuario canónico; recuperación con token aleatorio almacenado **sólo como hash**, de un solo uso,
-  caducidad ~30 min, respuesta neutra siempre; SMTP neutral al proveedor.
-- **Administración**: `/admin` con autorización server-side por `BRANDOPOLIS_ADMIN_EMAILS`, resumen,
-  lista de Estrategas de Marca (sólo metadatos operativos: nunca hashes, tokens, documentos ni
-  contenido estratégico) y `GET /api/admin/summary`, `GET /api/admin/users`, cada uno validando
-  autorización de forma independiente.
+- **Autenticación** (resto pendiente; scope ampliado, `email_verified`, `PILOT_AUTO_PROVISION`,
+  aprovisionamiento sin duplicados, cohorte determinista y perfil de cuenta ya están en `main`, §4):
+  contraseña propia opcional (Argon2id o scrypt, nunca texto plano, nunca contraseñas generadas por
+  email); login email+contraseña resolviendo al mismo usuario canónico; recuperación con token
+  aleatorio almacenado **sólo como hash**, de un solo uso, caducidad ~30 min, respuesta neutra
+  siempre; SMTP neutral al proveedor.
+- **Administración**: implementada en `main` (§5.bis); queda pendiente sólo lo listado allí.
 - **Comentarios e incidencias** (alta prioridad, siguiente iteración de admin):
   «Compartir feedback» → «Compartir comentarios»; admin «Comentarios e incidencias» con vistas
   Comentarios / Problemas reportados; estados `NEW/IN_REVIEW/RESOLVED/DISMISSED`
   (Nuevo / En revisión / Resuelto / Descartado); métricas de comentarios recibidos, problemas
   reportados, abiertos y resueltos. **No implementar sin instrucción explícita.**
-- **Zona geográfica de influencia** (onboarding y Brand Context): pregunta estratégica
+- **Zona geográfica de influencia** (onboarding y Brand Context). **Parcialmente implementada**: el
+  diálogo canónico de nueva marca la pregunta de forma opcional y se persiste en `brand_profiles`
+  (`geographicInfluence`, `primaryMarket`; el diálogo en `tests/pre-tester.test.ts`, la persistencia en `tests/pilot-cases.ts`). No está verificado que se
+  propague a recomendaciones, investigación ni Brand Context; eso sigue pendiente. Pregunta estratégica
   *¿En qué mercado geográfico compite y quiere crecer esta marca?* con valores sugeridos
   Local/ciudad · Regional · Nacional · LATAM · Internacional/global, y «Mercados prioritarios»
   opcional. **Principio crítico: nunca asumir que el lugar donde opera una marca equivale a su

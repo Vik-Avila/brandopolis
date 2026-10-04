@@ -1,7 +1,7 @@
 Status: derived
 Owner: Engineering
 Canonical: no
-Last reviewed: 2026-09-28
+Last reviewed: 2026-10-04
 Related: docs/15-handoff/PILOT_DEPLOYMENT_CONTRACT.md, docs/15-handoff/OIDC_PROVIDER_DECISION.md, docs/15-handoff/CURRENT_IMPLEMENTATION_STATE_2026-09-28.md
 Depends on: feat/pilot-auth-admin (OIDC self-provisioning)
 
@@ -226,5 +226,6 @@ Orden de despliegue: `pnpm pilot:migrate` (aplica 0011, aditiva) → arrancar la
 
 **El código está listo para cuentas de Google verificadas arbitrarias.** Lo que falta para abrir el
 piloto no es código, sino configuración: `PILOT_AUTO_PROVISION=true`, las credenciales OIDC de Google y
-el callback registrado. Contraseña propia, recuperación y administración siguen sin implementarse y no
-bloquean el acceso con Google.
+el callback registrado. Contraseña propia y recuperación siguen sin implementarse y no bloquean el acceso con Google.
+La administración se implementó después en la misma rama (ver
+[CURRENT_IMPLEMENTATION_STATE §5.bis](CURRENT_IMPLEMENTATION_STATE_2026-09-28.md)).

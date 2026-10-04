@@ -32,7 +32,9 @@
     "pilot:preflight": "tsx scripts/pilot-preflight.ts",
     "pilot:smoke": "tsx scripts/pilot-smoke.ts",
     "test:visual": "playwright test --config playwright.visual.config.ts",
-    "pilot:ai-smoke": "tsx scripts/pilot-ai-smoke.ts"
+    "pilot:ai-smoke": "tsx scripts/pilot-ai-smoke.ts",
+    "skills:sync": "tsx scripts/sync-skills.ts",
+    "skills:check": "tsx scripts/sync-skills.ts --check"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

@@ -1,7 +1,7 @@
 Status: derived
 Owner: Product / Engineering
 Canonical: no
-Last reviewed: 2026-09-25
+Last reviewed: 2026-10-04
 Related: docs/15-handoff/MVP_PHASES_1_TO_9_CLOSURE.md
 Depends on: MVP phases 1–9 closure 2026-09-25
 
@@ -17,7 +17,7 @@ Work below is **not** required to start Phase 10 (real testers). Listing it here
 | Evidence | Rich evidence ingestion (documents, URLs, research provider), live research | Evidence is captured by people with provenance and limitations; no unsupported evidence is invented. |
 | AI | Multi-provider support, evaluation beyond deterministic checks, cost reporting in currency, refusal fallbacks | One provider behind a neutral gateway, caps, notice and safe failure. |
 | Idempotency | Universal idempotency for non-strategic creates (context, experiment, signal, learning, brand) | Strategic Decision commits are idempotent; duplicates of other creates are visible and harmless. |
-| Auth | Production account recovery, MFA inside Brandopolis, SSO/SCIM, self-service sign-up | OIDC provider handles credentials and recovery; testers are provisioned by the operator. |
+| Auth | Production account recovery, MFA inside Brandopolis, SSO/SCIM | OIDC provider handles credentials and recovery. Self-service sign-up is no longer deferred: OIDC self-provisioning behind `PILOT_AUTO_PROVISION` exists ([ADR-0016](../14-decisions/ADR-0016.md)). |
 | Scale | Distributed rate limiting, horizontal scaling | PILOT runs one instance, enforced by an advisory lock. |
 | Security | Enterprise hardening, external pentest, certification | Launch review has no open blocker. |
 | Operations | Hosted `pg_dump`/`pg_restore` rehearsal on the chosen host | Must be rehearsed once at deployment (external step); local recovery is tested. |

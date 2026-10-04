@@ -14,6 +14,65 @@ Depends on: —
 
 # Registro
 
+## Endurecimiento del Skill Pack tras la revisión · 2026-10-04
+
+Correcciones de la revisión local de `main...HEAD`. **Sin cambios de runtime, schema, migraciones ni
+despliegue.**
+
+- Matriz de checks sin rutas de comportamiento que pasen sólo con Foundation; suites de navegador
+  ligadas a sus specs, configs y superficies servidas.
+- `skills:check` no destructivo y primero; `skills:sync` rechaza argumentos desconocidos y raíces
+  enlazadas o solapadas, y sustituye la copia con staging verificado y restauración.
+- Una sola definición de la congelación en `CLAUDE.md`, con la regla de defectos de seguridad del
+  2026-10-04; `AGENTS.md` sólo enlaza. Comandos de revisión neutrales entre agentes.
+- [ADR-0016](docs/14-decisions/ADR-0016.md): autoaprovisionamiento PILOT y acceso de operador
+  (supersede sólo el aprovisionamiento de ADR-0013). Estado de producción reconciliado con evidencia;
+  riesgo de descompresión de documentos registrado como deuda técnica.
+- Pasada final: baseline typecheck/lint/test para todo cambio salvo registros históricos; sync que se
+  niega ante archivos que sólo existen en la copia y no confunde alias por encima del repo con enlaces;
+  rollback y backup probados con fallos inyectados; los skills sólo enlazan la congelación; refrescar
+  hashes de marca exige decisión humana. Deuda registrada en `known-risks.md`. Resultados reales en
+  [SESSION_STATE](SESSION_STATE.md).
+
+## Engineering Skill Pack · 2026-10-04
+
+Tooling de ingeniería autorizado por la excepción de hardening del 2026-10-04. **Sin cambios en
+`src/`, `schemas/`, `drizzle/`, assets de runtime, comportamiento del PILOT ni despliegue.**
+
+- Cinco skills en `.agents/skills/` (fuente canónica): `brandopolis-feature` (punto de entrada, con
+  el gate de base de datos), `brandopolis-ui`, `brandopolis-brando`, `brandopolis-security` y
+  `brandopolis-review` (matriz única de checks y gate de cierre). Procedimientos que remiten a las
+  fuentes canónicas por enlace e ID; no copian contratos.
+- `.claude/skills/` es una copia generada byte a byte: `pnpm skills:sync` / `pnpm skills:check`
+  (`scripts/skill-pack.ts`, `scripts/sync-skills.ts`). Sin symlinks; LF fijado en `.gitattributes`.
+- `tests/skill-pack.test.ts` y un check de sólo lectura en Foundation protegen la copia, el frontmatter,
+  las referencias y el vocabulario de estados. `AGENTS.md` incluye la tabla de enrutado.
+
+Verificación: ver la entrada del 2026-10-04 (Engineering Skill Pack) en [SESSION_STATE](SESSION_STATE.md).
+
+## Reconciliación documental canónica · 2026-10-04
+
+Decisiones humanas del 2026-10-04 aplicadas a la documentación canónica antes de crear skills de
+agente. **Sólo documentación: sin `src/`, `schemas/`, `drizzle/`, assets, despliegue ni cambios en el
+PILOT.**
+
+- **Congelación del PILOT con una sola definición** en [CLAUDE.md § Pilot freeze](CLAUDE.md#pilot-freeze):
+  se mantiene el criterio del 2026-09-29, queda sustituida la lista de categorías del 2026-09-28 y se
+  añade la excepción de hardening (documentación, tooling, skills y validadores sin efecto en runtime).
+  `AGENTS.md` y `CURRENT_IMPLEMENTATION_STATE` §7 enlazan en lugar de repetirla.
+- **`CURRENT_IMPLEMENTATION_STATE` contrastado con el código y los tests de `main`** (4329292): auth y
+  admin ya están en `main`; lista `unavailable` actual; `account_created` y `session_started`
+  instrumentados en `pilot_events`; D7/D14/D30 derivadas; geografía capturada en nueva marca, con la
+  propagación sin verificar; contraseña, recuperación, SMTP y estados de comentarios siguen sin implementar.
+- **Product Bible**: eliminado el duplicado byte a byte de «Correcciones finales de contrato».
+- **Brandopolis Intelligence / Brando**: hogar canónico en
+  [brand-intelligence-engine](docs/05-ai/brand-intelligence-engine.md) (se conserva la arquitectura y
+  se amplía con Brando, límites de autoridad y B1–B5), decisión en
+  [ADR-0015](docs/14-decisions/ADR-0015.md), índice de ADR con ADR-0012 (antes omitido) y ADR-0015, y
+  resolución fechada en [scope-mvp](docs/01-product/scope-mvp.md) que mantiene Ask Brandopolis en P1.
+
+Verificación: ver la entrada del 2026-10-04 en [SESSION_STATE](SESSION_STATE.md).
+
 ## Analítica de producto del Founding Pilot · 2026-09-29
 
 Reconciliación y capa mínima fiable para operar los primeros 12–20 Estrategas de Marca. **Sin dashboard
