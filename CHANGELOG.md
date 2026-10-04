@@ -14,6 +14,29 @@ Depends on: —
 
 # Registro
 
+## Reconciliación documental canónica · 2026-10-04
+
+Decisiones humanas del 2026-10-04 aplicadas a la documentación canónica antes de crear skills de
+agente. **Sólo documentación: sin `src/`, `schemas/`, `drizzle/`, assets, despliegue ni cambios en el
+PILOT.**
+
+- **Congelación del PILOT con una sola definición** en [CLAUDE.md § Pilot freeze](CLAUDE.md#pilot-freeze):
+  se mantiene el criterio del 2026-09-29, queda sustituida la lista de categorías del 2026-09-28 y se
+  añade la excepción de hardening (documentación, tooling, skills y validadores sin efecto en runtime).
+  `AGENTS.md` y `CURRENT_IMPLEMENTATION_STATE` §7 enlazan en lugar de repetirla.
+- **`CURRENT_IMPLEMENTATION_STATE` contrastado con el código y los tests de `main`** (4329292): auth y
+  admin ya están en `main`; lista `unavailable` actual; `account_created` y `session_started`
+  instrumentados en `pilot_events`; D7/D14/D30 derivadas; geografía capturada en nueva marca, con la
+  propagación sin verificar; contraseña, recuperación, SMTP y estados de comentarios siguen sin implementar.
+- **Product Bible**: eliminado el duplicado byte a byte de «Correcciones finales de contrato».
+- **Brandopolis Intelligence / Brando**: hogar canónico en
+  [brand-intelligence-engine](docs/05-ai/brand-intelligence-engine.md) (se conserva la arquitectura y
+  se amplía con Brando, límites de autoridad y B1–B5), decisión en
+  [ADR-0015](docs/14-decisions/ADR-0015.md), índice de ADR con ADR-0012 (antes omitido) y ADR-0015, y
+  resolución fechada en [scope-mvp](docs/01-product/scope-mvp.md) que mantiene Ask Brandopolis en P1.
+
+Verificación: ver la entrada del 2026-10-04 en [SESSION_STATE](SESSION_STATE.md).
+
 ## Analítica de producto del Founding Pilot · 2026-09-29
 
 Reconciliación y capa mínima fiable para operar los primeros 12–20 Estrategas de Marca. **Sin dashboard

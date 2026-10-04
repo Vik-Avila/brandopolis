@@ -1,5 +1,38 @@
 # Session State
 
+Current phase: **CANONICAL DOCUMENTATION RECONCILIATION** (2026-10-04). Branch
+`docs/canonical-reconciliation-2026-10-04` from `main` 4329292. Uncommitted, documentation only.
+
+Human product decisions 2026-10-04, applied to the canonical docs before any agent skill is created:
+
+- **Single PILOT freeze definition** in [CLAUDE.md § Pilot freeze](CLAUDE.md#pilot-freeze). The
+  2026-09-29 criterion stays; the 2026-09-28 category list is superseded; a hardening exception now
+  allows documentation reconciliation, engineering tooling, agent skills and validators without runtime
+  effect. AGENTS.md and CURRENT_IMPLEMENTATION_STATE §7 link to it instead of restating it. The
+  historical freeze entry of 2026-09-29 below is unchanged.
+- **CURRENT_IMPLEMENTATION_STATE reconciled against `main` code and tests**, not inferred: auth (§4)
+  and admin (§5) are on `main`; the admin `unavailable` list is the current one; `account_created` and
+  `session_started` are instrumented in `pilot_events`; D7/D14/D30 are derived; geography is captured
+  in the new-brand dialog but its propagation is not verified, so it stays partially pending; password,
+  recovery, SMTP and feedback workflow states remain not implemented.
+- **Product Bible**: the byte-identical duplicate of «Correcciones finales de contrato» removed; no
+  semantic change.
+- **Brandopolis Intelligence / Brando** registered: canonical home
+  [brand-intelligence-engine](docs/05-ai/brand-intelligence-engine.md) (existing architecture kept,
+  extended with Brando, authority limits and B1–B5), decision record
+  [ADR-0015](docs/14-decisions/ADR-0015.md), ADR index also lists the previously omitted ADR-0012, and
+  [scope-mvp](docs/01-product/scope-mvp.md) gains a dated resolution that keeps Ask Brandopolis in P1.
+  B1 belongs to the next stage; no runtime change.
+
+No change to `src/`, `schemas/`, `drizzle/`, assets, configuration, deployment or PILOT behaviour.
+Python 3.12 installed on this machine so the canonical Foundation validator runs (`.venv` with
+`requirements-foundation.txt` only).
+
+Gate (2026-10-04): baseline and final both green. typecheck PASS; lint PASS; pnpm test 135/135; Foundation 0 errors (217 → 218 Markdown files, the new ADR-0015); git diff --check clean; diff limited to .md files. Browser suites not run: no runtime, UI or test file changed.
+
+---
+
+
 Current phase: **FOUNDING PILOT PRODUCT ANALYTICS** (2026-09-29). Uncommitted.
 
 Minimum reliable analytics to operate the first 12–20 Estrategas de Marca. No new dashboard, no vendor,

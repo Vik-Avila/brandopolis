@@ -2,24 +2,29 @@
 
 Brandopolis is **the Brand Operating System**: connected Strategic Decisions with evidence, hypotheses, human rationale, versions, dependencies and Change Impact. **AI proposes. Humans decide. Brandopolis remembers.**
 
-## Pilot freeze (2026-09-29)
+## Pilot freeze
+
+Single canonical definition (frozen 2026-09-29; hardening exception added by human decision
+2026-10-04). It supersedes the 2026-09-28 list of permitted change categories. Other documents link
+here instead of restating it.
 
 > The current PILOT workspace is functionally frozen for external validation.
 > Do not continue opportunistic UI or strategic-workflow polishing.
 > Only defects discovered by regression or external testing may change the frozen workspace before validation.
 
+- **Authorized during this hardening (2026-10-04):** canonical documentation reconciliation,
+  engineering tooling, creation of agent skills, and validators/checks that do not change runtime
+  behaviour.
+- **Not authorized:** changing PILOT behaviour, runtime UI, migrations, product schema, deploy,
+  production, or functional strategic changes.
+- Deferred product improvements go to the backlog, never straight into the code. Do not redesign
+  approved UI without an explicit instruction. Repository docs are authoritative; chat history is not
+  a source of truth.
+
 Pre-tester UX is complete: participant intake, CoffeePolis demo sandbox, brand geography, optional AI
 possibilities, per-option Incorporar/Modificar/Descartar, and the phase-completion hand-off. See
 [CURRENT_IMPLEMENTATION_STATE_2026-09-28](docs/15-handoff/CURRENT_IMPLEMENTATION_STATE_2026-09-28.md)
 and [GOOGLE_AUTH_PRODUCTION](docs/15-handoff/GOOGLE_AUTH_PRODUCTION.md).
-
-## Pilot freeze (2026-09-28)
-
-The PILOT workspace is **functionally complete for this validation phase**. Do not modify its UI or
-strategic workflow except to: unblock authentication, support administration, support
-telemetry/evidence, fix a critical defect, or maintain security/tenant isolation. Deferred product
-improvements go to the backlog, never straight into the code. Do not redesign approved UI without an
-explicit instruction. Repository docs are authoritative; chat history is not a source of truth.
 
 Operational entry point, including what is implemented vs deferred:
 [CURRENT_IMPLEMENTATION_STATE_2026-09-28](docs/15-handoff/CURRENT_IMPLEMENTATION_STATE_2026-09-28.md).
