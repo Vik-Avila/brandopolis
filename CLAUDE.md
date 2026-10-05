@@ -24,6 +24,31 @@ Other documents link here instead of restating it.
 4. **Not authorized without a new human decision:** migrations, product schema changes, deploy and
    production operations.
 
+### Jury production freeze · 2026-10-04
+
+Human decision: for the next jury-review window (approximately 15 days), production is **jury-critical**
+and must remain stable. This rule does **not** expire automatically on a date; only an explicit human
+decision lifts it.
+
+1. **Default outcome of the next development phase:** release-ready code outside production. Finishing a
+   phase, passing review, committing, pushing, opening/merging a PR, or updating `main` never authorizes
+   a production deployment.
+2. **Development may continue** on dedicated branches and non-production environments. Keep jury-facing
+   production behaviour, data, auth, configuration and infrastructure unchanged unless the exception
+   below is explicitly authorized.
+3. **Production changes are frozen:** no deploy, production migration/schema change, production config,
+   OIDC, secrets, DNS, hosting, runtime asset or behaviour change without a separate explicit human
+   authorization naming the exact release/change.
+4. **Only emergency exceptions:** a reproducible defect that threatens jury access/availability, or a
+   confirmed security, authentication, authorization, tenant-isolation or data-exposure defect. The fix
+   must contain only the defect correction, never opportunistic product improvements.
+5. **Any authorized production exception during this window requires before deployment:** a pinned
+   release SHA, all applicable typecheck/lint/unit/browser/security/Foundation gates green, reviewed
+   diff, backup/rollback plan where state or infrastructure can change, production smoke plan and
+   post-deploy verification. A failed gate means no deploy.
+6. **At phase close:** report the candidate as `release-ready` or `not release-ready`; do not describe
+   it as deployed unless production was separately authorized and verified.
+
 INV-006 stays absolute: no conversation or AI modifies strategy silently, whatever is requested.
 Deferred product improvements go to the backlog, never straight into the code. Do not redesign approved
 UI without an explicit instruction. Repository docs are authoritative; chat history is not a source of
