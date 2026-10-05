@@ -52,6 +52,19 @@ describe('Brando B1 contracts',()=>{
   });
   expect((await provider.generateMeasured(request())).tokenIn).toBe(10);
   expect(body.system).toContain('Brando B1');expect(JSON.stringify(body.output_config)).toContain('brando-answer');expect(JSON.stringify(body.output_config)).not.toMatch(/maxLength|maxItems/);
+  await provider.generateMeasured({...request(),promptVersion:'brando-contextual-v2'});expect(body.system).toContain('everyday Mexican Spanish');expect(body.system).toContain('READY_FOR_DECISION = lista para decidir');
+  await provider.generateMeasured({...request(),promptVersion:'brando-contextual-v3',outputSchema:'brando-answer-v2'});expect(body.system).toContain('Explicit suggestion actions');expect(JSON.stringify(body.output_config)).toContain('suggestionActions');
+  const format=body.output_config as {format:{schema:{properties:{facts:{items:{properties:{referenceIds:{items:{enum:string[]}}}}}}}}};
+  expect(format.format.schema.properties.facts.items.properties.referenceIds.items.enum).toEqual(packet().includedIds);
+  expect(format.format.schema.properties.facts.items.properties.referenceIds.items.enum).not.toContain('v');
+  await provider.generateMeasured({...request(),promptVersion:'brando-contextual-v4',outputSchema:'brando-answer-v2'});expect(body.system).toContain('Exact citations from the authorized snapshot');
+  const other=brandoPacket(empty(),{id:'other-brand',name:'Other'},'other-revision','consulta',null,[]);
+  await provider.generateMeasured({...request(),promptVersion:'brando-contextual-v4',outputSchema:'brando-answer-v2',input:other});
+  const otherFormat=body.output_config as typeof format;
+  expect(otherFormat.format.schema.properties.facts.items.properties.referenceIds.items.enum).toEqual(['other-brand']);
+  expect(otherFormat.format.schema.properties.facts.items.properties.referenceIds.items.enum).not.toContain('d');
+
+
   expect(()=>validate('brando-answer',{...demoBrando(packet()),answer:'x'.repeat(2501)})).toThrow();
   for(const reason of ['refusal','max_tokens']){stop=reason;await expect(provider.generateMeasured(request())).rejects.toMatchObject({code:'INVALID_OUTPUT'});}
  });

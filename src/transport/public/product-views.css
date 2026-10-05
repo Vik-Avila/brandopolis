@@ -1335,3 +1335,21 @@
 .brando-suggestion strong{color:var(--emerald-deep,#073D2D)}
 .brando-suggestion small{display:block;font-size:11px;color:var(--text-muted,#66716a);margin-top:4px}
 .brando-suggestion button{flex:0 0 auto;min-height:44px}
+
+#brando-submit[aria-busy="true"]{opacity:1;background:var(--emerald-deep,#073D2D);color:#fff;cursor:wait}
+.brando-thinking-mark{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.4);border-top-color:white;border-radius:50%;animation:brando-thinking .8s linear infinite;margin-right:6px}
+.brando-thinking-mark[hidden]{display:none}
+@keyframes brando-thinking{to{transform:rotate(360deg)}}
+.brando-review-actions{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+#brando-section-actions{flex:0 1 auto}#brando-section-actions[hidden]{display:none}
+#brando-feedback-dialog{max-width:520px;width:calc(100% - 32px);box-sizing:border-box;border:1px solid #d6e0d6;border-radius:18px;padding:20px;background:#fffdf8;max-height:90dvh;overflow:auto}
+#brando-feedback-dialog form{margin:0;padding:0;border:0;background:none}#close-brando-feedback{float:right;min-width:44px;min-height:44px}
+#brando-feedback-dialog textarea,#brando-feedback-dialog select{width:100%;box-sizing:border-box}#brando-feedback-text{line-height:1.5}
+@media(prefers-reduced-motion:reduce){.brando-thinking-mark{animation:none}}
+.brando-suggestion{display:grid;grid-template-columns:32px minmax(0,1fr) auto;column-gap:12px;row-gap:6px}
+.brando-suggestion>img{grid-column:1;grid-row:1 / span 2;align-self:center}
+.brando-suggestion>p{grid-column:2;grid-row:1}
+#brando-section-actions{grid-column:2;grid-row:2;margin:0}
+#brando-view-answer{grid-column:3;grid-row:1}
+#brando-dismiss-suggestion{grid-column:3;grid-row:2;justify-self:end}
+@media(max-width:620px){.brando-suggestion{grid-template-columns:24px minmax(0,1fr) 24px;gap:8px}.brando-suggestion>img{width:24px;height:24px}#brando-view-answer{grid-column:2;grid-row:3;justify-self:start}#brando-dismiss-suggestion{grid-column:3;grid-row:1}#brando-section-actions button{padding:8px;font-size:12px}}

@@ -7,6 +7,7 @@ export interface BrandoAnswer {
   facts:{text:string;referenceIds:string[]}[];
   hypotheses:string[];
   suggestions:string[];
+  suggestionActions?:{kind:'STRATEGY'|'EVIDENCE'|'CONTEXT';proposedDecision:string|null}[];
   questions:string[];
   limitations:string[];
 }
@@ -62,6 +63,13 @@ export function brandoPacket(c:BrandoState,brand:{id:string;name:string},context
 }
 export function validBrandoReferences(answer:BrandoAnswer,packet:ContextPacket) {
   return answer.facts.every(f=>f.referenceIds.length>0&&f.referenceIds.every(id=>packet.includedIds.includes(id)));
+}
+export function brandoSuggestionActions(answer:BrandoAnswer,questionId:string|null) {
+ return answer.suggestions.map((_,index)=>{
+  const action=answer.suggestionActions?.length===answer.suggestions.length?answer.suggestionActions[index]:undefined;
+  if(action?.kind==='STRATEGY'&&questionId&&action.proposedDecision?.trim())return {kind:'STRATEGY' as const,proposedDecision:action.proposedDecision.trim()};
+  return {kind:action?.kind==='EVIDENCE'?'EVIDENCE' as const:'CONTEXT' as const,proposedDecision:null};
+ });
 }
 /** Extractive deterministic DEMO; never claims to be live inference. */
 export function demoBrando(packet:ContextPacket):BrandoAnswer {

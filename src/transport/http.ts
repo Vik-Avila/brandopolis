@@ -493,6 +493,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           )
         );
 
+        if(path==='/api/brando/suggestions/review')return send(res,200,await engine.reviewBrandoSuggestion(token,string(input.brandId),input.review as Parameters<Engine['reviewBrandoSuggestion']>[2]));
         if(path==='/api/brando/ask') {
           const result=await engine.askBrando(token,string(input.brandId),string(input.message),input.questionId==null?null:string(input.questionId),input.history as {question:string;answer:string}[]|undefined);
           if(pilot)await pilot.authorize(token);
@@ -510,7 +511,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(path==='/api/learning/transition') return send(res,200,await engine.transitionLearningObject(token,string(input.brandId),string(input.kind),string(input.objectId),string(input.expectedStatus),string(input.status)));
         if(path==='/api/questions/transition') return send(res,200,await engine.transitionQuestion(token,string(input.brandId),string(input.questionId),string(input.status)));
         if(path==='/api/questions/prepare') return send(res,200,await engine.prepareQuestion(token,string(input.brandId),string(input.questionId),input.expectedActiveVersion===null?null:string(input.expectedActiveVersion)));
-        if(path==='/api/decisions/commit') return send(res,200,await engine.commitDecision(token,input.command as CommitCommand,input.reviewToken===undefined?undefined:string(input.reviewToken)));
+        if(path==='/api/decisions/commit') return send(res,200,await engine.commitDecision(token,input.command as CommitCommand,input.reviewToken===undefined?undefined:string(input.reviewToken),input.brandoReview as Parameters<Engine['commitDecision']>[3]));
         if(path==='/api/reviews/start') return send(res,200,await engine.beginReview(token,string(input.brandId),string(input.decisionId)));
         if(path==='/api/impacts/retry') return send(res,200,await engine.retryImpact(token,string(input.brandId)));
         if(path==='/api/impacts/shown') return send(res,200,await engine.showImpact(token,string(input.brandId)));

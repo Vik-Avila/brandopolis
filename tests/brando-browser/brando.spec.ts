@@ -8,9 +8,9 @@ let server:ReturnType<typeof createApp>,base:string;
 const context={contextVersion:'v1',questions:['Primary Customer','Value Mechanism','Positioning','Core Message'].map((module,i)=>({id:`q${i}`,module,text:'¿Qué eliges?',status:'OPEN'})),decisions:[],versions:[],reviews:[],dependencies:[],evidence:[],learnings:[],hypotheses:[],userInputs:[],openQuestions:[],experiments:[],signals:[],impacts:[],recommendations:[],analyses:[],experimentPlans:[],audit:[],attention:[]};
 const c={...context,attention:attentionFor(context)};
 test.beforeAll(async()=>{
- const fixture={me:async()=>({userId:'fixture',workspaceId:'w',expiresAt:new Date(Date.now()+60000),learningMoments:[]}),listBrands:async()=>[{id:'a',name:'Marca A'},{id:'b',name:'Marca B'}],context:async()=>c,competitiveRejections:async()=>({claims:[]}),listSourceDocuments:async()=>[],listDocumentClaims:async()=>[],askBrando:async(_token:string,brandId:string,message:string,questionId:string|null)=>{
+ const fixture={me:async()=>({userId:'fixture',workspaceId:'w',expiresAt:new Date(Date.now()+60000),learningMoments:[]}),listBrands:async()=>[{id:'a',name:'Marca A'},{id:'b',name:'Marca B'}],context:async()=>c,competitiveRejections:async()=>({claims:[]}),listSourceDocuments:async()=>[],listDocumentClaims:async()=>[],reviewBrandoSuggestion:async()=>({action:'REJECT',strategyChanged:false}),prepareQuestion:async()=>({status:'READY_FOR_DECISION'}),commitDecision:async()=>({decisionId:'new',versionId:'v2',impactPending:false}),askBrando:async(_token:string,brandId:string,message:string,questionId:string|null)=>{
   const p=brandoPacket(c,{id:brandId,name:`Marca ${brandId}`},'v1',message,questionId,[]);
-  return {answer:{...demoBrando(p),answer:'<img src=x onerror=alert(1)> Respuesta segura para '+brandId,suggestions:['<script>alert(1)</script> Propuesta tentativa para '+brandId]},provider:'DEMO_FIXTURE',error:null,brandId,questionId,contextVersion:'v1',sourceVersion:'v1',attention:c.attention,omitted:[],sources:[],trace:{}};
+  return {suggestionTickets:[{ticketId:'11111111-1111-4111-8111-111111111111',kind:'STRATEGY',proposedDecision:'Primera alternativa'},{ticketId:'22222222-2222-4222-8222-222222222222',kind:'STRATEGY',proposedDecision:'Segunda alternativa elegida'},{ticketId:'33333333-3333-4333-8333-333333333333',kind:'EVIDENCE',proposedDecision:null}],answer:{...demoBrando(p),answer:'<img src=x onerror=alert(1)> Respuesta segura para '+brandId,suggestions:['<script>alert(1)</script> Propuesta tentativa para '+brandId,'Segunda propuesta para '+brandId,'Revisa las fuentes antes de cambiar una decisión.']},provider:'DEMO_FIXTURE',error:null,brandId,questionId,contextVersion:'v1',sourceVersion:'v1',attention:c.attention,omitted:[],sources:[],trace:{}};
  }} as unknown as Engine;
  server=createApp(fixture,loadAsset);await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));base=`http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
@@ -32,9 +32,7 @@ test('B1 panel: query, safe text, navigation, focus, brand reset and no strategi
  await expect(page.locator('#brando-card')).toHaveAttribute('data-state','ready');
  await page.getByRole('button',{name:'Pausar animación',exact:true}).click();await expect(page.locator('#brando-motion-toggle')).toHaveAttribute('aria-pressed','true');
  await page.keyboard.press('Escape');await expect(page.locator('#open-brando')).toBeFocused();
- await expect(page.locator('#decision #brando-suggestion')).toBeVisible();await expect(page.locator('#brando-suggestion')).toContainText('<script>alert(1)</script> Propuesta tentativa para a');await expect(page.locator('#brando-suggestion script')).toHaveCount(0);
- await page.locator('#brando-view-answer').click();await expect(page.locator('#brando-message')).toBeFocused();await page.keyboard.press('Escape');
- await page.locator('#brando-dismiss-suggestion').click();await expect(page.locator('#brando-suggestion')).toBeHidden();
+ await expect(page.locator('#brando-suggestion')).toBeHidden();await expect(page.locator('#brando-section-actions')).toHaveCount(0);
  await page.locator('#brands').selectOption('b');await expect(page.locator('#notice')).toContainText('Marca activa actualizada');
  await page.locator('#open-brando').click();await expect(page.locator('#brando-conversation')).toBeEmpty();await expect(page.locator('#brando-scope')).toContainText('Marca B');
  await page.locator('#brando-message').fill('¿Qué falta?');await page.locator('#brando-form button[type=submit]').click();await expect(page.locator('#brando-conversation')).toContainText('Respuesta segura para b');
@@ -56,7 +54,7 @@ test('B1 visual error and reduced motion never claim a response or expose an old
  await page.goto(base+'/?brand=a&module=Primary%20Customer');await page.locator('#open-brando').click();
  await page.locator('#brando-message').fill('Primera consulta');await page.locator('#brando-form button[type=submit]').click();
  await expect(page.locator('#brando-card')).toHaveAttribute('data-state','ready');
- await page.keyboard.press('Escape');await expect(page.locator('#brando-suggestion')).toBeVisible();await page.locator('#open-brando').click();
+ await page.keyboard.press('Escape');await expect(page.locator('#brando-suggestion')).toBeHidden();await page.locator('#open-brando').click();
  await page.route('**/api/brando/ask',route=>route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({code:'UNAVAILABLE',error:'No disponible.'})}));
  await page.locator('#brando-message').fill('Segunda consulta');await page.locator('#brando-form button[type=submit]').click();
  await expect(page.locator('#brando-card')).toHaveAttribute('data-state','unavailable');await expect(page.locator('#brando-conversation .brando-turn')).toHaveCount(1);await expect(page.locator('#brando-suggestion')).toBeHidden();
@@ -81,4 +79,31 @@ test('Brando attention entry opens the summary; the right entry opens the contex
  expect(writes).toEqual([]);
  await page.screenshot({path:`test-results/brando-drawer-${info.project.name}.png`});
  await page.keyboard.press('Escape');await expect(page.locator('#brando-dialog')).not.toBeVisible();await expect(page.locator('#open-brando')).toBeFocused();
+});
+
+test('pending query says Pensando and uses the investigating pose',async({page})=>{
+ await page.emulateMedia({reducedMotion:'reduce'});await page.goto(base+'/?brand=a&module=Primary%20Customer');await page.locator('#open-brando').click();
+ let waiting=false;let release:()=>void=()=>{};await page.route('**/api/brando/ask',async route=>{await new Promise<void>(r=>{release=r;waiting=true;});await route.continue();});
+ await page.locator('#brando-message').fill('Propón un siguiente paso.');await page.locator('#brando-submit').click();
+ await expect(page.locator('#brando-submit')).toHaveText('Pensando…');await expect(page.locator('#brando-submit')).toHaveAttribute('aria-busy','true');await expect(page.locator('#brando-dialog [data-brando-portrait]')).toHaveAttribute('src','/brando/consultando.webp');
+ await expect.poll(()=>waiting).toBe(true);release();await expect(page.locator('#brando-submit')).toHaveText('Consultar');await expect(page.locator('#brando-dialog [data-brando-portrait]')).toHaveAttribute('src','/brando/respuesta.webp');
+});
+test('human rejection requires a criterion and performs no strategic commit',async({page})=>{
+ const writes:string[]=[];page.on('request',r=>{if(r.method()==='POST')writes.push(new URL(r.url()).pathname);});
+ await page.goto(base+'/?brand=a&module=Primary%20Customer');await page.locator('#open-brando').click();await page.locator('#brando-message').fill('Una sugerencia.');await page.locator('#brando-submit').click();await expect(page.locator('#brando-conversation .brando-turn')).toHaveCount(1);
+ await page.locator('#brando-conversation [data-brando-action="REJECT"]').nth(1).click();await expect(page.locator('#brando-feedback-dialog')).toBeVisible();
+ await page.locator('#brando-feedback-rationale').fill('No coincide con lo que hemos observado.');await page.locator('#brando-feedback-save').click();await expect(page.locator('#brando-feedback-dialog')).not.toBeVisible();expect(writes).toEqual(['/api/brando/ask','/api/brando/suggestions/review']);
+});
+for(const action of ['ACCEPT','MODIFY'])test(`human ${action} prepares an editable decision; only final confirmation commits`,async({page})=>{
+ const commits:Record<string,unknown>[]=[];page.on('request',r=>{if(new URL(r.url()).pathname==='/api/decisions/commit')commits.push(r.postDataJSON());});
+ await page.goto(base+'/?brand=a&module=Primary%20Customer');await page.locator('#open-brando').click();await page.locator('#brando-message').fill('Una sugerencia.');await page.locator('#brando-submit').click();await expect(page.locator('#brando-conversation .brando-turn')).toHaveCount(1);
+ await page.locator(`#brando-conversation [data-brando-action="${action}"]`).nth(1).click();await expect(page.locator('#option')).toHaveValue('Segunda alternativa elegida');await expect(page.locator('#brando-dialog')).not.toBeVisible();await expect(page.locator('#brando-suggestion')).toContainText('Segunda propuesta para a');await expect(page.locator('#brando-suggestion [data-brando-action]')).toHaveCount(0);expect(commits).toEqual([]);await page.locator('#rationale').fill('Este foco responde mejor al problema observado.');
+ await page.locator('#option').fill('Agencias pequeñas con varias marcas.');await page.locator('#submit-decision').click();await expect.poll(()=>commits.length).toBe(1);expect(commits[0]).toMatchObject({brandoReview:{action,ticketId:'22222222-2222-4222-8222-222222222222'},command:{selectedOption:'Agencias pequeñas con varias marcas.',rationale:'Este foco responde mejor al problema observado.'}});
+});
+
+test('evidence advice navigates to context without preparing or committing a decision',async({page})=>{
+ const writes:string[]=[];page.on('request',r=>{if(r.method()==='POST')writes.push(new URL(r.url()).pathname);});
+ await page.goto(base+'/?brand=a&module=Primary%20Customer');await page.locator('#open-brando').click();await page.locator('#brando-message').fill('Qué fuentes revisar');await page.locator('#brando-submit').click();
+ const button=page.getByRole('button',{name:'Revisar fuentes',exact:true});await expect(button).toBeVisible();await expect(button.locator('..').locator('[data-brando-action="ACCEPT"]')).toHaveCount(0);
+ await button.click();await expect(page.locator('#brando-dialog')).not.toBeVisible();await expect(page.locator('#option')).toHaveCount(0);expect(writes).toEqual(['/api/brando/ask']);
 });

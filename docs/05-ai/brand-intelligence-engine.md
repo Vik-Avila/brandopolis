@@ -45,3 +45,10 @@ La etapa B1 se desarrolla fuera de producción por aprobación humana del plan. 
 selección de datos, autoridad, memoria temporal y validación: [Brando B1](brando-b1.md).
 La extensión compatible del Gateway se registra en [ADR-0017](../14-decisions/ADR-0017.md).
 La Jury Production Freeze sigue vigente; este trabajo no autoriza despliegue.
+
+## Brando B1 · human proposal review extension
+
+See [ADR-0018](../14-decisions/ADR-0018.md). Human acceptance/modification routes into the
+existing human commit of a new Decision version and normal dependency impact. Human rejection
+records criterion in Capability Context only. This adds no model authority, automatic cascade,
+automatic Learning acceptance or autonomous suggestion generation. Prompt v2 is plain es-MX.

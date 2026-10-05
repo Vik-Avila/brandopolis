@@ -86,13 +86,13 @@ opens existing human workflows. No automatic inference or strategic write. A com
 portrait shares the Qué necesita atención entry in the left navigation, opening the existing
 attention summary. The right card remains the query drawer entry.
 
-All live portraits use the SAME 160px alpha `/brando/idle.webp` (4550 bytes), displayed at 44px
-(32px in a suggestion). The previous consulting/ready derivatives remain available for the
-preceding candidate but are no longer referenced by this frontend. No new imagery is generated;
-no geometry, scale, skew or perspective morph is used. Rigid translation/rotation plus subtle
-illumination distinguish idle, consulting, ready, attention and unavailable. A running gesture
-finishes at neutral before a changed state begins. Finite gestures last 2.0–2.6s; resting motion
-starts every 8–12s, consulting every 3s; unavailable has a single entry gesture. Idle's first
+Live portraits use the original 160px alpha poses: idle/attention/error use idle.webp,
+consulting uses consultando.webp and ready uses respuesta.webp. No new imagery is generated.
+A 120ms fade-out and 180ms fade-in replace morphing; fixed image bounds retain layout.
+Rigid translation/rotation plus subtle light never scale, skew or distort the gemstone.
+A running gesture returns to neutral before the next pose. Finite ambient gestures last 1.6s;
+resting gestures start every 4–5.5s, consulting every 2.2s with 1.8s gestures. Error has one
+entry gesture. Idle's first
 visible gesture may start at 1.8s. Offscreen/hidden-tab/modal guards, explicit pause and live
 reduced-motion preference remain. Drawer enters at 320ms and closes at 220ms; reduced motion
 removes both. Native dialog inertness remains; the lighter backdrop keeps context recognizable.
@@ -100,3 +100,10 @@ removes both. Native dialog inertness remains; the lighter backdrop keeps contex
 Reference: reference/brando-b1/drawer-source.png (layout only; humanized gemstone explicitly
 excluded). Existing gemstone/Brand Master identity is preserved. Browser regression and human
 motion acceptance are required; no asset-hash or canonical screenshot baseline refresh.
+
+
+Suggestion actions: Accept/Modify require a criterion, target section and the existing final
+human decision confirmation. Reject requires a criterion and records practice only. Never
+claim strategic acceptance from a model response or a click that only prepares a draft.
+Pensando… plus a static/reduced-motion-aware activity mark communicates the pending query;
+a grey disabled control alone is insufficient. Ordinary copy is plain es-MX without enums.

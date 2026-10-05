@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brandopolis.ai/schemas/brando-suggestion-review.v1",
+  "title": "brando-suggestion-review",
+  "x-version": "v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "ticketId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "REJECT"
+      ]
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 2000
+    },
+    "revisedText": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 2500
+    }
+  },
+  "required": [
+    "ticketId",
+    "action",
+    "rationale",
+    "revisedText"
+  ],
+  "examples": [
+    {
+      "ticketId": "11111111-1111-4111-8111-111111111111",
+      "action": "REJECT",
+      "rationale": "Quiero contrastarlo con entrevistas reales.",
+      "revisedText": null
+    }
+  ]
+}

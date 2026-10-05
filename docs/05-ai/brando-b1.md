@@ -133,3 +133,38 @@ Suggestions are requested explicitly in the active brand/decision/context scope.
 stripe displays the first suggestion of the latest valid scoped answer and offers Ver análisis.
 Navigation alone never queries the provider. Proactive suggestions on entering each strategic
 section require a separately agreed phase; they are not implemented or promised by B1.
+
+## Human suggestion review extension · 2026-10-05
+
+Human explicitly clarified that accepting a suggestion should change strategy and potentially
+its dependencies. Accept/Modify therefore enter the existing human decision editor and require
+final confirmation, a concrete selected option and rationale. Only successful commit records the
+new version, practice and Brando provenance; existing Change Impact handles affected decisions.
+Reject records criterion/practice only. No model or conversation writes strategy directly.
+Source proof is issued only for validated authorized answers, bound to actor/workspace/brand,
+short-lived and bounded; stale, foreign, forged and already-rejected proof fails closed.
+No migration or new table. See ADR-0018 for idempotency, retention and authority boundaries.
+
+Runtime uses brando-contextual-v2: concise everyday Spanish, concrete next steps and internal
+code translations. Canonical source content and IDs are preserved. The query control displays
+Pensando… and a reduced-motion-aware indicator. Original consulting/response gem poses use
+brief opacity transitions; finite ambient gestures repeat every 4–5.5s, consulting every 2.2s.
+Earlier same-portrait/8–12s descriptions refer to the preceding accepted candidate.
+This extension awaits Windows full database/browser/regression gates and human acceptance.
+
+## Selection-first follow-up · 2026-10-05
+
+Supersedes the automatic first-suggestion stripe and criterion modal for Accept/Modify: choose
+one specific proposal in Brando, review its exact editable choice in the workspace, add human
+rationale, then confirm the change. Reject stays in Brando. EVIDENCE advice opens registered
+sources; other generic advice opens context. Typed action metadata uses schema v2/prompt v3;
+missing metadata is contextual only, never a strategic commit ticket. See [ADR-0019](../14-decisions/ADR-0019.md).
+
+## Live citation validation fix · 2026-10-05
+
+The operator observed HTTP 200/end_turn and valid schema but invalid source references in two
+diagnostic calls. Prompt v4 makes outer source IDs explicit; the Anthropic Brando-v2 output
+schema now enumerates the exact request's includedIds for every fact citation. The unchanged
+local guard still rejects invented/omitted/foreign IDs. No citation is silently rewritten or
+dropped to turn a failed response into a success. No extra inference or automatic retry added.
+Semantic support for cited claims remains a human review responsibility. Live verification pending.

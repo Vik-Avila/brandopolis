@@ -22,10 +22,10 @@ export async function brandoAiSmoke(provider:ModelProvider,timeoutMs=30000) {
     openQuestions:[{id:randomUUID(),statement:'¿Pagarían por una marca activa?',status:'OPEN'}],
     userInputs:[],learnings:[],reviews:[],dependencies:[],experiments:[],signals:[],impacts:[]
   };
-  const promptVersion='brando-contextual-v1',contextVersion='synthetic-smoke-'+randomUUID();
+  const promptVersion='brando-contextual-v4',contextVersion='synthetic-smoke-'+randomUUID();
   const message='Explica qué decidimos y por qué; distingue la decisión vigente de la anterior. ¿Qué evidencia tenemos y cuáles son sus límites? ¿Qué necesita atención? Propón una hipótesis, una pregunta y un siguiente paso. No inventes tamaño de mercado ni ingresos. No apruebes ni cambies estrategia.';
   const packet=brandoPacket(state,{id:brandId,name:'Lumbre Estudio · marca ficticia de prueba'},contextVersion,message,null,[]);
-  const response=await new ModelGateway(provider,promptVersion,timeoutMs).invoke({task:'BRANDO_CONTEXTUAL',module:'Brando B1',promptVersion,contextVersion,input:packet,outputSchema:'brando-answer',budget:{maxCharacters:30000,timeoutMs},tenantScope:{workspaceId:'synthetic-smoke',brandId},questionId});
+  const response=await new ModelGateway(provider,promptVersion,timeoutMs).invoke({task:'BRANDO_CONTEXTUAL',module:'Brando B1',promptVersion,contextVersion,input:packet,outputSchema:'brando-answer-v2',budget:{maxCharacters:30000,timeoutMs},tenantScope:{workspaceId:'synthetic-smoke',brandId},questionId});
   const referencesValid=Boolean(response.result&&validBrandoReferences(response.result,packet));
   const outcome=response.error??(referencesValid?'OK':'INVALID_REFERENCES');
   return {outcome,provider:response.provider,model:response.model,promptVersion,latencyMs:response.latencyMs,tokenIn:response.tokenIn,tokenOut:response.tokenOut,

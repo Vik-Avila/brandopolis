@@ -42,3 +42,5 @@ estratégico. Cuenta para los límites diarios de IA junto a `recommendation_req
 Recommendation, activación, decisión, aprendizaje aceptado ni evento de alto valor. No se recalculan
 métricas históricas. Los fallos y reintentos explícitos también consumen solicitudes; no hay retry
 silencioso en la interfaz. La conversación no se persiste.
+
+| brando_suggestion_reviewed | Rechazo humano razonado o aceptación/modificación confirmada como nueva Decision; USER; no es recommendation_generated/accepted/rejected ni prueba de calidad del aprendizaje. | CONFIDENTIAL |

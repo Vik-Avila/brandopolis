@@ -1,6 +1,6 @@
 import {createBrandoPresence} from './brando-presence.js';
 const $=s=>document.querySelector(s);
-import {escape,labels,fmt,brandoAnswerHtml,brandoContextHtml,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
+import {escape,labels,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
 import {trapFocus,decisionTabs} from './product-interactions.js';
 import * as analytics from './analytics.js';
 import {PILOT_EVENTS} from './analytics.js';
@@ -838,7 +838,7 @@ function render() {
   const versions=context.versions.filter(v=>v.decisionId===d?.id).sort((a,b)=>b.sequence-a.sequence);
   const why=user.learningMoments?.[q.module]?.why;
   const reviewChoices='<h3 id="review-choice-title" tabindex="-1">¿Qué quieres hacer?</h3><div class="review-options" role="group" aria-label="Opciones de revisión"><button type="button" id="keep" class="option-card" aria-pressed="false" aria-label="Mantener sin cambios" aria-describedby="keep-hint"><strong>Mantener sin cambios</strong><span id="keep-hint">La decisión sigue siendo válida con el nuevo contexto.</span></button><button type="button" id="modify" class="option-card" aria-pressed="false" aria-label="Modificar" aria-describedby="modify-hint"><strong>Modificar</strong><span id="modify-hint">Ajustas la decisión a lo que cambió.</span></button></div><p class="hint" id="review-choice-hint">Elige una opción para confirmar la revisión. Editar tu decisión cuenta como «Modificar».</p>';
-  $('#decision').innerHTML=`<p class="eyebrow">${escape(labels[selected])}</p><h2>${escape(q.text)}</h2><p class="decision-meta">${stateBadge(v,reviews.length>0)}${v?`<span>Última actualización: ${escape(fmt(v.approvedAt))}</span><span>Decidido por: ${v.actorUserId===user.userId?'Tú':'Persona autorizada'}</span>`:''}</p>${why?`<p class="why"><span class="label">Por qué es importante:</span> ${escape(why)}</p>`:''}${pending?'<section class="review"><h3>Impacto pendiente</h3><p>La decisión se guardó. Falta calcular su efecto antes de otro cambio.</p><button id="retry-impact">Reintentar impacto</button></section>':''}${warn}${draft?`<form id="decision-form" class="decision-form">${draft.reviewToken?reviewChoices:''}<label for="option">Tu decisión</label><textarea id="option" name="selectedOption" required maxlength="12000" aria-describedby="form-hint">${escape(draft.selectedOption)}</textarea><p class="input-assist"><button type="button" id="possibilities" class="secondary">Ayúdame a generar posibilidades</button><span class="hint">Opcional. Escribe tu propia respuesta o pide posibilidades y decide cuál incorporar.</span></p><div id="possibilities-activity" class="local-activity" role="status" aria-live="polite" aria-atomic="true" hidden><span class="local-activity-mark" aria-hidden="true">✦</span><div><strong class="local-activity-title"></strong><p class="local-activity-detail"></p></div></div><label for="rationale">¿Por qué eliges esta opción?</label><textarea id="rationale" name="rationale" required maxlength="12000">${escape(draft.rationale)}</textarea><div class="form-footer"><p class="hint" id="form-hint">${draft.reviewToken?'Nada se reescribe sin tu confirmación: «Confirmar revisión» registra una nueva versión y conserva las anteriores.':'Tu elección y tu criterio dan forma a la estrategia. Aprobar crea una versión nueva y conserva las anteriores.'}</p><div class="actions"><button id="cancel" type="button" class="secondary">Cancelar</button><button type="submit" id="submit-decision" ${draft.reviewToken?'disabled aria-describedby="review-choice-hint"':''}>${draft.reviewToken?'Confirmar revisión':'Aprobar decisión'}</button></div></div></form>`:`${v?`<p class="current">${escape(v.selectedOption)}</p><p class="rationale"><span class="label">Por qué:</span> ${escape(v.rationale)}</p>`:`<p class="empty">${locked?'Aprueba primero tu cliente prioritario.':'Todavía no hay una decisión aprobada. Define tu elección y explica tu criterio.'}</p>`}`}<div class="actions">${!draft&&!reviews.length?editButton:''}<button id="reload" class="tertiary">Revisar versión más reciente</button>${sessionStorage.getItem(`draft:${user.userId}:${brandId}:${selected}`)?'<button id="restore-draft" class="tertiary">Ver borrador conservado</button>':''}</div>`;
+  $('#decision').innerHTML=`<p class="eyebrow">${escape(labels[selected])}</p><h2>${escape(q.text)}</h2><p class="decision-meta">${stateBadge(v,reviews.length>0)}${v?`<span>Última actualización: ${escape(fmt(v.approvedAt))}</span><span>Decidido por: ${v.actorUserId===user.userId?'Tú':'Persona autorizada'}</span>`:''}</p>${why?`<p class="why"><span class="label">Por qué es importante:</span> ${escape(why)}</p>`:''}${pending?'<section class="review"><h3>Impacto pendiente</h3><p>La decisión se guardó. Falta calcular su efecto antes de otro cambio.</p><button id="retry-impact">Reintentar impacto</button></section>':''}${warn}${draft?`<form id="decision-form" class="decision-form">${draft.reviewToken?reviewChoices:''}<label for="option">Tu decisión</label><textarea id="option" name="selectedOption" required maxlength="12000" aria-describedby="form-hint">${escape(draft.selectedOption)}</textarea><p class="input-assist"><button type="button" id="possibilities" class="secondary">Ayúdame a generar posibilidades</button><span class="hint">Opcional. Escribe tu propia respuesta o pide posibilidades y decide cuál incorporar.</span></p><div id="possibilities-activity" class="local-activity" role="status" aria-live="polite" aria-atomic="true" hidden><span class="local-activity-mark" aria-hidden="true">✦</span><div><strong class="local-activity-title"></strong><p class="local-activity-detail"></p></div></div><label for="rationale">¿Por qué eliges esta opción?</label><textarea id="rationale" name="rationale" required ${draft.brandoReview?'minlength="10"':''} maxlength="12000">${escape(draft.rationale)}</textarea><div class="form-footer"><p class="hint" id="form-hint">${draft.reviewToken?'Nada se reescribe sin tu confirmación: «Confirmar revisión» registra una nueva versión y conserva las anteriores.':'Tu elección y tu criterio dan forma a la estrategia. Aprobar crea una versión nueva y conserva las anteriores.'}</p><div class="actions"><button id="cancel" type="button" class="secondary">Cancelar</button><button type="submit" id="submit-decision" ${draft.reviewToken?'disabled aria-describedby="review-choice-hint"':''}>${draft.reviewToken?'Confirmar revisión':draft.brandoReview?'Confirmar cambio':'Aprobar decisión'}</button></div></div></form>`:`${v?`<p class="current">${escape(v.selectedOption)}</p><p class="rationale"><span class="label">Por qué:</span> ${escape(v.rationale)}</p>`:`<p class="empty">${locked?'Aprueba primero tu cliente prioritario.':'Todavía no hay una decisión aprobada. Define tu elección y explica tu criterio.'}</p>`}`}<div class="actions">${!draft&&!reviews.length?editButton:''}<button id="reload" class="tertiary">Revisar versión más reciente</button>${sessionStorage.getItem(`draft:${user.userId}:${brandId}:${selected}`)?'<button id="restore-draft" class="tertiary">Ver borrador conservado</button>':''}</div>`;
   composeDecision(q,d,v,reviews);
   mountRecommendation(q,d,v,reviews,pending||locked);
   mountLearningMoment(q);
@@ -856,7 +856,7 @@ function render() {
   $('#decision-form')?.addEventListener('input',event=>{draft.selectedOption=$('#option').value;draft.rationale=$('#rationale').value;if(event.target.id==='option'&&$('#modify')&&v&&$('#option').value!==v.selectedOption)choose('#modify',false);});
   $('#decision-form')?.addEventListener('submit',event=>{event.preventDefault();run(async()=>{
     const command={brandId,questionId:draft.questionId,sourceRecommendationId:draft.sourceRecommendationId??null,selectedOption:draft.selectedOption,rationale:draft.rationale,expectedActiveVersion:draft.expectedActiveVersion,idempotencyKey:draft.idempotencyKey,actorUserId:user.userId};
-    const result=await api('/api/decisions/commit',{command,reviewToken:draft.reviewToken});draft=null;await refresh();
+    const result=await api('/api/decisions/commit',{command,reviewToken:draft.reviewToken,...(draft.brandoReview?{brandoReview:draft.brandoReview}:{})});draft=null;await refresh();
     if((context?.versions?.length??0)===1)analytics.sendOnce(PILOT_EVENTS.firstDecision,{pilot_stage:'activated'});
     analytics.send(PILOT_EVENTS.phaseCompleted,{pilot_stage:'phase_done'});
     showPhaseHandoff();notice(result.impactPending?'Decisión guardada. El impacto está pendiente; reinténtalo.':'Decisión aprobada. Su versión y su historial quedaron guardados.');
@@ -2025,12 +2025,11 @@ function syncBrandoPresentation(){
  if(brandoScope&&brandoScope!==currentBrandoScope())resetBrando();
  const needsAttention=context?.attention?.length>0;
  brandoPresence.setState(brandoVisualState==='idle'&&needsAttention?'attention':brandoVisualState);
- const latest=brandoTurns.at(-1)?.result;
- const suggestion=latest?.answer?.suggestions?.[0];
- const visible=Boolean(brandoVisualState==='ready'&&suggestion&&!brandoSuggestionDismissed&&brandoScope===currentBrandoScope());
+ const suggestion=draft?.brandoSuggestion;
+ const visible=Boolean(suggestion&&draft.questionId===brandoQuestion()&&!brandoSuggestionDismissed);
  $('#brando-suggestion').hidden=!visible;
  if(brandoDialog.open)$('#brando-context-overview').innerHTML=brandoContextHtml(context,brandoQuestion());
- $('#brando-suggestion-text').textContent=visible?suggestion:'';
+ $('#brando-suggestion-text').textContent=visible?brandoPlainText(suggestion):'';
  const hero=$('#decision .decision-heading');if(hero&&visible)hero.after($('#brando-suggestion'));else $('#decision').before($('#brando-suggestion'));
 }
 $('#brando-view-answer').addEventListener('click',()=>$('#open-brando').click());
@@ -2038,7 +2037,7 @@ $('#brando-dismiss-suggestion').addEventListener('click',()=>{brandoSuggestionDi
 function resetBrando(){
  brandoGeneration++;brandoTurns=[];brandoScope='';brandoBusy=false;
  $('#brando-conversation').replaceChildren();$('#brando-status').textContent='';$('#brando-message').value='';$('#brando-consent').hidden=true;
- $('#brando-form button[type="submit"]').disabled=false;
+ $('#brando-form button[type="submit"]').disabled=false;setBrandoBusy(false);
  brandoVisualState='idle';brandoSuggestionDismissed=false;syncBrandoPresentation();
 }
 function brandoQuestion(){return $('#journey [data-module][aria-current="page"]')?context?.questions.find(q=>q.module===selected)?.id??null:null;}
@@ -2060,12 +2059,74 @@ $('#brando-context-overview').addEventListener('click',async event=>{const butto
 trapFocus(brandoDialog);
 $('#clear-brando').addEventListener('click',()=>{resetBrando();brandoScope=currentBrandoScope();$('#brando-message').focus();});
 document.querySelectorAll('[data-brando-question]').forEach(button=>button.addEventListener('click',()=>{$('#brando-message').value=button.dataset.brandoQuestion;$('#brando-message').focus();}));
+function setBrandoBusy(busy){
+ const button=$('#brando-submit');button.disabled=busy;button.setAttribute('aria-busy',String(busy));$('#brando-submit-label').textContent=busy?'Pensando…':'Consultar';button.querySelector('.brando-thinking-mark').hidden=!busy;
+}
+let brandoFeedbackPending=null;
+const feedbackDialog=$('#brando-feedback-dialog');
+async function openBrandoFeedback(ticketId,action){
+ if(brandoBusy){notice('Espera a que Brando termine la consulta.');return;}
+ const turn=brandoTurns.find(t=>t.result.suggestionTickets?.some(ticket=>ticket.ticketId===ticketId));
+ if(!turn||!['ACCEPT','MODIFY','REJECT','EVIDENCE','CONTEXT'].includes(action)){notice('Consulta de nuevo para revisar una sugerencia vigente.');return;}
+ const index=turn.result.suggestionTickets.findIndex(ticket=>ticket.ticketId===ticketId);
+ const ticket=turn.result.suggestionTickets[index];
+ if(['EVIDENCE','CONTEXT'].includes(action)){
+  await closeBrando();await run(showBrandContext);
+  if(action==='EVIDENCE'){const heading=$('#decision .memory-3 h3');if(heading){heading.tabIndex=-1;heading.focus();}}return;
+ }
+ if(ticket.kind!=='STRATEGY'){notice('Esta recomendación sirve para revisar contexto, no para cambiar una decisión.');return;}
+ if(action!=='REJECT'){
+  if(draft){notice('Confirma o cancela el borrador actual antes de elegir otra propuesta.');return;}
+  const q=context.questions.find(q=>q.id===turn.result.questionId);
+  if(!q||!ticket.proposedDecision){notice('Abre la sección correspondiente y consulta a Brando de nuevo.');return;}
+  const targetBrand=brandId,proposal=turn.result.answer.suggestions[index];
+  await closeBrando();openModule(q.module,false);
+  await run(async()=>{
+   const d=context.decisions.find(d=>d.questionId===q.id),v=context.versions.find(v=>v.id===d?.activeVersionId);
+   let receipt;if(needsReview(context,d))receipt=await api('/api/reviews/start',{brandId:targetBrand,decisionId:d.id});
+   await api('/api/questions/prepare',{brandId:targetBrand,questionId:q.id,expectedActiveVersion:v?.id??null});
+   if(brandId!==targetBrand||selected!==q.module)return;
+   draft={questionId:q.id,expectedActiveVersion:v?.id??null,selectedOption:ticket.proposedDecision,rationale:'',idempotencyKey:crypto.randomUUID(),reviewToken:receipt?.reviewToken,brandoReview:{ticketId,action},brandoSuggestion:proposal};
+   brandoSuggestionDismissed=false;activeDecisionTab='overview';render();
+   (action==='MODIFY'?$('#option'):$('#rationale')).focus();
+  });return;
+ }
+
+ brandoFeedbackPending={ticketId,action,scope:currentBrandoScope(),brandId,text:turn.result.answer.suggestions[index]};
+ $('#brando-feedback-title').textContent={ACCEPT:'Aceptar sugerencia',MODIFY:'Modificar sugerencia',REJECT:'Rechazar sugerencia'}[action];
+ $('#brando-feedback-text').textContent=brandoPlainText(brandoFeedbackPending.text);
+ $('#brando-feedback-rationale').value='';$('#brando-feedback-status').textContent='';
+ $('#brando-target-field').hidden=action==='REJECT';$('#brando-target').required=action!=='REJECT';
+ $('#brando-target').innerHTML='<option value="">Elige una sección</option>'+context.questions.map(q=>`<option value="${escape(q.id)}">${escape(labels[q.module]??q.module)}</option>`).join('');
+ $('#brando-target').value=turn.result.questionId??'';
+ $('#brando-feedback-save').textContent=action==='REJECT'?'Registrar rechazo':'Continuar a revisión';
+ $('#brando-feedback-boundary').textContent=action==='REJECT'?'Tu motivo se registrará en Mi aprendizaje. La estrategia se conserva.':'Después revisarás la elección concreta y confirmarás una nueva versión. Ese cambio puede requerir revisar decisiones conectadas.';
+ feedbackDialog.showModal();brandoPresence.setDialogOpen(true);$('#brando-feedback-rationale').focus();
+}
+$('#brando-conversation').addEventListener('click',event=>{const button=event.target.closest('[data-brando-ticket]');if(button)openBrandoFeedback(button.dataset.brandoTicket,button.dataset.brandoAction);});
+$('#close-brando-feedback').addEventListener('click',()=>feedbackDialog.close());trapFocus(feedbackDialog);
+feedbackDialog.addEventListener('close',()=>{brandoFeedbackPending=null;brandoPresence.setDialogOpen(brandoDialog.open);});
+$('#brando-feedback-form').addEventListener('submit',async event=>{
+ event.preventDefault();const pending=brandoFeedbackPending;if(!pending)return;
+ const rationale=$('#brando-feedback-rationale').value.trim();if(rationale.length<10){$('#brando-feedback-status').textContent='Explica tu criterio con al menos diez caracteres.';return;}
+ const q=context.questions.find(q=>q.id===$('#brando-target').value);
+ if(pending.action!=='REJECT'&&!q){$('#brando-feedback-status').textContent='Elige la sección que quieres cambiar.';return;}
+ if(pending.scope!==currentBrandoScope()){feedbackDialog.close();notice('El contexto cambió. Consulta de nuevo antes de revisar.');return;}
+ $('#brando-feedback-save').disabled=true;
+ try{
+  if(pending.action==='REJECT'){
+   await api('/api/brando/suggestions/review',{brandId:pending.brandId,review:{ticketId:pending.ticketId,action:'REJECT',rationale,revisedText:null}});
+   feedbackDialog.close();if(brandoTurns.at(-1)?.result.suggestionTickets?.[0]?.ticketId===pending.ticketId)brandoSuggestionDismissed=true;for(const button of document.querySelectorAll('[data-brando-ticket]'))if(button.dataset.brandoTicket===pending.ticketId)button.disabled=true;syncBrandoPresentation();notice('Rechazo y criterio registrados en Mi aprendizaje. La estrategia se conserva.');
+  }
+ }catch(error){$('#brando-feedback-status').textContent=error.code==='CONFLICT'?'El contexto cambió. Solicita una respuesta nueva.':'No se pudo registrar. Inténtalo de nuevo.';notice(error.code==='CONFLICT'?'El contexto cambió. Consulta de nuevo.':'No se pudo completar la revisión.');}
+ finally{$('#brando-feedback-save').disabled=false;}
+});
 $('#brando-form').addEventListener('submit',async event=>{
  event.preventDefault();if(brandoBusy)return;
  const message=$('#brando-message').value.trim();if(!message)return;
  if(currentBrandoScope()!==brandoScope){resetBrando();brandoScope=currentBrandoScope();$('#brando-message').value=message;}
  const generation=++brandoGeneration,key=brandoScope,targetBrand=brandId,q=brandoQuestion();
- brandoVisualState='consulting';syncBrandoPresentation();brandoBusy=true;$('#brando-form button[type="submit"]').disabled=true;$('#brando-status').textContent='Consultando el contexto autorizado de tu marca…';
+ brandoVisualState='consulting';syncBrandoPresentation();brandoBusy=true;setBrandoBusy(true);$('#brando-status').textContent='Consultando el contexto autorizado de tu marca…';
  try{
   const result=await api('/api/brando/ask',{brandId:targetBrand,questionId:q,message,history:brandoTurns.slice(-4).map(t=>({question:t.question,answer:''}))},45000);
   if(generation!==brandoGeneration||key!==currentBrandoScope())return;
@@ -2089,6 +2150,6 @@ $('#brando-form').addEventListener('submit',async event=>{
    consent.querySelector('button').onclick=async()=>{try{await api('/api/ai-notice/accept',{version:aiNotice.version});consent.hidden=true;$('#brando-status').textContent='Aviso aceptado. Puedes enviar tu consulta.';}catch(e){$('#brando-status').textContent=e.message;}};
   }
  }finally{
-  if(generation===brandoGeneration){brandoBusy=false;$('#brando-form button[type="submit"]').disabled=false;}
+  if(generation===brandoGeneration){brandoBusy=false;setBrandoBusy(false);}
  }
 });

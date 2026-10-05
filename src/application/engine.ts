@@ -1,4 +1,5 @@
-import { attentionFor, brandoPacket, validBrandoReferences } from '../domain/brando.js';
+import {BrandoSuggestions} from '../domain/brando-suggestions.js';
+import { attentionFor, brandoPacket,brandoSuggestionActions, validBrandoReferences } from '../domain/brando.js';
 import { randomUUID, createHash } from 'node:crypto';
 import { and, eq, ne, asc } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
@@ -15,6 +16,7 @@ type Scope={workspaceId:string;brandId:string;userId:string;sessionId?:string};
 const inScope=(table:{workspaceId:AnyPgColumn;brandId:AnyPgColumn},s:Scope)=>and(eq(table.workspaceId,s.workspaceId),eq(table.brandId,s.brandId));
 // All application entry points authenticate from an opaque credential; callers never supply a trusted actor.
 export class Engine {
+  private brandoSuggestions=new BrandoSuggestions();
   constructor(private db:Database, private impactHook?:()=>void,private gateway=new ModelGateway(new DemoProvider())) {}
   private async identity(tx:Transaction,token:string) {
     if (!token || token.length>256) throw new AppError('UNAUTHORIZED','Human session required');
@@ -1063,13 +1065,42 @@ export class Engine {
     const actor=await this.me(token);
     // Operational request only: separate name so pilot recommendation metrics stay unchanged.
     await this.db.transaction(async tx=>{const s=await this.scope(tx,token,brandId);await this.event(tx,s,'brando_requested');});
-    const response=await this.gateway.invoke({task:'BRANDO_CONTEXTUAL',module:'Brando B1',promptVersion:'brando-contextual-v1',contextVersion:packet.contextVersion,input:packet,outputSchema:'brando-answer',budget:{maxCharacters:30000,timeoutMs:this.gateway.timeoutMs},tenantScope:{workspaceId:actor.workspaceId,brandId},questionId:questionId??''});
+    const response=await this.gateway.invoke({task:'BRANDO_CONTEXTUAL',module:'Brando B1',promptVersion:'brando-contextual-v4',contextVersion:packet.contextVersion,input:packet,outputSchema:'brando-answer-v2',budget:{maxCharacters:30000,timeoutMs:this.gateway.timeoutMs},tenantScope:{workspaceId:actor.workspaceId,brandId},questionId:questionId??''});
     const after=await snapshot(); // Re-authorize after provider latency, before returning any content.
     if(after.fingerprint!==before.fingerprint)throw new AppError('CONFLICT','Brando context changed');
     const answer=response.result;
     const error=response.error??(answer&&!validBrandoReferences(answer,packet)?'INVALID_OUTPUT':null);
     const refs=answer&&!error?[...new Set(answer.facts.flatMap(f=>f.referenceIds))]:[];
-    return {answer:error?null:answer,error,provider:response.provider,contextVersion:before.c.contextVersion,sourceContextVersion:before.c.brandoContextVersion,sourceVersion:before.fingerprint,brandId,questionId,attention:attentionFor(before.c),omitted:packet.omitted,sources:packet.items.filter(i=>refs.includes(i.id)),trace:{traceId:response.traceId,latencyMs:response.latencyMs,tokenIn:response.tokenIn,tokenOut:response.tokenOut,cost:response.cost}};
+    const suggestionActions=answer&&!error?brandoSuggestionActions(answer,questionId):[];
+    const suggestionTickets=answer&&!error?answer.suggestions.map((suggestion,index)=>({...suggestionActions[index],...this.brandoSuggestions.issue({...suggestionActions[index],workspaceId:actor.workspaceId,userId:actor.userId,brandId,questionId,sourceVersion:before.fingerprint,contextVersion:before.c.contextVersion,suggestion,capability:learningMoments[before.c.questions.find(q=>q.id===questionId)?.module??'']?.capability??'Problem Framing'})})):[];
+    return {answer:error?null:answer,suggestionTickets,error,provider:response.provider,contextVersion:before.c.contextVersion,sourceContextVersion:before.c.brandoContextVersion,sourceVersion:before.fingerprint,brandId,questionId,attention:attentionFor(before.c),omitted:packet.omitted,sources:packet.items.filter(i=>refs.includes(i.id)),trace:{traceId:response.traceId,latencyMs:response.latencyMs,tokenIn:response.tokenIn,tokenOut:response.tokenOut,cost:response.cost}};
+  }
+  /** Human rejection reflection only; acceptance/modification goes through commitDecision. */
+  async reviewBrandoSuggestion(token:string,brandId:string,input:{ticketId:string;action:'ACCEPT'|'MODIFY'|'REJECT';rationale:string;revisedText:string|null}) {
+    validate('brando-suggestion-review',input);
+    if(input.rationale.trim().length<10)throw new AppError('INVALID','Explain your criterion in at least ten characters');
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId);
+      if(input.action!=='REJECT'||input.revisedText!==null)throw new AppError('INVALID','Acceptance or modification requires the human decision commit workflow');
+      const fingerprint=hash(JSON.stringify(input));
+      const replayKey=and(inScope(t.idempotency,s),eq(t.idempotency.actorUserId,s.userId),eq(t.idempotency.command,'REVIEW_BRANDO_SUGGESTION'),eq(t.idempotency.key,input.ticketId));
+      const [prior]=await tx.select().from(t.idempotency).where(replayKey);
+      if(prior){if(prior.fingerprint!==fingerprint)throw new AppError('CONFLICT','Suggestion already reviewed differently');return prior.result;}
+      const ticket=this.brandoSuggestions.read(input.ticketId,s);
+      const current=await this.contextProjection(tx,s);
+      const [brand]=await tx.select().from(t.brands).where(and(eq(t.brands.workspaceId,s.workspaceId),eq(t.brands.id,s.brandId)));
+      if(hash(JSON.stringify([brand.name,current.brandoContextVersion]))!==ticket.sourceVersion)throw new AppError('CONFLICT','Suggestion context changed; request a fresh answer');
+      const wording={REJECT:'Rechazaste una sugerencia'};
+      const text=ticket.suggestion;
+      const capability={id:id(),userId:s.userId,capability:ticket.capability,behavior:`${wording[input.action]} de Brando. Tu criterio: ${input.rationale.trim()}. Sugerencia evaluada: ${text}`,decisionId:null,occurredAt:new Date().toISOString()};
+      validate('capability-event',capability);
+      await tx.insert(t.capabilityEvents).values({id:capability.id,userId:s.userId,payload:capability});
+      await this.audit(tx,s,{operation:'BRANDO_SUGGESTION_REVIEWED',idempotencyKey:input.ticketId,rationale:JSON.stringify({action:input.action,original:ticket.suggestion,text,rationale:input.rationale.trim(),sourceVersion:ticket.sourceVersion,questionId:ticket.questionId})});
+      await this.event(tx,s,'brando_suggestion_reviewed');
+      const result={action:input.action,practiceEventId:capability.id,strategyChanged:false};
+      await tx.insert(t.idempotency).values({workspaceId:s.workspaceId,brandId:s.brandId,actorUserId:s.userId,command:'REVIEW_BRANDO_SUGGESTION',key:input.ticketId,fingerprint,result});
+      return result;
+    });
   }
   async analyze(token:string,brandId:string,questionId:string) {
     const actor=await this.me(token),packet=await this.assembleContext(token,brandId,questionId),question=packet.question as {module:string};
@@ -1220,10 +1251,12 @@ export class Engine {
     const rows=await tx.select().from(t.impacts).where(and(inScope(t.impacts,s),eq(t.impacts.status,'IMPACT_PENDING')));
     if(rows.length) throw new AppError('UNAVAILABLE','Impact pending: retry before another strategic commit');
   }
-  async commitDecision(token:string,command:CommitCommand,reviewToken?:string) {
+  async commitDecision(token:string,command:CommitCommand,reviewToken?:string,brandoReview?:{ticketId:string;action:'ACCEPT'|'MODIFY'}) {
     validate('decision-commit',command);
     if(!command.selectedOption.trim()||!command.rationale.trim()||command.selectedOption.length>12000||command.rationale.length>12000||command.idempotencyKey.length>200) throw new AppError('INVALID','Invalid command content or size');
-    const fingerprint=hash(JSON.stringify([command.questionId,command.sourceRecommendationId,command.selectedOption,command.rationale,command.expectedActiveVersion,command.actorUserId,reviewToken??null]));
+    if(brandoReview&&(command.rationale.trim().length<10||typeof brandoReview.ticketId!=='string'||brandoReview.ticketId.length>100||!brandoReview.ticketId||!['ACCEPT','MODIFY'].includes(brandoReview.action)||Object.keys(brandoReview).some(key=>!['ticketId','action'].includes(key))))throw new AppError('INVALID','Invalid Brando origin');
+    const originalFingerprint=[command.questionId,command.sourceRecommendationId,command.selectedOption,command.rationale,command.expectedActiveVersion,command.actorUserId,reviewToken??null];
+    const fingerprint=hash(JSON.stringify(brandoReview?[...originalFingerprint,brandoReview]:originalFingerprint));
     const result=await this.db.transaction(async tx=>{
       const s=await this.scope(tx,token,command.brandId);
       if(s.userId!==command.actorUserId) throw new AppError('FORBIDDEN','Actor does not match session');
@@ -1233,6 +1266,11 @@ export class Engine {
         if(prior.fingerprint!==fingerprint) throw new AppError('CONFLICT','Idempotency key reused with different command');
         return prior.result as {decisionId:string;versionId:string};
       }
+      const brandoTicket=brandoReview?this.brandoSuggestions.read(brandoReview.ticketId,s):null;
+      if(brandoTicket&&brandoTicket.kind!=='STRATEGY')throw new AppError('INVALID','This suggestion opens context; it is not a strategic proposal');
+      if(brandoTicket){const [rejected]=await tx.select().from(t.idempotency).where(and(inScope(t.idempotency,s),eq(t.idempotency.actorUserId,s.userId),eq(t.idempotency.command,'REVIEW_BRANDO_SUGGESTION'),eq(t.idempotency.key,brandoReview!.ticketId)));if(rejected)throw new AppError('CONFLICT','Suggestion already rejected; request a fresh answer');}
+      if(brandoTicket&&(command.sourceRecommendationId!==null||(brandoTicket.questionId&&brandoTicket.questionId!==command.questionId)||await this.contextVersion(tx,s)!==brandoTicket.contextVersion))throw new AppError('CONFLICT','Brando proposal context changed');
+      const reviewedAction=brandoTicket?(command.selectedOption.trim()!==brandoTicket.proposedDecision?.trim()?'MODIFY':brandoReview!.action):null;
       await this.requireNoPending(tx,s);
       const [question]=await tx.select().from(t.questions).where(and(inScope(t.questions,s),eq(t.questions.id,command.questionId)));
       if(!question) throw new AppError('NOT_FOUND','Question not available');
@@ -1287,9 +1325,14 @@ export class Engine {
         'Positioning':'Articulaste una diferencia que puede ayudarte a ser elegido frente a otras alternativas.',
         'Core Message':'Priorizaste una idea central para comunicar con mayor claridad el valor de tu marca.'
       };
-      const capability={id:id(),userId:s.userId,capability:learningMoments[question.module]?.capability??'Problem Framing',behavior:capabilityBehaviorByModule[question.module]??'Tomaste una decisión estratégica y explicaste el criterio que utilizaste.',decisionId:decision.id,occurredAt:version.approvedAt.toISOString()};
+      const behavior=brandoTicket?`${reviewedAction==='MODIFY'?'Modificaste':'Aceptaste'} una sugerencia de Brando y confirmaste una nueva decisión. Tu criterio: ${command.rationale}`:capabilityBehaviorByModule[question.module]??'Tomaste una decisión estratégica y explicaste el criterio que utilizaste.';
+      const capability={id:id(),userId:s.userId,capability:learningMoments[question.module]?.capability??'Problem Framing',behavior,decisionId:decision.id,occurredAt:version.approvedAt.toISOString()};
       validate('capability-event',capability);
       await tx.insert(t.capabilityEvents).values({id:capability.id,userId:s.userId,payload:capability});
+      if(brandoTicket){
+        await this.audit(tx,s,{operation:'BRANDO_SUGGESTION_APPLIED_BY_HUMAN',idempotencyKey:command.idempotencyKey,decisionId:decision.id,newVersion:version.id,rationale:JSON.stringify({action:reviewedAction,suggestion:brandoTicket.suggestion,selectedOption:command.selectedOption,rationale:command.rationale,sourceVersion:brandoTicket.sourceVersion})});
+        await this.event(tx,s,'brando_suggestion_reviewed');
+      }
       if(previous) {
         await this.event(tx,s,'decision_superseded');
         await tx.insert(t.impacts).values({workspaceId:s.workspaceId,brandId:s.brandId,triggerVersionId:version.id,status:'IMPACT_PENDING'});
@@ -1340,8 +1383,9 @@ export class Engine {
     return this.db.transaction(async tx=>{const s=await this.scope(tx,token,brandId);const rows=await tx.select().from(t.impacts).where(inScope(t.impacts,s));await this.event(tx,s,'change_impact_shown');return rows.map(x=>({status:x.status,result:x.result,triggerVersionId:x.triggerVersionId}));});
   }
   async context(token:string,brandId:string) {
-    return this.db.transaction(async tx=>{
-      const s=await this.scope(tx,token,brandId);
+    return this.db.transaction(async tx=>this.contextProjection(tx,await this.scope(tx,token,brandId)));
+  }
+  private async contextProjection(tx:Transaction,s:Scope) {
       const qs=await tx.select().from(t.questions).where(inScope(t.questions,s));
       const ds=await tx.select().from(t.decisions).where(inScope(t.decisions,s));
       const vs=await tx.select().from(t.versions).where(inScope(t.versions,s)).orderBy(asc(t.versions.sequence));
@@ -1356,7 +1400,6 @@ export class Engine {
       for(const [name,rows] of [['strategic-question',output.questions],['decision',output.decisions],['decision-version',output.versions],['dependency',output.dependencies],['review-item',output.reviews]] as const) for(const row of rows) validate(name,row);
       const brandoContextVersion=hash(JSON.stringify([output.questions,output.decisions,output.versions,output.dependencies,output.reviews,output.evidence,output.hypotheses,output.userInputs,output.openQuestions,output.learnings,output.experiments,output.signals,output.impacts]));
       return {...output,attention:attentionFor(output),brandoContextVersion};
-    });
   }
 }
 export function versionOutput(v:typeof t.versions.$inferSelect) {

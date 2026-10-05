@@ -81,3 +81,5 @@ removes both. Native dialog inertness remains; the lighter backdrop keeps contex
 Reference: reference/brando-b1/drawer-source.png (layout only; humanized gemstone explicitly
 excluded). Existing gemstone/Brand Master identity is preserved. Browser regression and human
 motion acceptance are required; no asset-hash or canonical screenshot baseline refresh.
+
+Brando review extension reuses the original allowlisted idle/consultando/respuesta alpha WebP poses, with brief opacity transitions and fixed bounds; no new asset or Brand Master change.

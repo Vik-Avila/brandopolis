@@ -5,7 +5,7 @@ import type { assemble } from './context-assembler.js';
 export type ContextPacket=ReturnType<typeof assemble>;
 export interface Recommendation {id:string;brandId:string;questionId:string;contextVersion:string;options:{id:string;label:string;rationale:string;tradeoffs:string[]}[];recommendedOptionId:string|null;rationale:string;evidenceReferences:string[];hypothesesUsed:string[];tradeoffs:string[];openQuestions:string[];supportLevel:string;affectedDomains:string[];failureConditions:string[]}
 export interface StrategicGatewayRequest {task:'STRATEGIC_ANALYSIS';module:string;promptVersion:string;contextVersion:string;input:ContextPacket;outputSchema:'recommendation';budget:{maxCharacters:number;timeoutMs:number};tenantScope:{workspaceId:string;brandId:string};questionId:string}
-export interface BrandoGatewayRequest extends Omit<StrategicGatewayRequest,'task'|'outputSchema'> {task:'BRANDO_CONTEXTUAL';outputSchema:'brando-answer'}
+export interface BrandoGatewayRequest extends Omit<StrategicGatewayRequest,'task'|'outputSchema'> {task:'BRANDO_CONTEXTUAL';outputSchema:'brando-answer'|'brando-answer-v2'}
 export type GatewayRequest=StrategicGatewayRequest|BrandoGatewayRequest;
 type GatewayResponse<T>={error:GatewayError|null;result:T|null;traceId:string;provider:string;model:string;latencyMs:number;tokenIn:number|null;tokenOut:number|null;cost:null;promptVersion:string;contextVersion:string};
 export type GatewayError='UNAVAILABLE'|'TIMEOUT'|'INVALID_OUTPUT'|'RATE_LIMIT'|'BUDGET_EXCEEDED'|'PROVIDER_ERROR';
@@ -40,7 +40,7 @@ const examples:Record<string,[string,string]>={
 export class DemoProvider implements ModelProvider {
   name='DEMO_FIXTURE';model='competition-v1';
   async generate(r:GatewayRequest):Promise<Recommendation|BrandoAnswer> {
-    if(r.task==='BRANDO_CONTEXTUAL')return demoBrando(r.input);
+    if(r.task==='BRANDO_CONTEXTUAL'){const answer=demoBrando(r.input);return r.outputSchema==='brando-answer-v2'?{...answer,suggestionActions:answer.suggestions.map(()=>({kind:'EVIDENCE',proposedDecision:null}))}:answer;}
     const labels=examples[r.module];if(!labels)throw new Error('Unsupported module');
     const options=labels.map((label,i)=>({id:`option-${i+1}`,label,rationale:'Ejemplo didáctico para comparar enfoques; requiere adaptación a tu marca.',tradeoffs:[i===0?'Mayor foco; menor amplitud inicial.':'Mayor amplitud; exige más coordinación.']}));
     return {id:randomUUID(),brandId:r.tenantScope.brandId,questionId:r.questionId,contextVersion:r.contextVersion,options,recommendedOptionId:options[0].id,rationale:'Propuesta DEMO fija. No deriva una conclusión de tus fuentes ni sustituye tu criterio.',evidenceReferences:[],hypothesesUsed:[],tradeoffs:['La prioridad elegida deja alternativas fuera del foco inicial.'],openQuestions:['¿Qué observación real justificaría elegir esta opción?'],supportLevel:'UNVALIDATED',affectedDomains:[r.module],failureConditions:['El cliente no reconoce el problema o no adopta la propuesta.']};
