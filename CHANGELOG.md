@@ -14,6 +14,107 @@ Depends on: —
 
 # Registro
 
+## Brando B1 · cierre validado fuera de producción · 2026-10-05
+
+Operador confirmó el bloque final de validación Windows: TypeScript, lint, Skill Pack,
+pruebas unitarias/integración, E2E, visuales, PILOT E2E, Foundation, UI y formato.
+También confirmó navegación humana: entrada izquierda única de gema/atención abre el
+resumen central; la derecha conserva el panel de consulta. Ocho casos Brando aprobados
+en el bloque previo. Estado: RELEASE-READY FUERA DE PRODUCCIÓN. Sin commit, push, PR,
+merge, tag ni deploy. Jury Production Freeze vigente; sugerencias proactivas por sección
+fuera del alcance B1. Los registros históricos de candidatos quedan conservados.
+
+## Brando B1 · entrada única de atención · 2026-10-05
+
+La gema y «Qué necesita atención» comparten una entrada izquierda que abre el resumen
+de atención existente. El panel de consulta se abre desde la derecha. Sin cambios de
+animación, IA, estrategia o producción. Prueba de navegador cubre destinos distintos y
+ausencia de solicitudes automáticas; validación Windows de esta corrección pendiente.
+
+## Brando B1 · corrección de altura de navegación · 2026-10-05
+
+La nueva entrada excedía el espacio de laptop y falló el test de navegación en cuatro
+proyectos. Densidad ajustada solo para ratón y ventanas de hasta 860px de alto; todos los
+accesos y el principio permanecen visibles. Sin cambios de test ni de controles táctiles.
+Reproducción de navegador: navegación 684px visibles/684px de contenido tras corregir.
+Gates Windows y aceptación visual siguen pendientes; producción congelada.
+
+## Brando B1 · corrección de panel y movimiento · 2026-10-05
+
+Tras rechazo visual humano: panel deslizable desde la derecha, contexto antes de consultar,
+compositor fijo y acceso de Brando sobre atención en la navegación izquierda. Una misma gema
+en todos los estados, gestos rígidos con luz y retorno neutral, reposo cada 8–12 segundos.
+Se conservan pausa, movimiento reducido, aislamiento y autoridad humana. Sin cambios de
+backend/proveedor/producción. Nuevos gates Windows y aceptación visual pendientes.
+
+## Brando B1 · integración visual pendiente de validación · 2026-10-05
+
+Gema pequeña sobre Contexto vigente; estados expresivos, movimiento ocasional en reposo
+y pausa accesible. Imágenes WebP transparentes derivadas de referencias humanas (18 KB total).
+Sugerencia tentativa tras consulta humana, descartable y ligada a marca/contexto; se oculta
+al consultar o ante fallo. Sin consultas automáticas ni cambios estratégicos o de producción.
+El cierre previo acredita el núcleo contextual; esta ampliación necesita gates Windows y
+aceptación visual humana antes de otro cierre RELEASE-READY fuera de producción.
+
+## Brando B1 · candidato RELEASE-READY fuera de producción · 2026-10-04
+
+El usuario completó el bloque de comprobaciones y el smoke real contextual con Opus 5.5.
+Gateway: OK, schema/referencias válidos; 19 185 ms, 3195 tokens de entrada y 1786 de salida.
+Revisión de respuesta contra fuentes ficticias: decisión vigente/histórica y razones correctas,
+límites de evidencia explícitos, atención pendiente y propuestas tentativas sin aprobación.
+DEMO visual revisada y gates automáticos completados. Una consulta no acredita calidad general
+ni E2E con proveedor vivo. Clave temporal retirada según salida del operador.
+Candidato listo fuera de producción; sin commit/push/merge/tag/deploy. Jury Freeze vigente.
+
+## Brando B1 · smoke contextual con proveedor real preparado · 2026-10-04
+
+DEMO revisada mediante capturas y borrado de conversación confirmado por el usuario.
+Modelo existente confirmado por el operador: claude-opus-5-5. Nuevo script human-only
+con una consulta B1, marca/datos ficticios, sin base de datos ni persistencia; muestra
+respuesta y fuentes para revisión humana. Dos pruebas del harness añadidas y aprobadas.
+No se ejecutó el proveedor real desde el agente; resultado live pendiente.
+
+## Brando B1 · gates automáticos completados · 2026-10-04
+
+Evidencia de ejecución Windows aportada por el usuario: 223 pruebas unitarias/DB,
+80 recorridos, 10 pruebas PILOT HTTPS/OIDC y 4 pruebas Brando aprobadas. Visuales:
+10 aprobadas y una omisión histórica por falta del respaldo de reparación de encoding.
+Foundation cero errores y UI validator PASS; bloque final con typecheck/lint/diff completado.
+Aceptación visual humana y smoke semántico con proveedor real pendientes. Sin deploy.
+
+## Brando B1 · prueba de caída del proveedor · 2026-10-04
+
+Windows confirma 223/223 pruebas y cinco casos OIDC. Los otros cinco casos PILOT esperan
+un aviso anterior. Se verifica el aviso vigente, la respuesta real UNAVAILABLE sin propuesta
+y que decisiones/versiones permanezcan iguales antes y después del fallo. Se conserva el
+recorrido de aprobación humana posterior. Solo pruebas/documentación; verificación pendiente.
+
+## Brando B1 · actualización de pruebas PILOT · 2026-10-04
+
+Windows: E2E 80/80 y visual 10 aprobadas, 1 omitida por ausencia del respaldo histórico
+de reparación de encoding. El PILOT local falla en selectores previos ambiguos: varias
+llamadas a la acción comparten nombre. Las pruebas ahora seleccionan el acceso OIDC
+explícito, su vista /login para teclado y el aviso #notice para feedback. Se conservan
+todas las comprobaciones de seguridad y recorrido. Sin cambios de runtime/configuración;
+PILOT y cierre final pendientes.
+
+## Brando B1 · seguimiento de verificación local · 2026-10-04
+
+Resultados aportados por el usuario: 223 pruebas unitarias/DB y 4 pruebas de Brando pasan;
+E2E inicial 78/80, repetición dirigida 3/4. Se corrige el indicador de actividad fuera de
+pantalla compacta y se espera la transición CSS antes de medir hover. Sin eliminar ni
+relajar las verificaciones. Corrección pendiente de validación en Windows; visual/PILOT
+E2E y aceptación visual pendientes. Producción permanece congelada.
+
+## Brando B1 contextual · 2026-10-04
+
+Implementación candidata fuera de producción: consulta contextual por Gateway, respuesta estructurada,
+fuentes autorizadas, atención determinista, conversación temporal y métricas operativas separadas.
+Sin autoridad de escritura estratégica, migraciones, cambios de dependencias ni despliegue.
+Typecheck/lint y 136 pruebas sin DB pasan; 87 pruebas con DB bloqueadas por ejecución root, Chrome
+bloqueado por permisos de sockets. Candidato **not release-ready**. Véase
+[revisión B1](docs/15-handoff/BRANDO_B1_REVIEW_2026-10-04.md). Jury Production Freeze intacta.
+
 ## Congelación de producción por evaluación de jurado · 2026-10-04
 
 Decisión humana de operación temporal. **Sólo documentación/gobierno; no cambia runtime ni producción.**

@@ -33,3 +33,12 @@ No usar views como High-Value Events; no mezclar DEMO, PILOT y PRODUCTION. Fórm
 ## Alineación de implementación · continuación 2026-09-24
 
 Desde el cierre de recuperación posterior a 690d1a3, `learning_created` se emite únicamente tras aceptación humana; `learning_candidate_created` identifica el registro previo. La aceptación repetida no duplica eventos. Se alinean `recommendation_approved` y `signal_added` con este catálogo. Los eventos DEMO anteriores llamados `recommendation_accepted`/`signal_recorded` y `learning_created` al proponer una interpretación se conservan como historia de implementación; no se reclasifican ni se mezclan con evidencia de piloto. Las métricas históricas no se recalculan.
+
+## Brando B1 · 2026-10-04
+
+`brando_requested`: consulta contextual autorizada, registrada antes de invocar el Gateway; actor USER,
+entidad Brand, metadatos INTERNAL. Usa el envelope existente; no contiene pregunta, respuesta ni texto
+estratégico. Cuenta para los límites diarios de IA junto a `recommendation_requested`, pero no es
+Recommendation, activación, decisión, aprendizaje aceptado ni evento de alto valor. No se recalculan
+métricas históricas. Los fallos y reintentos explícitos también consumen solicitudes; no hay retry
+silencioso en la interfaz. La conversación no se persiste.

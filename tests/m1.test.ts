@@ -1,3 +1,4 @@
+import { brandoCases } from './brando-cases.js';
 import { beforeAll, afterAll, describe, it, expect } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { readFileSync, mkdirSync, writeFileSync, copyFileSync } from 'node:fs';
@@ -21,6 +22,7 @@ import { pilotCases } from './pilot-cases.js';
 import { launchCases } from './launch-cases.js';
 import { blueprintCases } from './blueprint-cases.js';
 let local:Awaited<ReturnType<typeof startLocalDb>>,connection:ReturnType<typeof connect>,engine:Engine;
+brandoCases(()=>connection);
 pilotCases(()=>connection);
 launchCases(()=>connection);
 blueprintCases(()=>connection);

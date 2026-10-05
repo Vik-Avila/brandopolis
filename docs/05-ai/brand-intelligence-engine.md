@@ -38,3 +38,10 @@ AI proposes. Humans decide. Brandopolis remembers.
 **Brando B1** puede: comprender la marca activa y la decisión actual; responder preguntas sobre contexto, decisiones, razones y evidencia; explicar Brandopolis; plantear preguntas e hipótesis; hacer sugerencias; señalar contradicciones o elementos que requieren atención; y alimentar «Qué necesita atención».
 
 B1 no modifica el workspace PILOT congelado ni su runtime actual ([CLAUDE.md § Pilot freeze](../../CLAUDE.md#pilot-freeze)). Los niveles B2–B5 sólo se nombran aquí como dirección; su alcance y sus límites se definirán cuando se aprueben.
+
+### Contrato de implementación B1 · 2026-10-04
+
+La etapa B1 se desarrolla fuera de producción por aprobación humana del plan. Contrato de consulta,
+selección de datos, autoridad, memoria temporal y validación: [Brando B1](brando-b1.md).
+La extensión compatible del Gateway se registra en [ADR-0017](../14-decisions/ADR-0017.md).
+La Jury Production Freeze sigue vigente; este trabajo no autoriza despliegue.

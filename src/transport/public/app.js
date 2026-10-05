@@ -1,5 +1,6 @@
+import {createBrandoPresence} from './brando-presence.js';
 const $=s=>document.querySelector(s);
-import {escape,labels,fmt,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
+import {escape,labels,fmt,brandoAnswerHtml,brandoContextHtml,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
 import {trapFocus,decisionTabs} from './product-interactions.js';
 import * as analytics from './analytics.js';
 import {PILOT_EVENTS} from './analytics.js';
@@ -123,6 +124,12 @@ const activityStart=(title,detail)=>{
  $('.ai-activity-mark').textContent='✦';
  $('#ai-activity-title').textContent=title;
  $('#ai-activity-detail').textContent=detail;
+ // Revealing both activity panels can move the local status below the fold. Keep the feedback
+ // beside the initiating control in view after layout changes, without waiting for smooth scroll.
+ if(activityMirror?.isConnected){
+  const bounds=activityMirror.getBoundingClientRect();
+  if(bounds.top<0||bounds.bottom>window.innerHeight)activityMirror.scrollIntoView({block:'nearest',behavior:'instant'});
+ }
 };
 
 const activityStep=(title,detail)=>{
@@ -167,7 +174,7 @@ async function api(path,input,timeoutOverrideMs) {
   if(!response.ok) {
     const conflict=path.includes('/learning/')?'Este registro cambió o no permite esa acción. Vuelve a abrir Experimentos y aprendizajes para revisar su estado.':path.includes('/recommendations/')?'La propuesta ya no corresponde al contexto actual. Vuelve a abrir la decisión y compara opciones de nuevo.':'Esta decisión cambió mientras la estabas editando. Revisa la versión más reciente antes de aprobar. Si usaste una recomendación, genera otra con el contexto actual.';
     const messages={CONFLICT:conflict,UNAUTHORIZED:pilotMode?'Tu sesión venció. Vuelve a entrar al piloto.':'Tu sesión DEMO venció o no está disponible. Vuelve a entrar con la sesión local vigente.',FORBIDDEN:pilotMode?'No tienes permiso para esta acción o esta marca.':'No tienes permiso para esta acción. Revisa que hayas entrado con la sesión DEMO correcta.',UNAVAILABLE:pilotMode?'El servicio no está disponible por el momento. Tu borrador se conserva; vuelve a intentar en unos minutos.':'La demo local no está disponible. Conserva tu borrador y comprueba que la terminal siga abierta.',RATE_LIMITED:'Demasiadas solicitudes seguidas. Espera un momento y vuelve a intentar.',AI_CAP_REACHED:'Se alcanzó el límite diario de propuestas IA. Puedes continuar con tu decisión y volver a pedir propuestas mañana.',AI_CONSENT_REQUIRED:'Antes de pedir una propuesta, confirma el aviso sobre el uso de datos con IA.',INVALID:'Revisa los campos requeridos y el contexto disponible antes de continuar.',NOT_FOUND:'La marca o el registro ya no está disponible para esta sesión. Selecciona una marca accesible.'};
-    if(data.code==='UNAUTHORIZED'){preserveDraft();document.body.classList.remove('app');$('#login').hidden=false;$('#workspace').hidden=true;$('#logout').hidden=true;$('#menu').hidden=true;$('.header-brand-control').hidden=true;$('#new-brand').hidden=true;$('#mode-badge').hidden=true;}
+    if(data.code==='UNAUTHORIZED'){resetBrando();$('#brando-dialog').close();preserveDraft();document.body.classList.remove('app');$('#login').hidden=false;$('#workspace').hidden=true;$('#logout').hidden=true;$('#menu').hidden=true;$('.header-brand-control').hidden=true;$('#new-brand').hidden=true;$('#mode-badge').hidden=true;}
     throw Object.assign(new Error(messages[data.code]??'No se pudo completar la operación. Conserva tus datos y revisa el estado antes de reintentar.'),{code:data.code});
   }
   return data;
@@ -662,6 +669,7 @@ async function loadBrands(preferred) {
   $('.header-brand-control').hidden=brands.length===0;
   demoBrandIds=new Set(brands.filter(b=>b.isDemo).map(b=>b.id));
   $('#brands').innerHTML=brands.map(b=>`<option value="${escape(b.id)}">${escape(b.name)}${b.isDemo?' · Marca demo':''}</option>`).join('');
+  resetBrando();
   brandId=brands.some(b=>b.id===preferred)?preferred:brands[0]?.id;
   if(brandId)$('#brands').value=brandId;
   activeDecisionTab='overview';draft=null;await refresh();
@@ -815,6 +823,7 @@ async function refresh(){
  if(brandId)ensureCompetitiveRejections().then(loaded=>{if(loaded&&context)renderContext();});
 }
 function render() {
+  $('#decision').before($('#brando-suggestion'));
   setNavActive();$('#decision').dataset.view='decision';updateShell();
   document.querySelectorAll('[data-module]').forEach(b=>{if(b.dataset.module===selected)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
   if(!context){analytics.sendOnce(PILOT_EVENTS.onboardingStarted,{pilot_stage:'no_brand'});$('#decision').innerHTML='<section class="empty-state" aria-labelledby="onboarding-title"><p class="eyebrow">Tu punto de partida</p><h2 id="onboarding-title">Construye tu primera decisión estratégica.</h2><p>Primero a quién sirves. Después, cómo quieres ser elegido. Cada decisión conservará tu criterio y su historia.</p><ol><li>Abre «Nueva marca» para crear tu espacio.</li><li>Define tu cliente principal.</li><li>Compara opciones y decide con tu criterio.</li></ol><p><strong>La IA propone. Tú decides. Brandopolis recuerda.</strong></p></section>';$('#context').innerHTML='';return;}
@@ -878,7 +887,7 @@ function render() {
   $('#retry-impact')?.addEventListener('click',event=>run(async()=>{const result=await api('/api/impacts/retry',{brandId});await refresh();notice(result.pending?'El impacto sigue pendiente.':'Impacto calculado.',result.pending);},event.currentTarget));
 }
 $('#login-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{await api('/api/session',{token:$('#token').value});$('#token').value='';await enterWorkspace();notice('Workspace disponible.');},event.submitter);});
-$('#logout').addEventListener('click',event=>run(async()=>{await api('/api/logout',{});location.reload();},event.currentTarget));
+$('#logout').addEventListener('click',event=>run(async()=>{resetBrando();await api('/api/logout',{});location.reload();},event.currentTarget));
 $('#create-brand').addEventListener('submit',event=>{event.preventDefault();run(async()=>{
  preserveDraft();
 
@@ -975,7 +984,7 @@ $('#new-brand').addEventListener('click',()=>{$('#brand-dialog').showModal();$('
 $('#cancel-brand').addEventListener('click',()=>$('#brand-dialog').close());
 $('#brand-dialog').addEventListener('close',()=>$('#new-brand').focus());
 trapFocus($('#brand-dialog'));
-$('#brands').addEventListener('change',event=>run(async()=>{preserveDraft();brandId=event.target.value;activeDecisionTab='overview';draft=null;impactVisible=false;await refresh();notice('Marca activa actualizada. Su contexto permanece separado.');}));
+$('#brands').addEventListener('change',event=>run(async()=>{preserveDraft();resetBrando();brandId=event.target.value;activeDecisionTab='overview';draft=null;impactVisible=false;await refresh();notice('Marca activa actualizada. Su contexto permanece separado.');}));
 // Single entry point to a Decision: keeps drafts, resets local tab and impact disclosure, then renders.
 function openModule(module,focus=true){preserveDraft();selected=module;activeDecisionTab='overview';draft=null;impactVisible=false;render();if(focus)focusView();}
 document.querySelectorAll('[data-module]').forEach(button=>button.addEventListener('click',()=>{const fromDrawer=$('#journey').classList.contains('open');closeMenu(false);openModule(button.dataset.module,fromDrawer);}));
@@ -990,7 +999,7 @@ function impactReason(review){
 }
 function preserveDraft(){if(draft&&brandId)sessionStorage.setItem(`draft:${user.userId}:${brandId}:${selected}`,JSON.stringify(draft));}
 const narrow=matchMedia('(max-width:1279px)');
-function drawerBackground(inert){for(const selector of ['header','.skip','.workspace-head','#create-brand','#decision','#context','footer'])$(selector).inert=inert;}
+function drawerBackground(inert){for(const selector of ['#brando-card','#brando-suggestion','header','.skip','.workspace-head','#create-brand','#decision','#context','footer'])$(selector).inert=inert;}
 function closeMenu(returnFocus=true){const nav=$('#journey'),wasOpen=nav.classList.contains('open');nav.classList.remove('open');nav.removeAttribute('role');nav.removeAttribute('aria-modal');$('#nav-backdrop').hidden=true;$('#menu').setAttribute('aria-expanded','false');drawerBackground(false);nav.inert=narrow.matches;if(wasOpen&&returnFocus&&narrow.matches)$('#menu').focus();}
 /** Declared strategic market for a brand the participant just created. Optional, never inferred. */
 async function saveBrandGeography(id){
@@ -1080,7 +1089,7 @@ Promise.all([api('/api/mode'),api('/api/session-state')]).then(async([mode,state
 $('#brand-context').addEventListener('click',()=>run(showBrandContext));
 $('#competitive-context').addEventListener('click',()=>run(showCompetitiveContext));
 // Entering a non-Decision view: title, active navigation, drawer closed, draft preserved. False without a brand.
-function enterView(selector,title){setTitle(title);setNavActive(selector);closeMenu(false);preserveDraft();draft=null;return !!brandId;}
+function enterView(selector,title){$('#decision').before($('#brando-suggestion'));setTitle(title);setNavActive(selector);syncBrandoPresentation();closeMenu(false);preserveDraft();draft=null;return !!brandId;}
 
 
 function competitiveFindingClaim(finding){
@@ -1887,6 +1896,7 @@ $('#practice').addEventListener('click',()=>run(async()=>{
 }));
 
 function renderContext(){
+  syncBrandoPresentation();
   updateShell();
   const versions=context.versions.filter(v=>context.decisions.some(d=>d.activeVersionId===v.id));
   const latest=versions.slice().sort((a,b)=>new Date(b.approvedAt)-new Date(a.approvedAt))[0];
@@ -1992,3 +2002,93 @@ function showAiNotice(questionId,origin={}){
  window.addEventListener('scroll',syncStickyHeader,{passive:true});
  syncStickyHeader();
 }
+
+
+// B1 conversation is memory-only, scoped to this user, brand, decision and context revision.
+let brandoTurns=[],brandoScope='',brandoGeneration=0,brandoBusy=false;
+const brandoDialog=$('#brando-dialog');
+let brandoOpener=$('#open-brando'),brandoClosing=false;
+function closeBrando(){
+ if(!brandoDialog.open||brandoClosing)return Promise.resolve();
+ brandoClosing=true;
+ const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+ const animation=reduced?null:brandoDialog.animate([{transform:'translateX(0)'},{transform:'translateX(102%)'}],{duration:220,easing:'cubic-bezier(.4,0,1,1)'});
+ return (animation?animation.finished.catch(()=>{}):Promise.resolve()).then(()=>{brandoDialog.close();animation?.cancel();brandoClosing=false;});
+}
+let brandoVisualState='idle',brandoSuggestionDismissed=false;
+const presenceLabels={idle:'Brando está atento a esta marca',consulting:'Brando está consultando tu contexto',ready:'Brando tiene una respuesta para ti',attention:'Hay elementos que necesitan tu atención',unavailable:'No pudimos obtener una respuesta'};
+const brandoPresence=createBrandoPresence({portraits:[...document.querySelectorAll('[data-brando-portrait]')],motionButton:$('#brando-motion-toggle'),onState:state=>{$('#brando-card').dataset.state=state;$('#home').dataset.state=state;$('#brando-presence-label').textContent=presenceLabels[state];$('#brando-card').setAttribute('aria-busy',String(state==='consulting'));}});
+const brandoCompact=matchMedia('(max-width: 1000px)');
+function placeBrandoCard(){const container=brandoCompact.matches?$('#brando-mobile-slot'):$('.intelligence-rail');container.prepend($('#brando-card'));}
+brandoCompact.addEventListener('change',placeBrandoCard);placeBrandoCard();
+function syncBrandoPresentation(){
+ if(brandoScope&&brandoScope!==currentBrandoScope())resetBrando();
+ const needsAttention=context?.attention?.length>0;
+ brandoPresence.setState(brandoVisualState==='idle'&&needsAttention?'attention':brandoVisualState);
+ const latest=brandoTurns.at(-1)?.result;
+ const suggestion=latest?.answer?.suggestions?.[0];
+ const visible=Boolean(brandoVisualState==='ready'&&suggestion&&!brandoSuggestionDismissed&&brandoScope===currentBrandoScope());
+ $('#brando-suggestion').hidden=!visible;
+ if(brandoDialog.open)$('#brando-context-overview').innerHTML=brandoContextHtml(context,brandoQuestion());
+ $('#brando-suggestion-text').textContent=visible?suggestion:'';
+ const hero=$('#decision .decision-heading');if(hero&&visible)hero.after($('#brando-suggestion'));else $('#decision').before($('#brando-suggestion'));
+}
+$('#brando-view-answer').addEventListener('click',()=>$('#open-brando').click());
+$('#brando-dismiss-suggestion').addEventListener('click',()=>{brandoSuggestionDismissed=true;syncBrandoPresentation();$('#open-brando').focus();});
+function resetBrando(){
+ brandoGeneration++;brandoTurns=[];brandoScope='';brandoBusy=false;
+ $('#brando-conversation').replaceChildren();$('#brando-status').textContent='';$('#brando-message').value='';$('#brando-consent').hidden=true;
+ $('#brando-form button[type="submit"]').disabled=false;
+ brandoVisualState='idle';brandoSuggestionDismissed=false;syncBrandoPresentation();
+}
+function brandoQuestion(){return $('#journey [data-module][aria-current="page"]')?context?.questions.find(q=>q.module===selected)?.id??null:null;}
+function currentBrandoScope(){return JSON.stringify([user?.userId,brandId,brandoQuestion(),context?.brandoContextVersion??context?.contextVersion]);}
+function openBrando(opener){
+ if(!brandId||!context){notice('Primero crea o selecciona una marca.');return;}
+ const key=currentBrandoScope();if(key!==brandoScope)resetBrando();brandoScope=key;
+ $('#brando-scope').textContent=`${$('#brands').selectedOptions[0]?.textContent??'Marca activa'} · ${brandoQuestion()?labels[selected]:'Contexto general de la marca'}`;
+ brandoOpener=opener;closeMenu(false);
+ $('#brando-context-overview').innerHTML=brandoContextHtml(context,brandoQuestion());
+ brandoDialog.showModal();brandoPresence.setDialogOpen(true);$('#brando-message').focus();
+ $('#brando-scroll').scrollTop=0;
+}
+$('#open-brando').addEventListener('click',()=>openBrando($('#open-brando')));
+$('#close-brando').addEventListener('click',()=>closeBrando());
+brandoDialog.addEventListener('cancel',event=>{event.preventDefault();closeBrando();});
+brandoDialog.addEventListener('close',()=>{brandoPresence.setDialogOpen(false);(brandoOpener.closest('[inert]')?$('#menu'):brandoOpener).focus();});
+$('#brando-context-overview').addEventListener('click',async event=>{const button=event.target.closest('[data-brando-module],[data-brando-view]');if(!button)return;await closeBrando();if(button.dataset.brandoModule)openModule(button.dataset.brandoModule);else run(button.dataset.brandoView==='context'?showBrandContext:showHome);});
+trapFocus(brandoDialog);
+$('#clear-brando').addEventListener('click',()=>{resetBrando();brandoScope=currentBrandoScope();$('#brando-message').focus();});
+document.querySelectorAll('[data-brando-question]').forEach(button=>button.addEventListener('click',()=>{$('#brando-message').value=button.dataset.brandoQuestion;$('#brando-message').focus();}));
+$('#brando-form').addEventListener('submit',async event=>{
+ event.preventDefault();if(brandoBusy)return;
+ const message=$('#brando-message').value.trim();if(!message)return;
+ if(currentBrandoScope()!==brandoScope){resetBrando();brandoScope=currentBrandoScope();$('#brando-message').value=message;}
+ const generation=++brandoGeneration,key=brandoScope,targetBrand=brandId,q=brandoQuestion();
+ brandoVisualState='consulting';syncBrandoPresentation();brandoBusy=true;$('#brando-form button[type="submit"]').disabled=true;$('#brando-status').textContent='Consultando el contexto autorizado de tu marca…';
+ try{
+  const result=await api('/api/brando/ask',{brandId:targetBrand,questionId:q,message,history:brandoTurns.slice(-4).map(t=>({question:t.question,answer:''}))},45000);
+  if(generation!==brandoGeneration||key!==currentBrandoScope())return;
+  if(result.error)throw new Error('Brando no pudo obtener una respuesta validada. Puedes continuar manualmente o volver a consultar.');
+  const latest=await api(`/api/context?brandId=${encodeURIComponent(targetBrand)}`);
+  if(generation!==brandoGeneration||key!==currentBrandoScope())return;
+  if((latest.brandoContextVersion??latest.contextVersion)!==(result.sourceContextVersion??result.contextVersion)){resetBrando();context=latest;syncBrandoPresentation();$('#brando-status').textContent='El contexto cambió. Vuelve a consultar para usar la información actual.';return;}
+  brandoVisualState='ready';brandoSuggestionDismissed=false;
+  brandoTurns.push({question:message,result});brandoTurns=brandoTurns.slice(-4);
+  $('#brando-conversation').innerHTML=brandoTurns.map(t=>`<article class="brando-turn"><h3>Tu pregunta</h3><p>${escape(t.question)}</p>${brandoAnswerHtml(t.result)}</article>`).join('');
+  $('#brando-conversation').querySelectorAll('[data-brando-module]').forEach(b=>b.addEventListener('click',async()=>{await closeBrando();if(b.dataset.brandoModule)openModule(b.dataset.brandoModule);else run(showHome);}));
+  syncBrandoPresentation();
+  $('#brando-conversation').lastElementChild?.scrollIntoView({block:'start',behavior:'smooth'});
+  $('#brando-message').value='';$('#brando-status').textContent='Respuesta disponible. La estrategia permanece sin cambios.';
+ }catch(error){
+  if(generation!==brandoGeneration)return;
+  brandoVisualState='unavailable';syncBrandoPresentation();
+  $('#brando-status').textContent=error.code==='CONFLICT'?'El contexto cambió. Actualiza la vista y vuelve a consultar.':error.message;
+  if(error.code==='AI_CONSENT_REQUIRED'&&aiNotice){
+   const consent=$('#brando-consent');consent.hidden=false;consent.innerHTML=`<p>${escape(aiNotice.text)}</p><button type="button" class="secondary">Entiendo y acepto</button>`;
+   consent.querySelector('button').onclick=async()=>{try{await api('/api/ai-notice/accept',{version:aiNotice.version});consent.hidden=true;$('#brando-status').textContent='Aviso aceptado. Puedes enviar tu consulta.';}catch(e){$('#brando-status').textContent=e.message;}};
+  }
+ }finally{
+  if(generation===brandoGeneration){brandoBusy=false;$('#brando-form button[type="submit"]').disabled=false;}
+ }
+});

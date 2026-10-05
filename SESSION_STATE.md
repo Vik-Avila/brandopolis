@@ -1,3 +1,247 @@
+# Brando B1 · final Windows validation and human navigation acceptance (2026-10-05)
+
+State: RELEASE-READY OUTSIDE PRODUCTION. Branch: feat/brandopolis-intelligence-brando-b1.
+Base HEAD: 03dbd212e20e65ba0a575143d12fa8a6048b52c8. Candidate remains uncommitted.
+This entry supersedes pending-validation statements in earlier dated candidate records.
+
+Operator confirmed the attention patch block completed: typecheck, lint, eight Brando
+browser cases and whitespace validation. Human then confirmed the three local DEMO checks:
+one left gem/attention entry, central attention summary, and separate right query drawer.
+Earlier human feedback accepted drawer opening, Idle behavior and predefined-query answers.
+No broader subjective acceptance of every operational animation is inferred.
+
+Operator subsequently reported the final stop-on-failure block completed successfully:
+typecheck, lint, skills:check, full unit/integration suite, test:e2e, test:visual,
+test:pilot:e2e, Foundation, integrated UI validator and git diff --check. The pasted final
+output explicitly reports Foundation 237 Markdown / 58 JSON / 22 schemas / 15 requirements /
+13 golden cases / 0 errors, UI VALIDATION: PASS, and final-block success. Exact browser and
+unit totals for this final run were not pasted and are not invented here.
+
+AI proposes. Humans decide. Brandopolis remembers. Section suggestion stripes reuse an
+explicitly requested scoped answer; navigation never requests inference. Proactive section
+suggestions remain outside B1 and require a separately agreed phase.
+
+Jury Production Freeze remains active until explicit human authorization. No production
+access, deploy, tag, infrastructure/configuration change or production migration. No commit,
+push, PR or merge performed. Each release operation requires its own human authorization.
+
+---
+
+# Brando B1 · unified attention entry (2026-10-05)
+
+Operator reported the five navigation regression cases and remaining automatic validation
+passed after nav-fit. Human accepted drawer opening, Idle motion and predefined-question
+answers in the local DEMO. This does not imply acceptance of every animation or new live AI
+semantic evaluation.
+
+Human requested one left entry: Brando portrait + Qué necesita atención opens the existing
+attention summary. Removed the duplicate left drawer trigger; the right card retains query
+drawer behavior. No motion, engine, provider, schema, migration or production change.
+Updated browser flow asserts distinct destinations and no automatic POST on navigation.
+B1 section suggestions reuse explicitly requested scoped answers; proactive suggestions
+on section entry remain a separately agreed future phase.
+
+This follow-up awaits Windows browser regression and human verification of the left entry.
+No commit, push, merge, tag, deploy or production access.
+
+---
+
+# Brando B1 · laptop navigation regression correction (2026-10-05)
+
+Operator reported the drawer candidate initial block passed. Full E2E then had 76 PASS and
+4 FAIL: existing navigation reachability test at 1366x768 with fine pointer requires no sidebar
+scroll. Adding the Brando entry exceeded that height. Visual/PILOT commands after E2E did not
+run because the operator block stopped at the failure.
+
+Correction changes only product-responsive.css: <=860px height and fine pointer use denser
+navigation spacing, >=32px ordinary targets, 44px Brando entry with 32px image, and 36px
+learning entry. All labels, groups, links and principle remain. Touch targets/rules are unchanged.
+Existing failing tests were not edited, skipped or weakened.
+
+Reproduced in a same-origin 1366x768 preview frame using actual assets and synthetic data:
+before nav clientHeight=684/scrollHeight=795; after 684/684. Mapa estratégico bottom=579.75,
+height=32; full principle bottom=655.28125, within panel bottom=768. Browser preview evidence
+does not replace Windows real-server regression gates. Targeted five-project navigation rerun
+comes first; release remains blocked until required gates and human motion/layout acceptance.
+No production access, commit, push, merge, tag, deploy or baseline refresh.
+
+---
+
+# Brando B1 · drawer/motion correction awaiting Windows review (2026-10-05)
+
+The operator reported prior visual candidate full tests 228/228, Brando browsers 6/6,
+Foundation/UI/brand validators PASS, followed by PRUEBAS RESTANTES DE BRANDO VISUAL APROBADAS.
+Human visual review then REJECTED its long/subtle idle, unnatural attitude image swaps and
+poor central modal. Those test results do not approve the visual design or this correction.
+
+Authorized correction: contextual right slide drawer, small nonhumanized stable gemstone,
+more expressive finite motion and an additional left navigation presence above attention.
+Implemented drawer with current decision/rationale, counts, existing attention navigation,
+evidence/hypothesis previews, and persistent composer; same scoped transient conversation.
+One image across states prevents shape changes; gestures finish naturally at neutral, rest
+interval 8–12s. No provider query on opening, no strategic mutations or backend/config changes.
+
+See docs/15-handoff/BRANDO_B1_DRAWER_REVIEW_2026-10-05.md for actual checks and limits.
+NOT RELEASE-READY: new Windows gates and human animation/layout acceptance remain pending.
+No commit/push/PR/merge/tag/deploy. Jury Production Freeze remains active.
+
+---
+
+# Brando B1 · visual integration awaiting Windows gates (2026-10-05)
+
+The human authorized the supplied emerald/gold gem and right-rail mockup: small transparent
+portraits, expressive finite state animations, occasional idle motion, no intrusion or redesign.
+The previous RELEASE-READY verdict below applies to the contextual core before this visual
+follow-up; the expanded visual candidate is **NOT YET RELEASE-READY**.
+
+Implemented a compact rail card above Contexto vigente, the same accessible entry relocated
+above the decision on narrow screens, original-source-derived alpha WebP portraits, finite
+state motion and a 35–65 second resting interval. Reduced motion, explicit pause, offscreen,
+inactive-tab and modal guards apply. A removable tentative suggestion appears only after an
+authorized contextual response; pending/failed queries hide that strip. No automatic model
+query, strategic write, model/configuration change, database/schema/migration or deployment.
+
+Agent checks: typecheck/lint, 141 non-database tests, Foundation, Skill Pack mirror,
+UI validator and whitespace. Desktop browser inspection used actual frontend assets with
+synthetic preview API fixtures; it does NOT substitute for real-server/browser/database gates.
+Operator Windows full tests, E2E/visual/PILOT and expanded Brando browser suite plus human
+portrait/motion acceptance remain pending. See docs/15-handoff/BRANDO_B1_VISUAL_REVIEW_2026-10-05.md.
+All work remains uncommitted; Jury Production Freeze remains fully active.
+
+---
+
+# Brando B1 · RELEASE-READY outside production (2026-10-04)
+
+Human Windows execution completed the live-smoke block, including typecheck, lint, full
+unit/database tests, Foundation and whitespace checks after adding the harness tests.
+Earlier runtime/browser gates: E2E 80/80, PILOT 10/10, Brando 4/4, visual 10 PASS / one
+existing historical encoding-backup SKIP, integrated UI validator PASS, Skill Pack mirror PASS.
+Desktop DEMO screenshots and conversation clearing were reviewed with the operator.
+
+Human-only synthetic-context Gateway smoke: ANTHROPIC / claude-opus-5-5,
+brando-contextual-v1, outcome OK, schemaValid=true, referencesValid=true;
+19,185 ms, 3,195 input tokens and 1,786 output tokens. The supplied answer was compared
+with its synthetic sources: current versus superseded decision and rationale are accurate;
+fictitious evidence/limits are disclosed; Positioning and willingness-to-pay attention are
+identified; new hypotheses/questions/suggestions are tentative and require human decisions.
+No invented market/revenue numbers or autonomous approval appeared. The operator procedure
+reported temporary credential cleanup. No credential was shared with the agent.
+
+Verdict: **RELEASE-READY OUTSIDE PRODUCTION** for the scoped contextual B1 candidate.
+This single live sample does not establish quality across all brands, semantic entailment
+for every generated claim, or live server end-to-end behavior. Existing automated boundary
+coverage and documented residual limitations remain applicable. No zero-risk certification.
+All changes remain uncommitted on feat/brandopolis-intelligence-brando-b1 based on
+03dbd212e20e65ba0a575143d12fa8a6048b52c8. Commit/push/PR/merge/tag/deploy are not performed.
+Jury Production Freeze remains active; this verdict authorizes no production operation.
+
+---
+
+# Brando B1 · DEMO reviewed, live smoke prepared (2026-10-04)
+
+Human desktop screenshots show the real contextual dialog, DEMO-labelled answers, recorded
+reasons and expandable numbered sources. Human confirmed conversation clearing works.
+This validates DEMO presentation, not live semantics. The human identified the existing model
+as Opus 5.5; their credential-authenticated read-only Models API returned `claude-opus-5-5`.
+No credential was supplied to the agent. No production provider/configuration was changed.
+
+Prepared `scripts/brando-ai-smoke.ts`: one B1 Gateway invocation using a synthetic brand,
+current/history distinction, fictitious interview evidence, unvalidated hypothesis and pending
+questions. No DB/server access or persistence; operator-provided key/model only; existing SDK
+retry/output policy reused. Full response/synthetic sources printed for human semantic review;
+schema and reference validation are technical checks, not proof of strategic correctness.
+Two additional fixture tests pass; local non-DB count now 138/138, typecheck/lint pass.
+The human will run the live query locally. **Live result and final release verdict pending.**
+
+---
+
+# Brando B1 · automated gates complete, human review pending (2026-10-04)
+
+Human-provided Windows execution evidence for the current worktree: full unit/database suite
+223/223 PASS (latest unit run before the final test-only outage assertion); E2E 80/80 PASS;
+visual 10 PASS / 1 historic encoding-backup SKIP; final local PILOT HTTPS/OIDC 10/10 PASS;
+final Brando desktop/mobile fixture 4/4 PASS; Foundation zero errors and integrated UI validator
+PASS. The final block reached its success message, including typecheck, lint and whitespace gates.
+Skill Pack byte-identical mirror was verified earlier and its files were not changed.
+
+No failing automatic gate remains. Historic encoding skip is the existing documented condition,
+not a new exclusion. **Human visual acceptance remains pending; real-provider semantic smoke
+has not been performed.** Current state: verified non-production candidate, not final release-ready.
+No commit/push/PR/merge/tag/deploy. Jury Production Freeze remains active.
+
+---
+
+# Brando B1 · PILOT outage proof follow-up (2026-10-04)
+
+New Windows log: unit/database suite **223/223 PASS**; scoped PILOT selectors allow all five
+OIDC keyboard/revocation cases to pass. Remaining five HTTPS cases reach the real unavailable
+fixture provider and stop at a stale expected notice string. The current notice explicitly
+allows a human response/retry. Test now asserts that exact safe notice, the actual unavailable
+provider result, and unchanged decisions/versions across the failed generation. Human commit,
+brand isolation, feedback and logout checks remain. No runtime change.
+
+Updated HTTPS/PILOT verification and final checks remain pending; **not release-ready**.
+Production remains frozen. No commit/push/merge/deploy authorization inferred.
+
+---
+
+# Brando B1 · browser gates follow-up (2026-10-04)
+
+Windows evidence after UI fix: focused compact/mobile regression **4/4 PASS**; full existing
+E2E **80/80 PASS**; visual **10 PASS, 1 SKIP** (historic encoding repair has no local backup;
+its test explicitly requires that pre-existing artifact). PILOT local HTTPS/OIDC browser suite
+**10 FAIL** at initial ambiguous access-link selectors; none reached its protected-flow checks.
+The same unscoped selectors exist at the pinned main SHA; this is not a new production fault.
+The latest uploaded log starts at the E2E summary, so it does not independently show the
+preceding typecheck/lint/unit outputs. Earlier initial-patch evidence remains recorded below.
+
+Test-only follow-up scopes OIDC access to #pilot-entry, navigates the keyboard login proof to
+/login and scopes feedback assertions to #notice, preserving authentication, tenant isolation,
+provider outage, keyboard, revocation and logout assertions. No runtime or config modification.
+Updated PILOT checks, final Foundation/UI validation and human visual review remain pending.
+**Not release-ready. No deployment authorization.**
+
+---
+
+# Brando B1 · local verification follow-up (2026-10-04)
+
+User-reported Windows evidence on the dedicated worktree: typecheck, lint, Skill Pack,
+Foundation (zero errors) and diff checks PASS; full unit/DB suite **223/223 PASS**;
+Brando desktop/mobile fixture **4/4 PASS**. Existing E2E **78/80 PASS**, then focused rerun
+**3/4 PASS**: compact progress status reproducibly starts at y=823.36 in an 800px viewport.
+Mobile hover failed once and passed the focused rerun. Visual/PILOT browser checks did not run
+because the command block stopped at the E2E failure.
+
+Follow-up: activity start now brings the adjacent local status into view after revealing the
+panels; hover assertion waits for the observable CSS colour transition without weakening its
+contrast or interactivity checks. These updated browser paths **await Windows verification**.
+All counts above describe the initial patch, not proof that this follow-up passes.
+No screenshots/baselines, database schema, migration, production or deployment changes.
+Verdict remains **not release-ready**. Jury Production Freeze remains active.
+
+---
+
+# Brando B1 contextual · implementation candidate (2026-10-04)
+
+Human-approved plan implemented on local branch `feat/brandopolis-intelligence-brando-b1`, based on
+`main` `03dbd212e20e65ba0a575143d12fa8a6048b52c8`. **Uncommitted; not release-ready; outside production.**
+Jury Production Freeze remains active. No commit, push, PR, merge, tag, deploy, production operation,
+new migration, database schema or dependency change.
+
+B1 adds a scoped contextual read path through the Gateway, structured answers and source guards,
+read-derived attention, context freshness checks, a temporary dialog and separate query telemetry.
+No conversation writes strategy or invalidates recommendations. Contracts and data boundaries:
+[Brando B1](docs/05-ai/brando-b1.md), [ADR-0017](docs/14-decisions/ADR-0017.md).
+
+Validation: typecheck/lint PASS; 136 non-DB tests PASS. Full suite NOT PASS: 87 DB-dependent tests
+blocked by PostgreSQL refusing root in this UID-0-only container. Chrome launch blocked by Unix socket
+permissions; new fixture's 4 browser tests did not execute; existing E2E/visual/PILOT suites not run.
+Foundation zero errors; UI static validator PASS; Skill Pack mirror check PASS via node --import tsx
+(the pnpm wrapper itself is blocked by Unix IPC); diff whitespace clean. No real-provider smoke.
+Full findings and local completion procedure: [B1 review](docs/15-handoff/BRANDO_B1_REVIEW_2026-10-04.md).
+
+---
+
 # Session State
 
 Current phase: **JURY PRODUCTION FREEZE / NEXT-PHASE PREPARATION** (2026-10-04).

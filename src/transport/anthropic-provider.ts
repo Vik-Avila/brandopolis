@@ -6,7 +6,7 @@ import { schema } from '../domain/contracts.js';
 // Provider-side structured output supports a JSON Schema subset; the full local schema v1 still validates every response.
 function providerSchema(value:unknown):unknown {
   if(Array.isArray(value))return value.map(providerSchema);
-  if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).filter(([k])=>!['$schema','$id','x-version','examples','minLength','minItems'].includes(k)).map(([k,v])=>[k,providerSchema(v)]));
+  if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).filter(([k])=>!['$schema','$id','x-version','examples','minLength','minItems','maxLength','maxItems'].includes(k)).map(([k,v])=>[k,providerSchema(v)]));
   return value;
 }
 export const PILOT_PROMPT_VERSION='pilot-strategic-v1';
@@ -21,9 +21,9 @@ export class AnthropicProvider implements ModelProvider {
     try {
       message=await this.client.messages.create({
         model:this.model,max_tokens:16000,
-        system:readFileSync(`prompts/${PILOT_PROMPT_VERSION}.md`,'utf8'),
+        system:readFileSync(`prompts/${r.task==='BRANDO_CONTEXTUAL'?'brando-contextual-v1':PILOT_PROMPT_VERSION}.md`,'utf8'),
         messages:[{role:'user',content:JSON.stringify({id:randomUUID(),brandId:r.tenantScope.brandId,questionId:r.questionId,contextVersion:r.contextVersion,module:r.module,context:r.input})}],
-        output_config:{format:{type:'json_schema',schema:providerSchema(schema('recommendation')) as Record<string,unknown>}}
+        output_config:{format:{type:'json_schema',schema:providerSchema(schema(r.outputSchema)) as Record<string,unknown>}}
       },{timeout:r.budget.timeoutMs});
     } catch(error) {
       if(error instanceof Anthropic.RateLimitError)throw new ProviderFailure('RATE_LIMIT');

@@ -75,3 +75,28 @@ Short, deliberate, no overshoot: view entry (6px rise + fade, `--bp-motion-slow`
 ## Accessibility contract
 
 WCAG 2.2 AA target: text contrast ≥ 4.5:1 (checked in `tests/visual/canonical.spec.ts`, including pixel-measured hero text), focus visible on every control, tabs with arrow/Home/End, dialog and drawer focus trap and return, h1 present at every width, 44px targets for primary mobile controls, `lang` on English brand phrases.
+
+## Brando B1 · contextual drawer and motion revision · 2026-10-05
+
+Human-authorized nonproduction UI: right-anchored native dialog drawer (620px maximum,
+full viewport on phones), own scrolling body, fixed composer and accessible focus return.
+Context is displayed before inference from the existing authorized snapshot: active decision
+and recorded rationale, attention, evidence/hypothesis counts and short previews. Navigation
+opens existing human workflows. No automatic inference or strategic write. A compact Brando
+portrait shares the Qué necesita atención entry in the left navigation, opening the existing
+attention summary. The right card remains the query drawer entry.
+
+All live portraits use the SAME 160px alpha `/brando/idle.webp` (4550 bytes), displayed at 44px
+(32px in a suggestion). The previous consulting/ready derivatives remain available for the
+preceding candidate but are no longer referenced by this frontend. No new imagery is generated;
+no geometry, scale, skew or perspective morph is used. Rigid translation/rotation plus subtle
+illumination distinguish idle, consulting, ready, attention and unavailable. A running gesture
+finishes at neutral before a changed state begins. Finite gestures last 2.0–2.6s; resting motion
+starts every 8–12s, consulting every 3s; unavailable has a single entry gesture. Idle's first
+visible gesture may start at 1.8s. Offscreen/hidden-tab/modal guards, explicit pause and live
+reduced-motion preference remain. Drawer enters at 320ms and closes at 220ms; reduced motion
+removes both. Native dialog inertness remains; the lighter backdrop keeps context recognizable.
+
+Reference: reference/brando-b1/drawer-source.png (layout only; humanized gemstone explicitly
+excluded). Existing gemstone/Brand Master identity is preserved. Browser regression and human
+motion acceptance are required; no asset-hash or canonical screenshot baseline refresh.

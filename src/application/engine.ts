@@ -1,3 +1,4 @@
+import { attentionFor, brandoPacket, validBrandoReferences } from '../domain/brando.js';
 import { randomUUID, createHash } from 'node:crypto';
 import { and, eq, ne, asc } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
@@ -1046,6 +1047,30 @@ export class Engine {
       ...ctx.versions.filter(v=>v.versionStatus==='SUPERSEDED'&&ctx.decisions.some(d=>d.id===v.decisionId&&d.questionId===questionId)).map(v=>({id:v.id,type:'DecisionHistory',critical:false,data:v,trust:'HISTORICAL_NOT_CURRENT'}))
     ],budget);
   }
+  /** Read projection; never invokes analyze(), commitDecision() or context capture. */
+  async askBrando(token:string,brandId:string,message:string,questionId:string|null,history:{question:string;answer:string}[]=[]) {
+    if(typeof message!=='string'||!message.trim()||message.length>2000||!Array.isArray(history)||history.length>4||history.some(h=>!h||typeof h.question!=='string'||h.question.length>2000||typeof h.answer!=='string'||h.answer.length>8000))throw new AppError('INVALID','Invalid Brando query');
+    const snapshot=async()=>{
+      const c=await this.context(token,brandId);
+      const brands=await this.listBrands(token),brand=brands.find(b=>b.id===brandId);
+      if(!brand)throw new AppError('NOT_FOUND','Brand not available');
+      // Hash every selected source, including review and history changes, not only active versions.
+      const fingerprint=hash(JSON.stringify([brand.name,c.brandoContextVersion]));
+      return {c,brand,fingerprint};
+    };
+    const before=await snapshot();
+    const packet=brandoPacket(before.c,before.brand,before.fingerprint,message.trim(),questionId,history);
+    const actor=await this.me(token);
+    // Operational request only: separate name so pilot recommendation metrics stay unchanged.
+    await this.db.transaction(async tx=>{const s=await this.scope(tx,token,brandId);await this.event(tx,s,'brando_requested');});
+    const response=await this.gateway.invoke({task:'BRANDO_CONTEXTUAL',module:'Brando B1',promptVersion:'brando-contextual-v1',contextVersion:packet.contextVersion,input:packet,outputSchema:'brando-answer',budget:{maxCharacters:30000,timeoutMs:this.gateway.timeoutMs},tenantScope:{workspaceId:actor.workspaceId,brandId},questionId:questionId??''});
+    const after=await snapshot(); // Re-authorize after provider latency, before returning any content.
+    if(after.fingerprint!==before.fingerprint)throw new AppError('CONFLICT','Brando context changed');
+    const answer=response.result;
+    const error=response.error??(answer&&!validBrandoReferences(answer,packet)?'INVALID_OUTPUT':null);
+    const refs=answer&&!error?[...new Set(answer.facts.flatMap(f=>f.referenceIds))]:[];
+    return {answer:error?null:answer,error,provider:response.provider,contextVersion:before.c.contextVersion,sourceContextVersion:before.c.brandoContextVersion,sourceVersion:before.fingerprint,brandId,questionId,attention:attentionFor(before.c),omitted:packet.omitted,sources:packet.items.filter(i=>refs.includes(i.id)),trace:{traceId:response.traceId,latencyMs:response.latencyMs,tokenIn:response.tokenIn,tokenOut:response.tokenOut,cost:response.cost}};
+  }
   async analyze(token:string,brandId:string,questionId:string) {
     const actor=await this.me(token),packet=await this.assembleContext(token,brandId,questionId),question=packet.question as {module:string};
     const response=await this.gateway.invoke({task:'STRATEGIC_ANALYSIS',module:question.module,promptVersion:this.gateway.promptVersion,contextVersion:packet.contextVersion,input:packet,outputSchema:'recommendation',budget:{maxCharacters:20000,timeoutMs:this.gateway.timeoutMs},tenantScope:{workspaceId:actor.workspaceId,brandId},questionId});
@@ -1329,7 +1354,8 @@ export class Engine {
       const experimentPlans=(await tx.select().from(t.experiments).where(inScope(t.experiments,s))).map(e=>({experimentId:e.id,decisionId:e.decisionId,objective:e.objective,successCriteria:e.successCriteria,createdAt:e.createdAt.toISOString(),createdBy:e.createdBy,startedAt:e.startedAt?.toISOString()??null,completedAt:e.completedAt?.toISOString()??null}));
       const output={experimentPlans,recommendations,analyses,...await this.contextEntities(tx,s),contextVersion:await this.contextVersion(tx,s),questions:qs.sort((a,b)=>vertical.findIndex(m=>m.primaryDecision===a.module)-vertical.findIndex(m=>m.primaryDecision===b.module)).map(({workspaceId:_w,...q})=>q),decisions:ds.map(({workspaceId:_w,...d})=>d),versions:vs.map(versionOutput),dependencies:deps.map(({workspaceId:_w,...d})=>d),reviews:rs.map(reviewOutput),impacts:impact.map(({status,result,triggerVersionId})=>({status,result,triggerVersionId})),audit};
       for(const [name,rows] of [['strategic-question',output.questions],['decision',output.decisions],['decision-version',output.versions],['dependency',output.dependencies],['review-item',output.reviews]] as const) for(const row of rows) validate(name,row);
-      return output;
+      const brandoContextVersion=hash(JSON.stringify([output.questions,output.decisions,output.versions,output.dependencies,output.reviews,output.evidence,output.hypotheses,output.userInputs,output.openQuestions,output.learnings,output.experiments,output.signals,output.impacts]));
+      return {...output,attention:attentionFor(output),brandoContextVersion};
     });
   }
 }
