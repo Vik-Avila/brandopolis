@@ -1,5 +1,5 @@
 import { createHash,randomBytes,randomUUID } from 'node:crypto';
-import { and,asc,count,eq,gt,inArray } from 'drizzle-orm';
+import { and,asc,count,eq,gt,inArray,or } from 'drizzle-orm';
 import type { Database } from '../persistence/database.js';
 import * as t from '../persistence/schema.js';
 import { AppError } from '../domain/contracts.js';
@@ -316,7 +316,7 @@ export class PilotAccess {
       const [accepted]=await this.db.select({id:t.pilotEvents.id}).from(t.pilotEvents).where(and(eq(t.pilotEvents.userId,who.userId),eq(t.pilotEvents.name,'ai_notice_accepted:'+policy.noticeVersion))).limit(1);
       if(!accepted)return 'CONSENT_REQUIRED';
     }
-    const requested=and(eq(t.pilotEvents.name,'recommendation_requested'),gt(t.pilotEvents.occurredAt,since));
+    const requested=and(or(eq(t.pilotEvents.name,'recommendation_requested'),eq(t.pilotEvents.name,'brando_requested')),gt(t.pilotEvents.occurredAt,since));
     const [mine]=await this.db.select({n:count()}).from(t.pilotEvents).where(and(requested,eq(t.pilotEvents.userId,who.userId)));
     const [all]=await this.db.select({n:count()}).from(t.pilotEvents).where(requested);
     return mine.n>=policy.capPerTester||all.n>=policy.capTotal?'CAP_REACHED':'OK';

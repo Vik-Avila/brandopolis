@@ -107,6 +107,24 @@ export function launchCases(connection:()=>ReturnType<typeof connect>){
     expect((await (await off.call(null,'/api/mode')).json()).aiNotice).toBeNull();
    }finally{await off.close();}
   });
+  it('Brando requests share AI caps without counting as strategic recommendations',async()=>{
+   const {db}=connection(),notice=loadAiNotice('config/pilot/ai-notice.v1.md');
+   const p=await pilotApp(db,{ai:{notice,capPerTester:1,capTotal:1000},provider:new DemoProvider()}),subject=randomUUID();
+   await p.access.provision(subject,'B');
+   try{
+    const {cookie}=await p.fixture.login(p.base,subject);
+    const brand=await (await p.call(cookie,'/api/brands',{name:'Brando quota'})).json();
+    const ask=()=>p.call(cookie,'/api/brando/ask',{brandId:brand.id,message:'¿Qué necesita atención?'});
+    expect((await ask()).status).toBe(428);
+    expect((await p.call(cookie,'/api/ai-notice/accept',{version:notice.version})).status).toBe(200);
+    expect((await ask()).status).toBe(200);expect((await ask()).status).toBe(429);
+    const ctx=await (await p.call(cookie,`/api/context?brandId=${brand.id}`)).json();
+    expect(ctx.versions).toHaveLength(0);expect(ctx.recommendations).toHaveLength(0);expect(ctx.analyses).toHaveLength(0);
+    const events=await db.select().from(t.pilotEvents).where(eq(t.pilotEvents.brandId,brand.id));
+    expect(events.filter(e=>e.name==='brando_requested')).toHaveLength(1);
+    expect(events.filter(e=>e.name==='recommendation_requested')).toHaveLength(0);
+   }finally{await p.close();}
+  });
   it('launch path survives an application restart: tester mapping, session, Brand, Decision, feedback and telemetry persist',async()=>{
    const s=await scratch();await migrateDatabase(s.db);let p=await pilotApp(s.db);const subject='restart-'+randomUUID(),who=await p.access.provision(subject,'A');
    let pool2:ReturnType<typeof connect>|undefined;

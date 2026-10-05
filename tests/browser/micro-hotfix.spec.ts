@@ -249,6 +249,10 @@ test('the right panel ranks its sections and no static label reacts to hover', a
   const navItem = page.locator('#blueprint');
   const resting = await navItem.evaluate(el => getComputedStyle(el).backgroundColor);
   await navItem.hover();
+  // Hover starts a CSS colour transition; reading in the same frame can still see the resting
+  // colour, especially in mobile emulation. Keep the assertion, wait for the observable change.
+  await expect.poll(() => navItem.evaluate(el => getComputedStyle(el).backgroundColor),
+    { message: 'navigation must still respond to hover' }).not.toBe(resting);
   const hovered = await navItem.evaluate(el => getComputedStyle(el).backgroundColor);
   expect(hovered, 'navigation must still respond to hover').not.toBe(resting);
   const navHover = darkness(hovered);

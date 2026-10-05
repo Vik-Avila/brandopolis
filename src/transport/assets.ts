@@ -5,6 +5,10 @@ import { createHash } from 'node:crypto';
 // Mapping and rationale: design/brandopolis-ui/FRONTEND_ASSET_MAPPING.md
 export const runtimeAssets={
   '/':['src/transport/public/index.html','text/html; charset=utf-8'],
+  '/brando-presence.js':['src/transport/public/brando-presence.js','text/javascript; charset=utf-8'],
+  '/brando/idle.webp':['src/transport/public/brando/idle.webp','image/webp'],
+  '/brando/consultando.webp':['src/transport/public/brando/consultando.webp','image/webp'],
+  '/brando/respuesta.webp':['src/transport/public/brando/respuesta.webp','image/webp'],
   '/app.js':['src/transport/public/app.js','text/javascript; charset=utf-8'],
   '/product-views.js':['src/transport/public/product-views.js','text/javascript; charset=utf-8'],
   '/product-interactions.js':['src/transport/public/product-interactions.js','text/javascript; charset=utf-8'],

@@ -75,3 +75,35 @@ Short, deliberate, no overshoot: view entry (6px rise + fade, `--bp-motion-slow`
 ## Accessibility contract
 
 WCAG 2.2 AA target: text contrast ≥ 4.5:1 (checked in `tests/visual/canonical.spec.ts`, including pixel-measured hero text), focus visible on every control, tabs with arrow/Home/End, dialog and drawer focus trap and return, h1 present at every width, 44px targets for primary mobile controls, `lang` on English brand phrases.
+
+## Brando B1 · contextual drawer and motion revision · 2026-10-05
+
+Human-authorized nonproduction UI: right-anchored native dialog drawer (620px maximum,
+full viewport on phones), own scrolling body, fixed composer and accessible focus return.
+Context is displayed before inference from the existing authorized snapshot: active decision
+and recorded rationale, attention, evidence/hypothesis counts and short previews. Navigation
+opens existing human workflows. No automatic inference or strategic write. A compact Brando
+portrait shares the Qué necesita atención entry in the left navigation, opening the existing
+attention summary. The right card remains the query drawer entry.
+
+Live portraits use the original 160px alpha poses: idle/attention/error use idle.webp,
+consulting uses consultando.webp and ready uses respuesta.webp. No new imagery is generated.
+A 120ms fade-out and 180ms fade-in replace morphing; fixed image bounds retain layout.
+Rigid translation/rotation plus subtle light never scale, skew or distort the gemstone.
+A running gesture returns to neutral before the next pose. Finite ambient gestures last 1.6s;
+resting gestures start every 4–5.5s, consulting every 2.2s with 1.8s gestures. Error has one
+entry gesture. Idle's first
+visible gesture may start at 1.8s. Offscreen/hidden-tab/modal guards, explicit pause and live
+reduced-motion preference remain. Drawer enters at 320ms and closes at 220ms; reduced motion
+removes both. Native dialog inertness remains; the lighter backdrop keeps context recognizable.
+
+Reference: reference/brando-b1/drawer-source.png (layout only; humanized gemstone explicitly
+excluded). Existing gemstone/Brand Master identity is preserved. Browser regression and human
+motion acceptance are required; no asset-hash or canonical screenshot baseline refresh.
+
+
+Suggestion actions: Accept/Modify require a criterion, target section and the existing final
+human decision confirmation. Reject requires a criterion and records practice only. Never
+claim strategic acceptance from a model response or a click that only prepares a draft.
+Pensando… plus a static/reduced-motion-aware activity mark communicates the pending query;
+a grey disabled control alone is insufficient. Ordinary copy is plain es-MX without enums.
