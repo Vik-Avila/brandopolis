@@ -1,5 +1,33 @@
 # Session State
 
+Current phase: **JURY PRODUCTION FREEZE / NEXT-PHASE PREPARATION** (2026-10-04).
+
+Human decision: Brandopolis PILOT may be reviewed by a jury during the next approximately 15 days.
+Production is therefore jury-critical and remains stable until the human explicitly lifts this gate;
+there is no automatic expiration date. The canonical rule is
+[CLAUDE.md § Jury production freeze](CLAUDE.md#jury-production-freeze--2026-10-04).
+
+- Engineering Skill Pack is integrated in `main` through PR #2; merge commit
+  `f36fdf85c317d26742b351689764a53a733713be`. This governance work did not deploy anything.
+- The next development phase may proceed on dedicated branches/non-production environments. Its default
+  finish state is **release-ready outside production**, not deployed.
+- Commit, push, PR, merge or a green review never implies permission to deploy. Any production deploy,
+  migration/schema change, production config/OIDC/secrets/DNS/hosting/runtime behaviour or asset change
+  requires a separate explicit human authorization.
+- During the jury window, a production exception is limited to a reproducible availability/access
+  defect or confirmed security/auth/authz/tenant-isolation/data-exposure defect. No feature or polish may
+  ride with the fix.
+- Before any authorized exception reaches production: pin the SHA, run every applicable quality/security
+  gate, review the exact diff, prepare rollback/backup when relevant, define production smoke checks, and
+  verify immediately after deploy. Any failed gate stops the release.
+- The exact production build remains whatever is recorded by the latest verified production entry below;
+  do not infer deployment from `main`.
+
+Gate for this entry: documentation/governance only. No runtime, schema, migration, configuration,
+infrastructure, tag or deployment change.
+
+---
+
 Current phase: **SKILL PACK POST-REVIEW HARDENING** (2026-10-04). Branch
 `chore/brandopolis-engineering-skills` on top of 65a6a9a. Uncommitted. Fixes from the local `/code-review`
 of `main...HEAD` (findings 1–10, 12–15) plus a final controlled pass. Deferred and registered in

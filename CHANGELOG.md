@@ -14,6 +14,23 @@ Depends on: —
 
 # Registro
 
+## Congelación de producción por evaluación de jurado · 2026-10-04
+
+Decisión humana de operación temporal. **Sólo documentación/gobierno; no cambia runtime ni producción.**
+
+- Durante la ventana de revisión del jurado (aprox. 15 días), producción se considera **jury-critical**
+  y permanece estable hasta que una decisión humana explícita levante la congelación; no vence
+  automáticamente por fecha.
+- La siguiente fase puede desarrollarse en ramas y entornos no productivos. Su resultado por defecto es
+  un candidato **release-ready fuera de producción**.
+- Commit, push, PR, merge o actualización de `main` no autorizan deploy.
+- Cualquier excepción de producción requiere autorización humana separada y queda limitada a un defecto
+  reproducible de acceso/disponibilidad o a seguridad/auth/authz/aislamiento/exposición de datos, con
+  SHA fijado, checks aplicables, revisión del diff, rollback/backup cuando corresponda, smoke plan y
+  verificación post-deploy.
+- La regla canónica vive en [CLAUDE.md § Jury production freeze](CLAUDE.md#jury-production-freeze--2026-10-04);
+  [SESSION_STATE](SESSION_STATE.md) registra el estado operativo.
+
 ## Endurecimiento del Skill Pack tras la revisión · 2026-10-04
 
 Correcciones de la revisión local de `main...HEAD`. **Sin cambios de runtime, schema, migraciones ni
