@@ -861,9 +861,10 @@ function render() {
     analytics.send(PILOT_EVENTS.phaseCompleted,{pilot_stage:'phase_done'});
     showPhaseHandoff();notice(result.impactPending?'Decisión guardada. El impacto está pendiente; reinténtalo.':'Decisión aprobada. Su versión y su historial quedaron guardados.');
   },event.submitter);});
-  function choose(id,focus=true){for(const b of ['#keep','#modify'])$(b).setAttribute('aria-pressed',String(b===id));$('#submit-decision').disabled=false;if(id==='#keep'){draft.selectedOption=v.selectedOption;$('#option').value=v.selectedOption;$('#option').readOnly=true;if(focus)$('#rationale').focus();}else{$('#option').readOnly=false;if(focus)$('#option').focus();}}
+  function choose(id,focus=true){draft.reviewChoice=id;for(const b of ['#keep','#modify'])$(b).setAttribute('aria-pressed',String(b===id));$('#submit-decision').disabled=false;if(id==='#keep'){draft.selectedOption=v.selectedOption;$('#option').value=v.selectedOption;$('#option').readOnly=true;if(focus)$('#rationale').focus();}else{$('#option').readOnly=false;if(focus)$('#option').focus();}}
   $('#keep')?.addEventListener('click',()=>choose('#keep',false));
   $('#modify')?.addEventListener('click',()=>choose('#modify',false));
+  if(draft?.reviewToken&&$('#modify')){const choice=draft.reviewChoice??(draft.brandoReview?'#modify':null);if(choice)choose(choice,false);}
   // Optional assistance from the initial input, in every strategic phase. The participant's own text
   // is preserved in this tab first, so asking for possibilities can never lose what they wrote.
   $('#possibilities')?.addEventListener('click',event=>run(async()=>{

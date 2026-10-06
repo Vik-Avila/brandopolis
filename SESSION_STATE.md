@@ -1,3 +1,49 @@
+## 2026-10-05 · Brando review choice: cierre validado en Windows
+
+Estado: RELEASE-READY FUERA DE PRODUCCIÓN.
+Rama: fix/brando-review-choice.
+Base: fe5b4a64a904b8bda989220e51014adff1c15670.
+Este registro supera los pendientes del candidato anterior.
+
+El operador confirmó el bloque inicial completo: typecheck, lint, pruebas
+unitarias/integración, Brando browser, Foundation, validador UI y formato.
+Confirmó posteriormente E2E general, visual y PILOT local.
+Foundation: 245 Markdown, 60 JSON, 24 schemas, 15 requirements,
+13 golden cases y 0 errores. UI validator: PASS.
+No se inventan totales de pruebas no compartidos.
+
+La corrección está presente en el archivo y en el código servido localmente.
+El operador aceptó el recorrido con IA real: elegir una propuesta prepara
+Modificar en la revisión sin requerir otra edición del texto.
+El criterio mínimo y la confirmación humana siguen siendo obligatorios.
+Se conserva la selección del mismo borrador durante el repintado.
+No se afirma validación universal de respuestas futuras de IA.
+
+Sin cambios de proveedor/modelo, esquemas, migraciones ni assets.
+AI proposes. Humans decide. Brandopolis remembers.
+Jury Production Freeze vigente. Sin commit, push, merge ni deploy.
+
+## 2026-10-05 · Brando: selección de Modificar al preparar revisión
+
+Base: fe5b4a64a904b8bda989220e51014adff1c15670. Rama: fix/brando-review-choice.
+Corrección solicitada por el propietario tras recorrido local con IA real.
+Estado: NOT RELEASE-READY; pendientes regresiones Windows y aceptación local.
+
+Aceptar o Modificar una alternativa estratégica de Brando selecciona Modificar en el
+formulario cuando existe revisión pendiente. La selección se conserva durante el repintado
+del mismo borrador, incluida una elección humana posterior de Mantener sin cambios.
+No hay commit automático; siguen requeridos criterio de al menos diez caracteres,
+confirmación humana, revisión autorizada, concurrencia y versión nueva en el motor.
+No se cambian proveedor, presupuesto, esquemas, migraciones ni assets.
+
+Agente: typecheck, lint y sintaxis JS PASS; 12 pruebas de proyección/presencia/encoding PASS.
+Foundation: 245 Markdown / 60 JSON / 24 schemas / 15 requirements / 13 golden cases / 0 errores.
+UI validator y formato PASS.
+Cuatro nuevos casos browser (Aceptar/Modificar, desktop/mobile) preparados; intento bloqueado
+por Chrome ausente. No se afirma ejecución aprobada ni nueva inferencia del agente.
+Pendientes: pnpm test, Brando browser, E2E general, visual, PILOT y aceptación local.
+Jury Production Freeze vigente. Sin commit, push, merge, deploy ni cambios de producción.
+
 ## 2026-10-05 · Brando por sección: cierre técnico validado en Windows
 
 Estado: RELEASE-READY FUERA DE PRODUCCIÓN.

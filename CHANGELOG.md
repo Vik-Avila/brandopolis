@@ -1,3 +1,18 @@
+## 2026-10-05 · Brando review choice: validación final
+
+- Selección de Modificar al elegir una propuesta de Brando verificada.
+- Criterio y confirmación humana conservados.
+- Operador confirmó pruebas Windows y regresiones generales, visuales y PILOT.
+- Recorrido local con IA real aceptado.
+- RELEASE-READY FUERA DE PRODUCCIÓN. Sin commit, push ni deploy.
+
+## 2026-10-05 · Brando: revisión preseleccionada · candidato local
+
+- Selección humana de una alternativa Brando marca Modificar en revisiones pendientes.
+- Conserva la elección del mismo borrador al repintar; requiere criterio y confirmación final.
+- Casos browser para Aceptar/Modificar sin otra edición y rechazo de criterio insuficiente.
+- NOT RELEASE-READY: regresiones Windows pendientes. Producción congelada.
+
 ## 2026-10-05 · Brando por sección: cierre técnico confirmado
 
 - Operador confirmó pruebas Windows, regresiones generales, visuales y PILOT.
