@@ -168,3 +168,14 @@ schema now enumerates the exact request's includedIds for every fact citation. T
 local guard still rejects invented/omitted/foreign IDs. No citation is silently rewritten or
 dropped to turn a failed response into a success. No extra inference or automatic retry added.
 Semantic support for cited claims remains a human review responsibility. Live verification pending.
+
+## Extensión autorizada · orientación por sección · 2026-10-05
+
+[ADR-0020](../14-decisions/ADR-0020.md) documenta el nuevo alcance aprobado fuera de producción:
+orientación local en las cuatro secciones y solicitud explícita de propuestas contextualizadas.
+Las restricciones anteriores sobre sugerencias proactivas se conservan para inferencia automática:
+esta extensión no llama a la IA por navegación ni genera estrategia sin solicitud humana.
+La respuesta vigente de esa solicitud puede reabrirse en el mismo contexto temporal; expirar no
+provoca otra consulta. Acciones vencidas se deshabilitan; servidor conserva todos sus controles.
+No hay proveedor/modelo nuevo, datos adicionales, cache persistente ni cambio de autoridad.
+Pruebas completas de navegador y aceptación visual pendientes para este nuevo candidato.

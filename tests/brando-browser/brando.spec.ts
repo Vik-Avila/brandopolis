@@ -107,3 +107,68 @@ test('evidence advice navigates to context without preparing or committing a dec
  const button=page.getByRole('button',{name:'Revisar fuentes',exact:true});await expect(button).toBeVisible();await expect(button.locator('..').locator('[data-brando-action="ACCEPT"]')).toHaveCount(0);
  await button.click();await expect(page.locator('#brando-dialog')).not.toBeVisible();await expect(page.locator('#option')).toHaveCount(0);expect(writes).toEqual(['/api/brando/ask']);
 });
+
+test('section orientation navigates all four sections without inference or writes',async({page},info)=>{
+ const posts:string[]=[];page.on('request',r=>{if(r.method()==='POST')posts.push(new URL(r.url()).pathname);});
+ await page.goto(base+'/?brand=a&module=Primary%20Customer');
+ for(const [module,label] of [['Primary Customer','Cliente principal'],['Value Mechanism','Modelo de valor'],['Positioning','Posicionamiento'],['Core Message','Mensaje principal']]){
+  if(info.project.name==='mobile')await page.locator('#menu').click();
+  await page.locator(`#journey [data-module="${module}"]`).click();
+  await expect(page.locator('#brando-section')).toContainText(label);
+  await expect(page.locator('#brando-section')).toContainText('sin consulta a la IA');
+  expect(await page.locator('#brando-section').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
+ }
+ expect(posts).toEqual([]);
+});
+
+test('section exploration is explicit, scoped and reuses its current answer without duplicate calls',async({page},info)=>{
+ const asks:Record<string,unknown>[]=[];page.on('request',r=>{if(new URL(r.url()).pathname==='/api/brando/ask')asks.push(r.postDataJSON());});
+ await page.goto(base+'/?brand=a&module=Primary%20Customer');
+ await page.locator('#brando-section-explore').click();
+ await expect(page.locator('#brando-conversation')).toContainText('Respuesta segura para a');
+ expect(asks).toHaveLength(1);expect(asks[0]).toMatchObject({brandId:'a',questionId:'q0'});
+ await page.keyboard.press('Escape');await expect(page.locator('#brando-section-explore')).toBeFocused();
+ await expect(page.locator('#brando-section-explore')).toHaveText('Ver propuestas de esta sección');
+ await page.locator('#brando-section-explore').click();await expect(page.locator('#brando-dialog')).toBeVisible();expect(asks).toHaveLength(1);
+ await page.keyboard.press('Escape');
+ if(info.project.name==='mobile')await page.locator('#menu').click();
+ await page.locator('#journey [data-module="Core Message"]').click();
+ await page.locator('#brando-section-explore').click();await expect(page.locator('#brando-conversation .brando-turn')).toHaveCount(1);
+ expect(asks).toHaveLength(2);expect(asks[1]).toMatchObject({brandId:'a',questionId:'q3'});
+ await page.keyboard.press('Escape');await page.screenshot({path:`test-results/brando-section-${info.project.name}.png`});
+});
+
+test('exploring a section preserves the human draft and does not commit strategy',async({page})=>{
+ const commits:string[]=[];page.on('request',r=>{if(new URL(r.url()).pathname==='/api/decisions/commit')commits.push(r.url());});
+ await page.goto(base+'/?brand=a&module=Primary%20Customer');await page.locator('#edit').click();
+ await page.locator('#option').fill('Mi decisión en preparación');await page.locator('#rationale').fill('Mi criterio aún no confirmado');
+ await page.locator('#brando-section-explore').click();await expect(page.locator('#brando-conversation .brando-turn')).toHaveCount(1);
+ await page.keyboard.press('Escape');await expect(page.locator('#option')).toHaveValue('Mi decisión en preparación');await expect(page.locator('#rationale')).toHaveValue('Mi criterio aún no confirmado');
+ expect(commits).toEqual([]);
+});
+
+test('expired section proposals disable actions and require another explicit query',async({page})=>{
+ await page.clock.install();await page.goto(base+'/?brand=a&module=Primary%20Customer');
+ await page.locator('#brando-section-explore').click();await expect(page.locator('#brando-conversation .brando-turn')).toHaveCount(1);
+ await page.clock.fastForward(15*60*1000);
+ await expect(page.locator('#brando-conversation [data-brando-action="ACCEPT"]').first()).toBeDisabled();
+ await expect(page.locator('#brando-status')).toContainText('propuestas vencidas');
+ await page.keyboard.press('Escape');await expect(page.locator('#brando-section-explore')).toHaveText('Explorar propuestas con Brando');
+});
+
+test('section change discards a pending answer and makes no automatic retry',async({page},info)=>{
+ let release:()=>void=()=>{};const hold=new Promise<void>(r=>{release=r;});let calls=0;
+ await page.route('**/api/brando/ask',async route=>{calls++;await hold;await route.continue();});
+ await page.goto(base+'/?brand=a&module=Primary%20Customer');await page.locator('#brando-section-explore').click();
+ await expect(page.locator('#brando-section-explore')).toBeDisabled();await expect(page.locator('#brando-submit')).toHaveText('Pensando…');
+ await page.keyboard.press('Escape');if(info.project.name==='mobile')await page.locator('#menu').click();await page.locator('#journey [data-module="Positioning"]').click();
+ const response=page.waitForResponse('**/api/brando/ask');release();await response;
+ await expect(page.locator('#brando-section')).toContainText('Posicionamiento');await page.locator('#open-brando').click();await expect(page.locator('#brando-conversation')).toBeEmpty();expect(calls).toBe(1);
+});
+
+test('a context change during inference discards proposals and updates section orientation',async({page})=>{
+ await page.goto(base+'/?brand=a&module=Primary%20Customer');
+ await page.route('**/api/context?*',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({...c,contextVersion:'v2',impacts:[{status:'IMPACT_PENDING'}]})}));
+ await page.locator('#brando-section-explore').click();await expect(page.locator('#brando-status')).toContainText('El contexto cambió');
+ await expect(page.locator('#brando-conversation')).toBeEmpty();await page.keyboard.press('Escape');await expect(page.locator('#brando-section')).toHaveAttribute('data-orientation','impact');
+});

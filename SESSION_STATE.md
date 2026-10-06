@@ -1,3 +1,55 @@
+## 2026-10-05 · Brando por sección: cierre técnico validado en Windows
+
+Estado: RELEASE-READY FUERA DE PRODUCCIÓN.
+Rama: feat/brando-contextual-sections.
+Base: b6d2ca1f652e6880e14912436816634ec7422700.
+Este registro supera los pendientes del candidato anterior.
+
+El operador confirmó el bloque inicial completo: typecheck, lint, skills:check,
+pruebas unitarias e integración, Brando browser, Foundation y formato.
+Confirmó el recorrido DEMO y compartió capturas de tarjeta y panel.
+Las regresiones generales y visuales completaron antes del fallo de arranque PILOT.
+PILOT pasó posteriormente usando la base local del perfil aislado.
+Foundation: 245 Markdown, 60 JSON, 24 schemas, 15 requirements,
+13 golden cases y 0 errores. UI validator: PASS.
+No se inventan totales de pruebas no incluidos en la salida compartida.
+
+La revisión de esta fase utiliza respuestas DEMO. No se afirma una nueva
+prueba con IA real ni validación semántica de todas las respuestas futuras.
+Proveedor, modelo y controles existentes de B1 permanecen sin cambios.
+
+AI proposes. Humans decide. Brandopolis remembers.
+Jury Production Freeze vigente. Sin commit, push, tag, merge ni deploy.
+Este cierre no autoriza cambios de producción.
+
+## 2026-10-05 · Brando contextual por sección · candidato fuera de producción
+
+Base canónica verificada por fetch: b6d2ca1f652e6880e14912436816634ec7422700.
+Rama: feat/brando-contextual-sections. Alcance aprobado por el propietario.
+Estado: NOT RELEASE-READY; pendientes pruebas Windows y aceptación visual.
+
+Orientación compacta en las cuatro secciones actuales, desde el estado registrado y sin inferencia
+por navegación. Prioriza impacto, invalidación y revisión; muestra versión/criterio del cambio
+conectado cuando están disponibles. Consulta explícita mediante askBrando existente, respuesta
+reutilizable sólo en el mismo contexto y con tickets vigentes. Sin cache persistente, consultas
+automáticas ni reintentos. Borrador humano preservado. Acciones vencidas deshabilitadas; servidor
+mantiene autoridad. Rechazo no reaparece como propuesta accionable al repintar la conversación.
+ADR-0020 registra el contrato. Sin cambios de proveedor/modelo, presupuesto, datos enviados,
+esquemas, migraciones, endpoints, motor estratégico ni assets canónicos.
+
+Agente: typecheck y lint PASS; 153 pruebas sin DB PASS en 12 archivos (incluyen cinco casos nuevos
+de orientación/expiración). Suite completa intentada: esas 153 PASS, 94 casos DB no ejecutados porque
+embedded-postgres rechaza usuario raíz. Intento de usuario no privilegiado bloqueado por el entorno.
+Brando browser intentado: Chrome ausente; descarga de Chromium no disponible. No se afirma PASS
+ni inspección visual. Nuevos casos de navegador cubren navegación sin consultas, ámbito correcto,
+reutilización, borrador, expiración, respuesta tardía y contexto cambiado.
+Foundation: 245 Markdown / 60 JSON / 24 schemas / 15 requirements / 13 golden cases / 0 errores.
+UI validator PASS; Brand Master validator PASS (58 assets / 19 mappings); skills:check PASS;
+formato del diff PASS. Estos validadores no sustituyen las regresiones ni la aceptación visual.
+Pendientes: suite DB, Brando browser, E2E general, visual, PILOT browser y revisión humana local.
+
+Jury Production Freeze vigente. Sin commit, push, tag, merge, deploy ni operaciones de producción.
+
 ## 2026-10-05 · Brando B1: cierre revisado fuera de producción
 
 Estado: RELEASE-READY FUERA DE PRODUCCIÓN.

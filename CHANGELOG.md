@@ -1,3 +1,21 @@
+## 2026-10-05 · Brando por sección: cierre técnico confirmado
+
+- Operador confirmó pruebas Windows, regresiones generales, visuales y PILOT.
+- Recorrido de tarjeta contextual y panel aceptado en la DEMO local.
+- Foundation y validador UI aprobados.
+- Release-ready fuera de producción; nueva prueba con IA real no realizada.
+- Sin commit, push ni deploy.
+
+## 2026-10-05 · Brando contextual por sección (candidato, fuera de producción)
+
+- Orientación local para Cliente principal, Modelo de valor, Posicionamiento y Mensaje principal;
+  distingue pendientes, falta de contexto, revisiones, invalidación e impacto pendiente.
+- Solicitud explícita de propuestas desde la tarjeta, reutilización temporal y acciones vencidas
+  deshabilitadas. Mantiene borradores y confirmación humana con criterio e impacto existentes.
+- ADR-0020 y pruebas de proyección, vigencia y recorridos por sección.
+- Typecheck/lint, 153 pruebas sin DB, Foundation y validadores PASS. DB/browser y aceptación visual
+  pendientes por limitaciones del entorno del agente. No release-ready ni desplegado.
+
 ## 2026-10-05 · Brando B1: cierre revisado fuera de producción
 
 Estado: RELEASE-READY FUERA DE PRODUCCIÓN.
