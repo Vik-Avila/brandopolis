@@ -107,3 +107,14 @@ human decision confirmation. Reject requires a criterion and records practice on
 claim strategic acceptance from a model response or a click that only prepares a draft.
 Pensando… plus a static/reduced-motion-aware activity mark communicates the pending query;
 a grey disabled control alone is insufficient. Ordinary copy is plain es-MX without enums.
+
+## Brando · orientación por sección · 2026-10-05
+
+Tarjeta compacta bajo el encabezado de cada una de las cuatro secciones, con gema original
+Idle de 32px (24px en móvil). Texto breve basado en estado registrado; detalle desplegable
+para el cambio de una decisión conectada. Etiqueta «Orientación del sistema · sin consulta a la IA».
+Acción secundaria de 44px abre el drawer existente y solicita propuestas sólo por clic humano.
+La tarjeta no duplica Aceptar/Modificar/Rechazar ni desplaza el borrador. Se conserva el ciclo
+visual y la pausa de los retratos existentes. Al cerrar el drawer el foco vuelve al disparador
+de la tarjeta aunque ésta se haya vuelto a renderizar; entrada derecha y atención izquierda
+mantienen su comportamiento. Sin cambios de assets, animaciones ni hashes canónicos.

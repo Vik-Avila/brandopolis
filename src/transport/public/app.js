@@ -1,6 +1,6 @@
 import {createBrandoPresence} from './brando-presence.js';
 const $=s=>document.querySelector(s);
-import {escape,labels,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
+import {escape,labels,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
 import {trapFocus,decisionTabs} from './product-interactions.js';
 import * as analytics from './analytics.js';
 import {PILOT_EVENTS} from './analytics.js';
@@ -2005,7 +2005,7 @@ function showAiNotice(questionId,origin={}){
 
 
 // B1 conversation is memory-only, scoped to this user, brand, decision and context revision.
-let brandoTurns=[],brandoScope='',brandoGeneration=0,brandoBusy=false;
+let brandoTurns=[],brandoScope='',brandoGeneration=0,brandoBusy=false,brandoExpiryTimer;
 const brandoDialog=$('#brando-dialog');
 let brandoOpener=$('#open-brando'),brandoClosing=false;
 function closeBrando(){
@@ -2031,10 +2031,39 @@ function syncBrandoPresentation(){
  if(brandoDialog.open)$('#brando-context-overview').innerHTML=brandoContextHtml(context,brandoQuestion());
  $('#brando-suggestion-text').textContent=visible?brandoPlainText(suggestion):'';
  const hero=$('#decision .decision-heading');if(hero&&visible)hero.after($('#brando-suggestion'));else $('#decision').before($('#brando-suggestion'));
+ syncBrandoSection();
+}
+function sectionAnswer(orientation){return brandoTurns.findLast(t=>t.question===orientation?.query&&t.result.suggestionTickets?.length&&t.result.suggestionTickets.every(ticket=>!ticket.reviewed&&!brandoTicketExpired(ticket,t.result.receivedAt)));}
+function syncBrandoSection(){
+ $('#brando-section')?.remove();
+ const orientation=brandoSectionOrientation(context,brandoQuestion()),hero=$('#decision .decision-heading');
+ if(!orientation||!hero)return;
+ hero.insertAdjacentHTML('afterend',brandoSectionHtml(orientation,{busy:brandoBusy,hasAnswer:!!sectionAnswer(orientation)}));
+ $('#brando-section-explore').addEventListener('click',event=>{
+  if(brandoBusy)return;
+  const existing=sectionAnswer(orientation);
+  openBrando(event.currentTarget);
+  if(existing){$('#brando-conversation').children[brandoTurns.indexOf(existing)]?.scrollIntoView({block:'start'});return;}
+  $('#brando-message').value=orientation.query;
+  $('#brando-form').requestSubmit();
+ });
+}
+function expireBrandoActions(){
+ clearTimeout(brandoExpiryTimer);
+ let next=Infinity,expired=false;const now=Date.now();
+ for(const turn of brandoTurns)for(const ticket of turn.result.suggestionTickets??[]){
+  if(brandoTicketExpired(ticket,turn.result.receivedAt,now)){
+   expired=true;
+   for(const button of document.querySelectorAll('[data-brando-ticket]'))if(button.dataset.brandoTicket===ticket.ticketId){button.disabled=true;button.title='La propuesta venció. Consulta de nuevo.';}
+  }else next=Math.min(next,ticket.expiresAt==null?turn.result.receivedAt+15*60*1000:Date.parse(ticket.expiresAt));
+ }
+ if(expired&&brandoDialog.open&&!brandoBusy)$('#brando-status').textContent='Hay propuestas vencidas. Consulta de nuevo para elegir una alternativa vigente.';
+ if(next!==Infinity)brandoExpiryTimer=setTimeout(()=>{expireBrandoActions();syncBrandoSection();},Math.max(1,next-now));
 }
 $('#brando-view-answer').addEventListener('click',()=>$('#open-brando').click());
 $('#brando-dismiss-suggestion').addEventListener('click',()=>{brandoSuggestionDismissed=true;syncBrandoPresentation();$('#open-brando').focus();});
 function resetBrando(){
+ clearTimeout(brandoExpiryTimer);
  brandoGeneration++;brandoTurns=[];brandoScope='';brandoBusy=false;
  $('#brando-conversation').replaceChildren();$('#brando-status').textContent='';$('#brando-message').value='';$('#brando-consent').hidden=true;
  $('#brando-form button[type="submit"]').disabled=false;setBrandoBusy(false);
@@ -2048,13 +2077,13 @@ function openBrando(opener){
  $('#brando-scope').textContent=`${$('#brands').selectedOptions[0]?.textContent??'Marca activa'} · ${brandoQuestion()?labels[selected]:'Contexto general de la marca'}`;
  brandoOpener=opener;closeMenu(false);
  $('#brando-context-overview').innerHTML=brandoContextHtml(context,brandoQuestion());
- brandoDialog.showModal();brandoPresence.setDialogOpen(true);$('#brando-message').focus();
+ brandoDialog.showModal();brandoPresence.setDialogOpen(true);expireBrandoActions();$('#brando-message').focus();
  $('#brando-scroll').scrollTop=0;
 }
 $('#open-brando').addEventListener('click',()=>openBrando($('#open-brando')));
 $('#close-brando').addEventListener('click',()=>closeBrando());
 brandoDialog.addEventListener('cancel',event=>{event.preventDefault();closeBrando();});
-brandoDialog.addEventListener('close',()=>{brandoPresence.setDialogOpen(false);(brandoOpener.closest('[inert]')?$('#menu'):brandoOpener).focus();});
+brandoDialog.addEventListener('close',()=>{brandoPresence.setDialogOpen(false);const opener=brandoOpener.isConnected?brandoOpener:$('#brando-section-explore')??$('#open-brando');(opener.closest('[inert]')?$('#menu'):opener).focus();});
 $('#brando-context-overview').addEventListener('click',async event=>{const button=event.target.closest('[data-brando-module],[data-brando-view]');if(!button)return;await closeBrando();if(button.dataset.brandoModule)openModule(button.dataset.brandoModule);else run(button.dataset.brandoView==='context'?showBrandContext:showHome);});
 trapFocus(brandoDialog);
 $('#clear-brando').addEventListener('click',()=>{resetBrando();brandoScope=currentBrandoScope();$('#brando-message').focus();});
@@ -2070,6 +2099,7 @@ async function openBrandoFeedback(ticketId,action){
  if(!turn||!['ACCEPT','MODIFY','REJECT','EVIDENCE','CONTEXT'].includes(action)){notice('Consulta de nuevo para revisar una sugerencia vigente.');return;}
  const index=turn.result.suggestionTickets.findIndex(ticket=>ticket.ticketId===ticketId);
  const ticket=turn.result.suggestionTickets[index];
+ if(ticket.reviewed||brandoTicketExpired(ticket,turn.result.receivedAt)){expireBrandoActions();$('#brando-status').textContent='Esta propuesta ya no está disponible. Consulta de nuevo antes de elegir.';return;}
  if(['EVIDENCE','CONTEXT'].includes(action)){
   await closeBrando();await run(showBrandContext);
   if(action==='EVIDENCE'){const heading=$('#decision .memory-3 h3');if(heading){heading.tabIndex=-1;heading.focus();}}return;
@@ -2116,7 +2146,7 @@ $('#brando-feedback-form').addEventListener('submit',async event=>{
  try{
   if(pending.action==='REJECT'){
    await api('/api/brando/suggestions/review',{brandId:pending.brandId,review:{ticketId:pending.ticketId,action:'REJECT',rationale,revisedText:null}});
-   feedbackDialog.close();if(brandoTurns.at(-1)?.result.suggestionTickets?.[0]?.ticketId===pending.ticketId)brandoSuggestionDismissed=true;for(const button of document.querySelectorAll('[data-brando-ticket]'))if(button.dataset.brandoTicket===pending.ticketId)button.disabled=true;syncBrandoPresentation();notice('Rechazo y criterio registrados en Mi aprendizaje. La estrategia se conserva.');
+   feedbackDialog.close();for(const turn of brandoTurns)for(const ticket of turn.result.suggestionTickets??[])if(ticket.ticketId===pending.ticketId)ticket.reviewed=true;if(brandoTurns.at(-1)?.result.suggestionTickets?.[0]?.ticketId===pending.ticketId)brandoSuggestionDismissed=true;for(const button of document.querySelectorAll('[data-brando-ticket]'))if(button.dataset.brandoTicket===pending.ticketId)button.disabled=true;syncBrandoPresentation();notice('Rechazo y criterio registrados en Mi aprendizaje. La estrategia se conserva.');
   }
  }catch(error){$('#brando-feedback-status').textContent=error.code==='CONFLICT'?'El contexto cambió. Solicita una respuesta nueva.':'No se pudo registrar. Inténtalo de nuevo.';notice(error.code==='CONFLICT'?'El contexto cambió. Consulta de nuevo.':'No se pudo completar la revisión.');}
  finally{$('#brando-feedback-save').disabled=false;}
@@ -2126,19 +2156,20 @@ $('#brando-form').addEventListener('submit',async event=>{
  const message=$('#brando-message').value.trim();if(!message)return;
  if(currentBrandoScope()!==brandoScope){resetBrando();brandoScope=currentBrandoScope();$('#brando-message').value=message;}
  const generation=++brandoGeneration,key=brandoScope,targetBrand=brandId,q=brandoQuestion();
- brandoVisualState='consulting';syncBrandoPresentation();brandoBusy=true;setBrandoBusy(true);$('#brando-status').textContent='Consultando el contexto autorizado de tu marca…';
+ brandoVisualState='consulting';brandoBusy=true;syncBrandoPresentation();setBrandoBusy(true);$('#brando-status').textContent='Consultando el contexto autorizado de tu marca…';
  try{
   const result=await api('/api/brando/ask',{brandId:targetBrand,questionId:q,message,history:brandoTurns.slice(-4).map(t=>({question:t.question,answer:''}))},45000);
   if(generation!==brandoGeneration||key!==currentBrandoScope())return;
   if(result.error)throw new Error('Brando no pudo obtener una respuesta validada. Puedes continuar manualmente o volver a consultar.');
   const latest=await api(`/api/context?brandId=${encodeURIComponent(targetBrand)}`);
   if(generation!==brandoGeneration||key!==currentBrandoScope())return;
-  if((latest.brandoContextVersion??latest.contextVersion)!==(result.sourceContextVersion??result.contextVersion)){resetBrando();context=latest;syncBrandoPresentation();$('#brando-status').textContent='El contexto cambió. Vuelve a consultar para usar la información actual.';return;}
+  if((latest.brandoContextVersion??latest.contextVersion)!==(result.sourceContextVersion??result.contextVersion)){context=latest;resetBrando();syncBrandoPresentation();$('#brando-status').textContent='El contexto cambió. Vuelve a consultar para usar la información actual.';return;}
   brandoVisualState='ready';brandoSuggestionDismissed=false;
-  brandoTurns.push({question:message,result});brandoTurns=brandoTurns.slice(-4);
+  result.receivedAt=Date.now();brandoTurns.push({question:message,result});brandoTurns=brandoTurns.slice(-4);
   $('#brando-conversation').innerHTML=brandoTurns.map(t=>`<article class="brando-turn"><h3>Tu pregunta</h3><p>${escape(t.question)}</p>${brandoAnswerHtml(t.result)}</article>`).join('');
   $('#brando-conversation').querySelectorAll('[data-brando-module]').forEach(b=>b.addEventListener('click',async()=>{await closeBrando();if(b.dataset.brandoModule)openModule(b.dataset.brandoModule);else run(showHome);}));
   syncBrandoPresentation();
+  expireBrandoActions();
   $('#brando-conversation').lastElementChild?.scrollIntoView({block:'start',behavior:'smooth'});
   $('#brando-message').value='';$('#brando-status').textContent='Respuesta disponible. La estrategia permanece sin cambios.';
  }catch(error){
@@ -2150,6 +2181,6 @@ $('#brando-form').addEventListener('submit',async event=>{
    consent.querySelector('button').onclick=async()=>{try{await api('/api/ai-notice/accept',{version:aiNotice.version});consent.hidden=true;$('#brando-status').textContent='Aviso aceptado. Puedes enviar tu consulta.';}catch(e){$('#brando-status').textContent=e.message;}};
   }
  }finally{
-  if(generation===brandoGeneration){brandoBusy=false;setBrandoBusy(false);}
+  if(generation===brandoGeneration){brandoBusy=false;setBrandoBusy(false);syncBrandoSection();}
  }
 });

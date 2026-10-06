@@ -1353,3 +1353,10 @@
 #brando-view-answer{grid-column:3;grid-row:1}
 #brando-dismiss-suggestion{grid-column:3;grid-row:2;justify-self:end}
 @media(max-width:620px){.brando-suggestion{grid-template-columns:24px minmax(0,1fr) 24px;gap:8px}.brando-suggestion>img{width:24px;height:24px}#brando-view-answer{grid-column:2;grid-row:3;justify-self:start}#brando-dismiss-suggestion{grid-column:3;grid-row:1}#brando-section-actions button{padding:8px;font-size:12px}}
+.brando-section{display:grid;grid-template-columns:32px minmax(0,1fr);gap:12px;margin:16px 0;padding:14px 16px;border:1px solid #d6e0d6;border-radius:14px;background:#fffdf8}
+.brando-section>img{width:32px;height:32px;object-fit:contain;align-self:start}
+.brando-section p{margin:0 0 8px;line-height:1.5;overflow-wrap:anywhere}
+.brando-section .eyebrow{font-size:12px}.brando-section .hint{font-size:12px}
+.brando-section details{margin:8px 0}.brando-section summary{cursor:pointer}
+.brando-section button{min-height:44px;white-space:normal;text-align:left}
+@media(max-width:620px){.brando-section{grid-template-columns:24px minmax(0,1fr);gap:8px;padding:12px}.brando-section>img{width:24px;height:24px}}

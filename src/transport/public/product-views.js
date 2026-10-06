@@ -175,7 +175,40 @@ export function brandoPlainText(text){
  return String(text??'').replace(/\b(?:Fixture DEMO|DEMO_FIXTURE|READY_FOR_DECISION|NEEDS_REVIEW|UNVALIDATED|UNTESTED|INFORMATIVE|SUPERSEDED|APPROVED|HARD|SOFT)\b/g,value=>terms[value]);
 }
 /** Brando prose is always escaped; model output is never executable HTML or a navigation URL. */
-export function brandoSuggestionButtons(ticket){
+export function brandoTicketExpired(ticket,receivedAt,now=Date.now()){
+ const expires=ticket.expiresAt==null?receivedAt+15*60*1000:Date.parse(ticket.expiresAt);
+ return !Number.isFinite(expires)||expires<=now;
+}
+/** Orientation projects recorded state. It is neither an AI answer nor a strategic verdict. */
+export function brandoSectionOrientation(c,questionId){
+ const q=c?.questions.find(q=>q.id===questionId);
+ if(!q||!Object.hasOwn(labels,q.module))return null;
+ const focus={
+  'Primary Customer':'Precisa a quién atender y qué problema necesitas comprobar.',
+  'Value Mechanism':'Conecta el problema del cliente con el valor que ofrecerás.',
+  Positioning:'Revisa por qué elegirían tu marca frente a otras alternativas.',
+  'Core Message':'Expresa tu valor con claridad y evita promesas sin respaldo.'
+ }[q.module];
+ const {decision,version,review}=decisionState(c,q);
+ let state='pending',message='Esta sección aún no tiene una decisión registrada.';
+ if(c.impacts.some(i=>i.status==='IMPACT_PENDING')){state='impact';message='Hay un impacto pendiente de cálculo. Resuélvelo antes de confirmar otro cambio.';}
+ else if(decision?.reviewStatus==='INVALIDATED'){state='invalidated';message='Esta decisión está invalidada. Revisa su estado antes de continuar.';}
+ else if(review){state='review';message='Una decisión conectada cambió. Revisa esta sección antes de darla por vigente.';}
+ else if(!(c.evidence.length||c.userInputs.length||c.learnings.some(l=>l.status==='ACCEPTED'))){state='context';message=version?'Hay una decisión registrada, pero no hay evidencia, información aportada ni aprendizajes aceptados en el contexto de la marca.':'Antes de decidir, aporta información de tu marca. Aún no hay evidencia, información aportada ni aprendizajes aceptados.';}
+ else if(version){state='current';message='Tu decisión está registrada. Comprueba si sigue teniendo sentido con el contexto disponible.';}
+ const changes=review?c.reviews.filter(r=>r.downstreamDecisionId===decision.id&&r.status!=='COMPLETED').map(r=>{
+  const changed=c.versions.find(v=>v.id===r.triggerVersionId),up=c.decisions.find(d=>d.id===changed?.decisionId),source=c.questions.find(q=>q.id===up?.questionId);
+  return changed&&source?{label:labels[source.module]??'Decisión conectada',choice:changed.selectedOption,rationale:changed.rationale}:null;
+ }).filter(Boolean):[];
+ return {state,message,focus,changes,title:labels[q.module],query:`Ayúdame a explorar propuestas para ${labels[q.module]}. ${focus} Explica qué está registrado y qué falta comprobar; considera las decisiones conectadas y las revisiones pendientes. Propón alternativas concretas para esta pregunta cuando el contexto lo permita. Distingue hechos, hipótesis y límites; no apruebes ni cambies estrategia.`};
+}
+export function brandoSectionHtml(orientation,{busy=false,hasAnswer=false}={}){
+ if(!orientation)return '';
+ return `<section id="brando-section" class="brando-section" aria-labelledby="brando-section-title" data-orientation="${escape(orientation.state)}"><img src="/brando/idle.webp" width="32" height="32" alt=""><div><p class="eyebrow" id="brando-section-title">Brando · ${escape(orientation.title)}</p><p>${escape(orientation.message)} ${escape(orientation.focus)}</p>${orientation.changes.length?`<details><summary>Qué cambió en las decisiones conectadas</summary>${orientation.changes.map(change=>`<p><strong>${escape(change.label)}:</strong> ${escape(change.choice)}</p><p><strong>Criterio registrado:</strong> ${escape(change.rationale)}</p>`).join('')}</details>`:''}<p class="hint">Orientación del sistema · sin consulta a la IA</p><button type="button" id="brando-section-explore" class="secondary" ${busy?'disabled aria-busy="true"':''}>${busy?'Pensando…':hasAnswer?'Ver propuestas de esta sección':'Explorar propuestas con Brando'}</button></div></section>`;
+}
+export function brandoSuggestionButtons(ticket,expired=false){
+ if(ticket.reviewed)return '<p class="hint">Ya registraste tu criterio sobre esta propuesta.</p>';
+ if(expired)return '<p class="hint">Esta propuesta venció. Consulta de nuevo para revisarla.</p>';
  const id=escape(ticket.ticketId);
  if(ticket.kind!=='STRATEGY')return `<button type="button" class="secondary" data-brando-ticket="${id}" data-brando-action="${ticket.kind==='EVIDENCE'?'EVIDENCE':'CONTEXT'}">${ticket.kind==='EVIDENCE'?'Revisar fuentes':'Abrir contexto'}</button>`;
  return `<div class="brando-review-actions">${['ACCEPT','MODIFY','REJECT'].map((action,j)=>`<button type="button" class="secondary" data-brando-ticket="${id}" data-brando-action="${action}">${['Aceptar','Modificar','Rechazar'][j]}</button>`).join('')}</div>`;
@@ -185,7 +218,7 @@ export function brandoAnswerHtml(result){
  if(!a)return '<p>No hay una respuesta validada disponible. Puedes continuar trabajando manualmente.</p>';
  const section=(title,rows)=>rows.length?`<section><h3>${title}</h3><ul>${rows.map(t=>`<li>${escape(brandoPlainText(t))}</li>`).join('')}</ul></section>`:'';
  return `<p class="badge">${result.provider==='DEMO_FIXTURE'?'DEMO determinista · sin IA en vivo':'Asistencia estratégica · revisa con tu criterio'}</p><p>${escape(brandoPlainText(a.answer))}</p>
- ${section('Lo registrado',a.facts.map(f=>`${f.text} (Fuentes: ${f.referenceIds.map(id=>result.sources.findIndex(s=>s.id===id)+1).join(', ')})`))}${section('Hipótesis por validar',a.hypotheses)}${a.suggestions.length?`<section><h3>Sugerencias</h3><ul>${a.suggestions.map((text,i)=>`<li><p>${escape(brandoPlainText(text))}</p>${result.suggestionTickets?.[i]?brandoSuggestionButtons(result.suggestionTickets[i]):''}</li>`).join('')}</ul><p class="hint">Aceptar o modificar lleva a tu revisión antes de cambiar estrategia.</p></section>`:''}${section('Preguntas para ti',a.questions)}${section('Límites de esta respuesta',a.limitations)}
+ ${section('Lo registrado',a.facts.map(f=>`${f.text} (Fuentes: ${f.referenceIds.map(id=>result.sources.findIndex(s=>s.id===id)+1).join(', ')})`))}${section('Hipótesis por validar',a.hypotheses)}${a.suggestions.length?`<section><h3>Sugerencias</h3><ul>${a.suggestions.map((text,i)=>`<li><p>${escape(brandoPlainText(text))}</p>${result.suggestionTickets?.[i]?brandoSuggestionButtons(result.suggestionTickets[i],brandoTicketExpired(result.suggestionTickets[i],result.receivedAt??Date.now())):''}</li>`).join('')}</ul><p class="hint">Aceptar o modificar lleva a tu revisión antes de cambiar estrategia.</p></section>`:''}${section('Preguntas para ti',a.questions)}${section('Límites de esta respuesta',a.limitations)}
  ${result.omitted.length?`<p class="review">Contexto parcial: se omitieron ${result.omitted.length} elementos por espacio. La respuesta no es exhaustiva.</p>`:''}
  <section><h3>Qué necesita atención</h3>${result.attention.length?result.attention.map(i=>`<p>${escape(labels[i.module]??'Contexto y aprendizaje')}: ${escape(i.label)} <button type="button" class="tertiary" data-brando-module="${escape(i.module??'')}">Abrir</button></p>`).join(''):'<p>Sin pendientes en las categorías consultadas. Esto no certifica la calidad de la estrategia.</p>'}</section>
  ${result.sources.length?`<section><h3>Fuentes consultadas</h3>${result.sources.map((source,index)=>`<details><summary>Fuente ${index+1} · ${escape(brandoSourceLabel(source.type))}</summary>${brandoSourceHtml(source)}</details>`).join('')}</section>`:''}`;
