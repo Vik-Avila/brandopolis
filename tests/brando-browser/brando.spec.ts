@@ -108,6 +108,21 @@ test('evidence advice navigates to context without preparing or committing a dec
  await button.click();await expect(page.locator('#brando-dialog')).not.toBeVisible();await expect(page.locator('#option')).toHaveCount(0);expect(writes).toEqual(['/api/brando/ask']);
 });
 
+for(const action of ['ACCEPT','MODIFY'])test(`Brando ${action} selects Modificar for a pending review without requiring a text edit`,async({page})=>{
+ const reviewing={...c,decisions:[{id:'down',questionId:'q3',activeVersionId:'old',reviewStatus:'NEEDS_REVIEW'}],versions:[{id:'old',decisionId:'down',sequence:1,versionStatus:'APPROVED',selectedOption:'Mensaje anterior',rationale:'Criterio anterior',approvedAt:new Date().toISOString(),actorUserId:'fixture'}],reviews:[{id:'review',downstreamDecisionId:'down',status:'OPEN',dependencyType:'HARD'}]};
+ await page.route('**/api/context?*',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(reviewing)}));
+ await page.route('**/api/reviews/start',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({reviewToken:'human-review-token'})}));
+ const commits:Record<string,unknown>[]=[];await page.route('**/api/decisions/commit',route=>{commits.push(route.request().postDataJSON());return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({decisionId:'down',versionId:'new',impactPending:false})});});
+ await page.goto(base+'/?brand=a&module=Core%20Message');await page.locator('#brando-section-explore').click();
+ await expect(page.locator('#brando-conversation .brando-turn')).toHaveCount(1);
+ await page.locator(`#brando-conversation [data-brando-action="${action}"]`).nth(1).click();
+ await expect(page.locator('#modify')).toHaveAttribute('aria-pressed','true');await expect(page.locator('#keep')).toHaveAttribute('aria-pressed','false');
+ await expect(page.locator('#option')).toHaveValue('Segunda alternativa elegida');await expect(page.locator('#submit-decision')).toBeEnabled();expect(commits).toEqual([]);
+ await page.locator('#rationale').fill('contexto');await page.locator('#submit-decision').click();expect(commits).toEqual([]);expect(await page.locator('#rationale').evaluate(el=>(el as HTMLTextAreaElement).validity.tooShort)).toBe(true);
+ await page.locator('#rationale').fill('Alinea el mensaje con el posicionamiento que decidimos.');await page.locator('#submit-decision').click();
+ await expect.poll(()=>commits.length).toBe(1);expect(commits[0]).toMatchObject({reviewToken:'human-review-token',brandoReview:{action},command:{selectedOption:'Segunda alternativa elegida',expectedActiveVersion:'old',rationale:'Alinea el mensaje con el posicionamiento que decidimos.'}});
+});
+
 test('section orientation navigates all four sections without inference or writes',async({page},info)=>{
  const posts:string[]=[];page.on('request',r=>{if(r.method()==='POST')posts.push(new URL(r.url()).pathname);});
  await page.goto(base+'/?brand=a&module=Primary%20Customer');
