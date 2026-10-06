@@ -1,6 +1,6 @@
 // Pure presentation projections. No writes, requests, inferred strategic state or domain rules.
 export const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export const labels={'Primary Customer':'Cliente principal','Value Mechanism':'Modelo de valor','Positioning':'Posicionamiento','Core Message':'Mensaje principal'};
+export const labels={'Strategic Objective':'Objetivo estratégico','Market Arena':'Arena de mercado','Primary Customer':'Cliente principal','Value Mechanism':'Modelo de valor','Positioning':'Posicionamiento','Core Message':'Mensaje principal'};
 export const fmt=value=>new Date(value).toLocaleString('es-MX',{dateStyle:'medium',timeStyle:'short'});
 export const needsReview=(context,decision)=>!!decision&&(decision.reviewStatus==='NEEDS_REVIEW'||context.reviews.some(r=>r.downstreamDecisionId===decision.id&&r.status!=='COMPLETED'));
 export function decisionState(context,question){
@@ -9,13 +9,14 @@ export function decisionState(context,question){
 }
 // One status vocabulary everywhere. «Vigente» is a display relation over the active version, never a Decision.status.
 export function stateBadge(version,review){return `<span class="badge ${review?'warn':''}">${review?'Requiere revisión':version?'Vigente · v'+version.sequence:'Por decidir'}</span>`;}
-// Display names for the canonical capability keys of the strategic method (config/strategic-method/learning-moments.v1.json).
-const capabilityLabels={'Customer Understanding':'Comprensión del cliente','Business Model Thinking':'Modelo de negocio','Strategic Differentiation':'Diferenciación estratégica','Message Prioritization':'Priorización del mensaje','Problem Framing':'Encuadre del problema'};
+// Display names for the canonical capability keys of the strategic method (config/strategic-method/learning-moments.v2.json).
+const capabilityLabels={'Market Reasoning':'Razonamiento de mercado','Customer Understanding':'Comprensión del cliente','Business Model Thinking':'Modelo de negocio','Strategic Differentiation':'Diferenciación estratégica','Message Prioritization':'Priorización del mensaje','Problem Framing':'Encuadre del problema'};
 export const capabilityLabel=key=>capabilityLabels[key]??key;
 const plural=(n,one,many)=>`${n} ${n===1?one:many}`;
 
 const legacyCapabilityBehavior='Explicitó una elección y su criterio como Estratega de Marca.';
 const personalizedCapabilityBehavior={
+ 'Market Reasoning':'Delimitaste dónde compite tu marca, frente a qué alternativas y con qué límites.',
  'Customer Understanding':'Identificaste y priorizaste el segmento de cliente que consideras más relevante para tu marca.',
  'Business Model Thinking':'Relacionaste lo que ofreces con una necesidad concreta del cliente que quieres atender.',
  'Strategic Differentiation':'Articulaste una diferencia que puede ayudarte a ser elegido frente a otras alternativas.',
@@ -120,7 +121,16 @@ export function strategyMap(context){return `<section class="strategy-map"><div 
 export function impactPair(context,review,question,version){
  const trigger=context.versions.find(v=>v.id===review.triggerVersionId),decision=context.decisions.find(d=>d.id===trigger?.decisionId),source=context.questions.find(q=>q.id===decision?.questionId);
  const before=context.versions.find(v=>v.id===trigger?.previousVersionId);
- return `<div class="impact-pair"><article><p class="eyebrow">01 · Decisión que cambió</p><h4>${escape(labels[source?.module]??'Decisión conectada')}</h4><span class="badge">Vigente · v${trigger?.sequence??''}</span>${before?`<div class="impact-before"><span>Antes · v${before.sequence}</span><p>${escape(before.selectedOption)}</p></div>`:''}<div class="impact-after"><span>Ahora</span><p>${escape(trigger?.selectedOption??'')}</p></div></article><span class="impact-link"><span class="impact-arrow" aria-hidden="true">→</span><span class="impact-relation">${review.dependencyType==='HARD'?'Dependencia estricta':'Dependencia sugerida'}</span></span><article><p class="eyebrow">02 · Decisión afectada</p><h4>${escape(labels[question.module])}</h4><span class="badge warn">Requiere revisión</span><p>${escape(version?.selectedOption??'')}</p><p class="impact-boundary">Conserva su versión. Tú decides si necesita un ajuste.</p></article></div>`;
+ return `<div class="impact-pair"><article><p class="eyebrow">01 · Decisión que cambió</p><h4>${escape(labels[source?.module]??'Decisión conectada')}</h4><span class="badge">Vigente · v${trigger?.sequence??''}</span>${before?`<div class="impact-before"><span>Antes · v${before.sequence}</span><p>${escape(before.selectedOption)}</p></div>`:trigger&&trigger.previousVersionId===null?'<div class="impact-before"><span>Antes</span><p>Sin decisión registrada</p></div>':''}<div class="impact-after"><span>Ahora</span><p>${escape(trigger?.selectedOption??'')}</p></div></article><span class="impact-link"><span class="impact-arrow" aria-hidden="true">→</span><span class="impact-relation">${review.dependencyType==='HARD'?'Dependencia estricta':'Dependencia sugerida'}</span></span><article><p class="eyebrow">02 · Decisión afectada</p><h4>${escape(labels[question.module])}</h4><span class="badge warn">Requiere revisión</span><p>${escape(version?.selectedOption??'')}</p><p class="impact-boundary">Conserva su versión. Tú decides si necesita un ajuste.</p></article></div>`;
+}
+/** Section-specific writing guide for the decision editor. Guidance only: it never fills or validates the text. */
+export const decisionGuide={
+ 'Strategic Objective':'Incluye qué quieres construir o cambiar con tu marca y cómo reconocerás que avanzas. Es distinto de una meta comercial puntual.',
+ 'Market Arena':'Incluye dónde compites primero, frente a qué alternativas (también no hacer nada) y qué queda fuera. Tu ubicación no define por sí sola tu arena.'
+};
+/** Shown when an existing brand lacks a journey section. Adding it is an explicit human action (ADR-0021). */
+export function strategicSectionsHtml(label){
+ return `<section class="empty-state strategic-sections" aria-labelledby="strategic-sections-title"><p class="eyebrow">${escape(label)}</p><h2 id="strategic-sections-title">Esta sección es nueva en tu recorrido.</h2><p>Objetivo estratégico y Arena de mercado se agregan antes de tu cliente principal. Agregarlas no cambia ninguna decisión.</p><p>Cuando registres por primera vez tu objetivo o tu arena, Brandopolis te pedirá revisar las decisiones conectadas que ya tomaste. Ninguna se reescribe: tú decides en cada revisión.</p><div class="actions"><button type="button" id="add-strategic-sections">Agregar estas secciones</button></div><p class="hint">Orientación del sistema · sin consulta a la IA</p></section>`;
 }
 export function historyHtml(versions,decision,userId){
  if(!versions.length)return '<section class="empty-state"><p class="eyebrow">Memoria por construir</p><h3>Tu primera decisión inicia esta historia.</h3><p>Cuando apruebes, podrás volver a tu elección, su criterio y cada versión anterior.</p></section>';
@@ -184,6 +194,8 @@ export function brandoSectionOrientation(c,questionId){
  const q=c?.questions.find(q=>q.id===questionId);
  if(!q||!Object.hasOwn(labels,q.module))return null;
  const focus={
+  'Strategic Objective':'Precisa qué quieres construir o cambiar y cómo reconocerás que avanzas, sin reducirlo a una sola cifra.',
+  'Market Arena':'Delimita dónde compites, frente a qué alternativas y qué queda fuera. Tu ubicación no define por sí sola tu arena.',
   'Primary Customer':'Precisa a quién atender y qué problema necesitas comprobar.',
   'Value Mechanism':'Conecta el problema del cliente con el valor que ofrecerás.',
   Positioning:'Revisa por qué elegirían tu marca frente a otras alternativas.',

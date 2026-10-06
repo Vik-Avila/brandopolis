@@ -179,3 +179,13 @@ La respuesta vigente de esa solicitud puede reabrirse en el mismo contexto tempo
 provoca otra consulta. Acciones vencidas se deshabilitan; servidor conserva todos sus controles.
 No hay proveedor/modelo nuevo, datos adicionales, cache persistente ni cambio de autoridad.
 Pruebas completas de navegador y aceptación visual pendientes para este nuevo candidato.
+
+## Objetivo estratégico y Arena de mercado · 2026-10-06
+
+[ADR-0021](../14-decisions/ADR-0021.md) añade dos secciones al recorrido. Reutilizan sin cambios la
+orientación local («Orientación del sistema · sin consulta a la IA»), la solicitud explícita de
+propuestas y la revisión humana de ADR-0018/0019/0020. Arena recuerda que la ubicación declarada no
+define por sí sola la arena. Navegar no consulta a la IA. Sin cambios de proveedor, modelo, prompts,
+schema de respuesta, topes ni datos enviados: la geografía declarada de la marca no se envía al
+proveedor. Una propuesta aceptada o modificada sigue el borrador, el criterio humano y la confirmación
+final existentes; la primera versión puede pedir revisión humana de decisiones conectadas.

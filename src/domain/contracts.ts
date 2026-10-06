@@ -20,7 +20,12 @@ export function validate(name: string, value: unknown): void {
   }
 }
 export function states(name: string, property: string): [string,...string[]] { return schema(name).properties[property].enum; }
-export const rules: { version: string; rules: {upstream:string; downstream:string; kind:string; reason:string}[] } = JSON.parse(readFileSync(new URL('../../config/dependencies/v1.json',import.meta.url),'utf8'));
+export interface DependencyRule {upstream:string; downstream:string; kind:string; reason:string; ruleVersion:string; reviewOnFirstUpstreamVersion?:boolean}
+export const rules: { version: string; rules: DependencyRule[] } = JSON.parse(readFileSync(new URL('../../config/dependencies/v2.json',import.meta.url),'utf8'));
+/** Only rules that declare it let a first upstream version request review of an earlier downstream decision (ADR-0021). */
+export function reviewsOnFirstUpstreamVersion(upstream:string,downstream:string) {
+  return rules.rules.some(r=>r.upstream===upstream&&r.downstream===downstream&&r.reviewOnFirstUpstreamVersion===true);
+}
 export interface CommitCommand {
   brandId:string; questionId:string; sourceRecommendationId:string|null; selectedOption:string; rationale:string;
   expectedActiveVersion:string|null; idempotencyKey:string; actorUserId:string;

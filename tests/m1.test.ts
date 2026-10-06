@@ -21,11 +21,13 @@ import { competitionProfile,ensureDemoSession } from '../scripts/competition-env
 import { pilotCases } from './pilot-cases.js';
 import { launchCases } from './launch-cases.js';
 import { blueprintCases } from './blueprint-cases.js';
+import { strategicSectionsCases } from './strategic-sections-cases.js';
 let local:Awaited<ReturnType<typeof startLocalDb>>,connection:ReturnType<typeof connect>,engine:Engine;
 brandoCases(()=>connection);
 pilotCases(()=>connection);
 launchCases(()=>connection);
 blueprintCases(()=>connection);
+strategicSectionsCases(()=>connection);
 beforeAll(async()=>{
   local=await startLocalDb(true);
   const name=`m1_${randomUUID().replaceAll('-','')}`;

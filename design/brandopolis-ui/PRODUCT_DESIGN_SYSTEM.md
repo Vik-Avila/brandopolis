@@ -118,3 +118,12 @@ La tarjeta no duplica Aceptar/Modificar/Rechazar ni desplaza el borrador. Se con
 visual y la pausa de los retratos existentes. Al cerrar el drawer el foco vuelve al disparador
 de la tarjeta aunque ésta se haya vuelto a renderizar; entrada derecha y atención izquierda
 mantienen su comportamiento. Sin cambios de assets, animaciones ni hashes canónicos.
+
+## Objetivo estratégico y Arena de mercado · 2026-10-06
+
+El grupo «Estrategia» numera seis secciones: 01 Objetivo estratégico, 02 Arena de mercado, 03 Cliente
+principal, 04 Modelo de valor, 05 Posicionamiento, 06 Mensaje principal; «Entorno competitivo» sigue
+en «Preparación estratégica» y no es decisión. Una marca anterior sin esas secciones ve una tarjeta
+`empty-state` con la acción primaria «Agregar estas secciones»; nada se crea al navegar. El editor de
+ambas secciones muestra una guía `.hint` enlazada con `aria-describedby`. El impacto de una primera
+versión muestra «Antes · Sin decisión registrada». Sin nuevos assets, tokens, animaciones ni CSS.

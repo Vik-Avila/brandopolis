@@ -14,3 +14,11 @@ Depends on: Master Context v1.0
 ## Resolución humana · 2026-10-04 · Ask Brandopolis → Brando
 
 «Ask Brandopolis» evoluciona conceptualmente a Brandopolis Intelligence / Brando ([brand-intelligence-engine](../05-ai/brand-intelligence-engine.md), [ADR-0015](../14-decisions/ADR-0015.md)). Brando B1 queda autorizado para la siguiente etapa, posterior al PILOT congelado. Esta resolución no reclasifica Ask Brandopolis (sigue en P1 para el MVP), no modifica retrospectivamente el scope del MVP y no habilita cambios en el runtime actual.
+
+## Resolución humana · 2026-10-06 · Objetivo estratégico y Arena de mercado
+
+El propietario reabre el alcance diferido de nuevas decisiones **exclusivamente** para Strategic
+Objective y Market Arena (Master Context §14–§15), desarrolladas **fuera de producción**
+([ADR-0021](../14-decisions/ADR-0021.md)). No incluye Brand Promise, GTM Priority, Priority
+Experiment ni niveles B2–B5, no cambia proveedor, modelo, prompts ni datos enviados a la IA, y no
+autoriza migraciones ni operaciones de producción. La Jury Production Freeze sigue vigente.

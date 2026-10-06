@@ -103,48 +103,48 @@
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/m1-guided-review-desktop.png",
-      "bytes": 432586,
-      "sha256": "2809673aa0abc955362e3cff00cba61626a027d685a2c2476b25d6338ccb0933",
+      "bytes": 367925,
+      "sha256": "75b793a3e881c2419626a1e16856c40969a1f04c8388093f55cf282b5943d879",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/m1-guided-review-mobile.png",
-      "bytes": 246064,
-      "sha256": "1c4b446cc2e80324e4270c8c41e14d1a900d3493037c23289e44cf6316cc9501",
+      "bytes": 223359,
+      "sha256": "50cecc66a2f0b5a84f00aa4c8aa6e6fa35b2268859965513b69cbc3d12551e17",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/m1-needs-review-desktop.png",
-      "bytes": 431114,
-      "sha256": "45725bdcfadf29b37b68e28b9dfff1fdffda4b26c0d3bd8fc66befe83b97fceb",
+      "bytes": 374041,
+      "sha256": "baac17b5b6dda69f29ca9eba57563e28b1af9183578674b03eae6d6c8379542b",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/m1-needs-review-mobile.png",
-      "bytes": 242623,
-      "sha256": "f34afe47bb037a947affe56e72e3fdfab68e8f4623e54e0ed3a016f11691e72e",
+      "bytes": 228379,
+      "sha256": "466f664a5f391bd7dea2d145370991ec324f86b344b9c17c227c4a7b76f4c1a0",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/m1-workspace-desktop.png",
-      "bytes": 393946,
-      "sha256": "db2f1800def5517e117c5decadd6966563f44649b74e49391fafb6b568df01cf",
+      "bytes": 492700,
+      "sha256": "2c79b6527378f6c727296ddfdc07b7510c4209ab38ae847459dbdea3fd0df100",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/m1-workspace-mobile.png",
-      "bytes": 202207,
-      "sha256": "9f4db047fbc75efdd35f71530cd67628496e70648dad9e3f5dda591aee05ffab",
+      "bytes": 299820,
+      "sha256": "0479eba2893296d852d794b40bc48a49e34a7c3f1a4ff1e638f2a25cb067d594",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
@@ -295,40 +295,40 @@
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/blueprint-desktop.png",
-      "bytes": 408614,
-      "sha256": "108094fa4a4e2e4d6a837b081c29d172490e5079e39768a1eee25dd195ab84e8",
+      "bytes": 359793,
+      "sha256": "83fd92b8ec4152f62b7544a87520b4cdc12111ed92105c38ba4d76deca3cd069",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/blueprint-mobile.png",
-      "bytes": 227284,
-      "sha256": "eaba8aaa071ba2c4dc61d70e6a8fa2a73540c0b5eba848043d378423df11120d",
+      "bytes": 237497,
+      "sha256": "5c0ab08798d5eab0cb6293804a8911ad29d52c2a1f3d44cc0be5ae8cbd3c8f49",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/decision-card-desktop.png",
-      "bytes": 395496,
-      "sha256": "7c550e715d511d31525d67ec0ae8e2b3a0a24c6964e5262fe47559bc6b649d07",
+      "bytes": 330943,
+      "sha256": "8f556b16ccb55599425a959771594204afb1482335851d960698107877c32ce4",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/history-desktop.png",
-      "bytes": 418120,
-      "sha256": "c9091dc3198b33ee00e2bd126e68903c5ff1d6bb2fa10ee8d8f327e3da89c7c4",
+      "bytes": 341921,
+      "sha256": "227a5c731e701c06be0a256678692d3c5881e1573b37e563ea4a61ff71c36b56",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/history-mobile.png",
-      "bytes": 212723,
-      "sha256": "1f20a120d22e23f7e6ba450b781774373e69c241a225e39f006bac231122beb9",
+      "bytes": 191189,
+      "sha256": "e42d718b20eabcd7e857179256ea4d5e2d0ebb12a183f9930dbf82c29e52fee1",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"

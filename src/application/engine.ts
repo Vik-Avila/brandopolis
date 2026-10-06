@@ -3,10 +3,10 @@ import { attentionFor, brandoPacket,brandoSuggestionActions, validBrandoReferenc
 import { randomUUID, createHash } from 'node:crypto';
 import { and, eq, ne, asc } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
-import { AppError, validate, rules, transition, reviewOrder, type CommitCommand } from '../domain/contracts.js';
+import { AppError, validate, rules, reviewsOnFirstUpstreamVersion, transition, reviewOrder, type CommitCommand } from '../domain/contracts.js';
 import type { Database, Transaction } from '../persistence/database.js';
 import * as t from '../persistence/schema.js';
-import { vertical, learningMoments } from '../domain/modules.js';
+import { journey, modulesVersion, learningMoments } from '../domain/modules.js';
 import { assemble } from '../domain/context-assembler.js';
 import { ModelGateway, DemoProvider, evaluate, type Recommendation } from '../domain/analysis.js';
 
@@ -670,7 +670,7 @@ export class Engine {
       const brand={id:id(),workspaceId:who.workspaceId,name:name.trim(),dataClass:pilotWorkspace?'PILOT':'DEMO'};
       await tx.insert(t.brands).values(brand);
       await tx.insert(t.assignments).values({workspaceId:who.workspaceId,brandId:brand.id,userId:who.userId});
-      for(const {primaryDecision:module,primaryQuestion:text} of vertical) {
+      for(const {primaryDecision:module,primaryQuestion:text} of journey) {
         await tx.insert(t.questions).values({id:id(),workspaceId:who.workspaceId,brandId:brand.id,module,text,status:'OPEN'});
       }
       const s={workspaceId:who.workspaceId,brandId:brand.id,userId:who.userId,sessionId:who.sessionId};
@@ -719,10 +719,39 @@ export class Engine {
   }
   private async syncDependencies(tx:Transaction,s:Scope) {
     const ds=await tx.select({decision:t.decisions,question:t.questions}).from(t.decisions).innerJoin(t.questions,and(eq(t.decisions.questionId,t.questions.id),eq(t.decisions.workspaceId,t.questions.workspaceId),eq(t.decisions.brandId,t.questions.brandId))).where(inScope(t.decisions,s));
+    // One edge per decision pair, whatever ruleVersion created it: a newer config never duplicates an edge or its reviews.
+    const edges=await tx.select().from(t.dependencies).where(inScope(t.dependencies,s));
     for(const rule of rules.rules) {
       const up=ds.find(d=>d.question.module===rule.upstream), down=ds.find(d=>d.question.module===rule.downstream);
-      if(up&&down) await tx.insert(t.dependencies).values({id:id(),workspaceId:s.workspaceId,brandId:s.brandId,upstreamDecisionId:up.decision.id,downstreamDecisionId:down.decision.id,kind:rule.kind,reason:rule.reason,ruleVersion:rules.version}).onConflictDoNothing();
+      if(!up||!down||edges.some(e=>e.upstreamDecisionId===up.decision.id&&e.downstreamDecisionId===down.decision.id)) continue;
+      await tx.insert(t.dependencies).values({id:id(),workspaceId:s.workspaceId,brandId:s.brandId,upstreamDecisionId:up.decision.id,downstreamDecisionId:down.decision.id,kind:rule.kind,reason:rule.reason,ruleVersion:rule.ruleVersion}).onConflictDoNothing();
     }
+  }
+  /** Outgoing edges a first upstream version may review: only rules that declare it, never the frozen v1 rules. */
+  private async firstVersionEdges(tx:Transaction,s:Scope,decisionId:string) {
+    const outgoing=await tx.select({dependency:t.dependencies,question:t.questions}).from(t.dependencies)
+      .innerJoin(t.decisions,and(eq(t.decisions.id,t.dependencies.downstreamDecisionId),eq(t.decisions.workspaceId,t.dependencies.workspaceId),eq(t.decisions.brandId,t.dependencies.brandId)))
+      .innerJoin(t.questions,and(eq(t.questions.id,t.decisions.questionId),eq(t.questions.workspaceId,t.decisions.workspaceId),eq(t.questions.brandId,t.decisions.brandId)))
+      .where(and(inScope(t.dependencies,s),eq(t.dependencies.upstreamDecisionId,decisionId)));
+    const [upstream]=await tx.select({module:t.questions.module}).from(t.decisions).innerJoin(t.questions,and(eq(t.questions.id,t.decisions.questionId),eq(t.questions.workspaceId,t.decisions.workspaceId),eq(t.questions.brandId,t.decisions.brandId))).where(and(inScope(t.decisions,s),eq(t.decisions.id,decisionId)));
+    return outgoing.filter(row=>upstream&&reviewsOnFirstUpstreamVersion(upstream.module,row.question.module)).map(row=>row.dependency);
+  }
+  /**
+   * Explicit human action (ADR-0021): adds the journey sections an existing Brand lacks as OPEN questions.
+   * Idempotent through the (workspace, brand, module) unique key; never touches decisions, versions,
+   * reviews, dependencies or impacts. Reading context never creates questions.
+   */
+  async addStrategicSections(token:string,brandId:string) {
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId);
+      const added:string[]=[];
+      for(const {primaryDecision:module,primaryQuestion:text} of journey) {
+        const rows=await tx.insert(t.questions).values({id:id(),workspaceId:s.workspaceId,brandId:s.brandId,module,text,status:'OPEN'}).onConflictDoNothing().returning({module:t.questions.module});
+        added.push(...rows.map(r=>r.module));
+      }
+      if(added.length) await this.audit(tx,s,{operation:'STRATEGIC_SECTIONS_ADDED',idempotencyKey:`strategic-sections:${modulesVersion}:${s.brandId}`,rationale:JSON.stringify(added)});
+      return {brandId,added};
+    });
   }
   private async contextVersion(tx:Transaction,s:Scope) {
     const decisions=await tx.select().from(t.decisions).where(inScope(t.decisions,s));
@@ -1320,6 +1349,8 @@ export class Engine {
       await this.audit(tx,s,{operation:'COMMIT_DECISION',idempotencyKey:command.idempotencyKey,decisionId:decision.id,previousVersion:previous?.id??null,newVersion:version.id,rationale:command.rationale,sourceRecommendationId:command.sourceRecommendationId});
       await this.event(tx,s,'decision_created');
       const capabilityBehaviorByModule:Record<string,string>={
+        'Strategic Objective':'Precisaste qué quieres construir o cambiar con tu marca y cómo reconocerás que avanzas.',
+        'Market Arena':'Delimitaste dónde compite tu marca, frente a qué alternativas y con qué límites.',
         'Primary Customer':'Identificaste y priorizaste el segmento de cliente que consideras más relevante para tu marca.',
         'Value Mechanism':'Relacionaste lo que ofreces con una necesidad concreta del cliente que quieres atender.',
         'Positioning':'Articulaste una diferencia que puede ayudarte a ser elegido frente a otras alternativas.',
@@ -1333,8 +1364,9 @@ export class Engine {
         await this.audit(tx,s,{operation:'BRANDO_SUGGESTION_APPLIED_BY_HUMAN',idempotencyKey:command.idempotencyKey,decisionId:decision.id,newVersion:version.id,rationale:JSON.stringify({action:reviewedAction,suggestion:brandoTicket.suggestion,selectedOption:command.selectedOption,rationale:command.rationale,sourceVersion:brandoTicket.sourceVersion})});
         await this.event(tx,s,'brando_suggestion_reviewed');
       }
-      if(previous) {
-        await this.event(tx,s,'decision_superseded');
+      if(previous) await this.event(tx,s,'decision_superseded');
+      // Dependencies were synced above, so a first version sees edges to decisions approved before it (ADR-0021).
+      if(previous||(await this.firstVersionEdges(tx,s,decision.id)).length) {
         await tx.insert(t.impacts).values({workspaceId:s.workspaceId,brandId:s.brandId,triggerVersionId:version.id,status:'IMPACT_PENDING'});
       }
       // Context-dependent proposals become stale on every strategic commit.
@@ -1356,11 +1388,13 @@ export class Engine {
         for(const job of jobs) {
           this.impactHook?.();
           const [trigger]=await tx.select().from(t.versions).where(and(inScope(t.versions,s),eq(t.versions.id,job.triggerVersionId)));
-          const outgoing=await tx.select().from(t.dependencies).where(and(inScope(t.dependencies,s),eq(t.dependencies.upstreamDecisionId,trigger.decisionId)));
+          // A first version only reaches rules that declare it; a later version reaches every outgoing edge, as before.
+          const first=trigger.previousVersionId===null;
+          const outgoing=first?await this.firstVersionEdges(tx,s,trigger.decisionId):await tx.select().from(t.dependencies).where(and(inScope(t.dependencies,s),eq(t.dependencies.upstreamDecisionId,trigger.decisionId)));
           const affected=[];
           for(const dep of outgoing) {
             const status=dep.kind==='HARD'?'NEEDS_REVIEW':dep.kind==='SOFT'?'REVIEW_SUGGESTED':'INFORMATION_ONLY';
-            const reason=`${dep.reason}. Cambio humano: versión ${trigger.sequence-1} → ${trigger.sequence}. Revisa la decisión dependiente; su contenido se conserva.`;
+            const reason=first?`${dep.reason}. Primera decisión humana registrada en una sección conectada, después de esta decisión. Revisa su coherencia; su contenido se conserva.`:`${dep.reason}. Cambio humano: versión ${trigger.sequence-1} → ${trigger.sequence}. Revisa la decisión dependiente; su contenido se conserva.`;
             affected.push({downstreamDecisionId:dep.downstreamDecisionId,dependencyType:dep.kind,impactStatus:status,reason});
             if(dep.kind==='HARD') await tx.update(t.decisions).set({reviewStatus:'NEEDS_REVIEW'}).where(and(inScope(t.decisions,s),eq(t.decisions.id,dep.downstreamDecisionId)));
             if(dep.kind!=='INFORMATIVE') await tx.insert(t.reviews).values({id:id(),workspaceId:s.workspaceId,brandId:s.brandId,triggerVersionId:trigger.id,downstreamDecisionId:dep.downstreamDecisionId,dependencyType:dep.kind,status:dep.kind==='HARD'?'OPEN':'REVIEW_SUGGESTED',reason,reviewedBy:null,ruleVersion:dep.ruleVersion}).onConflictDoNothing();
@@ -1396,7 +1430,7 @@ export class Engine {
       const recommendations=await tx.select().from(t.recommendations).where(inScope(t.recommendations,s));
       const analyses=await tx.select().from(t.analyses).where(inScope(t.analyses,s));
       const experimentPlans=(await tx.select().from(t.experiments).where(inScope(t.experiments,s))).map(e=>({experimentId:e.id,decisionId:e.decisionId,objective:e.objective,successCriteria:e.successCriteria,createdAt:e.createdAt.toISOString(),createdBy:e.createdBy,startedAt:e.startedAt?.toISOString()??null,completedAt:e.completedAt?.toISOString()??null}));
-      const output={experimentPlans,recommendations,analyses,...await this.contextEntities(tx,s),contextVersion:await this.contextVersion(tx,s),questions:qs.sort((a,b)=>vertical.findIndex(m=>m.primaryDecision===a.module)-vertical.findIndex(m=>m.primaryDecision===b.module)).map(({workspaceId:_w,...q})=>q),decisions:ds.map(({workspaceId:_w,...d})=>d),versions:vs.map(versionOutput),dependencies:deps.map(({workspaceId:_w,...d})=>d),reviews:rs.map(reviewOutput),impacts:impact.map(({status,result,triggerVersionId})=>({status,result,triggerVersionId})),audit};
+      const output={experimentPlans,recommendations,analyses,...await this.contextEntities(tx,s),contextVersion:await this.contextVersion(tx,s),questions:qs.sort((a,b)=>journey.findIndex(m=>m.primaryDecision===a.module)-journey.findIndex(m=>m.primaryDecision===b.module)).map(({workspaceId:_w,...q})=>q),decisions:ds.map(({workspaceId:_w,...d})=>d),versions:vs.map(versionOutput),dependencies:deps.map(({workspaceId:_w,...d})=>d),reviews:rs.map(reviewOutput),impacts:impact.map(({status,result,triggerVersionId})=>({status,result,triggerVersionId})),audit};
       for(const [name,rows] of [['strategic-question',output.questions],['decision',output.decisions],['decision-version',output.versions],['dependency',output.dependencies],['review-item',output.reviews]] as const) for(const row of rows) validate(name,row);
       const brandoContextVersion=hash(JSON.stringify([output.questions,output.decisions,output.versions,output.dependencies,output.reviews,output.evidence,output.hypotheses,output.userInputs,output.openQuestions,output.learnings,output.experiments,output.signals,output.impacts]));
       return {...output,attention:attentionFor(output),brandoContextVersion};

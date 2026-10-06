@@ -146,7 +146,7 @@ que vive en la navegación bajo **PREPARACIÓN ESTRATÉGICA**, por encima de «E
 arquitectura de información, no un cambio de dominio:
 
 - **No es una decisión.** No tiene número, no tiene `data-module`, no entra en la Decision Spine y
-  **no suma al conteo «X de 4»**. Las métricas de activación no cambian.
+  **no suma al conteo «X de 4»**. Las métricas de activación no cambian. (Desde el 2026-10-06 el conteo es «X de N» y las marcas nuevas tienen seis secciones: [ADR-0021](../14-decisions/ADR-0021.md).)
 - En **Contexto vigente** aparece en su propio bloque, «Contexto del mercado», con estado
   **Sin investigar · Pendiente de revisión · Revisado**, separado de «Lo que ya decidiste».
 - El estado se **deriva de estado canónico**, no de lo que muestre la pantalla: los hallazgos

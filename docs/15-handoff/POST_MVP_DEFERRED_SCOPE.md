@@ -21,7 +21,7 @@ Work below is **not** required to start Phase 10 (real testers). Listing it here
 | Scale | Distributed rate limiting, horizontal scaling | PILOT runs one instance, enforced by an advisory lock. |
 | Security | Enterprise hardening, external pentest, certification | Launch review has no open blocker. |
 | Operations | Hosted `pg_dump`/`pg_restore` rehearsal on the chosen host | Must be rehearsed once at deployment (external step); local recovery is tested. |
-| Product surfaces | Search, notifications, profile menu, «Nueva decisión» beyond the four canonical questions, landing pages «Producto / Para quién / Recursos», decision tabs | Visual mockup elements without an approved MVP capability. |
+| Product surfaces | Search, notifications, profile menu, «Nueva decisión» beyond the journey questions (exception 2026-10-06: Strategic Objective and Market Arena were reopened, out of production only, by [ADR-0021](../14-decisions/ADR-0021.md); Brand Promise, GTM Priority and Priority Experiment stay deferred), landing pages «Producto / Para quién / Recursos», decision tabs | Visual mockup elements without an approved MVP capability. |
 | Collaboration | Real-time collaboration, comments, team analytics, exports, public API | Not part of MVP scope. |
 | Commercial | Billing, subscriptions, CRM | Not needed for testers. |
 | Quality | Formal WCAG audit, browsers beyond Chrome | Keyboard, focus, contrast and reduced motion verified by automated checks. |

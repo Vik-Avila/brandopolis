@@ -1,3 +1,66 @@
+## 2026-10-06 · Objetivo estratégico y Arena de mercado: cierre
+
+Estado: RELEASE-READY FUERA DE PRODUCCIÓN.
+Rama: feat/strategic-objective-market-arena. Base y HEAD: 77e7a71a909f4b59cea491590a4a09161855b2fd.
+Este registro supera el único pendiente del registro anterior (aceptación funcional).
+
+El propietario confirmó la aceptación funcional en la DEMO local. Este registro no detalla qué
+recorridos recorrió: sólo consta su aceptación. Los resultados de pruebas son los ya registrados
+abajo con salida real (pnpm test 257/257, test:e2e 80/80, Brando browser 38/38, test:visual 10/10,
+test:pilot:e2e 10/10, Foundation 0 errores, UI y brand validators PASS) y las comprobaciones
+documentales de este cierre. Alcance, decisiones D1–D9 y limitaciones sin cambios: sin prueba con
+IA real; /security-review no ejecutable sin commits (revisión manual registrada); «Agregar estas
+secciones» verificado sólo por pruebas automáticas; posibles revisiones encadenadas en marcas
+existentes (D3). Sin cambios de código ni capturas en este cierre.
+
+AI proposes. Humans decide. Brandopolis remembers.
+Jury Production Freeze vigente. Release-ready no autoriza deploy.
+Sin commit, push, PR, merge, tag, migración ni deploy.
+
+## 2026-10-06 · Objetivo y Arena: capturas y gates de cierre
+
+Estado: NOT RELEASE-READY; único criterio pendiente: aceptación funcional humana en la DEMO local.
+Rama: feat/strategic-objective-market-arena. Base y HEAD: 77e7a71a909f4b59cea491590a4a09161855b2fd.
+Este registro supera los pendientes técnicos del candidato anterior del mismo día.
+
+Por autorización explícita del propietario se actualizaron sólo estas 11 capturas automáticas y sus
+hashes/bytes en design/brandopolis-ui/specs/brand-assets.json: m1-workspace, m1-needs-review,
+m1-guided-review, blueprint e history (desktop y mobile) y decision-card-desktop. Login, acceso y
+portada no se tocaron. Generadas por pnpm test:visual (10/10) contra la DEMO local.
+
+Gates del agente tras la actualización (salida real): typecheck y lint PASS; pnpm test 257/257;
+Foundation 246 Markdown / 63 JSON / 24 schemas / 15 requirements / 13 golden cases / 0 errores;
+UI validator PASS; brand validator PASS; skills:check idéntico; git diff --check OK. Sin cambios de
+código desde la ejecución anterior de test:e2e 80/80, Brando browser 38/38 y test:pilot:e2e 10/10.
+Diff completo revisado: index.html sólo cambia el menú; ningún archivo de despliegue o producción.
+/security-review sigue requiriendo commits; no se creó ninguno. Revisión manual registrada arriba.
+Aceptación funcional del propietario en la DEMO: pendiente. Sin prueba con IA real.
+Jury Production Freeze vigente. Sin commit, push, PR, merge, tag, migración ni deploy.
+
+## 2026-10-06 · Objetivo estratégico y Arena de mercado · candidato fuera de producción
+
+Estado: NOT RELEASE-READY; implementación y gates técnicos completos, pendiente aceptación humana.
+Rama: feat/strategic-objective-market-arena. Base: 77e7a71a909f4b59cea491590a4a09161855b2fd.
+Alcance aprobado por el propietario (D1–D9; D3 opción B; D4 acción explícita): ADR-0021.
+
+Implementado: config v2 (modules/journey, learning-moments, dependencies con ruleVersion por regla);
+seis secciones en marcas nuevas, entrada por Objetivo; acción explícita «Agregar estas secciones»
+(POST /api/brands/strategic-sections, idempotente, sin escrituras al leer contexto); impacto de
+primera versión sólo para las cuatro reglas nuevas, con dependencias sincronizadas antes del cálculo
+y sin aristas duplicadas; orientación Brando y guía del editor; DEMO y sandbox nuevo en orden canónico.
+Sin migración, sin cambios de proveedor, modelo, prompts, schemas ni datos enviados a la IA.
+
+Resultados del agente en Windows (salida real): typecheck y lint PASS; pnpm test 13 archivos /
+257 pruebas PASS (base previa 247; +10 casos ADR-0021); Brando browser 38/38; test:e2e 80/80
+(primera pasada 60/80 antes de actualizar pruebas al contrato de seis secciones); test:visual 10/10;
+test:pilot:e2e 10/10; Foundation 246 Markdown / 63 JSON / 24 schemas / 15 requirements / 13 golden
+cases / 0 errores; UI validator PASS; brand validator PASS; skills:check idéntico; git diff --check OK.
+/security-review no pudo ejecutarse (requiere origin/HEAD y commits); revisión manual de seguridad
+del endpoint sin hallazgos. Capturas canónicas: las 11 del espacio de trabajo cambian con el menú,
+pero sus hashes están en specs/brand-assets.json; se restauraron y queda pendiente decisión humana
+que nombre esos archivos. Sin prueba con IA real. Jury Production Freeze vigente.
+Sin commit, push, PR, merge, tag ni deploy.
+
 ## 2026-10-05 · Brando review choice: cierre validado en Windows
 
 Estado: RELEASE-READY FUERA DE PRODUCCIÓN.

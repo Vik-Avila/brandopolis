@@ -273,8 +273,9 @@ describe('production verification hotfix', () => {
     // Research informs the four decisions, so it sits above them.
     expect(nav.indexOf('Preparación estratégica')).toBeLessThan(nav.indexOf('id="competitive-context"'));
     expect(nav.indexOf('id="competitive-context"')).toBeLessThan(nav.indexOf('>Estrategia<'));
-    // It is NOT a decision: no number, no data-module, so the Decision Spine keeps exactly four.
-    expect([...nav.matchAll(/data-module="/g)]).toHaveLength(4);
+    // It is NOT a decision: no number, no data-module. The Decision Spine has exactly the six journey
+    // sections of ADR-0021 (Objetivo and Arena precede the four original ones), in canonical order.
+    expect([...nav.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(['Strategic Objective', 'Market Arena', 'Primary Customer', 'Value Mechanism', 'Positioning', 'Core Message']);
     const competitive = nav.slice(nav.indexOf('id="competitive-context"'), nav.indexOf('</button>', nav.indexOf('id="competitive-context"')));
     expect(competitive).not.toMatch(/<span>\d/);
     expect(competitive).not.toContain('data-module');
@@ -321,7 +322,7 @@ describe('production verification hotfix', () => {
     expect(derive).toContain('competitiveFindingRejected');
     expect(derive).toContain('competitiveEvidence()');
     expect(derive).toContain('competitiveRejectedClaims.size');
-    // Preparation, not a decision: the X de 4 count is computed from approved versions alone.
+    // Preparation, not a decision: the «X de N» count (N = the brand's sections) comes from approved versions alone.
     expect(app).toContain('No cuenta como decisión.');
     const count = app.slice(app.indexOf('<span class="context-count">'), app.indexOf('<span class="context-count">') + 160);
     expect(count).toContain('${versions.length} de ${context.questions.length}');

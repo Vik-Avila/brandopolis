@@ -7,4 +7,4 @@ Depends on: Master Context v1.0 + hardening brief 2026-09-24
 
 # Configuración versionada
 
-`strategic-method/modules.v1.json` contiene módulos y preguntas aprobadas; `dependencies/v1.json` aristas HARD/SOFT/INFORMATIVE permitidas, con tipos de contrato aunque no exista arista INFORMATIVE en M1; `capabilities/v1.json` mapping, `feature-flags/defaults.json` defaults. Cambiar reglas exige nueva versión, prueba de no ciclos y Change Impact regresivo. UI/prompts consumen configuración, no redefinen negocio.
+`strategic-method/modules.v1.json` contiene módulos y preguntas aprobadas (activo: `modules.v2.json`, que añade `journey` con las seis secciones del recorrido; `learning-moments.v2.json` y `dependencies/v2.json` según [ADR-0021](../docs/14-decisions/ADR-0021.md); los v1 se conservan como historial); `dependencies/v1.json` aristas HARD/SOFT/INFORMATIVE permitidas, con tipos de contrato aunque no exista arista INFORMATIVE en M1; `capabilities/v1.json` mapping, `feature-flags/defaults.json` defaults. Cambiar reglas exige nueva versión, prueba de no ciclos y Change Impact regresivo. UI/prompts consumen configuración, no redefinen negocio.

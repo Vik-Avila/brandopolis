@@ -1,3 +1,24 @@
+## 2026-10-06 · Objetivo estratégico y Arena de mercado: cierre
+
+- Aceptación funcional del propietario en la DEMO local confirmada.
+- RELEASE-READY FUERA DE PRODUCCIÓN (ADR-0021). Sin cambios de código ni capturas en este cierre.
+- Sin commit, push ni deploy; Jury Production Freeze vigente.
+
+## 2026-10-06 · Objetivo y Arena: capturas canónicas y gates de cierre
+
+- 11 capturas del espacio de trabajo y sus hashes actualizados por autorización explícita.
+- Gates del agente en verde; diff completo revisado.
+- Pendiente: aceptación funcional del propietario en la DEMO local. NOT RELEASE-READY hasta entonces.
+
+## 2026-10-06 · Objetivo estratégico y Arena de mercado (candidato, fuera de producción)
+
+- ADR-0021: dos decisiones versionadas nuevas en el recorrido (01 Objetivo, 02 Arena); seis secciones.
+- Config v2: journey, learning moments y cuatro dependencias nuevas sin ciclos ni aristas duplicadas.
+- Primera versión de Objetivo/Arena pide revisión humana de decisiones conectadas previas; nada se reescribe.
+- «Agregar estas secciones»: acción explícita e idempotente para marcas existentes; leer no escribe.
+- Orientación Brando y guía del editor reutilizadas; sin cambios de IA ni migraciones.
+- Gates del agente en verde; pendiente aceptación humana y decisión sobre capturas canónicas.
+
 ## 2026-10-05 · Brando review choice: validación final
 
 - Selección de Modificar al elegir una propuesta de Brando verificada.

@@ -31,6 +31,8 @@ export class ModelGateway {
   }
 }
 const examples:Record<string,[string,string]>={
+  'Strategic Objective':['Convertir decisiones dispersas en una estrategia que el equipo recuerde','Consolidar una oferta clara antes de crecer a nuevos clientes'],
+  'Market Arena':['Agencias pequeñas que gestionan varias marcas en LATAM','Consultores independientes de estrategia de marca'],
   'Primary Customer':['Agencias con varias marcas','Equipos internos de marketing'],
   'Value Mechanism':['Suscripción por marca activa','Servicio de acompañamiento estratégico'],
   Positioning:['Continuidad de decisiones estratégicas','Acompañamiento para ordenar la estrategia'],
