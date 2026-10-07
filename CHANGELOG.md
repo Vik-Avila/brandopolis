@@ -1,3 +1,17 @@
+## 2026-10-06 · Promesa de marca: contexto de la revisión de Mensaje
+
+- La revisión pendiente de Mensaje muestra también la Promesa vigente que cambió después; una sola revisión.
+- El comprobante de revisión exige reabrirla si cambia una decisión conectada.
+- Regresiones unitarias y E2E añadidas; gates del agente en verde. Pendiente DEMO y smoke Anthropic humano.
+
+## 2026-10-06 · Promesa de marca (candidato, fuera de producción)
+
+- ADR-0022: Promesa de marca entre Posicionamiento y Mensaje; Posicionamiento → Promesa → Mensaje estrictas.
+- Sin revisiones duplicadas de Mensaje; primera Promesa marca para revisión un Mensaje previo.
+- Activación explícita para marcas existentes; Promesa demo en sandboxes nuevos.
+- Menú compacto hasta 940px de alto; 11 capturas y hashes actualizados.
+- Gates del agente en verde. Pendiente aceptación en DEMO. Sin commit, push ni deploy.
+
 ## 2026-10-06 · Objetivo estratégico y Arena de mercado: cierre
 
 - Aceptación funcional del propietario en la DEMO local confirmada.

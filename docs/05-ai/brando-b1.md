@@ -189,3 +189,9 @@ define por sí sola la arena. Navegar no consulta a la IA. Sin cambios de provee
 schema de respuesta, topes ni datos enviados: la geografía declarada de la marca no se envía al
 proveedor. Una propuesta aceptada o modificada sigue el borrador, el criterio humano y la confirmación
 final existentes; la primera versión puede pedir revisión humana de decisiones conectadas.
+
+## Promesa de marca · 2026-10-06
+
+[ADR-0022](../14-decisions/ADR-0022.md) reutiliza sin cambios la orientación local, la solicitud explícita de
+propuestas y la revisión humana para Promesa de marca. Navegar no consulta a la IA; ninguna propuesta
+se guarda ni aprueba sin confirmación humana. Sin cambios de proveedor, modelo, prompts ni datos.

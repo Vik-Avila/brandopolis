@@ -21,3 +21,16 @@ antes de calcular el impacto; nunca se duplica una arista para el mismo par de d
 las mismas reglas: HARD → NEEDS_REVIEW y ReviewItem OPEN; SOFT → REVIEW_SUGGESTED; sólo aristas
 directas; dedupe por triggerVersion/downstream/ruleVersion; nunca reescribe downstream. Las reglas v1
 no cambian: su primera versión upstream sigue sin generar impacto.
+
+## Promesa de marca y revisiones sin duplicar · 2026-10-06
+
+[ADR-0022](../14-decisions/ADR-0022.md): `config/dependencies/v3.json` es la configuración activa (v1 y v2
+conservados). Añade Brand Promise → Core Message (HARD, primera versión revisable). Dedupe adicional:
+al procesar el impacto de una versión de U sobre D no se crea un ReviewItem nuevo si D ya tiene uno no
+completado, igual o más fuerte (OPEN cubre todo; REVIEW_SUGGESTED sólo cubre SOFT), cuyo trigger es una
+versión de una decisión upstream directa de U. D sigue en el resultado del impacto con su motivo. Nunca
+se suprime una revisión HARD por una sugerencia ni se reescribe downstream.
+
+El comprobante de revisión liga también las versiones vigentes de las decisiones upstream directas del
+downstream revisado; un cambio integrado en una revisión pendiente invalida comprobantes anteriores y
+exige reabrir la revisión con el contexto vigente ([ADR-0022](../14-decisions/ADR-0022.md)).

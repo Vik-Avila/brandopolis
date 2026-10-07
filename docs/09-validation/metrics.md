@@ -16,3 +16,6 @@ fórmulas no cambian, pero a partir de este cambio la primera Decision aprobada 
 Arena (Activation, TTF Decision), las decisiones y revisiones de esas secciones cuentan como High-Value
 Events y Strategy Ready Rate exige más preguntas y puede incluir revisiones HARD de primera versión. Los
 periodos anteriores no son directamente comparables; los datos históricos no se recalculan.
+
+Con [ADR-0022](../14-decisions/ADR-0022.md) las marcas nuevas tienen siete secciones. Misma regla: fórmulas sin
+cambio, periodos anteriores no directamente comparables y sin recálculo histórico.

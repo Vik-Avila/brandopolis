@@ -10,15 +10,17 @@ import { createApp } from '../src/transport/http.js';
 import type { connect } from '../src/persistence/database.js';
 import * as t from '../src/persistence/schema.js';
 
-const SPINE=['Strategic Objective','Market Arena','Primary Customer','Value Mechanism','Positioning','Core Message'];
+const SPINE=['Strategic Objective','Market Arena','Primary Customer','Value Mechanism','Positioning','Brand Promise','Core Message'];
 const NEW_SECTIONS=['Strategic Objective','Market Arena'];
+// A brand created before ADR-0021 has none of the later journey sections (Brand Promise arrived with ADR-0022).
+const ADDED=['Strategic Objective','Market Arena','Brand Promise'];
 
 /** ADR-0021: Objetivo estratégico y Arena de mercado as versioned decisions inside the existing engine. */
 export function strategicSectionsCases(connection:()=>ReturnType<typeof connect>){
  const setup=async(legacy=false)=>{
   const db=connection().db,engine=new Engine(db),who=await seedIdentity(db),brand=await engine.createBrand(who.token,'Objetivo y Arena');
   // A brand created before ADR-0021 carries only the four original sections.
-  if(legacy)await db.delete(t.questions).where(and(eq(t.questions.brandId,brand.id),inArray(t.questions.module,NEW_SECTIONS)));
+  if(legacy)await db.delete(t.questions).where(and(eq(t.questions.brandId,brand.id),inArray(t.questions.module,ADDED)));
   const ctx=()=>engine.context(who.token,brand.id);
   const decisionOf=async(module:string)=>{const c=await ctx(),q=c.questions.find(q=>q.module===module)!;return {c,q,d:c.decisions.find(d=>d.questionId===q.id)};};
   const commit=async(module:string,text:string,reviewToken?:string)=>{
@@ -47,7 +49,7 @@ export function strategicSectionsCases(connection:()=>ReturnType<typeof connect>
   for(let i=1;i<SPINE.length;i++)if(rules.rules.some(r=>r.upstream===SPINE[i-1]&&r.downstream===SPINE[i]))expect(order.indexOf(SPINE[i-1])).toBeLessThan(order.indexOf(SPINE[i]));
   expect(order.indexOf('Strategic Objective')).toBeLessThan(order.indexOf('Market Arena'));
   expect(order.indexOf('Market Arena')).toBeLessThan(order.indexOf('Primary Customer'));
-  const legacy=rules.rules.filter(r=>!NEW_SECTIONS.includes(r.upstream));
+  const legacy=rules.rules.filter(r=>r.ruleVersion==='v1');
   expect(legacy).toHaveLength(6);
   expect(legacy.every(r=>r.ruleVersion==='v1'&&!r.reviewOnFirstUpstreamVersion)).toBe(true);
   expect(rules.rules.filter(r=>NEW_SECTIONS.includes(r.upstream)).map(r=>[r.upstream,r.downstream,r.kind,r.ruleVersion])).toEqual([
@@ -74,24 +76,24 @@ export function strategicSectionsCases(connection:()=>ReturnType<typeof connect>
   await ctx();await ctx();
   expect((await ctx()).questions.map(q=>q.module),'GET context is read-only').toEqual(['Primary Customer','Value Mechanism','Positioning','Core Message']);
   const first=await engine.addStrategicSections(who.token,brand.id);
-  expect(first).toEqual({brandId:brand.id,added:NEW_SECTIONS});
+  expect(first).toEqual({brandId:brand.id,added:ADDED});
   const after=await ctx();
   expect(after.questions.map(q=>q.module)).toEqual(SPINE);
-  expect(after.questions.filter(q=>NEW_SECTIONS.includes(q.module)).every(q=>q.status==='OPEN')).toBe(true);
+  expect(after.questions.filter(q=>ADDED.includes(q.module)).every(q=>q.status==='OPEN')).toBe(true);
   expect(await strategy(),'no decision, version, review, dependency, impact or recommendation changes').toEqual(before);
   expect(await sectionAudits()).toBe(1);
   expect(await engine.addStrategicSections(who.token,brand.id)).toEqual({brandId:brand.id,added:[]});
   expect(await sectionAudits(),'a no-op is not audited twice').toBe(1);
-  expect((await db.select().from(t.questions).where(eq(t.questions.brandId,brand.id)))).toHaveLength(6);
+  expect((await db.select().from(t.questions).where(eq(t.questions.brandId,brand.id)))).toHaveLength(7);
  });
 
  it('ADR-0021: concurrent activation creates each section exactly once',async()=>{
   const {db,engine,who,brand,sectionAudits}=await setup(true);
   const results=await Promise.all(Array.from({length:6},()=>engine.addStrategicSections(who.token,brand.id)));
-  expect(results.flatMap(r=>r.added).sort()).toEqual([...NEW_SECTIONS].sort());
+  expect(results.flatMap(r=>r.added).sort()).toEqual([...ADDED].sort());
   const rows=await db.select().from(t.questions).where(eq(t.questions.brandId,brand.id));
-  expect(rows).toHaveLength(6);
-  expect(new Set(rows.map(r=>r.module)).size).toBe(6);
+  expect(rows).toHaveLength(7);
+  expect(new Set(rows.map(r=>r.module)).size).toBe(7);
   expect(await sectionAudits()).toBe(1);
  });
 
@@ -169,12 +171,12 @@ export function strategicSectionsCases(connection:()=>ReturnType<typeof connect>
   expect(c.impacts.some(i=>i.triggerVersionId===value.versionId),'a first Value version still creates no impact').toBe(false);
   expect(c.reviews).toHaveLength(0);
   const ordered=await setup();
-  for(const [module,text] of [['Strategic Objective','Objetivo'],['Market Arena','Arena'],['Primary Customer','Cliente'],['Value Mechanism','Valor'],['Positioning','Posición'],['Core Message','Mensaje']])await ordered.commit(module,text);
+  for(const [module,text] of [['Strategic Objective','Objetivo'],['Market Arena','Arena'],['Primary Customer','Cliente'],['Value Mechanism','Valor'],['Positioning','Posición'],['Brand Promise','Promesa'],['Core Message','Mensaje']])await ordered.commit(module,text);
   const done=await ordered.ctx();
   expect(done.reviews).toHaveLength(0);
   expect(done.decisions.every(d=>d.reviewStatus==='APPROVED')).toBe(true);
-  // Objective→Arena, Objective→Value, Arena→Customer, Arena→Positioning and the four v1 edges among these sections.
-  expect(done.dependencies).toHaveLength(8);
+  // Objective→Arena, Objective→Value, Arena→Customer, Arena→Positioning, Promise→Message and the five v1 edges among these sections.
+  expect(done.dependencies).toHaveLength(10);
  });
 
  it('ADR-0021: an edge created under an older rule version is never duplicated by the v2 config',async()=>{
@@ -200,8 +202,8 @@ export function strategicSectionsCases(connection:()=>ReturnType<typeof connect>
    expect((await post({Origin:base})).status).toBe(401);
    const ok=await post({Origin:base,Cookie:cookie});
    expect(ok.status).toBe(200);
-   expect(await ok.json()).toEqual({brandId:brand.id,added:NEW_SECTIONS});
-   expect((await engine.context(who.token,brand.id)).questions).toHaveLength(6);
+   expect(await ok.json()).toEqual({brandId:brand.id,added:ADDED});
+   expect((await engine.context(who.token,brand.id)).questions).toHaveLength(7);
   }finally{await new Promise<void>((resolve,reject)=>server.close(e=>e?reject(e):resolve()));}
  });
 }

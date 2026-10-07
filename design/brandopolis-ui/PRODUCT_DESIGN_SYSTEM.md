@@ -127,3 +127,14 @@ en «Preparación estratégica» y no es decisión. Una marca anterior sin esas 
 `empty-state` con la acción primaria «Agregar estas secciones»; nada se crea al navegar. El editor de
 ambas secciones muestra una guía `.hint` enlazada con `aria-describedby`. El impacto de una primera
 versión muestra «Antes · Sin decisión registrada». Sin nuevos assets, tokens, animaciones ni CSS.
+
+## Promesa de marca · 2026-10-06
+
+El grupo «Estrategia» numera siete secciones: 06 Promesa de marca y 07 Mensaje principal
+([ADR-0022](../../docs/14-decisions/ADR-0022.md)). La tarjeta «Agregar estas secciones» enumera las
+secciones que faltan a la marca. La tarjeta de revisión muestra, cuando aplica, «También cambió mientras
+esta revisión estaba pendiente» (`.review-updates`, texto y criterio con palabras, sin color como único
+significado). Promesa reutiliza la guía `.hint` del editor y la orientación de Brando. Para que la columna completa,
+incluido el principio, quepa sin scroll en portátiles de 900px de alto, la densidad compacta existente
+(puntero fino) y el principio compacto se aplican hasta 940px de alto en lugar de 860px. Sin nuevos
+assets, tokens, animaciones ni reglas visuales distintas de las ya aprobadas.

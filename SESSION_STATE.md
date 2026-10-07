@@ -1,3 +1,57 @@
+## 2026-10-06 · Promesa de marca: contexto de revisión de Mensaje y validación completa
+
+Estado: listo técnicamente fuera de producción; pendiente aceptación del propietario en la DEMO local
+y smoke real de Anthropic (la clave no está disponible en el entorno del agente; procedimiento humano).
+Rama: feat/brand-promise. HEAD: 5927a262e5f2827d4c0936fb62ea13082ea63f58. Cambios de Promesa sin commit.
+
+Corrección: cuando un cambio de Promesa se integra en la revisión pendiente de Mensaje (sin duplicarla),
+la revisión muestra «También cambió mientras esta revisión estaba pendiente» con la versión vigente de
+Promesa, su texto, criterio y tipo de dependencia, junto al cambio de Posicionamiento que la originó; la
+orientación de Brando incluye ambos. Proyección de lectura, sin estados ni filas nuevas. El comprobante
+de revisión liga además las versiones vigentes de las decisiones conectadas: un comprobante abierto antes
+del cambio de Promesa se rechaza (409) y la persona reabre la revisión. Historial y razones intactos;
+Mensaje no se reescribe ni se aprueba solo. ADR-0022 y change-impact actualizados.
+
+Resultados del agente (salida real): typecheck y lint PASS; pnpm test 264/264 (incluye regresión de
+contexto completo y no duplicación); Brando browser 40/40; test:e2e 84/85 en la pasada completa: la
+prueba «DEMO recommendation can be rejected» falló en tablet por clic inestable con 16,6 min de reloj
+(posible suspensión del entorno) y pasó 10/10 al repetirla dos veces en los cinco proyectos; la E2E nueva
+de contexto de Mensaje pasó 5/5. test:visual 10/10 sin cambio visual real (no se actualizaron capturas
+ni hashes); test:pilot:e2e 10/10; Foundation 247 Markdown / 66 JSON / 24 schemas / 15 requirements /
+13 golden cases / 0 errores; UI y brand validators PASS; skills:check idéntico; git diff --check OK.
+/security-review requiere commit: no se creó; revisión manual sin hallazgos (consultas limitadas por
+workspace y marca, sin endpoint nuevo). Sin push, PR, merge, tag, migración ni deploy.
+Jury Production Freeze vigente.
+
+## 2026-10-06 · Promesa de marca · candidato fuera de producción
+
+Estado: listo técnicamente fuera de producción; cierre RELEASE-READY pendiente de la aceptación del
+propietario en la DEMO local. Rama: feat/brand-promise (local), creada desde el commit local
+5927a262e5f2827d4c0936fb62ea13082ea63f58 (Objetivo y Arena, ADR-0021) sobre 77e7a71. Sin push.
+Decisiones aprobadas 1–6 y [ADR-0022](docs/14-decisions/ADR-0022.md).
+
+Implementado: config v3 (journey con Brand Promise entre Posicionamiento y Mensaje; Brand Thinking;
+Brand Promise → Core Message HARD revisable en primera versión; Posicionamiento → Promesa y
+Posicionamiento → Mensaje sin cambios); regla que evita revisiones duplicadas cuando una revisión
+pendiente igual o más fuerte ya cubre un cambio propagado; activación explícita reutilizada (lista
+dinámica de secciones faltantes); menú 06 Promesa / 07 Mensaje; guía del editor y orientación Brando;
+Promesa demo en sandboxes CoffeePolis nuevos; densidad compacta del menú hasta 940px de alto para
+conservar la columna completa en 1440×900. Sin migración ni cambios de IA, configuración de despliegue
+o producción. La revisión de Mensaje se crea en la primera versión de la Promesa, no al agregar la
+sección (un ReviewItem exige versión que lo origine).
+
+Resultados del agente (salida real): typecheck y lint PASS; pnpm test 13 archivos / 263 pruebas
+(257 + 6 de Promesa); Brando browser 40/40; test:e2e 80/80 tras el ajuste de CSS (una pasada previa
+79/80: la prueba de siete fases superó 60s en móvil sin fallar aserciones; se le asignó test.slow()
+y su spec pasó 20/20); test:visual 10/10; test:pilot:e2e 10/10; Foundation 247 Markdown / 66 JSON /
+24 schemas / 15 requirements / 13 golden cases / 0 errores; UI y brand validators PASS; skills:check
+idéntico; git diff --check OK. Capturas: se actualizaron las mismas 11 del espacio de trabajo y sus
+hashes. /security-review requiere commits: no se creó ninguno; revisión manual sin hallazgos de
+seguridad. Límite funcional registrado: mientras la revisión de Mensaje siga pendiente, un cambio de
+la Promesa se integra en ella sin abrir otra. Sin prueba con IA real.
+Aceptación del propietario en la DEMO: pendiente. Jury Production Freeze vigente.
+Sin push, PR, merge, tag, migración ni deploy; cambios de Promesa sin commit.
+
 ## 2026-10-06 · Objetivo estratégico y Arena de mercado: cierre
 
 Estado: RELEASE-READY FUERA DE PRODUCCIÓN.

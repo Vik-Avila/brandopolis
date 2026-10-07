@@ -313,7 +313,8 @@ body.app .public-nav {
   font-weight: 400;
 }
 
-@media (max-height: 860px) {
+/* ADR-0022: the seven-section journey keeps the principle visible on 900px-tall laptops. */
+@media (max-height: 940px) {
   .nav-principle {
     margin-top: 12px;
     padding-top: 10px;

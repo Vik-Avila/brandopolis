@@ -18,3 +18,5 @@ ACCEPTED: 0001 monolito modular, 0002 PostgreSQL, 0003 Drizzle, 0005 arquitectur
 - [ADR-0020 · Brando contextual por sección](ADR-0020.md)
 
 - [ADR-0021 · Objetivo estratégico y Arena de mercado en el recorrido](ADR-0021.md)
+
+- [ADR-0022 · Promesa de marca en el recorrido](ADR-0022.md)

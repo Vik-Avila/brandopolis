@@ -62,6 +62,9 @@ export const DEMO_STRATEGY=Object.freeze({
     Object.freeze({module:'Positioning',
       option:'La casa de café y cultura de Xalapa: donde el café de autor se vive con arte, música y comunidad',
       rationale:'Compite con cafeterías de especialidad por calidad y con espacios culturales por experiencia, pero no es exactamente ninguna de las dos. La posición se sostiene en la combinación, que es difícil de copiar sin la curaduría.'}),
+    Object.freeze({module:'Brand Promise',
+      option:'En CoffeePolis siempre encuentras un café de autor bien hecho y un lugar donde la cultura de Xalapa sucede cerca de ti',
+      rationale:'Promete lo que la marca ya puede cumplir todos los días: la calidad de la taza y la curaduría cultural. No promete exclusividad ni precios; su credibilidad depende de sostener ambos de forma constante.'}),
     Object.freeze({module:'Core Message',
       option:'Un café que se queda contigo',
       rationale:'Dice a la vez la calidad de la taza y la razón de volver: la experiencia que la acompaña. Es recordable y no promete nada que la marca no entregue.'})

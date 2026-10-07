@@ -108,8 +108,8 @@ test('navigation presents competitive research as preparation and keeps every it
     nodes.map(node => node.tagName === 'P' ? `[${node.textContent?.trim()}]` : node.textContent?.trim().replace(/\s+/g, ' ') ?? ''));
   expect(order.indexOf('[Preparación estratégica]')).toBeLessThan(order.indexOf('Entorno competitivo'));
   expect(order.indexOf('Entorno competitivo')).toBeLessThan(order.indexOf('[Estrategia]'));
-  // ADR-0021: six journey sections, Objetivo estratégico and Arena de mercado first.
-  await expect(page.locator('#journey [data-module]')).toHaveCount(6);
+  // ADR-0021/0022: seven journey sections, Objetivo and Arena first, Promesa before Mensaje.
+  await expect(page.locator('#journey [data-module]')).toHaveCount(7);
   for (const item of ['Qué necesita atención', 'Entorno competitivo', 'Contexto estratégico', 'Experimentos y aprendizajes', 'Mi aprendizaje', 'Mapa estratégico'])
     expect(order, item).toContain(item);
 
@@ -139,6 +139,16 @@ test('navigation presents competitive research as preparation and keeps every it
   await expect(page.locator('#practice')).toBeVisible();
   // And the page itself gains no horizontal overflow from the denser column.
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  // ADR-0022: with seven journey sections a 1440×900 laptop still shows the whole column, principle included.
+  if (fits.finePointer) {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const laptop = await page.locator('#journey').evaluate(nav => ({
+      scrolls: nav.scrollHeight > nav.clientHeight + 1,
+      principleInside: document.querySelector('.nav-principle')!.getBoundingClientRect().bottom <= nav.getBoundingClientRect().bottom + 1
+    }));
+    expect(laptop.scrolls, '1440×900 must not need sidebar scrolling').toBe(false);
+    expect(laptop.principleInside, 'the principle stays inside the column').toBe(true);
+  }
 });
 
 test('market context carries its own status and never joins the decision count', async ({ page }, testInfo) => {
@@ -149,7 +159,7 @@ test('market context carries its own status and never joins the decision count',
   await expect(market).toContainText('Contexto del mercado');
   await expect(market).toContainText('Sin investigar');
   await expect(market).toContainText('No cuenta como decisión');
-  await expect(page.locator('.context-count')).toContainText('0 de 6');
+  await expect(page.locator('.context-count')).toContainText('0 de 7');
 
   await navigate(page, 'Entorno competitivo');
   await page.locator('#run-competitive-research').click();
@@ -157,7 +167,7 @@ test('market context carries its own status and never joins the decision count',
   // Research done, review outstanding.
   await expect(market).toContainText('Pendiente de revisión');
   await expect(page.locator('.phase-handoff')).toHaveCount(0);
-  await expect(page.locator('.context-count')).toContainText('0 de 6');
+  await expect(page.locator('.context-count')).toContainText('0 de 7');
 
   // Resolve every candidate the way a participant does.
   let pending = await page.locator('[data-competitive-accept]').count();
@@ -170,7 +180,7 @@ test('market context carries its own status and never joins the decision count',
 
   await expect(market).toContainText('Revisado');
   // Research is preparation: incorporating findings must not decide anything.
-  await expect(page.locator('.context-count')).toContainText('0 de 6');
+  await expect(page.locator('.context-count')).toContainText('0 de 7');
 
   // The hand-off speaks the language of the workflow and points at the canonical next decision.
   await expect(page.locator('.phase-handoff')).toContainText(/contexto competitivo revisado/i);
@@ -197,7 +207,7 @@ test('the right panel ranks its sections and no static label reacts to hover', a
   const railText = (await rail.innerText()).toLowerCase();
   for (const label of ['contexto del mercado', 'entorno competitivo', 'lo que ya decidiste'])
     expect(railText, label).toContain(label);
-  await expect(page.locator('.context-count')).toContainText('0 de 6');
+  await expect(page.locator('.context-count')).toContainText('0 de 7');
 
   // Hierarchy: panel heading > section item > section label, with the status badge secondary and both
   // section labels sharing one treatment so they read as siblings.

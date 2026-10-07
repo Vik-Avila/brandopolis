@@ -1,0 +1,96 @@
+{
+  "version": "v3",
+  "status": "approved-by-owner-2026-10-06",
+  "source": "ADR-0021, ADR-0022",
+  "allowCycles": false,
+  "notes": "Each rule keeps its own ruleVersion: the six v1 rules stay v1 so existing edges are never duplicated. reviewOnFirstUpstreamVersion lets the first human version of the upstream decision request review of a downstream decision approved earlier; only the ADR-0021 rules carry it. ADR-0022 adds Brand Promise -> Core Message (HARD); Positioning -> Brand Promise and Positioning -> Core Message stay unchanged as v1 rules.",
+  "rules": [
+    {
+      "upstream": "Strategic Objective",
+      "downstream": "Market Arena",
+      "kind": "HARD",
+      "reason": "Market Arena must serve the strategic objective",
+      "ruleVersion": "v2",
+      "reviewOnFirstUpstreamVersion": true
+    },
+    {
+      "upstream": "Strategic Objective",
+      "downstream": "Value Mechanism",
+      "kind": "SOFT",
+      "reason": "Value Mechanism should contribute to the strategic objective",
+      "ruleVersion": "v2",
+      "reviewOnFirstUpstreamVersion": true
+    },
+    {
+      "upstream": "Market Arena",
+      "downstream": "Primary Customer",
+      "kind": "HARD",
+      "reason": "The primary customer is chosen within the market arena",
+      "ruleVersion": "v2",
+      "reviewOnFirstUpstreamVersion": true
+    },
+    {
+      "upstream": "Market Arena",
+      "downstream": "Positioning",
+      "kind": "SOFT",
+      "reason": "Positioning alternatives depend on the market arena",
+      "ruleVersion": "v2",
+      "reviewOnFirstUpstreamVersion": true
+    },
+    {
+      "upstream": "Primary Customer",
+      "downstream": "Positioning",
+      "kind": "HARD",
+      "reason": "Positioning targets a defined customer",
+      "ruleVersion": "v1"
+    },
+    {
+      "upstream": "Primary Customer",
+      "downstream": "Core Message",
+      "kind": "SOFT",
+      "reason": "Message may shift with audience",
+      "ruleVersion": "v1"
+    },
+    {
+      "upstream": "Value Mechanism",
+      "downstream": "Positioning",
+      "kind": "HARD",
+      "reason": "Positioning expresses value",
+      "ruleVersion": "v1"
+    },
+    {
+      "upstream": "Positioning",
+      "downstream": "Brand Promise",
+      "kind": "HARD",
+      "reason": "Promise expresses positioning",
+      "ruleVersion": "v1"
+    },
+    {
+      "upstream": "Positioning",
+      "downstream": "Core Message",
+      "kind": "HARD",
+      "reason": "Core Message must align with positioning",
+      "ruleVersion": "v1"
+    },
+    {
+      "upstream": "Brand Promise",
+      "downstream": "Core Message",
+      "kind": "HARD",
+      "reason": "Core Message must express the brand promise",
+      "ruleVersion": "v3",
+      "reviewOnFirstUpstreamVersion": true
+    },
+    {
+      "upstream": "Positioning",
+      "downstream": "GTM Priority",
+      "kind": "SOFT",
+      "reason": "Channel priority may change with positioning",
+      "ruleVersion": "v1"
+    }
+  ],
+  "dependencyTypes": [
+    "HARD",
+    "SOFT",
+    "INFORMATIVE"
+  ]
+}

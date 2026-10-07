@@ -22,3 +22,10 @@ Objective y Market Arena (Master Context §14–§15), desarrolladas **fuera de 
 ([ADR-0021](../14-decisions/ADR-0021.md)). No incluye Brand Promise, GTM Priority, Priority
 Experiment ni niveles B2–B5, no cambia proveedor, modelo, prompts ni datos enviados a la IA, y no
 autoriza migraciones ni operaciones de producción. La Jury Production Freeze sigue vigente.
+
+## Resolución humana · 2026-10-06 · Promesa de marca
+
+El propietario incorpora Brand Promise, **sólo fuera de producción** ([ADR-0022](../14-decisions/ADR-0022.md)):
+dependencia estricta Posicionamiento → Promesa → Mensaje, conservando Posicionamiento → Mensaje, sin
+revisiones duplicadas. GTM Priority y Priority Experiment siguen diferidos. Sin cambios de IA,
+migraciones ni operaciones de producción; la Jury Production Freeze sigue vigente.

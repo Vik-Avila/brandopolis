@@ -1262,6 +1262,16 @@ export class Engine {
     });
   }
   private reviewFingerprint(rows:{triggerVersionId:string;ruleVersion:string}[]) {return hash(JSON.stringify(rows.map(r=>[r.triggerVersionId,r.ruleVersion]).sort()));}
+  /**
+   * ADR-0022: a review receipt also binds the active versions of every connected upstream decision, so a
+   * change folded into a pending review (no duplicate ReviewItem) still forces the human to reopen it.
+   */
+  private async reviewState(tx:Transaction,s:Scope,decisionId:string,rows:{triggerVersionId:string;ruleVersion:string}[]) {
+    const incoming=await tx.select({version:t.decisions.activeVersionId}).from(t.dependencies)
+      .innerJoin(t.decisions,and(eq(t.decisions.id,t.dependencies.upstreamDecisionId),eq(t.decisions.workspaceId,t.dependencies.workspaceId),eq(t.decisions.brandId,t.dependencies.brandId)))
+      .where(and(inScope(t.dependencies,s),eq(t.dependencies.downstreamDecisionId,decisionId)));
+    return hash(JSON.stringify([this.reviewFingerprint(rows),incoming.map(r=>r.version??'').sort()]));
+  }
   async beginReview(token:string,brandId:string,decisionId:string) {
     await this.retryImpact(token,brandId);
     return this.db.transaction(async tx=>{
@@ -1270,7 +1280,7 @@ export class Engine {
       const [d]=await tx.select().from(t.decisions).where(and(inScope(t.decisions,s),eq(t.decisions.id,decisionId)));
       const rows=await this.openReviews(tx,s,decisionId);
       if(!d?.activeVersionId||!rows.length) throw new AppError('CONFLICT','No active review');
-      const receipt={id:id(),workspaceId:s.workspaceId,brandId,actorUserId:s.userId,decisionId,activeVersionId:d.activeVersionId,triggerFingerprint:this.reviewFingerprint(rows)};
+      const receipt={id:id(),workspaceId:s.workspaceId,brandId,actorUserId:s.userId,decisionId,activeVersionId:d.activeVersionId,triggerFingerprint:await this.reviewState(tx,s,decisionId,rows)};
       await tx.insert(t.reviewReceipts).values(receipt);
       await this.event(tx,s,'change_impact_review_started');
       return {reviewToken:receipt.id,decisionId,activeVersionId:d.activeVersionId,reviews:rows.map(reviewOutput)};
@@ -1332,7 +1342,7 @@ export class Engine {
       const open=await this.openReviews(tx,s,decision.id);
       if(open.length) {
         const [receipt]=reviewToken?await tx.select().from(t.reviewReceipts).where(and(inScope(t.reviewReceipts,s),eq(t.reviewReceipts.id,reviewToken),eq(t.reviewReceipts.actorUserId,s.userId),eq(t.reviewReceipts.decisionId,decision.id))):[];
-        if(!receipt||receipt.activeVersionId!==decision.activeVersionId||receipt.triggerFingerprint!==this.reviewFingerprint(open)) throw new AppError('CONFLICT','Review changed; reopen human review');
+        if(!receipt||receipt.activeVersionId!==decision.activeVersionId||receipt.triggerFingerprint!==await this.reviewState(tx,s,decision.id,open)) throw new AppError('CONFLICT','Review changed; reopen human review');
       }
       const [previous]=decision.activeVersionId?await tx.select().from(t.versions).where(and(inScope(t.versions,s),eq(t.versions.id,decision.activeVersionId))):[];
       if(previous) await tx.update(t.versions).set({versionStatus:'SUPERSEDED'}).where(and(inScope(t.versions,s),eq(t.versions.id,previous.id)));
@@ -1351,6 +1361,7 @@ export class Engine {
       const capabilityBehaviorByModule:Record<string,string>={
         'Strategic Objective':'Precisaste qué quieres construir o cambiar con tu marca y cómo reconocerás que avanzas.',
         'Market Arena':'Delimitaste dónde compite tu marca, frente a qué alternativas y con qué límites.',
+        'Brand Promise':'Definiste qué debe significar tu marca para tu cliente y qué puede esperar de ella.',
         'Primary Customer':'Identificaste y priorizaste el segmento de cliente que consideras más relevante para tu marca.',
         'Value Mechanism':'Relacionaste lo que ofreces con una necesidad concreta del cliente que quieres atender.',
         'Positioning':'Articulaste una diferencia que puede ayudarte a ser elegido frente a otras alternativas.',
@@ -1392,15 +1403,20 @@ export class Engine {
           const first=trigger.previousVersionId===null;
           const outgoing=first?await this.firstVersionEdges(tx,s,trigger.decisionId):await tx.select().from(t.dependencies).where(and(inScope(t.dependencies,s),eq(t.dependencies.upstreamDecisionId,trigger.decisionId)));
           const affected=[];
+          const allEdges=await tx.select().from(t.dependencies).where(inScope(t.dependencies,s));
           for(const dep of outgoing) {
             const status=dep.kind==='HARD'?'NEEDS_REVIEW':dep.kind==='SOFT'?'REVIEW_SUGGESTED':'INFORMATION_ONLY';
+            // ADR-0022: a pending review caused by a direct upstream of this trigger already covers the change that
+            // propagated through it (Positioning → Promise → Message with Positioning → Message). Only an equal or
+            // stronger pending review counts: a pending suggestion never hides a HARD review.
+            const pending=dep.kind==='INFORMATIVE'?[]:await tx.select({review:t.reviews,trigger:t.versions}).from(t.reviews).innerJoin(t.versions,and(eq(t.versions.id,t.reviews.triggerVersionId),eq(t.versions.workspaceId,t.reviews.workspaceId),eq(t.versions.brandId,t.reviews.brandId))).where(and(inScope(t.reviews,s),eq(t.reviews.downstreamDecisionId,dep.downstreamDecisionId),ne(t.reviews.status,'COMPLETED')));
+            const covered=pending.some(p=>p.review.triggerVersionId!==trigger.id&&(p.review.status==='OPEN'||dep.kind!=='HARD')&&allEdges.some(e=>e.upstreamDecisionId===p.trigger.decisionId&&e.downstreamDecisionId===trigger.decisionId));
             const reason=first?`${dep.reason}. Primera decisión humana registrada en una sección conectada, después de esta decisión. Revisa su coherencia; su contenido se conserva.`:`${dep.reason}. Cambio humano: versión ${trigger.sequence-1} → ${trigger.sequence}. Revisa la decisión dependiente; su contenido se conserva.`;
-            affected.push({downstreamDecisionId:dep.downstreamDecisionId,dependencyType:dep.kind,impactStatus:status,reason});
+            affected.push({downstreamDecisionId:dep.downstreamDecisionId,dependencyType:dep.kind,impactStatus:status,reason:covered?`${reason} Ya tiene una revisión pendiente por el cambio que originó éste; no se duplica.`:reason});
             if(dep.kind==='HARD') await tx.update(t.decisions).set({reviewStatus:'NEEDS_REVIEW'}).where(and(inScope(t.decisions,s),eq(t.decisions.id,dep.downstreamDecisionId)));
-            if(dep.kind!=='INFORMATIVE') await tx.insert(t.reviews).values({id:id(),workspaceId:s.workspaceId,brandId:s.brandId,triggerVersionId:trigger.id,downstreamDecisionId:dep.downstreamDecisionId,dependencyType:dep.kind,status:dep.kind==='HARD'?'OPEN':'REVIEW_SUGGESTED',reason,reviewedBy:null,ruleVersion:dep.ruleVersion}).onConflictDoNothing();
+            if(dep.kind!=='INFORMATIVE'&&!covered) await tx.insert(t.reviews).values({id:id(),workspaceId:s.workspaceId,brandId:s.brandId,triggerVersionId:trigger.id,downstreamDecisionId:dep.downstreamDecisionId,dependencyType:dep.kind,status:dep.kind==='HARD'?'OPEN':'REVIEW_SUGGESTED',reason,reviewedBy:null,ruleVersion:dep.ruleVersion}).onConflictDoNothing();
             await this.event(tx,s,'dependency_triggered','SYSTEM',hash(`${trigger.id}:${dep.id}`));
           }
-          const allEdges=await tx.select().from(t.dependencies).where(inScope(t.dependencies,s));
           const result={triggerVersionId:trigger.id,affectedDecisionIds:affected.map(a=>a.downstreamDecisionId),affected,reviewOrder:reviewOrder(affected,allEdges)};
           validate('impact-result',result);
           await tx.update(t.impacts).set({status:'COMPLETED',result,attempts:job.attempts+1}).where(and(inScope(t.impacts,s),eq(t.impacts.triggerVersionId,job.triggerVersionId)));

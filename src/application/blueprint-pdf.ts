@@ -25,6 +25,7 @@ const MODULE_LABELS: Record<string, string> = {
   'Primary Customer': 'Cliente principal',
   'Value Mechanism': 'Modelo de valor',
   Positioning: 'Posicionamiento',
+  'Brand Promise': 'Promesa de marca',
   'Core Message': 'Mensaje principal'
 };
 

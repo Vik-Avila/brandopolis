@@ -36,6 +36,7 @@ const examples:Record<string,[string,string]>={
   'Primary Customer':['Agencias con varias marcas','Equipos internos de marketing'],
   'Value Mechanism':['Suscripción por marca activa','Servicio de acompañamiento estratégico'],
   Positioning:['Continuidad de decisiones estratégicas','Acompañamiento para ordenar la estrategia'],
+  'Brand Promise':['Tu estrategia recuerda por qué decidiste lo que decidiste','Cada cambio estratégico llega con su impacto explicado'],
   'Core Message':['Decisiones conectadas, criterio compartido','Convierte tu estrategia en decisiones claras']
 };
 /** Deterministic fixture, never presented as live AI or market evidence. */
