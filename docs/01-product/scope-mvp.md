@@ -58,3 +58,9 @@ coherencia estratégica, tensiones, Change Impact 2.0 explicativo, memoria estra
 consciente de la evidencia, Brando como copiloto estratégico y los cuatro JTBD de experiencia (disclosures,
 reutilización del contexto de onboarding, paneles colapsables/Modo enfoque y Brando más visible). Phase 3+
 no iniciada; sin integración a `main` hasta la aprobación humana.
+
+## Cierre · 2026-10-07 · Phase 2 — Strategic Intelligence
+
+PHASE 2 — STRATEGIC INTELLIGENCE · STATUS: COMPLETE · OWNER ACCEPTED · RELEASE-READY OUTSIDE PRODUCTION
+([ADR-0025](../14-decisions/ADR-0025.md)). Smoke de Brando en vivo: NOT RUN, riesgo residual aceptado por el
+propietario. NEXT PHASE: PHASE 3 — VALIDATION & LEARNING ENGINE.
