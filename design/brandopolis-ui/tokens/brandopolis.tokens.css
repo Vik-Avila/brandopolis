@@ -33,5 +33,6 @@
   --evidence-bg:var(--bp-evidence-bg); --hypothesis-bg:var(--bp-hypothesis-bg);
   --bp-atmosphere-a:rgba(21,154,103,.10); --bp-atmosphere-b:rgba(201,174,130,.16); --bp-atmosphere-c:rgba(255,255,255,.62);
   --bp-emerald-wash:rgba(11,104,71,.08); --bp-gold-wash:rgba(201,174,130,.12); --bp-emerald-focus:rgba(11,104,71,.34); --bp-emerald-focus-soft:rgba(11,104,71,.10);
+  --bp-brando-emerald:#0E7A52; --bp-brando-emerald-soft:rgba(14,122,82,.10); --bp-brando-emerald-ring:rgba(14,122,82,.36);
   --bp-divider-gold:#8B6E3C; --bp-review-border:rgba(201,174,130,.72); --bp-error-border:rgba(142,52,52,.18); --bp-white-82:rgba(255,255,255,.82);
 }

@@ -24,3 +24,5 @@ ACCEPTED: 0001 monolito modular, 0002 PostgreSQL, 0003 Drizzle, 0005 arquitectur
 - [ADR-0023 · Prioridad de lanzamiento (GTM Priority) y línea del recorrido](ADR-0023.md)
 
 - [ADR-0024 · Experimento prioritario en el recorrido](ADR-0024.md)
+
+- [ADR-0025 · Strategic Intelligence y Focusable Intelligent Strategic Workspace](ADR-0025.md)

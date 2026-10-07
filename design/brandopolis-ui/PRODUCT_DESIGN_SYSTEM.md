@@ -154,3 +154,17 @@ de revisión conservan su marca «!». Tokens existentes; sin nuevos assets.
 Para conservar la columna completa sin scroll, la densidad compacta (puntero fino) y el principio compacto
 se aplican hasta 1040px de alto y las filas del recorrido miden 28px (mínimo WCAG 2.2 de 24px); táctil
 conserva 44px. Sin nuevos assets, tokens ni animaciones.
+
+## Focusable Intelligent Strategic Workspace · 2026-10-07
+
+[ADR-0025](../../docs/14-decisions/ADR-0025.md). Cuatro JTBD que no deben perderse:
+- **A · Disclosures:** todo `<summary>` es la fila clicable; píldora «Mostrar ▾ / Ocultar ▴» junto al título
+  (no un «+» aislado al borde), hover y foco visibles, texto de la píldora oculto a lectores de pantalla.
+- **B · Contexto de onboarding:** «Lo que ya sabemos de tu marca» (borde punteado champán) en Objetivo,
+  Arena y Posicionamiento cuando hay contexto declarado; siempre rotulado como punto de partida, no decisión.
+- **C · Paneles colapsables:** controles «Ocultar recorrido» (≥1280px) y «Ocultar Brando y memoria» (≥1001px)
+  al inicio de la columna central; ambos ocultos = «Modo enfoque»; señal «N por atender»; 44px en táctil.
+- **D · Brando visible:** token `--bp-brando-emerald` (#0E7A52) y variantes soft/ring, sólo en superficies
+  de Brando (tarjeta, entrada de atención, orientación por sección, botones de consulta). Esmeralda de marca intacto.
+- **Inteligencia estratégica:** sección sobria en «Qué necesita atención» con veredicto en palabras, orden de
+  revisión, tensiones con «por qué importa» y severidad con palabra (nunca sólo color).

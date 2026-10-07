@@ -26,6 +26,7 @@ import { brandPromiseCases } from './brand-promise-cases.js';
 import { gtmCases } from './gtm-cases.js';
 import { priorityExperimentCases } from './priority-experiment-cases.js';
 import { phase1ClosureCases } from './phase1-closure-cases.js';
+import { strategicIntelligenceCases } from './strategic-intelligence-cases.js';
 let local:Awaited<ReturnType<typeof startLocalDb>>,connection:ReturnType<typeof connect>,engine:Engine;
 brandoCases(()=>connection);
 pilotCases(()=>connection);
@@ -36,6 +37,7 @@ brandPromiseCases(()=>connection);
 gtmCases(()=>connection);
 priorityExperimentCases(()=>connection);
 phase1ClosureCases(()=>connection);
+strategicIntelligenceCases(()=>connection);
 beforeAll(async()=>{
   local=await startLocalDb(true);
   const name=`m1_${randomUUID().replaceAll('-','')}`;

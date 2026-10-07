@@ -52,3 +52,10 @@ See [ADR-0018](../14-decisions/ADR-0018.md). Human acceptance/modification route
 existing human commit of a new Decision version and normal dependency impact. Human rejection
 records criterion in Capability Context only. This adds no model authority, automatic cascade,
 automatic Learning acceptance or autonomous suggestion generation. Prompt v2 is plain es-MX.
+
+## Phase 2 · Strategic Intelligence · 2026-10-07
+
+Por decisión del propietario (brief de la Iteración 2), Brando evoluciona a copiloto estratégico (nivel B2)
+dentro de los mismos límites de autoridad: [ADR-0025](../14-decisions/ADR-0025.md). La inteligencia
+transversal (coherencia, tensiones, orden de revisión, memoria y soporte de evidencia) es una proyección
+determinista del estado de la marca; Brando la explica sólo a petición explícita. B3–B5 siguen sin autorizar.

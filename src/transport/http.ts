@@ -334,7 +334,11 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(pilot&&path==='/api/feedback')return send(res,201,await pilot.feedback(token,input));
         if(pilot&&path==='/api/participant')return send(res,201,await pilot.saveParticipantProfile!(token,input));
         if(pilot&&path==='/api/admin/access-status')return send(res,200,await pilot.adminSetAccessStatus!(token,string(input.userId),string(input.status) as never));
-        if(pilot&&path==='/api/brands/geography')return send(res,200,await pilot.setBrandGeography!(token,string(input.brandId),string(input.geographicInfluence) as never,input.primaryMarket==null?null:string(input.primaryMarket)));
+        // Declared geography (ADR-0025): PILOT keeps its own live-session gate; both modes write through the engine scope.
+        if(path==='/api/brands/geography'){
+          const brandIdInput=string(input.brandId),influence=string(input.geographicInfluence) as never,market=input.primaryMarket==null?null:string(input.primaryMarket);
+          return send(res,200,pilot?await pilot.setBrandGeography!(token,brandIdInput,influence,market):await engine.setBrandGeography(token,brandIdInput,influence,market));
+        }
         if(path==='/api/brands') return send(res,201,await engine.createBrand(token,string(input.name),input.initialContext===undefined?undefined:string(input.initialContext)));
         if(path==='/api/context/capture') return send(res,201,await engine.captureContext(
           token,

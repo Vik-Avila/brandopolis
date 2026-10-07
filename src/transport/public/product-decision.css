@@ -333,18 +333,48 @@ summary {
   padding: 8px 0px;
 }
 
+/* Disclosure pattern (ADR-0025 UX JTBD A): the whole summary row is the control, and a word + chevron sits
+   right next to the title instead of an isolated "+" at the far edge. The pill text is hidden from assistive
+   technology because <details>/<summary> already announces the expanded state. Components with their own
+   marker (for example .competitive-finding-sources) keep it through a more specific rule. */
+summary {
+  border-radius: 8px;
+  transition: background-color var(--bp-motion-normal) var(--bp-ease), color var(--bp-motion-normal) var(--bp-ease);
+}
+
+summary:hover {
+  color: var(--bp-brand-emerald-deep);
+  background: rgba(7, 61, 45, 0.04);
+}
+
+summary:focus-visible {
+  outline: 2px solid var(--bp-brand-emerald);
+  outline-offset: 2px;
+}
+
 summary::after {
-  content: "＋";
-  content: "＋" / "";
-  margin-left: auto;
-  font-size: 16px;
-  font-weight: 400;
-  color: rgb(115, 121, 110);
+  content: "Mostrar ▾";
+  content: "Mostrar ▾" / "";
+  flex: 0 0 auto;
+  margin-left: 4px;
+  padding: 2px 9px;
+  border: 1px solid rgba(7, 61, 45, 0.22);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.5;
+  color: var(--bp-brand-emerald-deep);
+  background: rgba(255, 255, 255, 0.7);
 }
 
 details[open] > summary::after {
-  content: "−";
-  content: "−" / "";
+  content: "Ocultar ▴";
+  content: "Ocultar ▴" / "";
+}
+
+summary:hover::after {
+  border-color: var(--bp-brand-emerald);
 }
 
 .knowledge-grid .hypothesis-panel {

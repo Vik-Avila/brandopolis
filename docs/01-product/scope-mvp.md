@@ -50,3 +50,17 @@ Value Mechanism, Positioning, Brand Promise, Core Message, GTM Priority, Priorit
 implementadas con autoridad humana, versiones, historial, dependencias, Change Impact y Brando B1
 ([ADR-0021](../14-decisions/ADR-0021.md)–[ADR-0024](../14-decisions/ADR-0024.md)). Signals y Learning siguen como
 capacidades base existentes. NEXT PHASE: PHASE 2 — STRATEGIC INTELLIGENCE · STATUS: NOT STARTED.
+
+## Resolución · 2026-10-07 · Phase 2 — Strategic Intelligence
+
+El propietario autoriza la macrofase 2 de 6 fuera de producción ([ADR-0025](../14-decisions/ADR-0025.md)):
+coherencia estratégica, tensiones, Change Impact 2.0 explicativo, memoria estratégica 2.0, inteligencia
+consciente de la evidencia, Brando como copiloto estratégico y los cuatro JTBD de experiencia (disclosures,
+reutilización del contexto de onboarding, paneles colapsables/Modo enfoque y Brando más visible). Phase 3+
+no iniciada; sin integración a `main` hasta la aprobación humana.
+
+## Cierre · 2026-10-07 · Phase 2 — Strategic Intelligence
+
+PHASE 2 — STRATEGIC INTELLIGENCE · STATUS: COMPLETE · OWNER ACCEPTED · RELEASE-READY OUTSIDE PRODUCTION
+([ADR-0025](../14-decisions/ADR-0025.md)). Smoke de Brando en vivo: NOT RUN, riesgo residual aceptado por el
+propietario. NEXT PHASE: PHASE 3 — VALIDATION & LEARNING ENGINE.

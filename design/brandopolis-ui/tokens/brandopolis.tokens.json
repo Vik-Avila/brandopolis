@@ -201,6 +201,12 @@
     "content": {
       "evidenceBg": "{primitive.color.content.evidence}",
       "hypothesisBg": "{primitive.color.content.hypothesis}"
+    },
+    "brando": {
+      "emerald": "#0E7A52",
+      "emeraldSoft": "rgba(14,122,82,.10)",
+      "emeraldRing": "rgba(14,122,82,.36)",
+      "usage": "Functional color of Brando (Brandopolis Intelligence) only; AA 5.35:1 on white, 4.83:1 on ivory. Do not recolor the product. ADR-0025."
     }
   }
 }

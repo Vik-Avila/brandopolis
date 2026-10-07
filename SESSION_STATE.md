@@ -1,3 +1,38 @@
+## 2026-10-07 · PHASE 2 — STRATEGIC INTELLIGENCE · COMPLETE
+
+PHASE 2 — STRATEGIC INTELLIGENCE · STATUS: COMPLETE · OWNER ACCEPTED · RELEASE-READY OUTSIDE PRODUCTION.
+Aprobación humana del propietario (2026-10-07): «todo está validado vamos con la fase 3 completa».
+Commit final de la candidata: 37723e10460a6b1c507f9d4350e27eefd6d46d2c (PR #8), integrado a `main` con merge
+commit junto con este registro de cierre. Pruebas registradas en la entrada anterior (pnpm test 301/301,
+E2E 108 + 2 SKIP intencionales, Brando browser 42/42, visual 10 + 1 SKIP, PILOT 10/10, Foundation 0 errores).
+LIVE BRANDO SMOKE: NOT RUN · OWNER ACCEPTED RESIDUAL VALIDATION GAP. La aceptación elimina el bloqueo de
+integración; no convierte la prueba no ejecutada en PASS. Producción sin cambios; Jury Production Freeze vigente.
+Siguiente: PHASE 3 — VALIDATION & LEARNING ENGINE.
+
+## 2026-10-07 · PHASE 2 — STRATEGIC INTELLIGENCE · candidato
+
+PHASE 2 — STRATEGIC INTELLIGENCE · IMPLEMENTATION COMPLETE · AUTOMATED VALIDATION COMPLETE ·
+HUMAN REVIEW PENDING · BLOCKED FOR HUMAN SMOKE (contrato de IA v5 cambiado; smoke en vivo NOT RUN, sin
+credencial en el entorno del agente). Rama feat/phase2-strategic-intelligence desde main dbce050. Sin merge.
+
+Implementado ([ADR-0025](docs/14-decisions/ADR-0025.md)): proyección determinista de Strategic Intelligence
+(coherencia con evaluador separado de severidad, tensiones auditables, Change Impact 2.0 explicativo, memoria
+estratégica 2.0, soporte de evidencia sin probabilidades); geografía declarada en DEMO y PILOT vía motor con
+scope y auditoría; contexto de onboarding visible en Objetivo/Arena/Posicionamiento sin prellenar decisiones;
+Brando copiloto estratégico (prompt v5, paquete con contexto declarado e issues etiquetados); superficie
+«Inteligencia estratégica» en «Qué necesita atención» que sustituye la lista duplicada de revisiones; Mapa y
+PDF con coherencia; patrón global de disclosures; paneles colapsables y Modo enfoque; token
+--bp-brando-emerald. Sin migración ni cambios de proveedor/modelo; Phase 3 no iniciada.
+
+Gates (salida real, servidor DEMO aislado en 3001): typecheck PASS; lint PASS; pnpm test 14 archivos /
+301 PASS; skills:check PASS; Brando browser 42/42 PASS; test:e2e 108 PASS + 2 SKIP intencionales (paneles en
+tablet/móvil usan drawer) tras corregir una duplicación de botones detectada en la primera pasada (103 PASS,
+5 FAIL); test:visual 10 PASS + 1 SKIP preexistente; test:pilot:e2e 10/10 PASS; Foundation 251 / 73 / 24 /
+15 / 13 / 0 errores PASS; UI validator PASS; brand validator PASS; git diff --check PASS. Evals
+strategic-intelligence A–H PASS (deterministas). Revisión de seguridad: sin BLOCKER/HIGH/MEDIUM.
+11 capturas del espacio de trabajo y hashes actualizados (superficie de inteligencia, controles de panel,
+disclosures y Brando). Smoke Anthropic: NOT RUN. Producción sin cambios; Jury Production Freeze vigente.
+
 ## 2026-10-07 · PHASE 1 COMPLETE — Strategic Core + Brando Foundation
 
 PHASE 1 — STRATEGIC CORE + BRANDO FOUNDATION · STATUS: COMPLETE ·

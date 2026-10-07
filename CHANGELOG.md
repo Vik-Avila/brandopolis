@@ -1,3 +1,15 @@
+## 2026-10-07 · Phase 2 — Strategic Intelligence: COMPLETE
+
+- Aceptada por el propietario; release-ready fuera de producción. Smoke de Brando en vivo: NOT RUN (riesgo aceptado).
+- Sin deploy; Jury Production Freeze vigente.
+
+## 2026-10-07 · Phase 2 — Strategic Intelligence (candidato, revisión humana pendiente)
+
+- ADR-0025: coherencia, tensiones, Change Impact 2.0, memoria 2.0 y soporte de evidencia como proyección determinista.
+- Brando copiloto estratégico (prompt v5) con contexto declarado e issues; consulta sólo explícita.
+- UX: disclosures visibles, contexto de onboarding en Arena, paneles colapsables/Modo enfoque, Brando esmeralda.
+- Gates automáticos en verde; smoke de IA en vivo pendiente (BLOCKED FOR HUMAN SMOKE). Sin merge ni deploy.
+
 ## 2026-10-07 · Phase 1 — Strategic Core + Brando Foundation: COMPLETE
 
 - Experimento prioritario (ADR-0024) y dependencia GTM → Experimento prioritario (sugerida).
