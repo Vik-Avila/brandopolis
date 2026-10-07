@@ -38,7 +38,8 @@ const examples:Record<string,[string,string]>={
   Positioning:['Continuidad de decisiones estratégicas','Acompañamiento para ordenar la estrategia'],
   'Brand Promise':['Tu estrategia recuerda por qué decidiste lo que decidiste','Cada cambio estratégico llega con su impacto explicado'],
   'Core Message':['Decisiones conectadas, criterio compartido','Convierte tu estrategia en decisiones claras'],
-  'GTM Priority':['Alianzas con dos asociaciones de agencias antes de abrir otros canales','Contenido educativo en LinkedIn para estrategas de agencias']
+  'GTM Priority':['Alianzas con dos asociaciones de agencias antes de abrir otros canales','Contenido educativo en LinkedIn para estrategas de agencias'],
+  'Priority Experiment':['Validar si las agencias pagarían por conservar el porqué de sus decisiones','Validar si los equipos vuelven a consultar su historial de decisiones cada semana']
 };
 /** Deterministic fixture, never presented as live AI or market evidence. */
 export class DemoProvider implements ModelProvider {

@@ -1363,6 +1363,7 @@ export class Engine {
         'Market Arena':'Delimitaste dónde compite tu marca, frente a qué alternativas y con qué límites.',
         'Brand Promise':'Definiste qué debe significar tu marca para tu cliente y qué puede esperar de ella.',
         'GTM Priority':'Elegiste dónde concentrar primero tus recursos para llegar a tu cliente y qué dejas para después.',
+        'Priority Experiment':'Elegiste qué supuesto crítico validar primero y qué señal te diría si se sostiene.',
         'Primary Customer':'Identificaste y priorizaste el segmento de cliente que consideras más relevante para tu marca.',
         'Value Mechanism':'Relacionaste lo que ofreces con una necesidad concreta del cliente que quieres atender.',
         'Positioning':'Articulaste una diferencia que puede ayudarte a ser elegido frente a otras alternativas.',

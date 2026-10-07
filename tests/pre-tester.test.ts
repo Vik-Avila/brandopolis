@@ -273,9 +273,9 @@ describe('production verification hotfix', () => {
     // Research informs the four decisions, so it sits above them.
     expect(nav.indexOf('Preparación estratégica')).toBeLessThan(nav.indexOf('id="competitive-context"'));
     expect(nav.indexOf('id="competitive-context"')).toBeLessThan(nav.indexOf('>Estrategia<'));
-    // It is NOT a decision: no number, no data-module. The Decision Spine has exactly the eight journey
-    // sections (ADR-0021 Objetivo and Arena first; ADR-0022 Promesa before Mensaje; ADR-0023 GTM last), in canonical order.
-    expect([...nav.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(['Strategic Objective', 'Market Arena', 'Primary Customer', 'Value Mechanism', 'Positioning', 'Brand Promise', 'Core Message', 'GTM Priority']);
+    // It is NOT a decision: no number, no data-module. The Decision Spine has exactly the nine journey
+    // sections (ADR-0021 Objetivo and Arena first; ADR-0022 Promesa before Mensaje; ADR-0023 GTM; ADR-0024 Experimento last), in canonical order.
+    expect([...nav.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(['Strategic Objective', 'Market Arena', 'Primary Customer', 'Value Mechanism', 'Positioning', 'Brand Promise', 'Core Message', 'GTM Priority', 'Priority Experiment']);
     const competitive = nav.slice(nav.indexOf('id="competitive-context"'), nav.indexOf('</button>', nav.indexOf('id="competitive-context"')));
     expect(competitive).not.toMatch(/<span>\d/);
     expect(competitive).not.toContain('data-module');

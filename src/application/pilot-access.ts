@@ -70,7 +70,10 @@ export const DEMO_STRATEGY=Object.freeze({
       rationale:'Dice a la vez la calidad de la taza y la razón de volver: la experiencia que la acompaña. Es recordable y no promete nada que la marca no entregue.'}),
     Object.freeze({module:'GTM Priority',
       option:'Primero, eventos de comunidad en el propio local y alianzas con dos colectivos culturales de Xalapa; las redes sociales sólo acompañan esos eventos y por ahora no hay delivery ni otras ciudades',
-      rationale:'El valor de CoffeePolis se entiende viviéndolo, así que concentrar recursos en traer gente al local permite comprobar si regresan. Abrir más canales antes de validar la recurrencia dispersaría el equipo.'})
+      rationale:'El valor de CoffeePolis se entiende viviéndolo, así que concentrar recursos en traer gente al local permite comprobar si regresan. Abrir más canales antes de validar la recurrencia dispersaría el equipo.'}),
+    Object.freeze({module:'Priority Experiment',
+      option:'Validar primero si las Coffee Raves mensuales hacen que quien asiste regrese entre semana: contar durante un mes las visitas recurrentes de asistentes',
+      rationale:'Toda la estrategia supone que la experiencia cultural genera recurrencia. Es el supuesto más riesgoso y aún no está validado; si no se sostiene, cambian el posicionamiento y el modelo de valor.'})
   ]),
   hypothesis:'Hipótesis demo: si las Coffee Raves se sostienen una vez al mes, la visita entre semana crecerá porque quien viene al evento regresa a trabajar o a conversar. Sin validar.',
   userInput:'Aporte demo del Estratega de Marca: la escena cultural de Xalapa es fuerte y está dispersa; no existe un lugar que sea a la vez café de autor y punto de encuentro cultural estable.'

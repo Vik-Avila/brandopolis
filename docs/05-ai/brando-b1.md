@@ -202,3 +202,9 @@ se guarda ni aprueba sin confirmación humana. Sin cambios de proveedor, modelo,
 orientación advierte que una propuesta puede ser provisional si Cliente, Modelo de valor,
 Posicionamiento o Mensaje están en revisión (Activation Analysis). Sin cambios de proveedor, modelo,
 prompts, schema ni datos enviados; consultar nunca guarda ni aprueba estrategia.
+
+## Experimento prioritario · 2026-10-06
+
+[ADR-0024](../14-decisions/ADR-0024.md) reutiliza la orientación local y la consulta explícita. La orientación
+cuenta hipótesis sin validar y supuestos en uso, y remite la ejecución al ciclo Experiment → Signal →
+Learning con revisión humana. Sin cambios de proveedor, modelo, prompts, schema ni datos enviados.

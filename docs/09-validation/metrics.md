@@ -22,3 +22,6 @@ cambio, periodos anteriores no directamente comparables y sin recálculo histór
 
 Con [ADR-0023](../14-decisions/ADR-0023.md) las marcas nuevas tienen ocho secciones. Misma regla: fórmulas sin
 cambio, periodos anteriores no directamente comparables y sin recálculo histórico.
+
+Con [ADR-0024](../14-decisions/ADR-0024.md) las marcas nuevas tienen nueve secciones. Misma regla: fórmulas sin
+cambio, periodos anteriores no directamente comparables y sin recálculo histórico.

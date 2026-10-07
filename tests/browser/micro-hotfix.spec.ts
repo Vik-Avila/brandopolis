@@ -108,8 +108,8 @@ test('navigation presents competitive research as preparation and keeps every it
     nodes.map(node => node.tagName === 'P' ? `[${node.textContent?.trim()}]` : node.textContent?.trim().replace(/\s+/g, ' ') ?? ''));
   expect(order.indexOf('[Preparación estratégica]')).toBeLessThan(order.indexOf('Entorno competitivo'));
   expect(order.indexOf('Entorno competitivo')).toBeLessThan(order.indexOf('[Estrategia]'));
-  // ADR-0021..0023: eight journey sections, Objetivo and Arena first, Promesa before Mensaje, GTM last.
-  await expect(page.locator('#journey [data-module]')).toHaveCount(8);
+  // ADR-0021..0024: nine journey sections, Objetivo and Arena first, Experimento prioritario last.
+  await expect(page.locator('#journey [data-module]')).toHaveCount(9);
   for (const item of ['Qué necesita atención', 'Entorno competitivo', 'Contexto estratégico', 'Experimentos y aprendizajes', 'Mi aprendizaje', 'Mapa estratégico'])
     expect(order, item).toContain(item);
 
@@ -159,7 +159,7 @@ test('market context carries its own status and never joins the decision count',
   await expect(market).toContainText('Contexto del mercado');
   await expect(market).toContainText('Sin investigar');
   await expect(market).toContainText('No cuenta como decisión');
-  await expect(page.locator('.context-count')).toContainText('0 de 8');
+  await expect(page.locator('.context-count')).toContainText('0 de 9');
 
   await navigate(page, 'Entorno competitivo');
   await page.locator('#run-competitive-research').click();
@@ -167,7 +167,7 @@ test('market context carries its own status and never joins the decision count',
   // Research done, review outstanding.
   await expect(market).toContainText('Pendiente de revisión');
   await expect(page.locator('.phase-handoff')).toHaveCount(0);
-  await expect(page.locator('.context-count')).toContainText('0 de 8');
+  await expect(page.locator('.context-count')).toContainText('0 de 9');
 
   // Resolve every candidate the way a participant does.
   let pending = await page.locator('[data-competitive-accept]').count();
@@ -180,7 +180,7 @@ test('market context carries its own status and never joins the decision count',
 
   await expect(market).toContainText('Revisado');
   // Research is preparation: incorporating findings must not decide anything.
-  await expect(page.locator('.context-count')).toContainText('0 de 8');
+  await expect(page.locator('.context-count')).toContainText('0 de 9');
 
   // The hand-off speaks the language of the workflow and points at the canonical next decision.
   await expect(page.locator('.phase-handoff')).toContainText(/contexto competitivo revisado/i);
@@ -207,7 +207,7 @@ test('the right panel ranks its sections and no static label reacts to hover', a
   const railText = (await rail.innerText()).toLowerCase();
   for (const label of ['contexto del mercado', 'entorno competitivo', 'lo que ya decidiste'])
     expect(railText, label).toContain(label);
-  await expect(page.locator('.context-count')).toContainText('0 de 8');
+  await expect(page.locator('.context-count')).toContainText('0 de 9');
 
   // Hierarchy: panel heading > section item > section label, with the status badge secondary and both
   // section labels sharing one treatment so they read as siblings.

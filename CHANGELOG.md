@@ -1,3 +1,22 @@
+## 2026-10-07 · Phase 1 — Strategic Core + Brando Foundation: COMPLETE
+
+- Experimento prioritario (ADR-0024) y dependencia GTM → Experimento prioritario (sugerida).
+- Decision Spine de nueve decisiones implementada con autoridad humana, versiones, Change Impact y Brando B1.
+- Auditoría de cierre con pruebas transversales nuevas; todos los gates en verde.
+- RELEASE-READY OUTSIDE PRODUCTION. Sin deploy; Jury Production Freeze vigente. Phase 2 no iniciada.
+
+## 2026-10-07 · Experimento prioritario: dependencia desde GTM
+
+- GTM → Experimento prioritario, sugerida (opción A aprobada), en dependencies v5.
+- Pruebas: sugerencia sin reescritura ni duplicados, historial intacto. Sin commit ni deploy.
+
+## 2026-10-06 · Experimento prioritario (candidato, fuera de producción)
+
+- ADR-0024: novena decisión versionada que elige qué supuesto validar primero; ejecución con el ciclo existente.
+- Orientación con hipótesis sin validar y supuestos en uso; aprendizaje siempre revisado por personas.
+- Menú de nueve fases sin scroll en portátiles; 11 capturas actualizadas.
+- Gates del agente en verde. Pendiente aceptación en DEMO y decisión sobre dependencias. Sin commit ni deploy.
+
 ## 2026-10-06 · Prioridad de lanzamiento (GTM): cierre
 
 - Mensaje principal → Prioridad de lanzamiento (sugerida) aprobada e incorporada (dependencies v4).

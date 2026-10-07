@@ -37,3 +37,6 @@ exige reabrir la revisión con el contexto vigente ([ADR-0022](../14-decisions/A
 
 `config/dependencies/v4.json` es la configuración activa desde [ADR-0023](../14-decisions/ADR-0023.md): añade
 Core Message → GTM Priority (SOFT, primera versión revisable) y conserva Positioning → GTM Priority (SOFT).
+
+`config/dependencies/v5.json` es la configuración activa desde [ADR-0024](../14-decisions/ADR-0024.md): añade
+GTM Priority → Priority Experiment (SOFT, primera versión revisable). Las versiones anteriores se conservan.

@@ -369,13 +369,13 @@ export function pilotCases(connection:()=>ReturnType<typeof connect>){
    // A fresh sandbox is empty until the content runs: that is the production defect being fixed.
    expect((await engine.context(session.token,demo.id)).versions).toHaveLength(0);
    const seeded=await access.ensureDemoContent(session.token);
-   expect(seeded?.decisions).toBe(8);
+   expect(seeded?.decisions).toBe(9);
 
-   // All eight journey decisions are approved, so the Blueprint has something to show (ADR-0021..0023).
+   // All nine journey decisions are approved, so the Blueprint has something to show (ADR-0021..0024).
    const filled=await engine.context(session.token,demo.id);
-   expect(filled.versions).toHaveLength(8);
+   expect(filled.versions).toHaveLength(9);
    const modules=filled.questions.filter((q:{id:string})=>filled.decisions.some((d:{questionId:string;activeVersionId:string|null})=>d.questionId===q.id&&d.activeVersionId)).map((q:{module:string})=>q.module);
-   expect(new Set(modules)).toEqual(new Set(['Strategic Objective','Market Arena','Primary Customer','Value Mechanism','Positioning','Brand Promise','Core Message','GTM Priority']));
+   expect(new Set(modules)).toEqual(new Set(['Strategic Objective','Market Arena','Primary Customer','Value Mechanism','Positioning','Brand Promise','Core Message','GTM Priority','Priority Experiment']));
    // Seeded upstream first, so no connected decision predates its upstream: nothing asks for review.
    expect(filled.reviews).toHaveLength(0);
    expect(filled.decisions.every((d:{reviewStatus:string})=>d.reviewStatus==='APPROVED')).toBe(true);
@@ -389,7 +389,7 @@ export function pilotCases(connection:()=>ReturnType<typeof connect>){
    expect(await access.ensureDemoContent(session.token)).toBeNull();
    expect(await access.ensureDemoContent(session.token)).toBeNull();
    const again=await engine.context(session.token,demo.id);
-   expect(again.versions).toHaveLength(8);
+   expect(again.versions).toHaveLength(9);
    expect(again.hypotheses.length).toBe(filled.hypotheses.length);
    expect(again.userInputs.length).toBe(filled.userInputs.length);
 
@@ -401,7 +401,7 @@ export function pilotCases(connection:()=>ReturnType<typeof connect>){
    expect(metrics.timeToFirstDecisionSeconds).toBeNull();
    expect(metrics.timeToFirstInsightSeconds).toBeNull();
    expect(metrics.secondHighValueEvent14d).toBe(false);
-   expect(metrics.demoDecisions).toBeGreaterThanOrEqual(8);
+   expect(metrics.demoDecisions).toBeGreaterThanOrEqual(9);
   });
 
   it('upgrades an older empty demo but never touches one the participant has worked in',async()=>{
@@ -414,15 +414,15 @@ export function pilotCases(connection:()=>ReturnType<typeof connect>){
    const olderSession=await access.issueSession(older.subject);
    const olderDemo=(await access.ensureDemoBrand(olderSession.token))!;
    expect((await engine.context(olderSession.token,olderDemo.id)).versions).toHaveLength(0);
-   expect((await access.ensureDemoContent(olderSession.token))?.decisions).toBe(8);
-   expect((await engine.context(olderSession.token,olderDemo.id)).versions).toHaveLength(8);
+   expect((await access.ensureDemoContent(olderSession.token))?.decisions).toBe(9);
+   expect((await engine.context(olderSession.token,olderDemo.id)).versions).toHaveLength(9);
 
    // A sandbox created before ADR-0021 (four sections) is seeded with what it has; sections are never added here.
    const preAdr={subject:`preadr-${run}`,email:`preadr.${run}@example.test`,emailVerified:true};
    await access.recognise(preAdr,true);
    const preAdrSession=await access.issueSession(preAdr.subject);
    const preAdrDemo=(await access.ensureDemoBrand(preAdrSession.token))!;
-   await db.delete(t.questions).where(and(eq(t.questions.brandId,preAdrDemo.id),inArray(t.questions.module,['Strategic Objective','Market Arena','Brand Promise','GTM Priority'])));
+   await db.delete(t.questions).where(and(eq(t.questions.brandId,preAdrDemo.id),inArray(t.questions.module,['Strategic Objective','Market Arena','Brand Promise','GTM Priority','Priority Experiment'])));
    expect((await access.ensureDemoContent(preAdrSession.token))?.decisions).toBe(4);
    const preAdrContext=await engine.context(preAdrSession.token,preAdrDemo.id);
    expect(preAdrContext.questions.map((q:{module:string})=>q.module)).toEqual(['Primary Customer','Value Mechanism','Positioning','Core Message']);

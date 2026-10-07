@@ -147,3 +147,10 @@ borde y número esmeralda. Fase actual: tarjeta elevada existente y nodo esmeral
 fase sugerida: nodo champán con doble anillo, pulso finito de 3 ciclos (2,4s) y el texto «Siguiente
 decisión sugerida» en `title`/`aria-description`; `prefers-reduced-motion` elimina el pulso. Los estados
 de revisión conservan su marca «!». Tokens existentes; sin nuevos assets.
+
+## Experimento prioritario · 2026-10-06
+
+[ADR-0024](../../docs/14-decisions/ADR-0024.md): «Estrategia» numera nueve secciones (09 Experimento prioritario).
+Para conservar la columna completa sin scroll, la densidad compacta (puntero fino) y el principio compacto
+se aplican hasta 1040px de alto y las filas del recorrido miden 28px (mínimo WCAG 2.2 de 24px); táctil
+conserva 44px. Sin nuevos assets, tokens ni animaciones.

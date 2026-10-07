@@ -27,7 +27,8 @@ const MODULE_LABELS: Record<string, string> = {
   Positioning: 'Posicionamiento',
   'Brand Promise': 'Promesa de marca',
   'Core Message': 'Mensaje principal',
-  'GTM Priority': 'Prioridad de lanzamiento'
+  'GTM Priority': 'Prioridad de lanzamiento',
+  'Priority Experiment': 'Experimento prioritario'
 };
 
 const DEPENDENCY_LABELS: Record<string, string> = {

@@ -21,8 +21,8 @@ export function validate(name: string, value: unknown): void {
 }
 export function states(name: string, property: string): [string,...string[]] { return schema(name).properties[property].enum; }
 export interface DependencyRule {upstream:string; downstream:string; kind:string; reason:string; ruleVersion:string; reviewOnFirstUpstreamVersion?:boolean}
-export const rules: { version: string; rules: DependencyRule[] } = JSON.parse(readFileSync(new URL('../../config/dependencies/v4.json',import.meta.url),'utf8'));
-/** Only rules that declare it let a first upstream version request review of an earlier downstream decision (ADR-0021, ADR-0022, ADR-0023). */
+export const rules: { version: string; rules: DependencyRule[] } = JSON.parse(readFileSync(new URL('../../config/dependencies/v5.json',import.meta.url),'utf8'));
+/** Only rules that declare it let a first upstream version request review of an earlier downstream decision (ADR-0021..ADR-0024). */
 export function reviewsOnFirstUpstreamVersion(upstream:string,downstream:string) {
   return rules.rules.some(r=>r.upstream===upstream&&r.downstream===downstream&&r.reviewOnFirstUpstreamVersion===true);
 }

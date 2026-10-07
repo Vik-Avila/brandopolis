@@ -35,15 +35,15 @@ export function gtmCases(connection:()=>ReturnType<typeof connect>){
   return {db,engine,who,brand,ctx,decisionOf,commit,openFor,active,strategy};
  };
 
- it('ADR-0023: GTM is the last journey section, with SOFT edges from Positioning and Core Message',()=>{
-  expect(journey.map(m=>m.primaryDecision).at(-1)).toBe('GTM Priority');
+ it('ADR-0023: GTM precedes Priority Experiment, with SOFT edges from Positioning and Core Message',()=>{
+  expect(journey.map(m=>m.primaryDecision).slice(-2)).toEqual(['GTM Priority','Priority Experiment']);
   expect(rules.rules.filter(r=>r.downstream==='GTM Priority').map(r=>[r.upstream,r.kind,r.ruleVersion])).toEqual([['Positioning','SOFT','v1'],['Core Message','SOFT','v4']]);
-  expect(rules.rules.some(r=>r.upstream==='GTM Priority'),'no downstream edge before Priority Experiment exists').toBe(false);
+  expect(rules.rules.filter(r=>r.upstream==='GTM Priority').map(r=>[r.downstream,r.kind]),'only the approved SOFT edge to Priority Experiment (ADR-0024)').toEqual([['Priority Experiment','SOFT']]);
   expect(learningMoments['GTM Priority'].capability).toBe('GTM Prioritization');
  });
 
- it('ADR-0023: a new brand has eight sections with GTM last; an existing brand adds it only explicitly',async()=>{
-  expect((await (await setup()).ctx()).questions.map(q=>q.module).slice(-2)).toEqual(['Core Message','GTM Priority']);
+ it('ADR-0023: a new brand has GTM after Core Message; an existing brand adds it only explicitly',async()=>{
+  expect((await (await setup()).ctx()).questions.map(q=>q.module).slice(-3)).toEqual(['Core Message','GTM Priority','Priority Experiment']);
   const {engine,who,brand,ctx,commit,strategy}=await setup(true);
   await commit('Primary Customer','Agencias pequeñas');
   await commit('Positioning','Continuidad estratégica');
@@ -51,7 +51,8 @@ export function gtmCases(connection:()=>ReturnType<typeof connect>){
   await ctx();
   expect((await ctx()).questions.some(q=>q.module==='GTM Priority'),'reading context never adds sections').toBe(false);
   expect(await engine.addStrategicSections(who.token,brand.id)).toEqual({brandId:brand.id,added:['GTM Priority']});
-  expect((await ctx()).questions.at(-1)!.module).toBe('GTM Priority');
+  const modules=(await ctx()).questions.map(q=>q.module);
+  expect(modules.indexOf('GTM Priority')).toBe(modules.indexOf('Core Message')+1);
   expect(await strategy(),'adding the section changes no strategy').toEqual(before);
  });
 

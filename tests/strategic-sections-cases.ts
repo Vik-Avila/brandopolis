@@ -10,10 +10,10 @@ import { createApp } from '../src/transport/http.js';
 import type { connect } from '../src/persistence/database.js';
 import * as t from '../src/persistence/schema.js';
 
-const SPINE=['Strategic Objective','Market Arena','Primary Customer','Value Mechanism','Positioning','Brand Promise','Core Message','GTM Priority'];
+const SPINE=['Strategic Objective','Market Arena','Primary Customer','Value Mechanism','Positioning','Brand Promise','Core Message','GTM Priority','Priority Experiment'];
 const NEW_SECTIONS=['Strategic Objective','Market Arena'];
-// A brand created before ADR-0021 has none of the later journey sections (Brand Promise: ADR-0022; GTM Priority: ADR-0023).
-const ADDED=['Strategic Objective','Market Arena','Brand Promise','GTM Priority'];
+// A brand created before ADR-0021 has none of the later journey sections (ADR-0022..ADR-0024).
+const ADDED=['Strategic Objective','Market Arena','Brand Promise','GTM Priority','Priority Experiment'];
 
 /** ADR-0021: Objetivo estratégico y Arena de mercado as versioned decisions inside the existing engine. */
 export function strategicSectionsCases(connection:()=>ReturnType<typeof connect>){
@@ -84,7 +84,7 @@ export function strategicSectionsCases(connection:()=>ReturnType<typeof connect>
   expect(await sectionAudits()).toBe(1);
   expect(await engine.addStrategicSections(who.token,brand.id)).toEqual({brandId:brand.id,added:[]});
   expect(await sectionAudits(),'a no-op is not audited twice').toBe(1);
-  expect((await db.select().from(t.questions).where(eq(t.questions.brandId,brand.id)))).toHaveLength(8);
+  expect((await db.select().from(t.questions).where(eq(t.questions.brandId,brand.id)))).toHaveLength(9);
  });
 
  it('ADR-0021: concurrent activation creates each section exactly once',async()=>{
@@ -92,8 +92,8 @@ export function strategicSectionsCases(connection:()=>ReturnType<typeof connect>
   const results=await Promise.all(Array.from({length:6},()=>engine.addStrategicSections(who.token,brand.id)));
   expect(results.flatMap(r=>r.added).sort()).toEqual([...ADDED].sort());
   const rows=await db.select().from(t.questions).where(eq(t.questions.brandId,brand.id));
-  expect(rows).toHaveLength(8);
-  expect(new Set(rows.map(r=>r.module)).size).toBe(8);
+  expect(rows).toHaveLength(9);
+  expect(new Set(rows.map(r=>r.module)).size).toBe(9);
   expect(await sectionAudits()).toBe(1);
  });
 
@@ -203,7 +203,7 @@ export function strategicSectionsCases(connection:()=>ReturnType<typeof connect>
    const ok=await post({Origin:base,Cookie:cookie});
    expect(ok.status).toBe(200);
    expect(await ok.json()).toEqual({brandId:brand.id,added:ADDED});
-   expect((await engine.context(who.token,brand.id)).questions).toHaveLength(8);
+   expect((await engine.context(who.token,brand.id)).questions).toHaveLength(9);
   }finally{await new Promise<void>((resolve,reject)=>server.close(e=>e?reject(e):resolve()));}
  });
 }

@@ -35,3 +35,18 @@ migraciones ni operaciones de producción; la Jury Production Freeze sigue vigen
 Por instrucción del propietario, GTM Priority se incorpora como siguiente fase del roadmap, **sólo fuera de
 producción** ([ADR-0023](../14-decisions/ADR-0023.md)), con la línea del recorrido en la navegación.
 Priority Experiment sigue diferido. Sin cambios de IA, migraciones ni operaciones de producción.
+
+## Resolución · 2026-10-06 · Experimento prioritario
+
+Por instrucción del propietario, Priority Experiment se incorpora como siguiente fase del roadmap, **sólo
+fuera de producción** ([ADR-0024](../14-decisions/ADR-0024.md)), reutilizando el ciclo Experiment → Signal →
+Learning existente. Sin cambios de IA, migraciones ni operaciones de producción.
+
+## Cierre · 2026-10-07 · Phase 1 — Strategic Core + Brando Foundation
+
+PHASE 1 — STRATEGIC CORE + BRANDO FOUNDATION · STATUS: COMPLETE · RELEASE STATE: RELEASE-READY OUTSIDE
+PRODUCTION. Las nueve decisiones de la Decision Spine (Strategic Objective, Market Arena, Primary Customer,
+Value Mechanism, Positioning, Brand Promise, Core Message, GTM Priority, Priority Experiment) están
+implementadas con autoridad humana, versiones, historial, dependencias, Change Impact y Brando B1
+([ADR-0021](../14-decisions/ADR-0021.md)–[ADR-0024](../14-decisions/ADR-0024.md)). Signals y Learning siguen como
+capacidades base existentes. NEXT PHASE: PHASE 2 — STRATEGIC INTELLIGENCE · STATUS: NOT STARTED.

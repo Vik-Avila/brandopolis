@@ -1,3 +1,70 @@
+## 2026-10-07 · PHASE 1 COMPLETE — Strategic Core + Brando Foundation
+
+PHASE 1 — STRATEGIC CORE + BRANDO FOUNDATION · STATUS: COMPLETE ·
+RELEASE STATE: RELEASE-READY OUTSIDE PRODUCTION. Aprobada funcionalmente por el propietario.
+
+- 9/9 decisiones implementadas: Strategic Objective, Market Arena, Primary Customer, Value Mechanism,
+  Positioning, Brand Promise, Core Message, GTM Priority, Priority Experiment (ADR-0021..ADR-0024).
+- Brando B1 completo para el alcance de Phase 1; autoridad humana, versiones, historial, dependencias
+  (config v5), Change Impact, Strategy Graph base, Mapa estratégico y PDF.
+- Historia: 5927a26 (Objective + Arena) → a2f5d9b (Brand Promise) → b461cf5 (GTM Priority) → commit
+  `feat: complete Strategic Core phase 1` que contiene este registro (Priority Experiment + cierre).
+  Integrado a `main` mediante PR con merge commit; los SHA finales están en `git log` y en el PR.
+- Auditoría de cierre: sin defectos funcionales nuevos; se añadió `tests/phase1-closure-cases.ts`
+  (versionado de las cinco decisiones nuevas, 409 sin efectos, idempotencia y reintento, criterio
+  obligatorio, aislamiento entre tenants/marcas/no asignados, INV-001 y mapa/PDF de nueve decisiones).
+- Gates sobre el estado exacto confirmado (salida real): typecheck PASS; lint PASS; pnpm test 13 archivos /
+  283 pruebas PASS; skills:check PASS; Brando browser 42/42 PASS; test:e2e 85/85 PASS; test:visual 10 PASS
+  + 1 SKIP preexistente (encoding-proof histórico, requiere base reparada: NOT APPLICABLE); test:pilot:e2e
+  10/10 PASS; Foundation 249 Markdown / 72 JSON / 24 schemas / 15 requirements / 13 golden cases / 0 errores
+  PASS; UI validator PASS; brand validator PASS; git diff --check PASS (sólo avisos de fin de línea).
+- Producción sin cambios; sin deploy, tag, migración ni cambios de configuración. Jury Production Freeze
+  vigente. Las entradas anteriores que dicen «sin commit/push/merge» describen su momento: los commits de
+  cada tramo existen y Phase 1 se integra a `main` con este cierre.
+- NEXT PHASE: PHASE 2 — STRATEGIC INTELLIGENCE · STATUS: NOT STARTED / AWAITING NEXT ITERATION. Fuentes:
+  [brand-intelligence-engine](docs/05-ai/brand-intelligence-engine.md), Master Context y ADR vigentes.
+  La próxima iteración empieza con una auditoría de Phase 2 y la ejecuta como un solo loop.
+
+## 2026-10-07 · Experimento prioritario: dependencia GTM aprobada
+
+Estado: RELEASE-READY FUERA DE PRODUCCIÓN en lo técnico; aceptación humana en la DEMO pendiente.
+Rama: feat/strategic-experiment-priority, HEAD b461cf5 (commit local de GTM). Cambios sin commit.
+El director aprobó la opción A: `config/dependencies/v5.json` añade GTM Priority → Priority Experiment
+(SOFT, primera versión revisable); v1–v4 intactas. ADR-0024, change-impact, strategy-graph y config/README
+actualizados.
+
+Resultados del agente (salida real): typecheck y lint PASS; pnpm test 279/279 (tres casos nuevos: un
+cambio de GTM sugiere revisar Experimento prioritario; la sugerencia conserva decisión, versión activa,
+historial y estado APPROVED; el impacto por varias conexiones no duplica revisiones y reintentar no añade
+filas; más primera versión de GTM); E2E m1.spec 35/35; test:pilot:e2e 10/10; Foundation 249 Markdown /
+72 JSON / 24 schemas / 15 requirements / 13 golden cases / 0 errores; UI y brand validators PASS;
+skills:check idéntico; git diff --check OK. Sin cambios de interfaz ni capturas en este ajuste.
+Jury Production Freeze vigente. Sin commit, push, PR, merge, tag, migración ni deploy.
+
+## 2026-10-06 · Experimento prioritario · candidato fuera de producción
+
+Estado: RELEASE-READY FUERA DE PRODUCCIÓN en lo técnico; aceptación humana en la DEMO pendiente.
+Rama: feat/strategic-experiment-priority (local), desde el commit local de GTM
+b461cf5c297cc284a2cb71e765e88ecf071eec3a (sobre a2f5d9b, 5927a26 y 77e7a71). Cambios sin commit. Sin push.
+
+Implementado ([ADR-0024](docs/14-decisions/ADR-0024.md)): modules/learning-moments v5 (Priority Experiment como
+novena sección, capacidad Experimentation & Learning); decisión versionada que elige qué supuesto validar
+primero, ejecutada con el ciclo Experiment → Signal → Learning existente (enlace mediante «Decisión
+relacionada»), sin duplicarlo; orientación local con hipótesis sin validar y supuestos en uso; guía del
+editor; ejemplo DEMO y CoffeePolis sólo en sandboxes nuevos; activación explícita para marcas existentes;
+densidad compacta del menú hasta 1040px y filas de 28px para nueve fases. Sin migración ni cambios de IA,
+configuración o producción. dependencies v4 sin cambios. Decisión pendiente: dependencias de Priority
+Experiment (recomendado GTM Priority → Priority Experiment SOFT).
+
+Resultados del agente (salida real): typecheck y lint PASS; pnpm test 13 archivos / 276 pruebas (271 + 5);
+Brando browser 42/42; test:e2e 85/85 (una medición previa detectó 32px de desborde del menú a 1366×768
+con nueve fases, corregido antes de esta pasada); test:visual 10/10; test:pilot:e2e 10/10; Foundation 249
+Markdown / 71 JSON / 24 schemas / 15 requirements / 13 golden cases / 0 errores; UI y brand validators
+PASS; skills:check idéntico; git diff --check OK. 11 capturas del espacio de trabajo y sus hashes
+actualizados por cambio real del menú. Smoke Anthropic no requerido (sin cambio de comportamiento de IA).
+/security-review requiere commit: no se creó; revisión manual sin hallazgos (sin endpoint nuevo).
+Jury Production Freeze vigente. Sin push, PR, merge, tag, migración ni deploy.
+
 ## 2026-10-06 · Prioridad de lanzamiento (GTM): cierre
 
 Estado: RELEASE-READY FUERA DE PRODUCCIÓN. El director de producto aceptó GTM y aprobó Core Message →
