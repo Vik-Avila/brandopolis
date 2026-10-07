@@ -1,3 +1,40 @@
+## 2026-10-06 · Prioridad de lanzamiento (GTM): cierre
+
+Estado: RELEASE-READY FUERA DE PRODUCCIÓN. El director de producto aceptó GTM y aprobó Core Message →
+GTM Priority (SOFT), incorporada como `config/dependencies/v4.json` (Positioning → GTM SOFT conservada).
+Pruebas tras la incorporación (salida real): typecheck y lint PASS; pnpm test 271/271 (dos casos nuevos:
+revisión sugerida sin reescritura ni duplicado en Positioning → Message → GTM, y primera versión de
+Mensaje después de GTM); Foundation 0 errores; git diff --check OK. Las suites de navegador, visual y
+PILOT del registro anterior no se repitieron: el cambio es de configuración y pruebas de motor.
+Commit local autorizado de GTM en feat/strategic-gtm-priority. Sin push, PR, merge, tag ni deploy.
+Jury Production Freeze vigente.
+
+## 2026-10-06 · Prioridad de lanzamiento (GTM) y línea del recorrido · candidato
+
+Estado: RELEASE-READY FUERA DE PRODUCCIÓN en lo técnico; aceptación humana en la DEMO pendiente.
+Rama: feat/strategic-gtm-priority (local), desde el commit local a2f5d9bd749f91106ee7beff99da4569862e7f50
+(Promesa de marca, ADR-0022), sobre 5927a26 y 77e7a71. Cambios de GTM sin commit. Sin push.
+El commit local de Promesa se creó por autorización expresa del propietario; la aceptación de la DEMO
+de Promesa y el smoke real de Anthropic no fueron confirmados al agente y no se registran como hechos.
+
+Implementado ([ADR-0023](docs/14-decisions/ADR-0023.md)): modules/learning-moments v4 (GTM Priority como
+octava sección, capacidad GTM Prioritization); se conserva la única dependencia aprobada Positioning →
+GTM (SOFT) con dependencies v3 sin cambios; activación explícita para marcas existentes; orientación GTM
+que advierte propuesta provisional si Cliente, Valor, Posicionamiento o Mensaje están en revisión; guía
+del editor; ejemplo DEMO y CoffeePolis sólo en sandboxes nuevos; línea del recorrido con nodos, fase
+siguiente con doble anillo, pulso finito y texto accesible, sin pulso con prefers-reduced-motion.
+Sin migración ni cambios de IA, configuración o producción. Decisión pendiente: aristas adicionales
+hacia GTM (recomendado Core Message → GTM SOFT).
+
+Resultados del agente (salida real): typecheck y lint PASS; pnpm test 13 archivos / 269 pruebas (264 + 5
+de GTM); Brando browser 42/42 (incluye línea del recorrido y movimiento reducido); test:e2e 85/85;
+test:visual 10/10; test:pilot:e2e 10/10; Foundation 248 Markdown / 68 JSON / 24 schemas / 15
+requirements / 13 golden cases / 0 errores; UI y brand validators PASS; skills:check idéntico;
+git diff --check OK. 11 capturas del espacio de trabajo y sus hashes actualizados por cambio real del
+menú. Smoke Anthropic no requerido (sin cambio de comportamiento de IA). /security-review requiere
+commit: no se creó; revisión manual sin hallazgos (sin endpoint nuevo). Jury Production Freeze vigente.
+Sin push, PR, merge, tag, migración ni deploy.
+
 ## 2026-10-06 · Promesa de marca: contexto de revisión de Mensaje y validación completa
 
 Estado: listo técnicamente fuera de producción; pendiente aceptación del propietario en la DEMO local

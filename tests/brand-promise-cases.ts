@@ -57,7 +57,8 @@ export function brandPromiseCases(connection:()=>ReturnType<typeof connect>){
   await ctx();
   expect((await ctx()).questions.some(q=>q.module==='Brand Promise'),'reading context never adds sections').toBe(false);
   expect(await engine.addStrategicSections(who.token,brand.id)).toEqual({brandId:brand.id,added:['Brand Promise']});
-  expect((await ctx()).questions.map(q=>q.module).slice(-2)).toEqual(['Brand Promise','Core Message']);
+  const order=(await ctx()).questions.map(q=>q.module);
+  expect(order.indexOf('Core Message'),'Promise is placed right before Message').toBe(order.indexOf('Brand Promise')+1);
   expect(await strategy(),'adding the section changes no decision, version, review, dependency or impact').toEqual(before);
   const message=await active('Core Message');
   const promise=await commit('Brand Promise','Tu estrategia recuerda por qué decidiste');

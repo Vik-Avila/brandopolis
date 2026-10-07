@@ -12,8 +12,8 @@ import { readFileSync } from 'node:fs';
 // 2. Completing the Entorno competitivo review produced no hand-off, leaving the participant with no
 //    next action, because showPhaseHandoff() was only ever called from the decision-form submit.
 
-// Every journey section of a new brand: Objetivo and Arena first (ADR-0021), Promesa before Mensaje (ADR-0022).
-const PHASES = ['01 Objetivo estratégico', '02 Arena de mercado', '03 Cliente principal', '04 Modelo de valor', '05 Posicionamiento', '06 Promesa de marca', '07 Mensaje principal'];
+// Every journey section of a new brand: Objetivo and Arena first (ADR-0021), Promesa before Mensaje (ADR-0022), GTM last (ADR-0023).
+const PHASES = ['01 Objetivo estratégico', '02 Arena de mercado', '03 Cliente principal', '04 Modelo de valor', '05 Posicionamiento', '06 Promesa de marca', '07 Mensaje principal', '08 Prioridad de lanzamiento'];
 
 async function navigate(page: Page, name: string) {
   await page.locator('#workspace').waitFor();

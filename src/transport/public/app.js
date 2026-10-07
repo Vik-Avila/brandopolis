@@ -1934,7 +1934,10 @@ function updateShell(){
   if(demo)analytics.sendOnce(PILOT_EVENTS.demoBrandOpened,{pilot_stage:'demo'});
  }
  if(!context)return;
- document.querySelectorAll('[data-module]').forEach(button=>{const q=context.questions.find(q=>q.module===button.dataset.module),d=context.decisions.find(d=>d.questionId===q?.id);button.classList.toggle('needs-attention',needsReview(context,d));button.title=needsReview(context,d)?'Requiere revisión':d?'Decisión vigente':'Por decidir';button.setAttribute('aria-label',button.textContent.trim());button.setAttribute('aria-description',button.title);});
+ // Journey line: decided, review and next-phase states. The next phase is also said in words (title and
+ // aria-description), so neither colour nor the finite pulse is the only signal.
+ const upcoming=nextPhase();
+ document.querySelectorAll('[data-module]').forEach(button=>{const q=context.questions.find(q=>q.module===button.dataset.module),d=context.decisions.find(d=>d.questionId===q?.id),review=needsReview(context,d),isNext=button.dataset.module===upcoming;button.classList.toggle('needs-attention',review);button.classList.toggle('is-decided',!!d?.activeVersionId&&!review);if(isNext&&!button.classList.contains('is-next'))button.classList.add('is-next');else if(!isNext)button.classList.remove('is-next');button.title=(isNext?'Siguiente decisión sugerida · ':'')+(review?'Requiere revisión':d?'Decisión vigente':'Por decidir');button.setAttribute('aria-label',button.textContent.trim());button.setAttribute('aria-description',button.title);});
 }
 function composeDecision(q,d,v,reviews){
  const surface=$('#decision');

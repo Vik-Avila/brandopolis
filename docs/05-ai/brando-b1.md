@@ -195,3 +195,10 @@ final existentes; la primera versión puede pedir revisión humana de decisiones
 [ADR-0022](../14-decisions/ADR-0022.md) reutiliza sin cambios la orientación local, la solicitud explícita de
 propuestas y la revisión humana para Promesa de marca. Navegar no consulta a la IA; ninguna propuesta
 se guarda ni aprueba sin confirmación humana. Sin cambios de proveedor, modelo, prompts ni datos.
+
+## Prioridad de lanzamiento · 2026-10-06
+
+[ADR-0023](../14-decisions/ADR-0023.md) reutiliza la orientación local y la consulta explícita para GTM. La
+orientación advierte que una propuesta puede ser provisional si Cliente, Modelo de valor,
+Posicionamiento o Mensaje están en revisión (Activation Analysis). Sin cambios de proveedor, modelo,
+prompts, schema ni datos enviados; consultar nunca guarda ni aprueba estrategia.

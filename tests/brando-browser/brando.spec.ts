@@ -5,16 +5,16 @@ import { loadAsset } from '../../src/transport/assets.js';
 import type { Engine } from '../../src/application/engine.js';
 import { attentionFor,brandoPacket,demoBrando } from '../../src/domain/brando.js';
 let server:ReturnType<typeof createApp>,base:string;
-// Seven journey sections (ADR-0021, ADR-0022) in canonical order; the original four keep their fixture ids q0..q3.
-const ids:Record<string,string>={'Strategic Objective':'q-objective','Market Arena':'q-arena','Primary Customer':'q0','Value Mechanism':'q1','Positioning':'q2','Brand Promise':'q-promise','Core Message':'q3'};
+// Eight journey sections (ADR-0021..0023) in canonical order; the original four keep their fixture ids q0..q3.
+const ids:Record<string,string>={'Strategic Objective':'q-objective','Market Arena':'q-arena','Primary Customer':'q0','Value Mechanism':'q1','Positioning':'q2','Brand Promise':'q-promise','Core Message':'q3','GTM Priority':'q-gtm'};
 const context={contextVersion:'v1',questions:Object.entries(ids).map(([module,id])=>({id,module,text:'¿Qué eliges?',status:'OPEN'})),decisions:[],versions:[],reviews:[],dependencies:[],evidence:[],learnings:[],hypotheses:[],userInputs:[],openQuestions:[],experiments:[],signals:[],impacts:[],recommendations:[],analyses:[],experimentPlans:[],audit:[],attention:[]};
 const c={...context,attention:attentionFor(context)};
 // Brand «c» was created before ADR-0021: four sections until a human adds the new ones explicitly.
-const legacyContext={...context,questions:context.questions.filter(q=>!['q-objective','q-arena','q-promise'].includes(q.id))};
+const legacyContext={...context,questions:context.questions.filter(q=>!['q-objective','q-arena','q-promise','q-gtm'].includes(q.id))};
 const legacy={...legacyContext,attention:attentionFor(legacyContext)};
 let legacyActivated=false;
 test.beforeAll(async()=>{
- const fixture={me:async()=>({userId:'fixture',workspaceId:'w',expiresAt:new Date(Date.now()+60000),learningMoments:[]}),listBrands:async()=>[{id:'a',name:'Marca A'},{id:'b',name:'Marca B'},{id:'c',name:'Marca anterior'}],context:async(_token:string,brandId:string)=>brandId==='c'&&!legacyActivated?legacy:c,addStrategicSections:async(_token:string,brandId:string)=>{const added=legacyActivated?[]:['Strategic Objective','Market Arena','Brand Promise'];legacyActivated=true;return {brandId,added};},competitiveRejections:async()=>({claims:[]}),listSourceDocuments:async()=>[],listDocumentClaims:async()=>[],reviewBrandoSuggestion:async()=>({action:'REJECT',strategyChanged:false}),prepareQuestion:async()=>({status:'READY_FOR_DECISION'}),commitDecision:async()=>({decisionId:'new',versionId:'v2',impactPending:false}),askBrando:async(_token:string,brandId:string,message:string,questionId:string|null)=>{
+ const fixture={me:async()=>({userId:'fixture',workspaceId:'w',expiresAt:new Date(Date.now()+60000),learningMoments:[]}),listBrands:async()=>[{id:'a',name:'Marca A'},{id:'b',name:'Marca B'},{id:'c',name:'Marca anterior'}],context:async(_token:string,brandId:string)=>brandId==='c'&&!legacyActivated?legacy:c,addStrategicSections:async(_token:string,brandId:string)=>{const added=legacyActivated?[]:['Strategic Objective','Market Arena','Brand Promise','GTM Priority'];legacyActivated=true;return {brandId,added};},competitiveRejections:async()=>({claims:[]}),listSourceDocuments:async()=>[],listDocumentClaims:async()=>[],reviewBrandoSuggestion:async()=>({action:'REJECT',strategyChanged:false}),prepareQuestion:async()=>({status:'READY_FOR_DECISION'}),commitDecision:async()=>({decisionId:'new',versionId:'v2',impactPending:false}),askBrando:async(_token:string,brandId:string,message:string,questionId:string|null)=>{
   const p=brandoPacket(c,{id:brandId,name:`Marca ${brandId}`},'v1',message,questionId,[]);
   return {suggestionTickets:[{ticketId:'11111111-1111-4111-8111-111111111111',kind:'STRATEGY',proposedDecision:'Primera alternativa'},{ticketId:'22222222-2222-4222-8222-222222222222',kind:'STRATEGY',proposedDecision:'Segunda alternativa elegida'},{ticketId:'33333333-3333-4333-8333-333333333333',kind:'EVIDENCE',proposedDecision:null}],answer:{...demoBrando(p),answer:'<img src=x onerror=alert(1)> Respuesta segura para '+brandId,suggestions:['<script>alert(1)</script> Propuesta tentativa para '+brandId,'Segunda propuesta para '+brandId,'Revisa las fuentes antes de cambiar una decisión.']},provider:'DEMO_FIXTURE',error:null,brandId,questionId,contextVersion:'v1',sourceVersion:'v1',attention:c.attention,omitted:[],sources:[],trace:{}};
  }} as unknown as Engine;
@@ -129,10 +129,10 @@ for(const action of ['ACCEPT','MODIFY'])test(`Brando ${action} selects Modificar
  await expect.poll(()=>commits.length).toBe(1);expect(commits[0]).toMatchObject({reviewToken:'human-review-token',brandoReview:{action},command:{selectedOption:'Segunda alternativa elegida',expectedActiveVersion:'old',rationale:'Alinea el mensaje con el posicionamiento que decidimos.'}});
 });
 
-test('section orientation navigates all seven sections without inference or writes',async({page},info)=>{
+test('section orientation navigates all eight sections without inference or writes',async({page},info)=>{
  const posts:string[]=[];page.on('request',r=>{if(r.method()==='POST')posts.push(new URL(r.url()).pathname);});
  await page.goto(base+'/?brand=a&module=Primary%20Customer');
- for(const [module,label] of [['Strategic Objective','Objetivo estratégico'],['Market Arena','Arena de mercado'],['Primary Customer','Cliente principal'],['Value Mechanism','Modelo de valor'],['Positioning','Posicionamiento'],['Brand Promise','Promesa de marca'],['Core Message','Mensaje principal']]){
+ for(const [module,label] of [['Strategic Objective','Objetivo estratégico'],['Market Arena','Arena de mercado'],['Primary Customer','Cliente principal'],['Value Mechanism','Modelo de valor'],['Positioning','Posicionamiento'],['Brand Promise','Promesa de marca'],['Core Message','Mensaje principal'],['GTM Priority','Prioridad de lanzamiento']]){
   if(info.project.name==='mobile')await page.locator('#menu').click();
   await page.locator(`#journey [data-module="${module}"]`).click();
   await expect(page.locator('#brando-section')).toContainText(label);
@@ -223,7 +223,7 @@ test('an existing brand adds Objetivo and Arena only through the explicit action
  await page.goto(base+'/?brand=c&module=Strategic%20Objective');
  await expect(page.locator('#strategic-sections-title')).toHaveText('Esta sección es nueva en tu recorrido.');
  await expect(page.locator('.strategic-sections')).toContainText('Agregarlas no cambia ninguna decisión');
- await expect(page.locator('.strategic-sections')).toContainText('Objetivo estratégico, Arena de mercado y Promesa de marca');
+ await expect(page.locator('.strategic-sections')).toContainText('Objetivo estratégico, Arena de mercado, Promesa de marca y Prioridad de lanzamiento');
  await expect(page.locator('#brando-section')).toHaveCount(0);
  expect(posts,'opening the section writes nothing').toEqual([]);
  await page.locator('#add-strategic-sections').click();
@@ -243,4 +243,23 @@ test('Promesa de marca reuses orientation and editor guide without querying or w
  await page.locator('#edit').click();
  await expect(page.locator('#option-guide')).toContainText('tu mensaje principal se apoyará en ella');
  expect(asks).toEqual([]);expect(commits).toEqual([]);
+});
+
+test('journey line marks the next phase in words, with a finite pulse that reduced motion removes',async({page},info)=>{
+ await page.goto(base+'/?brand=a&module=Primary%20Customer');
+ if(info.project.name==='mobile')await page.locator('#menu').click();
+ const next=page.locator('#journey [data-module="Strategic Objective"]');
+ await expect(next).toHaveClass(/is-next/);
+ await expect(next).toHaveAttribute('aria-description',/Siguiente decisión sugerida/);
+ await expect(page.locator('#journey .is-next')).toHaveCount(1);
+ const node=await next.locator('span').evaluate(el=>{const s=getComputedStyle(el);return {radius:s.borderRadius,iterations:s.animationIterationCount,name:s.animationName};});
+ expect(node.radius).toBe('50%');
+ expect(node.iterations,'the pulse is finite').toBe('3');
+ expect(node.name).toBe('bp-journey-next');
+ const connector=await page.locator('#journey [data-module="Market Arena"]').evaluate(el=>getComputedStyle(el,'::before').content);
+ expect(connector,'phases are joined by a vertical line').not.toBe('none');
+ expect(await next.evaluate(el=>getComputedStyle(el,'::before').content),'the first phase has no line above it').toBe('none');
+ await page.emulateMedia({reducedMotion:'reduce'});
+ expect(await next.locator('span').evaluate(el=>getComputedStyle(el).animationName)).toBe('none');
+ await expect(next).toHaveClass(/is-next/);
 });

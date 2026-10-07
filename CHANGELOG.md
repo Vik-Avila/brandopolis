@@ -1,3 +1,15 @@
+## 2026-10-06 · Prioridad de lanzamiento (GTM): cierre
+
+- Mensaje principal → Prioridad de lanzamiento (sugerida) aprobada e incorporada (dependencies v4).
+- GTM aceptada por el director; commit local autorizado. Sin push ni deploy.
+
+## 2026-10-06 · Prioridad de lanzamiento (GTM) y línea del recorrido (candidato)
+
+- ADR-0023: GTM Priority como octava decisión versionada; se conserva Posicionamiento → GTM sugerida.
+- Orientación GTM advierte propuesta provisional si sus insumos están en revisión.
+- Línea del recorrido con nodos y fase siguiente destacada (pulso finito, accesible, movimiento reducido).
+- Gates del agente en verde; 11 capturas actualizadas. Pendiente aceptación en DEMO. Sin commit ni deploy.
+
 ## 2026-10-06 · Promesa de marca: contexto de la revisión de Mensaje
 
 - La revisión pendiente de Mensaje muestra también la Promesa vigente que cambió después; una sola revisión.

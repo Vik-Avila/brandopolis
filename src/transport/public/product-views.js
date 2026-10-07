@@ -1,6 +1,6 @@
 // Pure presentation projections. No writes, requests, inferred strategic state or domain rules.
 export const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export const labels={'Strategic Objective':'Objetivo estratégico','Market Arena':'Arena de mercado','Primary Customer':'Cliente principal','Value Mechanism':'Modelo de valor','Positioning':'Posicionamiento','Brand Promise':'Promesa de marca','Core Message':'Mensaje principal'};
+export const labels={'Strategic Objective':'Objetivo estratégico','Market Arena':'Arena de mercado','Primary Customer':'Cliente principal','Value Mechanism':'Modelo de valor','Positioning':'Posicionamiento','Brand Promise':'Promesa de marca','Core Message':'Mensaje principal','GTM Priority':'Prioridad de lanzamiento'};
 export const fmt=value=>new Date(value).toLocaleString('es-MX',{dateStyle:'medium',timeStyle:'short'});
 export const needsReview=(context,decision)=>!!decision&&(decision.reviewStatus==='NEEDS_REVIEW'||context.reviews.some(r=>r.downstreamDecisionId===decision.id&&r.status!=='COMPLETED'));
 export function decisionState(context,question){
@@ -9,8 +9,8 @@ export function decisionState(context,question){
 }
 // One status vocabulary everywhere. «Vigente» is a display relation over the active version, never a Decision.status.
 export function stateBadge(version,review){return `<span class="badge ${review?'warn':''}">${review?'Requiere revisión':version?'Vigente · v'+version.sequence:'Por decidir'}</span>`;}
-// Display names for the canonical capability keys of the strategic method (config/strategic-method/learning-moments.v3.json).
-const capabilityLabels={'Market Reasoning':'Razonamiento de mercado','Brand Thinking':'Pensamiento de marca','Customer Understanding':'Comprensión del cliente','Business Model Thinking':'Modelo de negocio','Strategic Differentiation':'Diferenciación estratégica','Message Prioritization':'Priorización del mensaje','Problem Framing':'Encuadre del problema'};
+// Display names for the canonical capability keys of the strategic method (config/strategic-method/learning-moments.v4.json).
+const capabilityLabels={'Market Reasoning':'Razonamiento de mercado','Brand Thinking':'Pensamiento de marca','GTM Prioritization':'Priorización del lanzamiento','Customer Understanding':'Comprensión del cliente','Business Model Thinking':'Modelo de negocio','Strategic Differentiation':'Diferenciación estratégica','Message Prioritization':'Priorización del mensaje','Problem Framing':'Encuadre del problema'};
 export const capabilityLabel=key=>capabilityLabels[key]??key;
 const plural=(n,one,many)=>`${n} ${n===1?one:many}`;
 
@@ -18,6 +18,7 @@ const legacyCapabilityBehavior='Explicitó una elección y su criterio como Estr
 const personalizedCapabilityBehavior={
  'Market Reasoning':'Delimitaste dónde compite tu marca, frente a qué alternativas y con qué límites.',
  'Brand Thinking':'Definiste qué debe significar tu marca para tu cliente y qué puede esperar de ella.',
+ 'GTM Prioritization':'Elegiste dónde concentrar primero tus recursos para llegar a tu cliente y qué dejas para después.',
  'Customer Understanding':'Identificaste y priorizaste el segmento de cliente que consideras más relevante para tu marca.',
  'Business Model Thinking':'Relacionaste lo que ofreces con una necesidad concreta del cliente que quieres atender.',
  'Strategic Differentiation':'Articulaste una diferencia que puede ayudarte a ser elegido frente a otras alternativas.',
@@ -147,7 +148,8 @@ export function reviewUpdatesHtml(updates){
 export const decisionGuide={
  'Strategic Objective':'Incluye qué quieres construir o cambiar con tu marca y cómo reconocerás que avanzas. Es distinto de una meta comercial puntual.',
  'Market Arena':'Incluye dónde compites primero, frente a qué alternativas (también no hacer nada) y qué queda fuera. Tu ubicación no define por sí sola tu arena.',
- 'Brand Promise':'Incluye qué puede esperar tu cliente de tu marca y por qué es creíble hoy. Debe expresar tu posicionamiento; tu mensaje principal se apoyará en ella.'
+ 'Brand Promise':'Incluye qué puede esperar tu cliente de tu marca y por qué es creíble hoy. Debe expresar tu posicionamiento; tu mensaje principal se apoyará en ella.',
+ 'GTM Priority':'Incluye dónde concentrarás primero tus recursos (canal, comunidad o alianza), por qué ahí llegas a tu cliente prioritario y qué dejas para después. Sin evidencia, el canal elegido es una hipótesis.'
 };
 /** Shown when an existing brand lacks a journey section. Adding it is an explicit human action (ADR-0021). */
 export function strategicSectionsHtml(label,missing=[label]){
@@ -222,7 +224,8 @@ export function brandoSectionOrientation(c,questionId){
   'Value Mechanism':'Conecta el problema del cliente con el valor que ofrecerás.',
   Positioning:'Revisa por qué elegirían tu marca frente a otras alternativas.',
   'Brand Promise':'Define qué debe significar tu marca para tu cliente y qué puede esperar de ella; promete sólo lo que puedes cumplir.',
-  'Core Message':'Expresa tu valor con claridad y evita promesas sin respaldo.'
+  'Core Message':'Expresa tu valor con claridad y evita promesas sin respaldo.',
+  'GTM Priority':'Elige dónde concentrar primero tus recursos para llegar a tu cliente prioritario y qué dejas para después.'
  }[q.module];
  const {decision,version,review}=decisionState(c,q);
  let state='pending',message='Esta sección aún no tiene una decisión registrada.';
@@ -231,6 +234,11 @@ export function brandoSectionOrientation(c,questionId){
  else if(review){state='review';message='Una decisión conectada cambió. Revisa esta sección antes de darla por vigente.';}
  else if(!(c.evidence.length||c.userInputs.length||c.learnings.some(l=>l.status==='ACCEPTED'))){state='context';message=version?'Hay una decisión registrada, pero no hay evidencia, información aportada ni aprendizajes aceptados en el contexto de la marca.':'Antes de decidir, aporta información de tu marca. Aún no hay evidencia, información aportada ni aprendizajes aceptados.';}
  else if(version){state='current';message='Tu decisión está registrada. Comprueba si sigue teniendo sentido con el contexto disponible.';}
+ // Activation Analysis: GTM builds on Customer, Value, Positioning and Message; while any of them awaits review a proposal may be provisional.
+ if(q.module==='GTM Priority'&&!['impact','invalidated'].includes(state)){
+  const pending=['Primary Customer','Value Mechanism','Positioning','Core Message'].filter(m=>{const upstream=c.questions.find(x=>x.module===m);return upstream&&decisionState(c,upstream).review;}).map(m=>labels[m]);
+  if(pending.length)message+=` ${pending.join(', ')} ${pending.length>1?'están':'está'} en revisión: cualquier propuesta para esta sección puede ser provisional.`;
+ }
  const changes=review?[...c.reviews.filter(r=>r.downstreamDecisionId===decision.id&&r.status!=='COMPLETED').map(r=>{
   const changed=c.versions.find(v=>v.id===r.triggerVersionId),up=c.decisions.find(d=>d.id===changed?.decisionId),source=c.questions.find(q=>q.id===up?.questionId);
   return changed&&source?{label:labels[source.module]??'Decisión conectada',choice:changed.selectedOption,rationale:changed.rationale}:null;

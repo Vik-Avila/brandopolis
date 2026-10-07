@@ -138,3 +138,12 @@ significado). Promesa reutiliza la guía `.hint` del editor y la orientación de
 incluido el principio, quepa sin scroll en portátiles de 900px de alto, la densidad compacta existente
 (puntero fino) y el principio compacto se aplican hasta 940px de alto en lugar de 860px. Sin nuevos
 assets, tokens, animaciones ni reglas visuales distintas de las ya aprobadas.
+
+## Prioridad de lanzamiento y línea del recorrido · 2026-10-06
+
+[ADR-0023](../../docs/14-decisions/ADR-0023.md): «Estrategia» numera ocho secciones (08 Prioridad de lanzamiento).
+Los números son nodos de 22px unidos por una línea vertical champán de 2px. Fase decidida: nodo con
+borde y número esmeralda. Fase actual: tarjeta elevada existente y nodo esmeralda sólido. Siguiente
+fase sugerida: nodo champán con doble anillo, pulso finito de 3 ciclos (2,4s) y el texto «Siguiente
+decisión sugerida» en `title`/`aria-description`; `prefers-reduced-motion` elimina el pulso. Los estados
+de revisión conservan su marca «!». Tokens existentes; sin nuevos assets.

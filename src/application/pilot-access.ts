@@ -67,7 +67,10 @@ export const DEMO_STRATEGY=Object.freeze({
       rationale:'Promete lo que la marca ya puede cumplir todos los días: la calidad de la taza y la curaduría cultural. No promete exclusividad ni precios; su credibilidad depende de sostener ambos de forma constante.'}),
     Object.freeze({module:'Core Message',
       option:'Un café que se queda contigo',
-      rationale:'Dice a la vez la calidad de la taza y la razón de volver: la experiencia que la acompaña. Es recordable y no promete nada que la marca no entregue.'})
+      rationale:'Dice a la vez la calidad de la taza y la razón de volver: la experiencia que la acompaña. Es recordable y no promete nada que la marca no entregue.'}),
+    Object.freeze({module:'GTM Priority',
+      option:'Primero, eventos de comunidad en el propio local y alianzas con dos colectivos culturales de Xalapa; las redes sociales sólo acompañan esos eventos y por ahora no hay delivery ni otras ciudades',
+      rationale:'El valor de CoffeePolis se entiende viviéndolo, así que concentrar recursos en traer gente al local permite comprobar si regresan. Abrir más canales antes de validar la recurrencia dispersaría el equipo.'})
   ]),
   hypothesis:'Hipótesis demo: si las Coffee Raves se sostienen una vez al mes, la visita entre semana crecerá porque quien viene al evento regresa a trabajar o a conversar. Sin validar.',
   userInput:'Aporte demo del Estratega de Marca: la escena cultural de Xalapa es fuerte y está dispersa; no existe un lugar que sea a la vez café de autor y punto de encuentro cultural estable.'

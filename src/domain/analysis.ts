@@ -37,7 +37,8 @@ const examples:Record<string,[string,string]>={
   'Value Mechanism':['Suscripción por marca activa','Servicio de acompañamiento estratégico'],
   Positioning:['Continuidad de decisiones estratégicas','Acompañamiento para ordenar la estrategia'],
   'Brand Promise':['Tu estrategia recuerda por qué decidiste lo que decidiste','Cada cambio estratégico llega con su impacto explicado'],
-  'Core Message':['Decisiones conectadas, criterio compartido','Convierte tu estrategia en decisiones claras']
+  'Core Message':['Decisiones conectadas, criterio compartido','Convierte tu estrategia en decisiones claras'],
+  'GTM Priority':['Alianzas con dos asociaciones de agencias antes de abrir otros canales','Contenido educativo en LinkedIn para estrategas de agencias']
 };
 /** Deterministic fixture, never presented as live AI or market evidence. */
 export class DemoProvider implements ModelProvider {

@@ -29,3 +29,9 @@ El propietario incorpora Brand Promise, **sólo fuera de producción** ([ADR-002
 dependencia estricta Posicionamiento → Promesa → Mensaje, conservando Posicionamiento → Mensaje, sin
 revisiones duplicadas. GTM Priority y Priority Experiment siguen diferidos. Sin cambios de IA,
 migraciones ni operaciones de producción; la Jury Production Freeze sigue vigente.
+
+## Resolución · 2026-10-06 · Prioridad de lanzamiento
+
+Por instrucción del propietario, GTM Priority se incorpora como siguiente fase del roadmap, **sólo fuera de
+producción** ([ADR-0023](../14-decisions/ADR-0023.md)), con la línea del recorrido en la navegación.
+Priority Experiment sigue diferido. Sin cambios de IA, migraciones ni operaciones de producción.

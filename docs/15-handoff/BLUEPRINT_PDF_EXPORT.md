@@ -30,8 +30,8 @@ Acción: **Descargar PDF**, junto al encabezado de *Mapa estratégico*.
 | Sección | Contenido |
 |---|---|
 | Portada | Brandopolis · nombre de la marca · «Mapa estratégico de la marca» · fecha de generación · «Marca demo» cuando aplica |
-| Estado estratégico | Decisiones aprobadas (X de N, N = secciones de la marca: 7 desde [ADR-0022](../14-decisions/ADR-0022.md), 6 con [ADR-0021](../14-decisions/ADR-0021.md), 4 en marcas anteriores) · influencia geográfica · mercado principal · estado del contexto competitivo |
-| Decisiones estratégicas | Las decisiones del recorrido de la marca (incluye Objetivo estratégico y Arena de mercado desde ADR-0021 y Promesa de marca desde ADR-0022): opción vigente, «Por qué», versión vigente y fecha de aprobación |
+| Estado estratégico | Decisiones aprobadas (X de N, N = secciones de la marca: 8 desde [ADR-0023](../14-decisions/ADR-0023.md), 7 con [ADR-0022](../14-decisions/ADR-0022.md), 6 con [ADR-0021](../14-decisions/ADR-0021.md), 4 en marcas anteriores) · influencia geográfica · mercado principal · estado del contexto competitivo |
+| Decisiones estratégicas | Las decisiones del recorrido de la marca (incluye Objetivo estratégico y Arena de mercado desde ADR-0021 Promesa de marca desde ADR-0022 y Prioridad de lanzamiento desde ADR-0023): opción vigente, «Por qué», versión vigente y fecha de aprobación |
 | Cómo se conectan | Dependencias entre decisiones (estricta / sugerida / informativa) |
 | Contexto competitivo | Estado, y **sólo** los hallazgos incorporados, con fuente, fecha y límites |
 | Contexto estratégico | Aportaciones del Estratega de Marca · evidencia registrada · hipótesis · aprendizajes aceptados |

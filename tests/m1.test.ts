@@ -23,6 +23,7 @@ import { launchCases } from './launch-cases.js';
 import { blueprintCases } from './blueprint-cases.js';
 import { strategicSectionsCases } from './strategic-sections-cases.js';
 import { brandPromiseCases } from './brand-promise-cases.js';
+import { gtmCases } from './gtm-cases.js';
 let local:Awaited<ReturnType<typeof startLocalDb>>,connection:ReturnType<typeof connect>,engine:Engine;
 brandoCases(()=>connection);
 pilotCases(()=>connection);
@@ -30,6 +31,7 @@ launchCases(()=>connection);
 blueprintCases(()=>connection);
 strategicSectionsCases(()=>connection);
 brandPromiseCases(()=>connection);
+gtmCases(()=>connection);
 beforeAll(async()=>{
   local=await startLocalDb(true);
   const name=`m1_${randomUUID().replaceAll('-','')}`;

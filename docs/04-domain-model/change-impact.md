@@ -34,3 +34,6 @@ se suprime una revisión HARD por una sugerencia ni se reescribe downstream.
 El comprobante de revisión liga también las versiones vigentes de las decisiones upstream directas del
 downstream revisado; un cambio integrado en una revisión pendiente invalida comprobantes anteriores y
 exige reabrir la revisión con el contexto vigente ([ADR-0022](../14-decisions/ADR-0022.md)).
+
+`config/dependencies/v4.json` es la configuración activa desde [ADR-0023](../14-decisions/ADR-0023.md): añade
+Core Message → GTM Priority (SOFT, primera versión revisable) y conserva Positioning → GTM Priority (SOFT).
