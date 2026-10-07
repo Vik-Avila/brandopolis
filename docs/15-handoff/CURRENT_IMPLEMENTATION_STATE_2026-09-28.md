@@ -14,6 +14,12 @@ verdad; este repositorio sí.
 Para arranque, comandos y arquitectura: [NEXT_DEVELOPER_START_HERE](NEXT_DEVELOPER_START_HERE.md).
 Para fases y puertas: [SESSION_STATE](../../SESSION_STATE.md).
 
+> **Actualización 2026-10-07 · Phase 1 — Strategic Core + Brando Foundation: COMPLETE, release-ready
+> fuera de producción.** La Decision Spine de nueve decisiones (Objetivo estratégico → Experimento
+> prioritario) está implementada ([ADR-0021](../14-decisions/ADR-0021.md)–[ADR-0024](../14-decisions/ADR-0024.md)).
+> Producción no cambió: SESSION_STATE registra el commit desplegado. Siguiente: Phase 2 — Strategic
+> Intelligence, no iniciada. Las secciones siguientes describen el estado de 2026-09-28/10-04.
+
 ## 1. Qué es Brandopolis
 
 El Sistema Operativo de Marca: decisiones estratégicas conectadas con evidencia, hipótesis, criterio
@@ -146,7 +152,7 @@ que vive en la navegación bajo **PREPARACIÓN ESTRATÉGICA**, por encima de «E
 arquitectura de información, no un cambio de dominio:
 
 - **No es una decisión.** No tiene número, no tiene `data-module`, no entra en la Decision Spine y
-  **no suma al conteo «X de 4»**. Las métricas de activación no cambian.
+  **no suma al conteo «X de 4»**. Las métricas de activación no cambian. (Desde el 2026-10-06 el conteo es «X de N» y las marcas nuevas tienen seis secciones: [ADR-0021](../14-decisions/ADR-0021.md).)
 - En **Contexto vigente** aparece en su propio bloque, «Contexto del mercado», con estado
   **Sin investigar · Pendiente de revisión · Revisado**, separado de «Lo que ya decidiste».
 - El estado se **deriva de estado canónico**, no de lo que muestre la pantalla: los hallazgos

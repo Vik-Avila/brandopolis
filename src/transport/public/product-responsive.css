@@ -661,10 +661,15 @@
 }
 
 /* Brando adds an entry: retain the complete laptop navigation without scrolling.
-   Density applies only to precise pointers; touch keeps its existing 44px targets. */
-@media (max-height: 860px) and (pointer: fine) {
+   Density applies only to precise pointers; touch keeps its existing 44px targets.
+   ADR-0022: seven journey sections need the same density up to 940px tall (e.g. 1440×900).
+   ADR-0024: nine sections extend it to 1040px tall (e.g. 1600×1000) and give the journey steps 28px rows,
+   still above the 24px WCAG 2.2 minimum target; touch keeps 44px. */
+@media (max-height: 1040px) and (pointer: fine) {
   #journey { padding: 12px 16px; }
   #journey button { min-height: 32px; padding: 4px 10px; line-height: 1.35; }
+  #journey button[data-module] + button[data-module]::before { left: calc(10px + 10px); }
+  #journey button[data-module] { min-height: 28px; padding-top: 2px; padding-bottom: 2px; }
   #journey .nav-group { margin: 8px 10px 4px; line-height: 1.4; }
   #journey #home { margin-bottom: 4px; }
   #journey #practice { min-height: 36px; padding: 6px 10px; margin-top: 4px; }

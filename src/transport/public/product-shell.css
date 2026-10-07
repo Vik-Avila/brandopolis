@@ -254,6 +254,69 @@ body.app .public-nav {
   color: var(--bp-brand-emerald);
 }
 
+/* Journey line (ADR-0023): the numbered phases become nodes joined by a vertical line. Decided phases
+   fill their node, the current phase keeps its raised card with an emerald node, and the suggested next
+   phase gets a champagne double ring plus a finite, discreet pulse. Words (title, aria-description and the
+   badges) carry every state, so neither colour nor motion is the only signal. */
+#journey button[data-module] {
+  position: relative;
+}
+
+#journey button[data-module] > span {
+  position: relative;
+  z-index: 1;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  margin-right: 2px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(201, 174, 130, 0.75);
+  background: var(--bp-brand-ivory);
+  font-size: 10px;
+  line-height: 1;
+}
+
+#journey button[data-module] + button[data-module]::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  left: calc(12px + 10px);
+  top: calc(-50% - 1px);
+  height: calc(100% + 2px);
+  width: 2px;
+  border-radius: 1px;
+  background: rgba(201, 174, 130, 0.45);
+  pointer-events: none;
+}
+
+#journey button[data-module].is-decided > span {
+  background: rgb(226, 236, 230);
+  border-color: var(--bp-brand-emerald);
+  color: var(--bp-brand-emerald-deep);
+}
+
+#journey button[data-module][aria-current] > span {
+  background: var(--bp-brand-emerald);
+  border-color: var(--bp-brand-emerald);
+  color: var(--bp-brand-ivory);
+}
+
+#journey button[data-module].is-next > span {
+  border-color: var(--bp-brand-champagne);
+  background: var(--bp-brand-soft-gold, #E2D4B7);
+  color: var(--bp-brand-emerald-deep);
+  box-shadow: 0 0 0 2px var(--bp-brand-ivory), 0 0 0 3.5px var(--bp-brand-champagne);
+  animation: bp-journey-next 2.4s var(--bp-ease) 3;
+}
+
+@keyframes bp-journey-next {
+  0% { box-shadow: 0 0 0 2px var(--bp-brand-ivory), 0 0 0 3.5px var(--bp-brand-champagne), 0 0 0 3.5px rgba(201, 174, 130, 0.45); }
+  70% { box-shadow: 0 0 0 2px var(--bp-brand-ivory), 0 0 0 3.5px var(--bp-brand-champagne), 0 0 0 9px rgba(201, 174, 130, 0); }
+  100% { box-shadow: 0 0 0 2px var(--bp-brand-ivory), 0 0 0 3.5px var(--bp-brand-champagne), 0 0 0 9px rgba(201, 174, 130, 0); }
+}
+
 #journey .needs-attention::after {
   content: "!";
   display: grid;
@@ -313,7 +376,8 @@ body.app .public-nav {
   font-weight: 400;
 }
 
-@media (max-height: 860px) {
+/* ADR-0022/0024: the journey keeps the principle visible on laptops up to 1040px tall. */
+@media (max-height: 1040px) {
   .nav-principle {
     margin-top: 12px;
     padding-top: 10px;
@@ -540,6 +604,7 @@ body.app #notice {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  #journey button[data-module].is-next > span { animation: none; }
   .ai-activity,
   .ai-activity-mark {
     transition: none;

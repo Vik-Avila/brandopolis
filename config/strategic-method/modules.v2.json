@@ -1,0 +1,70 @@
+{
+  "version": "v2",
+  "source": "Master Context §14–§15; ADR-0021 (Objetivo estratégico y Arena de mercado)",
+  "notes": "priorityDepth keeps its canonical meaning (MVP depth slice Customer → Business → Position → Message). journey marks the sections a Brand works through, in Decision Spine order.",
+  "modules": [
+    {
+      "id": "Understand",
+      "primaryQuestion": "¿Qué estamos intentando construir o cambiar?",
+      "primaryDecision": "Strategic Objective",
+      "priorityDepth": false,
+      "journey": true
+    },
+    {
+      "id": "Market",
+      "primaryQuestion": "¿En qué arena debemos competir inicialmente?",
+      "primaryDecision": "Market Arena",
+      "priorityDepth": false,
+      "journey": true
+    },
+    {
+      "id": "Customer",
+      "primaryQuestion": "¿Quién debe ser nuestro cliente prioritario?",
+      "primaryDecision": "Primary Customer",
+      "priorityDepth": true,
+      "journey": true
+    },
+    {
+      "id": "Business",
+      "primaryQuestion": "¿Cómo creamos y capturamos valor para ese cliente?",
+      "primaryDecision": "Value Mechanism",
+      "priorityDepth": true,
+      "journey": true
+    },
+    {
+      "id": "Position",
+      "primaryQuestion": "¿Qué posición estratégica queremos ocupar frente a las alternativas?",
+      "primaryDecision": "Positioning",
+      "priorityDepth": true,
+      "journey": true
+    },
+    {
+      "id": "Brand",
+      "primaryQuestion": "¿Qué debe significar nuestra marca para ese cliente?",
+      "primaryDecision": "Brand Promise",
+      "priorityDepth": false,
+      "journey": false
+    },
+    {
+      "id": "Message",
+      "primaryQuestion": "¿Qué idea principal queremos que comprenda y recuerde el cliente?",
+      "primaryDecision": "Core Message",
+      "priorityDepth": true,
+      "journey": true
+    },
+    {
+      "id": "GTM",
+      "primaryQuestion": "¿Dónde y cómo debemos concentrar inicialmente nuestros recursos?",
+      "primaryDecision": "GTM Priority",
+      "priorityDepth": false,
+      "journey": false
+    },
+    {
+      "id": "Experiment & Learn",
+      "primaryQuestion": "¿Qué supuesto crítico debemos validar primero?",
+      "primaryDecision": "Priority Experiment",
+      "priorityDepth": false,
+      "journey": false
+    }
+  ]
+}

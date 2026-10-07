@@ -1,6 +1,6 @@
 import {createBrandoPresence} from './brando-presence.js';
 const $=s=>document.querySelector(s);
-import {escape,labels,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
+import {escape,labels,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
 import {trapFocus,decisionTabs} from './product-interactions.js';
 import * as analytics from './analytics.js';
 import {PILOT_EVENTS} from './analytics.js';
@@ -826,19 +826,21 @@ function render() {
   $('#decision').before($('#brando-suggestion'));
   setNavActive();$('#decision').dataset.view='decision';updateShell();
   document.querySelectorAll('[data-module]').forEach(b=>{if(b.dataset.module===selected)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
-  if(!context){analytics.sendOnce(PILOT_EVENTS.onboardingStarted,{pilot_stage:'no_brand'});$('#decision').innerHTML='<section class="empty-state" aria-labelledby="onboarding-title"><p class="eyebrow">Tu punto de partida</p><h2 id="onboarding-title">Construye tu primera decisión estratégica.</h2><p>Primero a quién sirves. Después, cómo quieres ser elegido. Cada decisión conservará tu criterio y su historia.</p><ol><li>Abre «Nueva marca» para crear tu espacio.</li><li>Define tu cliente principal.</li><li>Compara opciones y decide con tu criterio.</li></ol><p><strong>La IA propone. Tú decides. Brandopolis recuerda.</strong></p></section>';$('#context').innerHTML='';return;}
+  if(!context){analytics.sendOnce(PILOT_EVENTS.onboardingStarted,{pilot_stage:'no_brand'});$('#decision').innerHTML='<section class="empty-state" aria-labelledby="onboarding-title"><p class="eyebrow">Tu punto de partida</p><h2 id="onboarding-title">Construye tu primera decisión estratégica.</h2><p>Primero qué quieres construir y dónde competirás. Después, a quién sirves y cómo quieres ser elegido. Cada decisión conservará tu criterio y su historia.</p><ol><li>Abre «Nueva marca» para crear tu espacio.</li><li>Define tu objetivo estratégico.</li><li>Compara opciones y decide con tu criterio.</li></ol><p><strong>La IA propone. Tú decides. Brandopolis recuerda.</strong></p></section>';$('#context').innerHTML='';return;}
   history.replaceState(null,'',`/?brand=${encodeURIComponent(brandId)}&module=${encodeURIComponent(selected)}`);setTitle(labels[selected]);
-  const q=context.questions.find(q=>q.module===selected),d=context.decisions.find(d=>d.questionId===q.id),v=context.versions.find(v=>v.id===d?.activeVersionId),reviews=context.reviews.filter(r=>r.downstreamDecisionId===d?.id&&r.status!=='COMPLETED');
+  const q=context.questions.find(q=>q.module===selected);
+  if(!q){renderMissingSection();return;}
+  const d=context.decisions.find(d=>d.questionId===q.id),v=context.versions.find(v=>v.id===d?.activeVersionId),reviews=context.reviews.filter(r=>r.downstreamDecisionId===d?.id&&r.status!=='COMPLETED');
   const pending=context.impacts.some(i=>i.status==='IMPACT_PENDING');
   const hasCustomer=context.decisions.some(d=>context.questions.find(q=>q.id===d.questionId)?.module==='Primary Customer');
   const locked=selected==='Positioning'&&!hasCustomer;
   const editButton=`<button id="edit" ${pending||locked?'disabled':''}>${reviews.length?'Iniciar revisión':v?'Preparar nueva versión':'Preparar decisión'}</button>`;
   // Review card: the signature flow is shown as words, never as automatic rewriting.
-  const warn=reviews.length?`<section class="review" aria-labelledby="review-title"><h3 id="review-title">Tu estrategia ha evolucionado.</h3><p>Una decisión conectada cambió. Esta decisión no se modificará hasta que una persona complete la revisión.</p><ol class="impact-steps" aria-label="Recorrido de la revisión"><li>Decisión que cambió</li><li>${reviews.some(r=>r.dependencyType==='HARD')?'Dependencia estricta':'Dependencia sugerida'}</li><li>Decisión afectada</li><li>Requiere revisión</li><li>Revisión</li></ol>${impactVisible?reviews.map(r=>impactPair(r,q,v)+`<p class="impact-reason">${escape(impactReason(r))}</p>`).join(''):''}<div class="actions">${draft?'':editButton}<button id="show-impact" class="secondary" aria-expanded="${impactVisible}">Ver impacto</button></div></section>`:'';
+  const warn=reviews.length?`<section class="review" aria-labelledby="review-title"><h3 id="review-title">Tu estrategia ha evolucionado.</h3><p>Una decisión conectada cambió. Esta decisión no se modificará hasta que una persona complete la revisión.</p>${reviewUpdatesHtml(reviewUpdates(context,d))}<ol class="impact-steps" aria-label="Recorrido de la revisión"><li>Decisión que cambió</li><li>${reviews.some(r=>r.dependencyType==='HARD')?'Dependencia estricta':'Dependencia sugerida'}</li><li>Decisión afectada</li><li>Requiere revisión</li><li>Revisión</li></ol>${impactVisible?reviews.map(r=>impactPair(r,q,v)+`<p class="impact-reason">${escape(impactReason(r))}</p>`).join(''):''}<div class="actions">${draft?'':editButton}<button id="show-impact" class="secondary" aria-expanded="${impactVisible}">Ver impacto</button></div></section>`:'';
   const versions=context.versions.filter(v=>v.decisionId===d?.id).sort((a,b)=>b.sequence-a.sequence);
   const why=user.learningMoments?.[q.module]?.why;
   const reviewChoices='<h3 id="review-choice-title" tabindex="-1">¿Qué quieres hacer?</h3><div class="review-options" role="group" aria-label="Opciones de revisión"><button type="button" id="keep" class="option-card" aria-pressed="false" aria-label="Mantener sin cambios" aria-describedby="keep-hint"><strong>Mantener sin cambios</strong><span id="keep-hint">La decisión sigue siendo válida con el nuevo contexto.</span></button><button type="button" id="modify" class="option-card" aria-pressed="false" aria-label="Modificar" aria-describedby="modify-hint"><strong>Modificar</strong><span id="modify-hint">Ajustas la decisión a lo que cambió.</span></button></div><p class="hint" id="review-choice-hint">Elige una opción para confirmar la revisión. Editar tu decisión cuenta como «Modificar».</p>';
-  $('#decision').innerHTML=`<p class="eyebrow">${escape(labels[selected])}</p><h2>${escape(q.text)}</h2><p class="decision-meta">${stateBadge(v,reviews.length>0)}${v?`<span>Última actualización: ${escape(fmt(v.approvedAt))}</span><span>Decidido por: ${v.actorUserId===user.userId?'Tú':'Persona autorizada'}</span>`:''}</p>${why?`<p class="why"><span class="label">Por qué es importante:</span> ${escape(why)}</p>`:''}${pending?'<section class="review"><h3>Impacto pendiente</h3><p>La decisión se guardó. Falta calcular su efecto antes de otro cambio.</p><button id="retry-impact">Reintentar impacto</button></section>':''}${warn}${draft?`<form id="decision-form" class="decision-form">${draft.reviewToken?reviewChoices:''}<label for="option">Tu decisión</label><textarea id="option" name="selectedOption" required maxlength="12000" aria-describedby="form-hint">${escape(draft.selectedOption)}</textarea><p class="input-assist"><button type="button" id="possibilities" class="secondary">Ayúdame a generar posibilidades</button><span class="hint">Opcional. Escribe tu propia respuesta o pide posibilidades y decide cuál incorporar.</span></p><div id="possibilities-activity" class="local-activity" role="status" aria-live="polite" aria-atomic="true" hidden><span class="local-activity-mark" aria-hidden="true">✦</span><div><strong class="local-activity-title"></strong><p class="local-activity-detail"></p></div></div><label for="rationale">¿Por qué eliges esta opción?</label><textarea id="rationale" name="rationale" required ${draft.brandoReview?'minlength="10"':''} maxlength="12000">${escape(draft.rationale)}</textarea><div class="form-footer"><p class="hint" id="form-hint">${draft.reviewToken?'Nada se reescribe sin tu confirmación: «Confirmar revisión» registra una nueva versión y conserva las anteriores.':'Tu elección y tu criterio dan forma a la estrategia. Aprobar crea una versión nueva y conserva las anteriores.'}</p><div class="actions"><button id="cancel" type="button" class="secondary">Cancelar</button><button type="submit" id="submit-decision" ${draft.reviewToken?'disabled aria-describedby="review-choice-hint"':''}>${draft.reviewToken?'Confirmar revisión':draft.brandoReview?'Confirmar cambio':'Aprobar decisión'}</button></div></div></form>`:`${v?`<p class="current">${escape(v.selectedOption)}</p><p class="rationale"><span class="label">Por qué:</span> ${escape(v.rationale)}</p>`:`<p class="empty">${locked?'Aprueba primero tu cliente prioritario.':'Todavía no hay una decisión aprobada. Define tu elección y explica tu criterio.'}</p>`}`}<div class="actions">${!draft&&!reviews.length?editButton:''}<button id="reload" class="tertiary">Revisar versión más reciente</button>${sessionStorage.getItem(`draft:${user.userId}:${brandId}:${selected}`)?'<button id="restore-draft" class="tertiary">Ver borrador conservado</button>':''}</div>`;
+  $('#decision').innerHTML=`<p class="eyebrow">${escape(labels[selected])}</p><h2>${escape(q.text)}</h2><p class="decision-meta">${stateBadge(v,reviews.length>0)}${v?`<span>Última actualización: ${escape(fmt(v.approvedAt))}</span><span>Decidido por: ${v.actorUserId===user.userId?'Tú':'Persona autorizada'}</span>`:''}</p>${why?`<p class="why"><span class="label">Por qué es importante:</span> ${escape(why)}</p>`:''}${pending?'<section class="review"><h3>Impacto pendiente</h3><p>La decisión se guardó. Falta calcular su efecto antes de otro cambio.</p><button id="retry-impact">Reintentar impacto</button></section>':''}${warn}${draft?`<form id="decision-form" class="decision-form">${draft.reviewToken?reviewChoices:''}<label for="option">Tu decisión</label>${decisionGuide[q.module]?`<p class="hint" id="option-guide">${escape(decisionGuide[q.module])}</p>`:''}<textarea id="option" name="selectedOption" required maxlength="12000" aria-describedby="${decisionGuide[q.module]?'option-guide ':''}form-hint">${escape(draft.selectedOption)}</textarea><p class="input-assist"><button type="button" id="possibilities" class="secondary">Ayúdame a generar posibilidades</button><span class="hint">Opcional. Escribe tu propia respuesta o pide posibilidades y decide cuál incorporar.</span></p><div id="possibilities-activity" class="local-activity" role="status" aria-live="polite" aria-atomic="true" hidden><span class="local-activity-mark" aria-hidden="true">✦</span><div><strong class="local-activity-title"></strong><p class="local-activity-detail"></p></div></div><label for="rationale">¿Por qué eliges esta opción?</label><textarea id="rationale" name="rationale" required ${draft.brandoReview?'minlength="10"':''} maxlength="12000">${escape(draft.rationale)}</textarea><div class="form-footer"><p class="hint" id="form-hint">${draft.reviewToken?'Nada se reescribe sin tu confirmación: «Confirmar revisión» registra una nueva versión y conserva las anteriores.':'Tu elección y tu criterio dan forma a la estrategia. Aprobar crea una versión nueva y conserva las anteriores.'}</p><div class="actions"><button id="cancel" type="button" class="secondary">Cancelar</button><button type="submit" id="submit-decision" ${draft.reviewToken?'disabled aria-describedby="review-choice-hint"':''}>${draft.reviewToken?'Confirmar revisión':draft.brandoReview?'Confirmar cambio':'Aprobar decisión'}</button></div></div></form>`:`${v?`<p class="current">${escape(v.selectedOption)}</p><p class="rationale"><span class="label">Por qué:</span> ${escape(v.rationale)}</p>`:`<p class="empty">${locked?'Aprueba primero tu cliente prioritario.':'Todavía no hay una decisión aprobada. Define tu elección y explica tu criterio.'}</p>`}`}<div class="actions">${!draft&&!reviews.length?editButton:''}<button id="reload" class="tertiary">Revisar versión más reciente</button>${sessionStorage.getItem(`draft:${user.userId}:${brandId}:${selected}`)?'<button id="restore-draft" class="tertiary">Ver borrador conservado</button>':''}</div>`;
   composeDecision(q,d,v,reviews);
   mountRecommendation(q,d,v,reviews,pending||locked);
   mountLearningMoment(q);
@@ -962,6 +964,8 @@ $('#create-brand').addEventListener('submit',event=>{event.preventDefault();run(
  $('#brand-document-selection').innerHTML=selectedDocumentsHtml([]);
 
  $('#brand-dialog').close();
+ // New brands start the journey at its first section (ADR-0021); existing brands are never redirected.
+ selected='Strategic Objective';
  await loadBrands(brand.id);
 
  if(competitiveResearch){
@@ -975,7 +979,7 @@ $('#create-brand').addEventListener('submit',event=>{event.preventDefault();run(
    );
   }else{
    analytics.send(PILOT_EVENTS.brandCreated,{pilot_stage:'brand_created'});
-   notice('Marca creada. Tu contexto inicial quedó guardado. Comienza con tu cliente principal.');
+   notice('Marca creada. Tu contexto inicial quedó guardado. Comienza con tu objetivo estratégico.');
    await saveBrandGeography(brand.id);
   }
  }
@@ -992,11 +996,23 @@ document.querySelectorAll('[data-module]').forEach(button=>button.addEventListen
 
 // History is strategic evolution: version, date, actor, rationale and the superseded relation.
 function historyHtml(versions,decision){return historyView(versions,decision,user.userId);}
+/** An existing brand without a journey section: one explicit action adds it; nothing is created on read. */
+function renderMissingSection(){
+ const missing=[...document.querySelectorAll('#journey [data-module]')].map(b=>b.dataset.module).filter(m=>!context.questions.some(q=>q.module===m)).map(m=>labels[m]??m);
+ $('#decision').innerHTML=strategicSectionsHtml(labels[selected]??selected,missing);
+ renderContext();
+ $('#add-strategic-sections').addEventListener('click',event=>run(async()=>{
+  const result=await api('/api/brands/strategic-sections',{brandId});
+  await refresh();focusView();
+  notice(result.added.length?'Secciones agregadas. Ninguna decisión cambió.':'Estas secciones ya estaban en tu recorrido.');
+ },event.currentTarget));
+}
 function impactPair(review,question,version){return impactView(context,review,question,version);}
 function impactReason(review){
  const trigger=context.versions.find(v=>v.id===review.triggerVersionId),decision=context.decisions.find(d=>d.id===trigger?.decisionId),question=context.questions.find(q=>q.id===decision?.questionId);
  const label=labels[question?.module]??'Decisión conectada';
- return `${label} cambió: versión ${context.versions.find(v=>v.id===trigger?.previousVersionId)?.sequence??'anterior'} → ${trigger?.sequence??'vigente'}. ${review.dependencyType==='HARD'?'Una dependencia estricta requiere confirmar que tu decisión sigue alineada.':'Revisa si este cambio afecta tu decisión.'}`;
+ const change=trigger&&trigger.previousVersionId===null?`${label} se registró por primera vez después de esta decisión.`:`${label} cambió: versión ${context.versions.find(v=>v.id===trigger?.previousVersionId)?.sequence??'anterior'} → ${trigger?.sequence??'vigente'}.`;
+ return `${change} ${review.dependencyType==='HARD'?'Una dependencia estricta requiere confirmar que tu decisión sigue alineada.':'Revisa si este cambio afecta tu decisión.'}`;
 }
 function preserveDraft(){if(draft&&brandId)sessionStorage.setItem(`draft:${user.userId}:${brandId}:${selected}`,JSON.stringify(draft));}
 const narrow=matchMedia('(max-width:1279px)');
@@ -1918,7 +1934,10 @@ function updateShell(){
   if(demo)analytics.sendOnce(PILOT_EVENTS.demoBrandOpened,{pilot_stage:'demo'});
  }
  if(!context)return;
- document.querySelectorAll('[data-module]').forEach(button=>{const q=context.questions.find(q=>q.module===button.dataset.module),d=context.decisions.find(d=>d.questionId===q?.id);button.classList.toggle('needs-attention',needsReview(context,d));button.title=needsReview(context,d)?'Requiere revisión':d?'Decisión vigente':'Por decidir';button.setAttribute('aria-label',button.textContent.trim());button.setAttribute('aria-description',button.title);});
+ // Journey line: decided, review and next-phase states. The next phase is also said in words (title and
+ // aria-description), so neither colour nor the finite pulse is the only signal.
+ const upcoming=nextPhase();
+ document.querySelectorAll('[data-module]').forEach(button=>{const q=context.questions.find(q=>q.module===button.dataset.module),d=context.decisions.find(d=>d.questionId===q?.id),review=needsReview(context,d),isNext=button.dataset.module===upcoming;button.classList.toggle('needs-attention',review);button.classList.toggle('is-decided',!!d?.activeVersionId&&!review);if(isNext&&!button.classList.contains('is-next'))button.classList.add('is-next');else if(!isNext)button.classList.remove('is-next');button.title=(isNext?'Siguiente decisión sugerida · ':'')+(review?'Requiere revisión':d?'Decisión vigente':'Por decidir');button.setAttribute('aria-label',button.textContent.trim());button.setAttribute('aria-description',button.title);});
 }
 function composeDecision(q,d,v,reviews){
  const surface=$('#decision');

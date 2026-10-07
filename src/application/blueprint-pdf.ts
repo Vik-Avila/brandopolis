@@ -20,10 +20,15 @@ const GEOGRAPHY_LABELS: Record<string, string> = {
 };
 
 const MODULE_LABELS: Record<string, string> = {
+  'Strategic Objective': 'Objetivo estratégico',
+  'Market Arena': 'Arena de mercado',
   'Primary Customer': 'Cliente principal',
   'Value Mechanism': 'Modelo de valor',
   Positioning: 'Posicionamiento',
-  'Core Message': 'Mensaje principal'
+  'Brand Promise': 'Promesa de marca',
+  'Core Message': 'Mensaje principal',
+  'GTM Priority': 'Prioridad de lanzamiento',
+  'Priority Experiment': 'Experimento prioritario'
 };
 
 const DEPENDENCY_LABELS: Record<string, string> = {
@@ -84,7 +89,7 @@ export function buildBlueprintPdf(input: BlueprintInput): Uint8Array {
     return context.versions.find(v => v.id === decision?.activeVersionId) ?? null;
   };
   const decided = Object.keys(MODULE_LABELS).filter(module => activeVersion(module)).length;
-  // The four canonical decisions, in the order the projection returns them. A brand can carry other
+  // The brand's canonical decisions, in the order the projection returns them. A brand can carry other
   // questions (context notes, for instance); those are not strategic decisions and never appear here.
   const canonical = context.questions.map(q => q.module).filter(module => module in MODULE_LABELS);
   const ordered = canonical.length ? canonical : Object.keys(MODULE_LABELS);
@@ -119,13 +124,14 @@ export function buildBlueprintPdf(input: BlueprintInput): Uint8Array {
 
   // --- Strategic snapshot ----------------------------------------------------------------------
   heading('Estado estratégico');
-  field('Decisiones aprobadas', `${decided} de ${Object.keys(MODULE_LABELS).length}`);
+  // Counted over the sections this brand has: a brand created before ADR-0021 keeps its own denominator.
+  field('Decisiones aprobadas', `${decided} de ${ordered.length}`);
   field('Influencia geográfica', brand.geographicInfluence ? (GEOGRAPHY_LABELS[brand.geographicInfluence] ?? brand.geographicInfluence) : NOT_DEFINED);
   field('Mercado principal', brand.primaryMarket?.trim() || NOT_DEFINED);
   field('Contexto competitivo', input.competitiveStatus);
   pdf.gap(6);
 
-  // --- The four decisions ----------------------------------------------------------------------
+  // --- The strategic decisions ----------------------------------------------------------------------
   heading('Decisiones estratégicas');
   ordered.forEach((module, index) => {
     const label = MODULE_LABELS[module] ?? module;

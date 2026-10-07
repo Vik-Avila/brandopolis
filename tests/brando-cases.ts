@@ -14,7 +14,8 @@ import * as t from '../src/persistence/schema.js';
 export function brandoCases(connection:()=>ReturnType<typeof connect>){
  const setup=async(strategic=false)=>{
   const db=connection().db,engine=new Engine(db,undefined,strategic?new ModelGateway({name:'test',model:'test',generate:async request=>request.task==='BRANDO_CONTEXTUAL'?{...demoBrando(request.input),suggestionActions:[{kind:'STRATEGY',proposedDecision:'Agencias con varias cuentas activas'}]}:new DemoProvider().generate(request)}):undefined),who=await seedIdentity(db),brand=await engine.createBrand(who.token,'Brando A','Contexto exclusivo de A');
-  const c=await engine.context(who.token,brand.id),q=c.questions[0];
+  // The Customer section by module, not by position: ADR-0021 put Objetivo and Arena first in the journey.
+  const c=await engine.context(who.token,brand.id),q=c.questions.find(q=>q.module==='Primary Customer')!;
   await engine.prepareQuestion(who.token,brand.id,q.id,null);
   await engine.commitDecision(who.token,{brandId:brand.id,questionId:q.id,selectedOption:'Agencias pequeñas',rationale:'Necesitan conservar el criterio de varias marcas',expectedActiveVersion:null,sourceRecommendationId:null,idempotencyKey:randomUUID(),actorUserId:who.userId});
   return {db,engine,who,brand,q};

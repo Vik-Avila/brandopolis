@@ -1,6 +1,6 @@
 // Pure presentation projections. No writes, requests, inferred strategic state or domain rules.
 export const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export const labels={'Primary Customer':'Cliente principal','Value Mechanism':'Modelo de valor','Positioning':'Posicionamiento','Core Message':'Mensaje principal'};
+export const labels={'Strategic Objective':'Objetivo estratégico','Market Arena':'Arena de mercado','Primary Customer':'Cliente principal','Value Mechanism':'Modelo de valor','Positioning':'Posicionamiento','Brand Promise':'Promesa de marca','Core Message':'Mensaje principal','GTM Priority':'Prioridad de lanzamiento','Priority Experiment':'Experimento prioritario'};
 export const fmt=value=>new Date(value).toLocaleString('es-MX',{dateStyle:'medium',timeStyle:'short'});
 export const needsReview=(context,decision)=>!!decision&&(decision.reviewStatus==='NEEDS_REVIEW'||context.reviews.some(r=>r.downstreamDecisionId===decision.id&&r.status!=='COMPLETED'));
 export function decisionState(context,question){
@@ -9,13 +9,17 @@ export function decisionState(context,question){
 }
 // One status vocabulary everywhere. «Vigente» is a display relation over the active version, never a Decision.status.
 export function stateBadge(version,review){return `<span class="badge ${review?'warn':''}">${review?'Requiere revisión':version?'Vigente · v'+version.sequence:'Por decidir'}</span>`;}
-// Display names for the canonical capability keys of the strategic method (config/strategic-method/learning-moments.v1.json).
-const capabilityLabels={'Customer Understanding':'Comprensión del cliente','Business Model Thinking':'Modelo de negocio','Strategic Differentiation':'Diferenciación estratégica','Message Prioritization':'Priorización del mensaje','Problem Framing':'Encuadre del problema'};
+// Display names for the canonical capability keys of the strategic method (config/strategic-method/learning-moments.v5.json).
+const capabilityLabels={'Market Reasoning':'Razonamiento de mercado','Brand Thinking':'Pensamiento de marca','GTM Prioritization':'Priorización del lanzamiento','Experimentation & Learning':'Experimentación y aprendizaje','Customer Understanding':'Comprensión del cliente','Business Model Thinking':'Modelo de negocio','Strategic Differentiation':'Diferenciación estratégica','Message Prioritization':'Priorización del mensaje','Problem Framing':'Encuadre del problema'};
 export const capabilityLabel=key=>capabilityLabels[key]??key;
 const plural=(n,one,many)=>`${n} ${n===1?one:many}`;
 
 const legacyCapabilityBehavior='Explicitó una elección y su criterio como Estratega de Marca.';
 const personalizedCapabilityBehavior={
+ 'Market Reasoning':'Delimitaste dónde compite tu marca, frente a qué alternativas y con qué límites.',
+ 'Brand Thinking':'Definiste qué debe significar tu marca para tu cliente y qué puede esperar de ella.',
+ 'GTM Prioritization':'Elegiste dónde concentrar primero tus recursos para llegar a tu cliente y qué dejas para después.',
+ 'Experimentation & Learning':'Elegiste qué supuesto crítico validar primero y qué señal te diría si se sostiene.',
  'Customer Understanding':'Identificaste y priorizaste el segmento de cliente que consideras más relevante para tu marca.',
  'Business Model Thinking':'Relacionaste lo que ofreces con una necesidad concreta del cliente que quieres atender.',
  'Strategic Differentiation':'Articulaste una diferencia que puede ayudarte a ser elegido frente a otras alternativas.',
@@ -120,7 +124,39 @@ export function strategyMap(context){return `<section class="strategy-map"><div 
 export function impactPair(context,review,question,version){
  const trigger=context.versions.find(v=>v.id===review.triggerVersionId),decision=context.decisions.find(d=>d.id===trigger?.decisionId),source=context.questions.find(q=>q.id===decision?.questionId);
  const before=context.versions.find(v=>v.id===trigger?.previousVersionId);
- return `<div class="impact-pair"><article><p class="eyebrow">01 · Decisión que cambió</p><h4>${escape(labels[source?.module]??'Decisión conectada')}</h4><span class="badge">Vigente · v${trigger?.sequence??''}</span>${before?`<div class="impact-before"><span>Antes · v${before.sequence}</span><p>${escape(before.selectedOption)}</p></div>`:''}<div class="impact-after"><span>Ahora</span><p>${escape(trigger?.selectedOption??'')}</p></div></article><span class="impact-link"><span class="impact-arrow" aria-hidden="true">→</span><span class="impact-relation">${review.dependencyType==='HARD'?'Dependencia estricta':'Dependencia sugerida'}</span></span><article><p class="eyebrow">02 · Decisión afectada</p><h4>${escape(labels[question.module])}</h4><span class="badge warn">Requiere revisión</span><p>${escape(version?.selectedOption??'')}</p><p class="impact-boundary">Conserva su versión. Tú decides si necesita un ajuste.</p></article></div>`;
+ return `<div class="impact-pair"><article><p class="eyebrow">01 · Decisión que cambió</p><h4>${escape(labels[source?.module]??'Decisión conectada')}</h4><span class="badge">Vigente · v${trigger?.sequence??''}</span>${before?`<div class="impact-before"><span>Antes · v${before.sequence}</span><p>${escape(before.selectedOption)}</p></div>`:trigger&&trigger.previousVersionId===null?'<div class="impact-before"><span>Antes</span><p>Sin decisión registrada</p></div>':''}<div class="impact-after"><span>Ahora</span><p>${escape(trigger?.selectedOption??'')}</p></div></article><span class="impact-link"><span class="impact-arrow" aria-hidden="true">→</span><span class="impact-relation">${review.dependencyType==='HARD'?'Dependencia estricta':'Dependencia sugerida'}</span></span><article><p class="eyebrow">02 · Decisión afectada</p><h4>${escape(labels[question.module])}</h4><span class="badge warn">Requiere revisión</span><p>${escape(version?.selectedOption??'')}</p><p class="impact-boundary">Conserva su versión. Tú decides si necesita un ajuste.</p></article></div>`;
+}
+/**
+ * Connected decisions whose current version was approved after this decision's pending review opened and
+ * that are not themselves the origin of a pending review (ADR-0022: a change folded into the existing review
+ * instead of a duplicate). Read-only projection over recorded versions: it never infers or writes state.
+ */
+export function reviewUpdates(c,decision){
+ if(!decision)return [];
+ const triggers=c.reviews.filter(r=>r.downstreamDecisionId===decision.id&&r.status!=='COMPLETED').map(r=>c.versions.find(v=>v.id===r.triggerVersionId)).filter(Boolean);
+ if(!triggers.length)return [];
+ const since=Math.min(...triggers.map(v=>Date.parse(v.approvedAt)));
+ return (c.dependencies??[]).filter(e=>e.downstreamDecisionId===decision.id).map(e=>{
+  const up=c.decisions.find(d=>d.id===e.upstreamDecisionId),v=c.versions.find(x=>x.id===up?.activeVersionId),q=c.questions.find(x=>x.id===up?.questionId);
+  return v&&q&&Date.parse(v.approvedAt)>since&&!triggers.some(t=>t.id===v.id)?{module:q.module,label:labels[q.module]??q.module,sequence:v.sequence,choice:v.selectedOption,rationale:v.rationale,kind:e.kind}:null;
+ }).filter(Boolean);
+}
+export function reviewUpdatesHtml(updates){
+ if(!updates.length)return '';
+ return `<section class="review-updates" aria-labelledby="review-updates-title"><h4 id="review-updates-title">También cambió mientras esta revisión estaba pendiente</h4>${updates.map(u=>`<p><strong>${escape(u.label)} · Vigente · v${u.sequence}</strong> (${u.kind==='HARD'?'dependencia estricta':'dependencia sugerida'}): ${escape(u.choice)}</p><p class="hint">Criterio registrado: ${escape(u.rationale)}</p>`).join('')}<p class="hint">Se integra en esta misma revisión; no se abre otra. Tu decisión no cambia hasta que la confirmes.</p></section>`;
+}
+/** Section-specific writing guide for the decision editor. Guidance only: it never fills or validates the text. */
+export const decisionGuide={
+ 'Strategic Objective':'Incluye qué quieres construir o cambiar con tu marca y cómo reconocerás que avanzas. Es distinto de una meta comercial puntual.',
+ 'Market Arena':'Incluye dónde compites primero, frente a qué alternativas (también no hacer nada) y qué queda fuera. Tu ubicación no define por sí sola tu arena.',
+ 'Brand Promise':'Incluye qué puede esperar tu cliente de tu marca y por qué es creíble hoy. Debe expresar tu posicionamiento; tu mensaje principal se apoyará en ella.',
+ 'GTM Priority':'Incluye dónde concentrarás primero tus recursos (canal, comunidad o alianza), por qué ahí llegas a tu cliente prioritario y qué dejas para después. Sin evidencia, el canal elegido es una hipótesis.',
+ 'Priority Experiment':'Incluye qué supuesto crítico validarás primero, por qué es el más riesgoso y qué señal observable te diría si se sostiene. La ejecución se planea y registra en «Experimentos y aprendizajes».'
+};
+/** Shown when an existing brand lacks a journey section. Adding it is an explicit human action (ADR-0021). */
+export function strategicSectionsHtml(label,missing=[label]){
+ const names=missing.length>1?`${missing.slice(0,-1).join(', ')} y ${missing.at(-1)}`:missing[0];
+ return `<section class="empty-state strategic-sections" aria-labelledby="strategic-sections-title"><p class="eyebrow">${escape(label)}</p><h2 id="strategic-sections-title">Esta sección es nueva en tu recorrido.</h2><p>Se agregarán a tu recorrido: ${escape(names)}, cada una en su lugar. Agregarlas no cambia ninguna decisión.</p><p>Cuando registres por primera vez una de estas decisiones, Brandopolis te pedirá revisar las decisiones conectadas que ya tomaste. Ninguna se reescribe: tú decides en cada revisión.</p><div class="actions"><button type="button" id="add-strategic-sections">Agregar estas secciones</button></div><p class="hint">Orientación del sistema · sin consulta a la IA</p></section>`;
 }
 export function historyHtml(versions,decision,userId){
  if(!versions.length)return '<section class="empty-state"><p class="eyebrow">Memoria por construir</p><h3>Tu primera decisión inicia esta historia.</h3><p>Cuando apruebes, podrás volver a tu elección, su criterio y cada versión anterior.</p></section>';
@@ -184,10 +220,15 @@ export function brandoSectionOrientation(c,questionId){
  const q=c?.questions.find(q=>q.id===questionId);
  if(!q||!Object.hasOwn(labels,q.module))return null;
  const focus={
+  'Strategic Objective':'Precisa qué quieres construir o cambiar y cómo reconocerás que avanzas, sin reducirlo a una sola cifra.',
+  'Market Arena':'Delimita dónde compites, frente a qué alternativas y qué queda fuera. Tu ubicación no define por sí sola tu arena.',
   'Primary Customer':'Precisa a quién atender y qué problema necesitas comprobar.',
   'Value Mechanism':'Conecta el problema del cliente con el valor que ofrecerás.',
   Positioning:'Revisa por qué elegirían tu marca frente a otras alternativas.',
-  'Core Message':'Expresa tu valor con claridad y evita promesas sin respaldo.'
+  'Brand Promise':'Define qué debe significar tu marca para tu cliente y qué puede esperar de ella; promete sólo lo que puedes cumplir.',
+  'Core Message':'Expresa tu valor con claridad y evita promesas sin respaldo.',
+  'GTM Priority':'Elige dónde concentrar primero tus recursos para llegar a tu cliente prioritario y qué dejas para después.',
+  'Priority Experiment':'Elige qué supuesto crítico validar primero y qué señal observable te diría si se sostiene.'
  }[q.module];
  const {decision,version,review}=decisionState(c,q);
  let state='pending',message='Esta sección aún no tiene una decisión registrada.';
@@ -196,10 +237,24 @@ export function brandoSectionOrientation(c,questionId){
  else if(review){state='review';message='Una decisión conectada cambió. Revisa esta sección antes de darla por vigente.';}
  else if(!(c.evidence.length||c.userInputs.length||c.learnings.some(l=>l.status==='ACCEPTED'))){state='context';message=version?'Hay una decisión registrada, pero no hay evidencia, información aportada ni aprendizajes aceptados en el contexto de la marca.':'Antes de decidir, aporta información de tu marca. Aún no hay evidencia, información aportada ni aprendizajes aceptados.';}
  else if(version){state='current';message='Tu decisión está registrada. Comprueba si sigue teniendo sentido con el contexto disponible.';}
- const changes=review?c.reviews.filter(r=>r.downstreamDecisionId===decision.id&&r.status!=='COMPLETED').map(r=>{
+ // Activation Analysis: GTM builds on Customer, Value, Positioning and Message; while any of them awaits review a proposal may be provisional.
+ if(q.module==='GTM Priority'&&!['impact','invalidated'].includes(state)){
+  const pending=['Primary Customer','Value Mechanism','Positioning','Core Message'].filter(m=>{const upstream=c.questions.find(x=>x.module===m);return upstream&&decisionState(c,upstream).review;}).map(m=>labels[m]);
+  if(pending.length)message+=` ${pending.join(', ')} ${pending.length>1?'están':'está'} en revisión: cualquier propuesta para esta sección puede ser provisional.`;
+ }
+ // Priority Experiment: name the recorded, still-unvalidated hypotheses and those an approved decision relies on.
+ // Execution stays in Experimentos y aprendizajes, where a signal only becomes learning after human review.
+ if(q.module==='Priority Experiment'&&!['impact','invalidated'].includes(state)){
+  const open=(c.hypotheses??[]).filter(h=>['UNTESTED','TESTING','WEAKENED'].includes(h.status));
+  const inUse=new Set((c.versions??[]).filter(v=>v.versionStatus==='APPROVED').flatMap(v=>(v.hypothesisUsages??[]).filter(u=>u.assumptionInUse).map(u=>u.hypothesisId)));
+  const used=open.filter(h=>inUse.has(h.id)).length;
+  message+=open.length?` Hay ${open.length===1?'1 hipótesis sin validar':`${open.length} hipótesis sin validar`}${used?` (${used} ${used===1?'sostiene':'sostienen'} una decisión vigente)`:''}; elige cuál validar primero.`:' Aún no hay hipótesis registradas: anota en el contexto el supuesto que más te preocupa.';
+  message+=version?' Planea y registra su ejecución en Experimentos y aprendizajes; una señal no es aprendizaje hasta que la revises.':'';
+ }
+ const changes=review?[...c.reviews.filter(r=>r.downstreamDecisionId===decision.id&&r.status!=='COMPLETED').map(r=>{
   const changed=c.versions.find(v=>v.id===r.triggerVersionId),up=c.decisions.find(d=>d.id===changed?.decisionId),source=c.questions.find(q=>q.id===up?.questionId);
   return changed&&source?{label:labels[source.module]??'Decisión conectada',choice:changed.selectedOption,rationale:changed.rationale}:null;
- }).filter(Boolean):[];
+ }).filter(Boolean),...reviewUpdates(c,decision).map(u=>({label:`${u.label} · v${u.sequence} (cambió después)`,choice:u.choice,rationale:u.rationale}))]:[];
  return {state,message,focus,changes,title:labels[q.module],query:`Ayúdame a explorar propuestas para ${labels[q.module]}. ${focus} Explica qué está registrado y qué falta comprobar; considera las decisiones conectadas y las revisiones pendientes. Propón alternativas concretas para esta pregunta cuando el contexto lo permita. Distingue hechos, hipótesis y límites; no apruebes ni cambies estrategia.`};
 }
 export function brandoSectionHtml(orientation,{busy=false,hasAnswer=false}={}){

@@ -22,13 +22,16 @@ test('human connected proof survives reload without console errors or overflow',
   await page.locator('#new-brand').click();await expect(page.locator('#brand-dialog')).toBeVisible();await page.getByLabel('Nueva marca',{exact:true}).fill(`Browser DEMO ${testInfo.project.name} ${Date.now()}`);
   await page.getByRole('button',{name:'Crear marca',exact:true}).click();
   await expect(page.locator('#decision')).toContainText('Por decidir');
+  // ADR-0021 (D5): a new brand starts its journey at Objetivo estratégico.
+  await expect(page.locator('#decision h2').first()).toHaveText('¿Qué estamos intentando construir o cambiar?');
+  await expect(page.locator('#journey [data-module="Strategic Objective"]')).toHaveAttribute('aria-current','page');
   await navigate(page,'Contexto estratégico');
   await page.getByLabel('Contenido',{exact:true}).fill('Ayudamos a agencias a conservar decisiones');
   await page.getByRole('button',{name:'Guardar contexto',exact:true}).click();
   await expect(page.locator('#decision')).toContainText('Ayudamos a agencias a conservar decisiones');
   await page.reload();await navigate(page,'Contexto estratégico');
   await expect(page.locator('#decision')).toContainText('Ayudamos a agencias a conservar decisiones');
-  await navigate(page,'01 Cliente principal');
+  await navigate(page,'03 Cliente principal');
   async function approve(option:string,rationale:string,button='Preparar decisión') {
     await page.getByRole('button',{name:button,exact:true}).click();
     await page.getByLabel('Tu decisión',{exact:true}).fill(option);
@@ -37,17 +40,17 @@ test('human connected proof survives reload without console errors or overflow',
     await expect(page.locator('#decision .current')).toHaveText(option);
   }
   await approve('Agencies','Servicio recurrente para múltiples marcas');
-  await navigate(page,'02 Modelo de valor');
+  await navigate(page,'04 Modelo de valor');
   await approve('Suscripción por marca activa','Ingresos por continuidad estratégica');
-  await navigate(page,'03 Posicionamiento');
+  await navigate(page,'05 Posicionamiento');
   await approve('Strategic OS for Agencies','Continuidad del criterio estratégico');
-  await navigate(page,'04 Mensaje principal');
+  await navigate(page,'07 Mensaje principal');
   await approve('Decisiones conectadas, criterio compartido','Una idea principal recordable');
-  await navigate(page,'01 Cliente principal');
+  await navigate(page,'03 Cliente principal');
   await approve('Internal Marketing Teams','Cambio humano de cliente prioritario','Preparar nueva versión');
   await page.getByText('Historial · 2 versiones',{exact:true}).click();
   await expect(page.locator('.history-item').filter({hasText:'Sustituida'})).toContainText('Agencies');
-  await navigate(page,'03 Posicionamiento');
+  await navigate(page,'05 Posicionamiento');
   await expect(page.locator('#decision')).toContainText('Requiere revisión');
   await expect(page.locator('#decision .current')).toHaveText('Strategic OS for Agencies');
   await page.getByRole('button',{name:'Ver impacto',exact:true}).click();
@@ -70,6 +73,15 @@ test('human connected proof survives reload without console errors or overflow',
   await expect(page.locator('#decision')).toContainText('Suscripción por marca activa');
   await expect(page.locator('#decision')).toContainText('Decisiones conectadas, criterio compartido');
   await expect(page.locator('#decision')).toContainText('Requiere revisión');
+  // ADR-0021 (D3): the first Arena version asks a person to review the earlier Customer decision; nothing is rewritten.
+  await navigate(page,'02 Arena de mercado');
+  await approve('Agencias de LATAM frente a hojas de cálculo','La arena delimita dónde competimos primero');
+  await navigate(page,'03 Cliente principal');
+  await expect(page.locator('#decision')).toContainText('Requiere revisión');
+  await expect(page.locator('#decision .current')).toHaveText('Internal Marketing Teams');
+  await page.getByRole('button',{name:'Ver impacto',exact:true}).click();
+  await expect(page.locator('#decision')).toContainText('Sin decisión registrada');
+  await expect(page.locator('#decision')).toContainText('se registró por primera vez');
   expect(errors).toEqual([]);
   await page.getByRole('button',{name:'Salir',exact:true}).click();
   await expect(page.getByLabel('Token de sesión local')).toBeVisible();
@@ -92,14 +104,16 @@ test('DEMO recommendation can be rejected and then explicitly approved',async({p
  const session=JSON.parse(readFileSync(process.env.BRANDOPOLIS_SESSION_FILE??'.local/demo-session.json','utf8'));
  await page.goto('/');await page.getByLabel('Token de sesión local').fill(session.token);await page.getByRole('button',{name:'Entrar al espacio estratégico'}).click();
  await page.locator('#new-brand').click();await expect(page.locator('#brand-dialog')).toBeVisible();await page.getByLabel('Nueva marca',{exact:true}).fill(`Analysis DEMO ${info.project.name} ${Date.now()}`);await page.getByRole('button',{name:'Crear marca',exact:true}).click();await expect(page.locator('#decision')).toContainText('Por decidir');
+ // A new brand opens on Objetivo estratégico (ADR-0021); this flow exercises the Customer DEMO options.
+ await navigate(page,'03 Cliente principal');await expect(page.locator('#decision')).toContainText('Por decidir');
  await page.getByRole('tab',{name:'Opciones',exact:true}).click();await page.getByRole('button',{name:'Ayúdame a generar posibilidades',exact:true}).click();await expect(page.getByRole('heading',{name:'Compara antes de decidir'})).toBeVisible();
  await page.getByLabel('Motivo para rechazar').fill('Necesito otro enfoque');await page.getByRole('button',{name:'Rechazar recomendación',exact:true}).click();await expect(page.locator('#notice')).toContainText('Recomendación rechazada');await expect(page.locator('#decision')).toContainText('Por decidir');
  await page.getByRole('tab',{name:'Opciones',exact:true}).click();await page.getByRole('button',{name:'Ayúdame a generar posibilidades',exact:true}).click();await page.getByRole('button',{name:'Usar propuesta sugerida',exact:true}).click();await page.getByLabel('¿Por qué eliges esta opción?').fill('Elección humana para probar la demostración');await page.getByRole('button',{name:'Aprobar decisión',exact:true}).click();
  await expect(page.locator('#decision .current')).toHaveText('Agencias con varias marcas');await page.reload();await expect(page.locator('#decision .current')).toHaveText('Agencias con varias marcas');expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- for(const [module,choice] of [['02 Modelo de valor','Suscripción por marca activa'],['03 Posicionamiento','Continuidad para agencias'],['04 Mensaje principal','Decisiones conectadas']]) {
+ for(const [module,choice] of [['04 Modelo de valor','Suscripción por marca activa'],['05 Posicionamiento','Continuidad para agencias'],['07 Mensaje principal','Decisiones conectadas']]) {
    await navigate(page,module);await page.getByRole('button',{name:'Preparar decisión',exact:true}).click();await page.getByLabel('Tu decisión',{exact:true}).fill(choice);await page.getByLabel('¿Por qué eliges esta opción?').fill('Criterio humano DEMO');await page.getByRole('button',{name:'Aprobar decisión',exact:true}).click();await expect(page.locator('#decision .current')).toHaveText(choice);
  }
- await navigate(page,'01 Cliente principal');await page.getByRole('tab',{name:'Opciones',exact:true}).click();await page.getByRole('button',{name:'Ayúdame a generar posibilidades',exact:true}).click();await page.getByRole('button',{name:'Modificar propuesta',exact:true}).click();await page.getByLabel('Tu decisión',{exact:true}).fill('Equipos internos');await page.getByLabel('¿Por qué eliges esta opción?').fill('Nueva prioridad humana DEMO');await page.getByRole('button',{name:'Aprobar decisión',exact:true}).click();await expect(page.locator('#decision .current')).toHaveText('Equipos internos');
+ await navigate(page,'03 Cliente principal');await page.getByRole('tab',{name:'Opciones',exact:true}).click();await page.getByRole('button',{name:'Ayúdame a generar posibilidades',exact:true}).click();await page.getByRole('button',{name:'Modificar propuesta',exact:true}).click();await page.getByLabel('Tu decisión',{exact:true}).fill('Equipos internos');await page.getByLabel('¿Por qué eliges esta opción?').fill('Nueva prioridad humana DEMO');await page.getByRole('button',{name:'Aprobar decisión',exact:true}).click();await expect(page.locator('#decision .current')).toHaveText('Equipos internos');
  await navigate(page,'Qué necesita atención');await expect(page.locator('#decision')).toContainText('Tu estrategia hoy');await page.getByRole('button',{name:'Abrir posicionamiento',exact:true}).click();await expect(page.locator('#decision')).toContainText('Requiere revisión');await expect(page.locator('#decision .current')).toHaveText('Continuidad para agencias');
  await page.getByRole('button',{name:'Iniciar revisión',exact:true}).click();await page.getByRole('button',{name:'Modificar',exact:true}).click();await page.getByLabel('Tu decisión',{exact:true}).fill('Continuidad para equipos internos');await page.getByLabel('¿Por qué eliges esta opción?').fill('Alineación humana con cliente');await page.getByRole('button',{name:'Confirmar revisión',exact:true}).click();await expect(page.locator('#decision .current')).toHaveText('Continuidad para equipos internos');
  await navigate(page,'Contexto estratégico');await page.getByLabel('Tipo de aportación').selectOption('hypothesis');await page.getByLabel('Contenido',{exact:true}).fill('Las agencias volverán a revisar sus decisiones');await page.getByRole('button',{name:'Guardar contexto',exact:true}).click();await expect(page.locator('#decision')).toContainText('Las agencias volverán a revisar sus decisiones');
@@ -197,4 +211,33 @@ test('competitive context survives reload and records human learning',async({pag
  await expect(page.locator('#decision')).toContainText('hallazgo competitivo');
 
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+test('ADR-0022: a Promise change during a pending Message review shows its context in that single review',async({page},info)=>{
+ const session=JSON.parse(readFileSync(process.env.BRANDOPOLIS_SESSION_FILE??'.local/demo-session.json','utf8'));
+ await page.goto('/');await page.getByLabel('Token de sesión local').fill(session.token);await page.getByRole('button',{name:'Entrar al espacio estratégico'}).click();
+ await page.locator('#new-brand').click();await page.getByLabel('Nueva marca',{exact:true}).fill(`Promesa contexto ${info.project.name} ${Date.now()}`);await page.getByRole('button',{name:'Crear marca',exact:true}).click();
+ await expect(page.locator('#decision')).toContainText('Por decidir');
+ async function decide(section:string,option:string,button='Preparar decisión'){
+  await navigate(page,section);await page.getByRole('button',{name:button,exact:true}).click();
+  if(button==='Iniciar revisión')await page.getByRole('button',{name:'Modificar',exact:true}).click();
+  await page.getByLabel('Tu decisión',{exact:true}).fill(option);await page.getByLabel('¿Por qué eliges esta opción?').fill(`Criterio humano para ${section}`);
+  await page.getByRole('button',{name:button==='Iniciar revisión'?'Confirmar revisión':'Aprobar decisión',exact:true}).click();
+  await expect(page.locator('#decision .current')).toHaveText(option);
+ }
+ await decide('03 Cliente principal','Agencias pequeñas');
+ await decide('05 Posicionamiento','Continuidad estratégica');
+ await decide('06 Promesa de marca','Promesa inicial');
+ await decide('07 Mensaje principal','Mensaje inicial');
+ await decide('05 Posicionamiento','Continuidad para equipos internos','Preparar nueva versión');
+ await decide('06 Promesa de marca','Promesa para equipos internos','Iniciar revisión');
+ await navigate(page,'07 Mensaje principal');
+ const updates=page.locator('#decision .review-updates');
+ await expect(updates).toContainText('También cambió mientras esta revisión estaba pendiente');
+ await expect(updates).toContainText('Promesa de marca · Vigente · v2');
+ await expect(updates).toContainText('Promesa para equipos internos');
+ await expect(updates).toContainText('Criterio humano para 06 Promesa de marca');
+ await expect(page.locator('#decision .current')).toHaveText('Mensaje inicial');
+ await page.getByRole('button',{name:'Ver impacto',exact:true}).click();
+ await expect(page.locator('#decision .impact-pair'),'one pending Message review, not a duplicate').toHaveCount(1);
+ await expect(page.locator('#decision .impact-pair')).toContainText('Continuidad para equipos internos');
 });

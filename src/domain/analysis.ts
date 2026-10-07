@@ -31,10 +31,15 @@ export class ModelGateway {
   }
 }
 const examples:Record<string,[string,string]>={
+  'Strategic Objective':['Convertir decisiones dispersas en una estrategia que el equipo recuerde','Consolidar una oferta clara antes de crecer a nuevos clientes'],
+  'Market Arena':['Agencias pequeñas que gestionan varias marcas en LATAM','Consultores independientes de estrategia de marca'],
   'Primary Customer':['Agencias con varias marcas','Equipos internos de marketing'],
   'Value Mechanism':['Suscripción por marca activa','Servicio de acompañamiento estratégico'],
   Positioning:['Continuidad de decisiones estratégicas','Acompañamiento para ordenar la estrategia'],
-  'Core Message':['Decisiones conectadas, criterio compartido','Convierte tu estrategia en decisiones claras']
+  'Brand Promise':['Tu estrategia recuerda por qué decidiste lo que decidiste','Cada cambio estratégico llega con su impacto explicado'],
+  'Core Message':['Decisiones conectadas, criterio compartido','Convierte tu estrategia en decisiones claras'],
+  'GTM Priority':['Alianzas con dos asociaciones de agencias antes de abrir otros canales','Contenido educativo en LinkedIn para estrategas de agencias'],
+  'Priority Experiment':['Validar si las agencias pagarían por conservar el porqué de sus decisiones','Validar si los equipos vuelven a consultar su historial de decisiones cada semana']
 };
 /** Deterministic fixture, never presented as live AI or market evidence. */
 export class DemoProvider implements ModelProvider {

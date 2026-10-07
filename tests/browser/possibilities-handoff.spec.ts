@@ -12,7 +12,8 @@ import { readFileSync } from 'node:fs';
 // 2. Completing the Entorno competitivo review produced no hand-off, leaving the participant with no
 //    next action, because showPhaseHandoff() was only ever called from the decision-form submit.
 
-const PHASES = ['01 Cliente principal', '02 Modelo de valor', '03 Posicionamiento', '04 Mensaje principal'];
+// Every journey section of a new brand: Objetivo and Arena first (ADR-0021), Promesa before Mensaje (ADR-0022), GTM (ADR-0023), Experimento prioritario last (ADR-0024).
+const PHASES = ['01 Objetivo estratégico', '02 Arena de mercado', '03 Cliente principal', '04 Modelo de valor', '05 Posicionamiento', '06 Promesa de marca', '07 Mensaje principal', '08 Prioridad de lanzamiento', '09 Experimento prioritario'];
 
 async function navigate(page: Page, name: string) {
   await page.locator('#workspace').waitFor();
@@ -34,6 +35,9 @@ async function signIn(page: Page, brand: string) {
 }
 
 test('possibilities generate, render and stay decidable in every strategic phase', async ({ page }, testInfo) => {
+  // Seven phases end to end (ADR-0022): the mobile project needed ~58s for six, so it gets the standard
+  // slow budget instead of the 60s default. No assertion or wait inside the test is relaxed.
+  test.slow();
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
   const generated: string[] = [];

@@ -179,3 +179,32 @@ La respuesta vigente de esa solicitud puede reabrirse en el mismo contexto tempo
 provoca otra consulta. Acciones vencidas se deshabilitan; servidor conserva todos sus controles.
 No hay proveedor/modelo nuevo, datos adicionales, cache persistente ni cambio de autoridad.
 Pruebas completas de navegador y aceptación visual pendientes para este nuevo candidato.
+
+## Objetivo estratégico y Arena de mercado · 2026-10-06
+
+[ADR-0021](../14-decisions/ADR-0021.md) añade dos secciones al recorrido. Reutilizan sin cambios la
+orientación local («Orientación del sistema · sin consulta a la IA»), la solicitud explícita de
+propuestas y la revisión humana de ADR-0018/0019/0020. Arena recuerda que la ubicación declarada no
+define por sí sola la arena. Navegar no consulta a la IA. Sin cambios de proveedor, modelo, prompts,
+schema de respuesta, topes ni datos enviados: la geografía declarada de la marca no se envía al
+proveedor. Una propuesta aceptada o modificada sigue el borrador, el criterio humano y la confirmación
+final existentes; la primera versión puede pedir revisión humana de decisiones conectadas.
+
+## Promesa de marca · 2026-10-06
+
+[ADR-0022](../14-decisions/ADR-0022.md) reutiliza sin cambios la orientación local, la solicitud explícita de
+propuestas y la revisión humana para Promesa de marca. Navegar no consulta a la IA; ninguna propuesta
+se guarda ni aprueba sin confirmación humana. Sin cambios de proveedor, modelo, prompts ni datos.
+
+## Prioridad de lanzamiento · 2026-10-06
+
+[ADR-0023](../14-decisions/ADR-0023.md) reutiliza la orientación local y la consulta explícita para GTM. La
+orientación advierte que una propuesta puede ser provisional si Cliente, Modelo de valor,
+Posicionamiento o Mensaje están en revisión (Activation Analysis). Sin cambios de proveedor, modelo,
+prompts, schema ni datos enviados; consultar nunca guarda ni aprueba estrategia.
+
+## Experimento prioritario · 2026-10-06
+
+[ADR-0024](../14-decisions/ADR-0024.md) reutiliza la orientación local y la consulta explícita. La orientación
+cuenta hipótesis sin validar y supuestos en uso, y remite la ejecución al ciclo Experiment → Signal →
+Learning con revisión humana. Sin cambios de proveedor, modelo, prompts, schema ni datos enviados.

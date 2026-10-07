@@ -32,7 +32,7 @@ async function signIn(page: Page, brand: string) {
 
 test('possibilities report progress beside the control that started them', async ({ page }, testInfo) => {
   await signIn(page, `Local activity ${testInfo.project.name} ${Date.now()}`);
-  await navigate(page, '01 Cliente principal');
+  await navigate(page, '03 Cliente principal');
   await page.getByRole('button', { name: 'Preparar decisión', exact: true }).click();
   await page.getByLabel('Tu decisión', { exact: true }).fill('Mi propia respuesta');
 
@@ -74,7 +74,7 @@ test('possibilities report progress beside the control that started them', async
 
 test('a failed generation clears the local state, keeps the draft and allows a retry', async ({ page }, testInfo) => {
   await signIn(page, `Local failure ${testInfo.project.name} ${Date.now()}`);
-  await navigate(page, '01 Cliente principal');
+  await navigate(page, '03 Cliente principal');
   await page.getByRole('button', { name: 'Preparar decisión', exact: true }).click();
   const typed = 'Texto que debe sobrevivir';
   await page.getByLabel('Tu decisión', { exact: true }).fill(typed);
@@ -108,7 +108,8 @@ test('navigation presents competitive research as preparation and keeps every it
     nodes.map(node => node.tagName === 'P' ? `[${node.textContent?.trim()}]` : node.textContent?.trim().replace(/\s+/g, ' ') ?? ''));
   expect(order.indexOf('[Preparación estratégica]')).toBeLessThan(order.indexOf('Entorno competitivo'));
   expect(order.indexOf('Entorno competitivo')).toBeLessThan(order.indexOf('[Estrategia]'));
-  await expect(page.locator('#journey [data-module]')).toHaveCount(4);
+  // ADR-0021..0024: nine journey sections, Objetivo and Arena first, Experimento prioritario last.
+  await expect(page.locator('#journey [data-module]')).toHaveCount(9);
   for (const item of ['Qué necesita atención', 'Entorno competitivo', 'Contexto estratégico', 'Experimentos y aprendizajes', 'Mi aprendizaje', 'Mapa estratégico'])
     expect(order, item).toContain(item);
 
@@ -138,6 +139,16 @@ test('navigation presents competitive research as preparation and keeps every it
   await expect(page.locator('#practice')).toBeVisible();
   // And the page itself gains no horizontal overflow from the denser column.
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  // ADR-0022: with seven journey sections a 1440×900 laptop still shows the whole column, principle included.
+  if (fits.finePointer) {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const laptop = await page.locator('#journey').evaluate(nav => ({
+      scrolls: nav.scrollHeight > nav.clientHeight + 1,
+      principleInside: document.querySelector('.nav-principle')!.getBoundingClientRect().bottom <= nav.getBoundingClientRect().bottom + 1
+    }));
+    expect(laptop.scrolls, '1440×900 must not need sidebar scrolling').toBe(false);
+    expect(laptop.principleInside, 'the principle stays inside the column').toBe(true);
+  }
 });
 
 test('market context carries its own status and never joins the decision count', async ({ page }, testInfo) => {
@@ -148,7 +159,7 @@ test('market context carries its own status and never joins the decision count',
   await expect(market).toContainText('Contexto del mercado');
   await expect(market).toContainText('Sin investigar');
   await expect(market).toContainText('No cuenta como decisión');
-  await expect(page.locator('.context-count')).toContainText('0 de 4');
+  await expect(page.locator('.context-count')).toContainText('0 de 9');
 
   await navigate(page, 'Entorno competitivo');
   await page.locator('#run-competitive-research').click();
@@ -156,7 +167,7 @@ test('market context carries its own status and never joins the decision count',
   // Research done, review outstanding.
   await expect(market).toContainText('Pendiente de revisión');
   await expect(page.locator('.phase-handoff')).toHaveCount(0);
-  await expect(page.locator('.context-count')).toContainText('0 de 4');
+  await expect(page.locator('.context-count')).toContainText('0 de 9');
 
   // Resolve every candidate the way a participant does.
   let pending = await page.locator('[data-competitive-accept]').count();
@@ -169,7 +180,7 @@ test('market context carries its own status and never joins the decision count',
 
   await expect(market).toContainText('Revisado');
   // Research is preparation: incorporating findings must not decide anything.
-  await expect(page.locator('.context-count')).toContainText('0 de 4');
+  await expect(page.locator('.context-count')).toContainText('0 de 9');
 
   // The hand-off speaks the language of the workflow and points at the canonical next decision.
   await expect(page.locator('.phase-handoff')).toContainText(/contexto competitivo revisado/i);
@@ -196,7 +207,7 @@ test('the right panel ranks its sections and no static label reacts to hover', a
   const railText = (await rail.innerText()).toLowerCase();
   for (const label of ['contexto del mercado', 'entorno competitivo', 'lo que ya decidiste'])
     expect(railText, label).toContain(label);
-  await expect(page.locator('.context-count')).toContainText('0 de 4');
+  await expect(page.locator('.context-count')).toContainText('0 de 9');
 
   // Hierarchy: panel heading > section item > section label, with the status badge secondary and both
   // section labels sharing one treatment so they read as siblings.

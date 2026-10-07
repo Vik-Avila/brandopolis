@@ -1,3 +1,69 @@
+## 2026-10-07 · Phase 1 — Strategic Core + Brando Foundation: COMPLETE
+
+- Experimento prioritario (ADR-0024) y dependencia GTM → Experimento prioritario (sugerida).
+- Decision Spine de nueve decisiones implementada con autoridad humana, versiones, Change Impact y Brando B1.
+- Auditoría de cierre con pruebas transversales nuevas; todos los gates en verde.
+- RELEASE-READY OUTSIDE PRODUCTION. Sin deploy; Jury Production Freeze vigente. Phase 2 no iniciada.
+
+## 2026-10-07 · Experimento prioritario: dependencia desde GTM
+
+- GTM → Experimento prioritario, sugerida (opción A aprobada), en dependencies v5.
+- Pruebas: sugerencia sin reescritura ni duplicados, historial intacto. Sin commit ni deploy.
+
+## 2026-10-06 · Experimento prioritario (candidato, fuera de producción)
+
+- ADR-0024: novena decisión versionada que elige qué supuesto validar primero; ejecución con el ciclo existente.
+- Orientación con hipótesis sin validar y supuestos en uso; aprendizaje siempre revisado por personas.
+- Menú de nueve fases sin scroll en portátiles; 11 capturas actualizadas.
+- Gates del agente en verde. Pendiente aceptación en DEMO y decisión sobre dependencias. Sin commit ni deploy.
+
+## 2026-10-06 · Prioridad de lanzamiento (GTM): cierre
+
+- Mensaje principal → Prioridad de lanzamiento (sugerida) aprobada e incorporada (dependencies v4).
+- GTM aceptada por el director; commit local autorizado. Sin push ni deploy.
+
+## 2026-10-06 · Prioridad de lanzamiento (GTM) y línea del recorrido (candidato)
+
+- ADR-0023: GTM Priority como octava decisión versionada; se conserva Posicionamiento → GTM sugerida.
+- Orientación GTM advierte propuesta provisional si sus insumos están en revisión.
+- Línea del recorrido con nodos y fase siguiente destacada (pulso finito, accesible, movimiento reducido).
+- Gates del agente en verde; 11 capturas actualizadas. Pendiente aceptación en DEMO. Sin commit ni deploy.
+
+## 2026-10-06 · Promesa de marca: contexto de la revisión de Mensaje
+
+- La revisión pendiente de Mensaje muestra también la Promesa vigente que cambió después; una sola revisión.
+- El comprobante de revisión exige reabrirla si cambia una decisión conectada.
+- Regresiones unitarias y E2E añadidas; gates del agente en verde. Pendiente DEMO y smoke Anthropic humano.
+
+## 2026-10-06 · Promesa de marca (candidato, fuera de producción)
+
+- ADR-0022: Promesa de marca entre Posicionamiento y Mensaje; Posicionamiento → Promesa → Mensaje estrictas.
+- Sin revisiones duplicadas de Mensaje; primera Promesa marca para revisión un Mensaje previo.
+- Activación explícita para marcas existentes; Promesa demo en sandboxes nuevos.
+- Menú compacto hasta 940px de alto; 11 capturas y hashes actualizados.
+- Gates del agente en verde. Pendiente aceptación en DEMO. Sin commit, push ni deploy.
+
+## 2026-10-06 · Objetivo estratégico y Arena de mercado: cierre
+
+- Aceptación funcional del propietario en la DEMO local confirmada.
+- RELEASE-READY FUERA DE PRODUCCIÓN (ADR-0021). Sin cambios de código ni capturas en este cierre.
+- Sin commit, push ni deploy; Jury Production Freeze vigente.
+
+## 2026-10-06 · Objetivo y Arena: capturas canónicas y gates de cierre
+
+- 11 capturas del espacio de trabajo y sus hashes actualizados por autorización explícita.
+- Gates del agente en verde; diff completo revisado.
+- Pendiente: aceptación funcional del propietario en la DEMO local. NOT RELEASE-READY hasta entonces.
+
+## 2026-10-06 · Objetivo estratégico y Arena de mercado (candidato, fuera de producción)
+
+- ADR-0021: dos decisiones versionadas nuevas en el recorrido (01 Objetivo, 02 Arena); seis secciones.
+- Config v2: journey, learning moments y cuatro dependencias nuevas sin ciclos ni aristas duplicadas.
+- Primera versión de Objetivo/Arena pide revisión humana de decisiones conectadas previas; nada se reescribe.
+- «Agregar estas secciones»: acción explícita e idempotente para marcas existentes; leer no escribe.
+- Orientación Brando y guía del editor reutilizadas; sin cambios de IA ni migraciones.
+- Gates del agente en verde; pendiente aceptación humana y decisión sobre capturas canónicas.
+
 ## 2026-10-05 · Brando review choice: validación final
 
 - Selección de Modificar al elegir una propuesta de Brando verificada.

@@ -1,3 +1,224 @@
+## 2026-10-07 · PHASE 1 COMPLETE — Strategic Core + Brando Foundation
+
+PHASE 1 — STRATEGIC CORE + BRANDO FOUNDATION · STATUS: COMPLETE ·
+RELEASE STATE: RELEASE-READY OUTSIDE PRODUCTION. Aprobada funcionalmente por el propietario.
+
+- 9/9 decisiones implementadas: Strategic Objective, Market Arena, Primary Customer, Value Mechanism,
+  Positioning, Brand Promise, Core Message, GTM Priority, Priority Experiment (ADR-0021..ADR-0024).
+- Brando B1 completo para el alcance de Phase 1; autoridad humana, versiones, historial, dependencias
+  (config v5), Change Impact, Strategy Graph base, Mapa estratégico y PDF.
+- Historia: 5927a26 (Objective + Arena) → a2f5d9b (Brand Promise) → b461cf5 (GTM Priority) → commit
+  `feat: complete Strategic Core phase 1` que contiene este registro (Priority Experiment + cierre).
+  Integrado a `main` mediante PR con merge commit; los SHA finales están en `git log` y en el PR.
+- Auditoría de cierre: sin defectos funcionales nuevos; se añadió `tests/phase1-closure-cases.ts`
+  (versionado de las cinco decisiones nuevas, 409 sin efectos, idempotencia y reintento, criterio
+  obligatorio, aislamiento entre tenants/marcas/no asignados, INV-001 y mapa/PDF de nueve decisiones).
+- Gates sobre el estado exacto confirmado (salida real): typecheck PASS; lint PASS; pnpm test 13 archivos /
+  283 pruebas PASS; skills:check PASS; Brando browser 42/42 PASS; test:e2e 85/85 PASS; test:visual 10 PASS
+  + 1 SKIP preexistente (encoding-proof histórico, requiere base reparada: NOT APPLICABLE); test:pilot:e2e
+  10/10 PASS; Foundation 249 Markdown / 72 JSON / 24 schemas / 15 requirements / 13 golden cases / 0 errores
+  PASS; UI validator PASS; brand validator PASS; git diff --check PASS (sólo avisos de fin de línea).
+- Producción sin cambios; sin deploy, tag, migración ni cambios de configuración. Jury Production Freeze
+  vigente. Las entradas anteriores que dicen «sin commit/push/merge» describen su momento: los commits de
+  cada tramo existen y Phase 1 se integra a `main` con este cierre.
+- NEXT PHASE: PHASE 2 — STRATEGIC INTELLIGENCE · STATUS: NOT STARTED / AWAITING NEXT ITERATION. Fuentes:
+  [brand-intelligence-engine](docs/05-ai/brand-intelligence-engine.md), Master Context y ADR vigentes.
+  La próxima iteración empieza con una auditoría de Phase 2 y la ejecuta como un solo loop.
+
+## 2026-10-07 · Experimento prioritario: dependencia GTM aprobada
+
+Estado: RELEASE-READY FUERA DE PRODUCCIÓN en lo técnico; aceptación humana en la DEMO pendiente.
+Rama: feat/strategic-experiment-priority, HEAD b461cf5 (commit local de GTM). Cambios sin commit.
+El director aprobó la opción A: `config/dependencies/v5.json` añade GTM Priority → Priority Experiment
+(SOFT, primera versión revisable); v1–v4 intactas. ADR-0024, change-impact, strategy-graph y config/README
+actualizados.
+
+Resultados del agente (salida real): typecheck y lint PASS; pnpm test 279/279 (tres casos nuevos: un
+cambio de GTM sugiere revisar Experimento prioritario; la sugerencia conserva decisión, versión activa,
+historial y estado APPROVED; el impacto por varias conexiones no duplica revisiones y reintentar no añade
+filas; más primera versión de GTM); E2E m1.spec 35/35; test:pilot:e2e 10/10; Foundation 249 Markdown /
+72 JSON / 24 schemas / 15 requirements / 13 golden cases / 0 errores; UI y brand validators PASS;
+skills:check idéntico; git diff --check OK. Sin cambios de interfaz ni capturas en este ajuste.
+Jury Production Freeze vigente. Sin commit, push, PR, merge, tag, migración ni deploy.
+
+## 2026-10-06 · Experimento prioritario · candidato fuera de producción
+
+Estado: RELEASE-READY FUERA DE PRODUCCIÓN en lo técnico; aceptación humana en la DEMO pendiente.
+Rama: feat/strategic-experiment-priority (local), desde el commit local de GTM
+b461cf5c297cc284a2cb71e765e88ecf071eec3a (sobre a2f5d9b, 5927a26 y 77e7a71). Cambios sin commit. Sin push.
+
+Implementado ([ADR-0024](docs/14-decisions/ADR-0024.md)): modules/learning-moments v5 (Priority Experiment como
+novena sección, capacidad Experimentation & Learning); decisión versionada que elige qué supuesto validar
+primero, ejecutada con el ciclo Experiment → Signal → Learning existente (enlace mediante «Decisión
+relacionada»), sin duplicarlo; orientación local con hipótesis sin validar y supuestos en uso; guía del
+editor; ejemplo DEMO y CoffeePolis sólo en sandboxes nuevos; activación explícita para marcas existentes;
+densidad compacta del menú hasta 1040px y filas de 28px para nueve fases. Sin migración ni cambios de IA,
+configuración o producción. dependencies v4 sin cambios. Decisión pendiente: dependencias de Priority
+Experiment (recomendado GTM Priority → Priority Experiment SOFT).
+
+Resultados del agente (salida real): typecheck y lint PASS; pnpm test 13 archivos / 276 pruebas (271 + 5);
+Brando browser 42/42; test:e2e 85/85 (una medición previa detectó 32px de desborde del menú a 1366×768
+con nueve fases, corregido antes de esta pasada); test:visual 10/10; test:pilot:e2e 10/10; Foundation 249
+Markdown / 71 JSON / 24 schemas / 15 requirements / 13 golden cases / 0 errores; UI y brand validators
+PASS; skills:check idéntico; git diff --check OK. 11 capturas del espacio de trabajo y sus hashes
+actualizados por cambio real del menú. Smoke Anthropic no requerido (sin cambio de comportamiento de IA).
+/security-review requiere commit: no se creó; revisión manual sin hallazgos (sin endpoint nuevo).
+Jury Production Freeze vigente. Sin push, PR, merge, tag, migración ni deploy.
+
+## 2026-10-06 · Prioridad de lanzamiento (GTM): cierre
+
+Estado: RELEASE-READY FUERA DE PRODUCCIÓN. El director de producto aceptó GTM y aprobó Core Message →
+GTM Priority (SOFT), incorporada como `config/dependencies/v4.json` (Positioning → GTM SOFT conservada).
+Pruebas tras la incorporación (salida real): typecheck y lint PASS; pnpm test 271/271 (dos casos nuevos:
+revisión sugerida sin reescritura ni duplicado en Positioning → Message → GTM, y primera versión de
+Mensaje después de GTM); Foundation 0 errores; git diff --check OK. Las suites de navegador, visual y
+PILOT del registro anterior no se repitieron: el cambio es de configuración y pruebas de motor.
+Commit local autorizado de GTM en feat/strategic-gtm-priority. Sin push, PR, merge, tag ni deploy.
+Jury Production Freeze vigente.
+
+## 2026-10-06 · Prioridad de lanzamiento (GTM) y línea del recorrido · candidato
+
+Estado: RELEASE-READY FUERA DE PRODUCCIÓN en lo técnico; aceptación humana en la DEMO pendiente.
+Rama: feat/strategic-gtm-priority (local), desde el commit local a2f5d9bd749f91106ee7beff99da4569862e7f50
+(Promesa de marca, ADR-0022), sobre 5927a26 y 77e7a71. Cambios de GTM sin commit. Sin push.
+El commit local de Promesa se creó por autorización expresa del propietario; la aceptación de la DEMO
+de Promesa y el smoke real de Anthropic no fueron confirmados al agente y no se registran como hechos.
+
+Implementado ([ADR-0023](docs/14-decisions/ADR-0023.md)): modules/learning-moments v4 (GTM Priority como
+octava sección, capacidad GTM Prioritization); se conserva la única dependencia aprobada Positioning →
+GTM (SOFT) con dependencies v3 sin cambios; activación explícita para marcas existentes; orientación GTM
+que advierte propuesta provisional si Cliente, Valor, Posicionamiento o Mensaje están en revisión; guía
+del editor; ejemplo DEMO y CoffeePolis sólo en sandboxes nuevos; línea del recorrido con nodos, fase
+siguiente con doble anillo, pulso finito y texto accesible, sin pulso con prefers-reduced-motion.
+Sin migración ni cambios de IA, configuración o producción. Decisión pendiente: aristas adicionales
+hacia GTM (recomendado Core Message → GTM SOFT).
+
+Resultados del agente (salida real): typecheck y lint PASS; pnpm test 13 archivos / 269 pruebas (264 + 5
+de GTM); Brando browser 42/42 (incluye línea del recorrido y movimiento reducido); test:e2e 85/85;
+test:visual 10/10; test:pilot:e2e 10/10; Foundation 248 Markdown / 68 JSON / 24 schemas / 15
+requirements / 13 golden cases / 0 errores; UI y brand validators PASS; skills:check idéntico;
+git diff --check OK. 11 capturas del espacio de trabajo y sus hashes actualizados por cambio real del
+menú. Smoke Anthropic no requerido (sin cambio de comportamiento de IA). /security-review requiere
+commit: no se creó; revisión manual sin hallazgos (sin endpoint nuevo). Jury Production Freeze vigente.
+Sin push, PR, merge, tag, migración ni deploy.
+
+## 2026-10-06 · Promesa de marca: contexto de revisión de Mensaje y validación completa
+
+Estado: listo técnicamente fuera de producción; pendiente aceptación del propietario en la DEMO local
+y smoke real de Anthropic (la clave no está disponible en el entorno del agente; procedimiento humano).
+Rama: feat/brand-promise. HEAD: 5927a262e5f2827d4c0936fb62ea13082ea63f58. Cambios de Promesa sin commit.
+
+Corrección: cuando un cambio de Promesa se integra en la revisión pendiente de Mensaje (sin duplicarla),
+la revisión muestra «También cambió mientras esta revisión estaba pendiente» con la versión vigente de
+Promesa, su texto, criterio y tipo de dependencia, junto al cambio de Posicionamiento que la originó; la
+orientación de Brando incluye ambos. Proyección de lectura, sin estados ni filas nuevas. El comprobante
+de revisión liga además las versiones vigentes de las decisiones conectadas: un comprobante abierto antes
+del cambio de Promesa se rechaza (409) y la persona reabre la revisión. Historial y razones intactos;
+Mensaje no se reescribe ni se aprueba solo. ADR-0022 y change-impact actualizados.
+
+Resultados del agente (salida real): typecheck y lint PASS; pnpm test 264/264 (incluye regresión de
+contexto completo y no duplicación); Brando browser 40/40; test:e2e 84/85 en la pasada completa: la
+prueba «DEMO recommendation can be rejected» falló en tablet por clic inestable con 16,6 min de reloj
+(posible suspensión del entorno) y pasó 10/10 al repetirla dos veces en los cinco proyectos; la E2E nueva
+de contexto de Mensaje pasó 5/5. test:visual 10/10 sin cambio visual real (no se actualizaron capturas
+ni hashes); test:pilot:e2e 10/10; Foundation 247 Markdown / 66 JSON / 24 schemas / 15 requirements /
+13 golden cases / 0 errores; UI y brand validators PASS; skills:check idéntico; git diff --check OK.
+/security-review requiere commit: no se creó; revisión manual sin hallazgos (consultas limitadas por
+workspace y marca, sin endpoint nuevo). Sin push, PR, merge, tag, migración ni deploy.
+Jury Production Freeze vigente.
+
+## 2026-10-06 · Promesa de marca · candidato fuera de producción
+
+Estado: listo técnicamente fuera de producción; cierre RELEASE-READY pendiente de la aceptación del
+propietario en la DEMO local. Rama: feat/brand-promise (local), creada desde el commit local
+5927a262e5f2827d4c0936fb62ea13082ea63f58 (Objetivo y Arena, ADR-0021) sobre 77e7a71. Sin push.
+Decisiones aprobadas 1–6 y [ADR-0022](docs/14-decisions/ADR-0022.md).
+
+Implementado: config v3 (journey con Brand Promise entre Posicionamiento y Mensaje; Brand Thinking;
+Brand Promise → Core Message HARD revisable en primera versión; Posicionamiento → Promesa y
+Posicionamiento → Mensaje sin cambios); regla que evita revisiones duplicadas cuando una revisión
+pendiente igual o más fuerte ya cubre un cambio propagado; activación explícita reutilizada (lista
+dinámica de secciones faltantes); menú 06 Promesa / 07 Mensaje; guía del editor y orientación Brando;
+Promesa demo en sandboxes CoffeePolis nuevos; densidad compacta del menú hasta 940px de alto para
+conservar la columna completa en 1440×900. Sin migración ni cambios de IA, configuración de despliegue
+o producción. La revisión de Mensaje se crea en la primera versión de la Promesa, no al agregar la
+sección (un ReviewItem exige versión que lo origine).
+
+Resultados del agente (salida real): typecheck y lint PASS; pnpm test 13 archivos / 263 pruebas
+(257 + 6 de Promesa); Brando browser 40/40; test:e2e 80/80 tras el ajuste de CSS (una pasada previa
+79/80: la prueba de siete fases superó 60s en móvil sin fallar aserciones; se le asignó test.slow()
+y su spec pasó 20/20); test:visual 10/10; test:pilot:e2e 10/10; Foundation 247 Markdown / 66 JSON /
+24 schemas / 15 requirements / 13 golden cases / 0 errores; UI y brand validators PASS; skills:check
+idéntico; git diff --check OK. Capturas: se actualizaron las mismas 11 del espacio de trabajo y sus
+hashes. /security-review requiere commits: no se creó ninguno; revisión manual sin hallazgos de
+seguridad. Límite funcional registrado: mientras la revisión de Mensaje siga pendiente, un cambio de
+la Promesa se integra en ella sin abrir otra. Sin prueba con IA real.
+Aceptación del propietario en la DEMO: pendiente. Jury Production Freeze vigente.
+Sin push, PR, merge, tag, migración ni deploy; cambios de Promesa sin commit.
+
+## 2026-10-06 · Objetivo estratégico y Arena de mercado: cierre
+
+Estado: RELEASE-READY FUERA DE PRODUCCIÓN.
+Rama: feat/strategic-objective-market-arena. Base y HEAD: 77e7a71a909f4b59cea491590a4a09161855b2fd.
+Este registro supera el único pendiente del registro anterior (aceptación funcional).
+
+El propietario confirmó la aceptación funcional en la DEMO local. Este registro no detalla qué
+recorridos recorrió: sólo consta su aceptación. Los resultados de pruebas son los ya registrados
+abajo con salida real (pnpm test 257/257, test:e2e 80/80, Brando browser 38/38, test:visual 10/10,
+test:pilot:e2e 10/10, Foundation 0 errores, UI y brand validators PASS) y las comprobaciones
+documentales de este cierre. Alcance, decisiones D1–D9 y limitaciones sin cambios: sin prueba con
+IA real; /security-review no ejecutable sin commits (revisión manual registrada); «Agregar estas
+secciones» verificado sólo por pruebas automáticas; posibles revisiones encadenadas en marcas
+existentes (D3). Sin cambios de código ni capturas en este cierre.
+
+AI proposes. Humans decide. Brandopolis remembers.
+Jury Production Freeze vigente. Release-ready no autoriza deploy.
+Sin commit, push, PR, merge, tag, migración ni deploy.
+
+## 2026-10-06 · Objetivo y Arena: capturas y gates de cierre
+
+Estado: NOT RELEASE-READY; único criterio pendiente: aceptación funcional humana en la DEMO local.
+Rama: feat/strategic-objective-market-arena. Base y HEAD: 77e7a71a909f4b59cea491590a4a09161855b2fd.
+Este registro supera los pendientes técnicos del candidato anterior del mismo día.
+
+Por autorización explícita del propietario se actualizaron sólo estas 11 capturas automáticas y sus
+hashes/bytes en design/brandopolis-ui/specs/brand-assets.json: m1-workspace, m1-needs-review,
+m1-guided-review, blueprint e history (desktop y mobile) y decision-card-desktop. Login, acceso y
+portada no se tocaron. Generadas por pnpm test:visual (10/10) contra la DEMO local.
+
+Gates del agente tras la actualización (salida real): typecheck y lint PASS; pnpm test 257/257;
+Foundation 246 Markdown / 63 JSON / 24 schemas / 15 requirements / 13 golden cases / 0 errores;
+UI validator PASS; brand validator PASS; skills:check idéntico; git diff --check OK. Sin cambios de
+código desde la ejecución anterior de test:e2e 80/80, Brando browser 38/38 y test:pilot:e2e 10/10.
+Diff completo revisado: index.html sólo cambia el menú; ningún archivo de despliegue o producción.
+/security-review sigue requiriendo commits; no se creó ninguno. Revisión manual registrada arriba.
+Aceptación funcional del propietario en la DEMO: pendiente. Sin prueba con IA real.
+Jury Production Freeze vigente. Sin commit, push, PR, merge, tag, migración ni deploy.
+
+## 2026-10-06 · Objetivo estratégico y Arena de mercado · candidato fuera de producción
+
+Estado: NOT RELEASE-READY; implementación y gates técnicos completos, pendiente aceptación humana.
+Rama: feat/strategic-objective-market-arena. Base: 77e7a71a909f4b59cea491590a4a09161855b2fd.
+Alcance aprobado por el propietario (D1–D9; D3 opción B; D4 acción explícita): ADR-0021.
+
+Implementado: config v2 (modules/journey, learning-moments, dependencies con ruleVersion por regla);
+seis secciones en marcas nuevas, entrada por Objetivo; acción explícita «Agregar estas secciones»
+(POST /api/brands/strategic-sections, idempotente, sin escrituras al leer contexto); impacto de
+primera versión sólo para las cuatro reglas nuevas, con dependencias sincronizadas antes del cálculo
+y sin aristas duplicadas; orientación Brando y guía del editor; DEMO y sandbox nuevo en orden canónico.
+Sin migración, sin cambios de proveedor, modelo, prompts, schemas ni datos enviados a la IA.
+
+Resultados del agente en Windows (salida real): typecheck y lint PASS; pnpm test 13 archivos /
+257 pruebas PASS (base previa 247; +10 casos ADR-0021); Brando browser 38/38; test:e2e 80/80
+(primera pasada 60/80 antes de actualizar pruebas al contrato de seis secciones); test:visual 10/10;
+test:pilot:e2e 10/10; Foundation 246 Markdown / 63 JSON / 24 schemas / 15 requirements / 13 golden
+cases / 0 errores; UI validator PASS; brand validator PASS; skills:check idéntico; git diff --check OK.
+/security-review no pudo ejecutarse (requiere origin/HEAD y commits); revisión manual de seguridad
+del endpoint sin hallazgos. Capturas canónicas: las 11 del espacio de trabajo cambian con el menú,
+pero sus hashes están en specs/brand-assets.json; se restauraron y queda pendiente decisión humana
+que nombre esos archivos. Sin prueba con IA real. Jury Production Freeze vigente.
+Sin commit, push, PR, merge, tag ni deploy.
+
 ## 2026-10-05 · Brando review choice: cierre validado en Windows
 
 Estado: RELEASE-READY FUERA DE PRODUCCIÓN.

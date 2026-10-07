@@ -118,3 +118,39 @@ La tarjeta no duplica Aceptar/Modificar/Rechazar ni desplaza el borrador. Se con
 visual y la pausa de los retratos existentes. Al cerrar el drawer el foco vuelve al disparador
 de la tarjeta aunque ésta se haya vuelto a renderizar; entrada derecha y atención izquierda
 mantienen su comportamiento. Sin cambios de assets, animaciones ni hashes canónicos.
+
+## Objetivo estratégico y Arena de mercado · 2026-10-06
+
+El grupo «Estrategia» numera seis secciones: 01 Objetivo estratégico, 02 Arena de mercado, 03 Cliente
+principal, 04 Modelo de valor, 05 Posicionamiento, 06 Mensaje principal; «Entorno competitivo» sigue
+en «Preparación estratégica» y no es decisión. Una marca anterior sin esas secciones ve una tarjeta
+`empty-state` con la acción primaria «Agregar estas secciones»; nada se crea al navegar. El editor de
+ambas secciones muestra una guía `.hint` enlazada con `aria-describedby`. El impacto de una primera
+versión muestra «Antes · Sin decisión registrada». Sin nuevos assets, tokens, animaciones ni CSS.
+
+## Promesa de marca · 2026-10-06
+
+El grupo «Estrategia» numera siete secciones: 06 Promesa de marca y 07 Mensaje principal
+([ADR-0022](../../docs/14-decisions/ADR-0022.md)). La tarjeta «Agregar estas secciones» enumera las
+secciones que faltan a la marca. La tarjeta de revisión muestra, cuando aplica, «También cambió mientras
+esta revisión estaba pendiente» (`.review-updates`, texto y criterio con palabras, sin color como único
+significado). Promesa reutiliza la guía `.hint` del editor y la orientación de Brando. Para que la columna completa,
+incluido el principio, quepa sin scroll en portátiles de 900px de alto, la densidad compacta existente
+(puntero fino) y el principio compacto se aplican hasta 940px de alto en lugar de 860px. Sin nuevos
+assets, tokens, animaciones ni reglas visuales distintas de las ya aprobadas.
+
+## Prioridad de lanzamiento y línea del recorrido · 2026-10-06
+
+[ADR-0023](../../docs/14-decisions/ADR-0023.md): «Estrategia» numera ocho secciones (08 Prioridad de lanzamiento).
+Los números son nodos de 22px unidos por una línea vertical champán de 2px. Fase decidida: nodo con
+borde y número esmeralda. Fase actual: tarjeta elevada existente y nodo esmeralda sólido. Siguiente
+fase sugerida: nodo champán con doble anillo, pulso finito de 3 ciclos (2,4s) y el texto «Siguiente
+decisión sugerida» en `title`/`aria-description`; `prefers-reduced-motion` elimina el pulso. Los estados
+de revisión conservan su marca «!». Tokens existentes; sin nuevos assets.
+
+## Experimento prioritario · 2026-10-06
+
+[ADR-0024](../../docs/14-decisions/ADR-0024.md): «Estrategia» numera nueve secciones (09 Experimento prioritario).
+Para conservar la columna completa sin scroll, la densidad compacta (puntero fino) y el principio compacto
+se aplican hasta 1040px de alto y las filas del recorrido miden 28px (mínimo WCAG 2.2 de 24px); táctil
+conserva 44px. Sin nuevos assets, tokens ni animaciones.

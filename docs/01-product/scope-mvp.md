@@ -14,3 +14,39 @@ Depends on: Master Context v1.0
 ## Resolución humana · 2026-10-04 · Ask Brandopolis → Brando
 
 «Ask Brandopolis» evoluciona conceptualmente a Brandopolis Intelligence / Brando ([brand-intelligence-engine](../05-ai/brand-intelligence-engine.md), [ADR-0015](../14-decisions/ADR-0015.md)). Brando B1 queda autorizado para la siguiente etapa, posterior al PILOT congelado. Esta resolución no reclasifica Ask Brandopolis (sigue en P1 para el MVP), no modifica retrospectivamente el scope del MVP y no habilita cambios en el runtime actual.
+
+## Resolución humana · 2026-10-06 · Objetivo estratégico y Arena de mercado
+
+El propietario reabre el alcance diferido de nuevas decisiones **exclusivamente** para Strategic
+Objective y Market Arena (Master Context §14–§15), desarrolladas **fuera de producción**
+([ADR-0021](../14-decisions/ADR-0021.md)). No incluye Brand Promise, GTM Priority, Priority
+Experiment ni niveles B2–B5, no cambia proveedor, modelo, prompts ni datos enviados a la IA, y no
+autoriza migraciones ni operaciones de producción. La Jury Production Freeze sigue vigente.
+
+## Resolución humana · 2026-10-06 · Promesa de marca
+
+El propietario incorpora Brand Promise, **sólo fuera de producción** ([ADR-0022](../14-decisions/ADR-0022.md)):
+dependencia estricta Posicionamiento → Promesa → Mensaje, conservando Posicionamiento → Mensaje, sin
+revisiones duplicadas. GTM Priority y Priority Experiment siguen diferidos. Sin cambios de IA,
+migraciones ni operaciones de producción; la Jury Production Freeze sigue vigente.
+
+## Resolución · 2026-10-06 · Prioridad de lanzamiento
+
+Por instrucción del propietario, GTM Priority se incorpora como siguiente fase del roadmap, **sólo fuera de
+producción** ([ADR-0023](../14-decisions/ADR-0023.md)), con la línea del recorrido en la navegación.
+Priority Experiment sigue diferido. Sin cambios de IA, migraciones ni operaciones de producción.
+
+## Resolución · 2026-10-06 · Experimento prioritario
+
+Por instrucción del propietario, Priority Experiment se incorpora como siguiente fase del roadmap, **sólo
+fuera de producción** ([ADR-0024](../14-decisions/ADR-0024.md)), reutilizando el ciclo Experiment → Signal →
+Learning existente. Sin cambios de IA, migraciones ni operaciones de producción.
+
+## Cierre · 2026-10-07 · Phase 1 — Strategic Core + Brando Foundation
+
+PHASE 1 — STRATEGIC CORE + BRANDO FOUNDATION · STATUS: COMPLETE · RELEASE STATE: RELEASE-READY OUTSIDE
+PRODUCTION. Las nueve decisiones de la Decision Spine (Strategic Objective, Market Arena, Primary Customer,
+Value Mechanism, Positioning, Brand Promise, Core Message, GTM Priority, Priority Experiment) están
+implementadas con autoridad humana, versiones, historial, dependencias, Change Impact y Brando B1
+([ADR-0021](../14-decisions/ADR-0021.md)–[ADR-0024](../14-decisions/ADR-0024.md)). Signals y Learning siguen como
+capacidades base existentes. NEXT PHASE: PHASE 2 — STRATEGIC INTELLIGENCE · STATUS: NOT STARTED.
