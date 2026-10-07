@@ -28,8 +28,8 @@ import { Engine,hash } from './engine.js';
 export const PARTICIPANT_PROFILES=Object.freeze(['EMPRENDEDOR','FUNDADOR','CONSULTOR','AGENCIA','MARKETING','ESTRATEGIA','DIRECCION','DOCENCIA','OTRO'] as const);
 export type ParticipantProfile=typeof PARTICIPANT_PROFILES[number];
 
-export const GEOGRAPHIC_INFLUENCE=Object.freeze(['LOCAL','REGIONAL','STATE','NATIONAL','LATAM','GLOBAL'] as const);
-export type GeographicInfluence=typeof GEOGRAPHIC_INFLUENCE[number];
+import { GEOGRAPHIC_INFLUENCE,type GeographicInfluence } from '../domain/brand-context.js';
+export { GEOGRAPHIC_INFLUENCE,type GeographicInfluence };
 
 /** The canonical demonstration brand seeded into every self-service workspace as its own sandbox copy. */
 export const DEMO_BRAND=Object.freeze({
@@ -172,14 +172,9 @@ export class PilotAccess {
   }
   /** Strategic geography for a brand the participant owns. Absent row means no declared market. */
   async setBrandGeography(token:string,brandId:string,influence:GeographicInfluence,primaryMarket?:string|null) {
-    if(!GEOGRAPHIC_INFLUENCE.includes(influence))throw new AppError('INVALID','Invalid geographic influence');
-    if(primaryMarket!=null&&(typeof primaryMarket!=='string'||primaryMarket.length>160))throw new AppError('INVALID','Invalid primary market');
-    const who=await this.authorize(token) as {workspaceId:string};
-    const [brand]=await this.db.select().from(t.brands).where(and(eq(t.brands.id,brandId),eq(t.brands.workspaceId,who.workspaceId)));
-    if(!brand)throw new AppError('NOT_FOUND','Brand unavailable');
-    await this.db.insert(t.brandProfiles).values({workspaceId:who.workspaceId,brandId,isDemo:false,geographicInfluence:influence,primaryMarket:primaryMarket??null})
-      .onConflictDoUpdate({target:[t.brandProfiles.workspaceId,t.brandProfiles.brandId],set:{geographicInfluence:influence,primaryMarket:primaryMarket??null}});
-    return {brandId,geographicInfluence:influence,primaryMarket:primaryMarket??null};
+    // PILOT keeps its live-session and access-status gate; the engine then applies the brand scope and audit.
+    await this.authorize(token);
+    return new Engine(this.db).setBrandGeography(token,brandId,influence,primaryMarket);
   }
   /** Participant intake, once per account. Email is never taken from here: it comes from the ID token. */
   async saveParticipantProfile(token:string,input:Record<string,unknown>) {

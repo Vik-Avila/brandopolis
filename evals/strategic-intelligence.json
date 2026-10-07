@@ -1,0 +1,89 @@
+{
+  "version": "strategic-intelligence-v1",
+  "source": "ADR-0025",
+  "notes": "Deterministic evaluation of the Strategic Intelligence projection. Semantic answers from the live provider are evaluated separately by the human-only Brando smoke; these fixtures never call a provider.",
+  "fixtures": [
+    {
+      "id": "A",
+      "name": "coherent strategy",
+      "evaluatorResult": "PASS",
+      "issueKinds": [],
+      "notes": "nine decisions decided in canonical order, Priority Experiment executed; no invented conflicts"
+    },
+    {
+      "id": "B",
+      "name": "clear HARD inconsistency",
+      "evaluatorResult": "REVIEW_REQUIRED",
+      "issueKinds": [
+        "RELIES_ON_REJECTED_HYPOTHESIS"
+      ],
+      "notes": "an active decision relies on a hypothesis a human rejected"
+    },
+    {
+      "id": "C",
+      "name": "subtle tension",
+      "evaluatorResult": "PASS_WITH_CAUTION",
+      "issueKinds": [
+        "RELIES_ON_WEAKENED_HYPOTHESIS"
+      ],
+      "notes": "an active decision relies on a hypothesis a human has since weakened: caution, not contradiction"
+    },
+    {
+      "id": "D",
+      "name": "weak evidence",
+      "evaluatorResult": "PASS",
+      "issueKinds": [],
+      "support": {
+        "Primary Customer": "LIMITED_SUPPORT"
+      },
+      "notes": "low-quality, indirect evidence is limited support, never a probability"
+    },
+    {
+      "id": "E",
+      "name": "unvalidated hypothesis",
+      "evaluatorResult": "PASS",
+      "issueKinds": [],
+      "support": {
+        "Primary Customer": "UNVALIDATED"
+      },
+      "notes": "a hypothesis without evidence leaves the decision unvalidated"
+    },
+    {
+      "id": "F",
+      "name": "upstream change with downstream pending",
+      "evaluatorResult": "PASS_WITH_CAUTION",
+      "issueKinds": [
+        "PENDING_REVIEW",
+        "PENDING_REVIEW"
+      ],
+      "reviewOrder": [
+        "Positioning",
+        "Core Message"
+      ],
+      "notes": "HARD review first, suggestion after; follow-ups are explanation only"
+    },
+    {
+      "id": "G",
+      "name": "declared market differs from operating location",
+      "evaluatorResult": "PASS_WITH_CAUTION",
+      "issueKinds": [
+        "CONTEXT_CHANGED_AFTER_DECISION"
+      ],
+      "declaredContext": {
+        "Market Arena": [
+          "GEOGRAPHY"
+        ]
+      },
+      "notes": "declared geography is context, never the Market Arena decision, which stays unchanged"
+    },
+    {
+      "id": "H",
+      "name": "decision taken before its basis",
+      "evaluatorResult": "PASS",
+      "issueKinds": [
+        "MISSING_BASIS"
+      ],
+      "notes": "Core Message decided while its HARD basis Brand Promise is undecided: INFO guidance, never a contradiction"
+    }
+  ]
+}

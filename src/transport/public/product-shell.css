@@ -605,6 +605,7 @@ body.app #notice {
 
 @media (prefers-reduced-motion: reduce) {
   #journey button[data-module].is-next > span { animation: none; }
+  summary, .panel-toggle { transition: none; }
   .ai-activity,
   .ai-activity-mark {
     transition: none;

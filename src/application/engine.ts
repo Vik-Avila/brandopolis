@@ -8,6 +8,8 @@ import type { Database, Transaction } from '../persistence/database.js';
 import * as t from '../persistence/schema.js';
 import { journey, modulesVersion, learningMoments } from '../domain/modules.js';
 import { assemble } from '../domain/context-assembler.js';
+import { strategicIntelligence } from '../domain/intelligence.js';
+import { GEOGRAPHIC_INFLUENCE,type GeographicInfluence } from '../domain/brand-context.js';
 import { ModelGateway, DemoProvider, evaluate, type Recommendation } from '../domain/analysis.js';
 
 const id=()=>randomUUID();
@@ -753,6 +755,24 @@ export class Engine {
       return {brandId,added};
     });
   }
+  /**
+   * Declared geography is onboarding context, never a decision (ADR-0025). Scoped by brand assignment like
+   * any brand write; audited so a later change can ask for a human look at Market Arena without rewriting it.
+   */
+  async setBrandGeography(token:string,brandId:string,influence:GeographicInfluence,primaryMarket?:string|null) {
+    if(!GEOGRAPHIC_INFLUENCE.includes(influence))throw new AppError('INVALID','Invalid geographic influence');
+    if(primaryMarket!=null&&(typeof primaryMarket!=='string'||primaryMarket.length>160))throw new AppError('INVALID','Invalid primary market');
+    const market=primaryMarket?.trim()||null;
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId);
+      const [before]=await tx.select().from(t.brandProfiles).where(and(eq(t.brandProfiles.workspaceId,s.workspaceId),eq(t.brandProfiles.brandId,s.brandId)));
+      await tx.insert(t.brandProfiles).values({workspaceId:s.workspaceId,brandId:s.brandId,isDemo:false,geographicInfluence:influence,primaryMarket:market})
+        .onConflictDoUpdate({target:[t.brandProfiles.workspaceId,t.brandProfiles.brandId],set:{geographicInfluence:influence,primaryMarket:market}});
+      if(before?.geographicInfluence!==influence||(before?.primaryMarket??null)!==market)
+        await this.audit(tx,s,{operation:'BRAND_CONTEXT_UPDATED',idempotencyKey:id()});
+      return {brandId:s.brandId,geographicInfluence:influence,primaryMarket:market};
+    });
+  }
   private async contextVersion(tx:Transaction,s:Scope) {
     const decisions=await tx.select().from(t.decisions).where(inScope(t.decisions,s));
     return hash(JSON.stringify([decisions.map(d=>[d.id,d.activeVersionId,d.reviewStatus]).sort(),await this.contextEntities(tx,s)]));
@@ -1094,7 +1114,7 @@ export class Engine {
     const actor=await this.me(token);
     // Operational request only: separate name so pilot recommendation metrics stay unchanged.
     await this.db.transaction(async tx=>{const s=await this.scope(tx,token,brandId);await this.event(tx,s,'brando_requested');});
-    const response=await this.gateway.invoke({task:'BRANDO_CONTEXTUAL',module:'Brando B1',promptVersion:'brando-contextual-v4',contextVersion:packet.contextVersion,input:packet,outputSchema:'brando-answer-v2',budget:{maxCharacters:30000,timeoutMs:this.gateway.timeoutMs},tenantScope:{workspaceId:actor.workspaceId,brandId},questionId:questionId??''});
+    const response=await this.gateway.invoke({task:'BRANDO_CONTEXTUAL',module:'Brando B1',promptVersion:'brando-contextual-v5',contextVersion:packet.contextVersion,input:packet,outputSchema:'brando-answer-v2',budget:{maxCharacters:30000,timeoutMs:this.gateway.timeoutMs},tenantScope:{workspaceId:actor.workspaceId,brandId},questionId:questionId??''});
     const after=await snapshot(); // Re-authorize after provider latency, before returning any content.
     if(after.fingerprint!==before.fingerprint)throw new AppError('CONFLICT','Brando context changed');
     const answer=response.result;
@@ -1450,8 +1470,11 @@ export class Engine {
       const experimentPlans=(await tx.select().from(t.experiments).where(inScope(t.experiments,s))).map(e=>({experimentId:e.id,decisionId:e.decisionId,objective:e.objective,successCriteria:e.successCriteria,createdAt:e.createdAt.toISOString(),createdBy:e.createdBy,startedAt:e.startedAt?.toISOString()??null,completedAt:e.completedAt?.toISOString()??null}));
       const output={experimentPlans,recommendations,analyses,...await this.contextEntities(tx,s),contextVersion:await this.contextVersion(tx,s),questions:qs.sort((a,b)=>journey.findIndex(m=>m.primaryDecision===a.module)-journey.findIndex(m=>m.primaryDecision===b.module)).map(({workspaceId:_w,...q})=>q),decisions:ds.map(({workspaceId:_w,...d})=>d),versions:vs.map(versionOutput),dependencies:deps.map(({workspaceId:_w,...d})=>d),reviews:rs.map(reviewOutput),impacts:impact.map(({status,result,triggerVersionId})=>({status,result,triggerVersionId})),audit};
       for(const [name,rows] of [['strategic-question',output.questions],['decision',output.decisions],['decision-version',output.versions],['dependency',output.dependencies],['review-item',output.reviews]] as const) for(const row of rows) validate(name,row);
-      const brandoContextVersion=hash(JSON.stringify([output.questions,output.decisions,output.versions,output.dependencies,output.reviews,output.evidence,output.hypotheses,output.userInputs,output.openQuestions,output.learnings,output.experiments,output.signals,output.impacts]));
-      return {...output,attention:attentionFor(output),brandoContextVersion};
+      const [profile]=await tx.select().from(t.brandProfiles).where(and(eq(t.brandProfiles.workspaceId,s.workspaceId),eq(t.brandProfiles.brandId,s.brandId)));
+      const brandContext={geographicInfluence:profile?.geographicInfluence??null,primaryMarket:profile?.primaryMarket??null};
+      const intelligence=strategicIntelligence({...output,brandContext});
+      const brandoContextVersion=hash(JSON.stringify([brandContext,output.questions,output.decisions,output.versions,output.dependencies,output.reviews,output.evidence,output.hypotheses,output.userInputs,output.openQuestions,output.learnings,output.experiments,output.signals,output.impacts]));
+      return {...output,brandContext,intelligence,attention:attentionFor(output),brandoContextVersion};
   }
 }
 export function versionOutput(v:typeof t.versions.$inferSelect) {

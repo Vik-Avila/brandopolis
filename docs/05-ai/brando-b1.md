@@ -208,3 +208,10 @@ prompts, schema ni datos enviados; consultar nunca guarda ni aprueba estrategia.
 [ADR-0024](../14-decisions/ADR-0024.md) reutiliza la orientación local y la consulta explícita. La orientación
 cuenta hipótesis sin validar y supuestos en uso, y remite la ejecución al ciclo Experiment → Signal →
 Learning con revisión humana. Sin cambios de proveedor, modelo, prompts, schema ni datos enviados.
+
+## Strategic Intelligence (v5) · 2026-10-07
+
+Sucesor operativo: [ADR-0025](../14-decisions/ADR-0025.md). Prompt `brando-contextual-v5` (v1–v4 conservados) y
+paquete autorizado con `DeclaredContext`, `ConsistencyIssue` y `query.reviewPlan`. Mismo proveedor, modelo,
+schema de respuesta v2, topes y aviso. Navegar no consulta; «Preguntar a Brando qué no está alineado» es una
+consulta explícita. Ninguna respuesta aprueba, invalida ni reescribe decisiones.

@@ -1360,3 +1360,59 @@
 .brando-section details{margin:8px 0}.brando-section summary{cursor:pointer}
 .brando-section button{min-height:44px;white-space:normal;text-align:left}
 @media(max-width:620px){.brando-section{grid-template-columns:24px minmax(0,1fr);gap:8px;padding:12px}.brando-section>img{width:24px;height:24px}}
+/* ADR-0025 · Focusable Intelligent Strategic Workspace (UX JTBD C and D) */
+
+/* C. Independent panel collapse. The controls live at the top of the centre column; ≥1280px for the journey
+   (below it the journey is already a drawer) and ≥1001px for the right rail (below it the rail stacks). */
+.panel-controls{display:none;align-items:center;justify-content:flex-end;gap:8px;margin:0 0 12px}
+.panel-toggle{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:4px 12px;border-radius:var(--bp-radius-pill);font-size:12px;font-weight:600;line-height:1.3;background:var(--surface-card);color:var(--bp-brand-emerald-deep);border:1px solid rgba(7,61,45,.18);box-shadow:none}
+.panel-toggle:hover{border-color:var(--bp-brand-emerald);background:var(--bp-emerald-wash)}
+.panel-toggle-icon{font-size:14px;line-height:1}
+.panel-toggle-count{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:10.5px;font-weight:700;color:rgb(98,71,25);background:rgb(239,224,189)}
+.focus-mode-label{margin-right:auto;font-size:11.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--bp-brando-emerald)}
+#toggle-journey{display:none}
+@media (min-width:1001px){.app .panel-controls{display:flex}}
+@media (min-width:1280px){
+  #toggle-journey{display:inline-flex}
+  body.left-collapsed #journey{display:none}
+  body.left-collapsed #workspace{padding-left:28px}
+  body.app.left-collapsed footer{padding-left:28px}
+  body.left-collapsed #workspace[aria-busy="true"]::before{left:0}
+}
+@media (min-width:1001px){
+  body.right-collapsed .intelligence-rail{display:none}
+  body.right-collapsed .layout{grid-template-columns:minmax(0,1fr)}
+}
+@media (pointer:coarse){.panel-toggle{min-height:44px}}
+
+/* D. Brando, more visible without competing with the decision: functional emerald, word-labelled states. */
+.brando-entry{border-left:3px solid var(--bp-brando-emerald)}
+.brando-entry[data-state="idle"]{box-shadow:0 4px 16px rgba(68,54,31,.035),0 0 0 1px var(--bp-brando-emerald-soft)}
+.brando-entry[data-state="attention"]{box-shadow:0 0 0 2px var(--bp-brando-emerald-ring)}
+.brando-entry[data-state="consulting"]{background:linear-gradient(135deg,var(--bp-brando-emerald-soft),rgba(255,252,247,.96))}
+.brando-entry[data-state="ready"]{box-shadow:0 0 0 2px var(--bp-brando-emerald);background:linear-gradient(135deg,var(--bp-brando-emerald-soft),rgba(255,252,247,.96))}
+#journey .brando-nav-entry{border-left:3px solid var(--bp-brando-emerald)}
+#journey .brando-nav-entry .brando-attention-label{color:var(--bp-brando-emerald)}
+.brando-section{border-left:3px solid var(--bp-brando-emerald)}
+.brando-section .eyebrow{color:var(--bp-brando-emerald)}
+.brando-action,#brando-section-explore{border-color:var(--bp-brando-emerald);color:var(--bp-brando-emerald)}
+.brando-action:hover,#brando-section-explore:hover{background:var(--bp-brando-emerald-soft)}
+
+/* Strategic Intelligence summary (ADR-0025): sober, word-first, no dashboard cards. */
+.intelligence-summary{margin:20px 0;padding:18px 20px;border:1px solid var(--border-default);border-radius:var(--bp-radius-lg);background:var(--surface-card)}
+.intelligence-summary .section-heading{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.intelligence-summary h4{margin:16px 0 8px;font-size:13px}
+.intelligence-plan,.intelligence-issues{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.intelligence-step,.intelligence-issue{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;padding:10px 12px;border:1px solid var(--border-default);border-radius:var(--bp-radius-md)}
+.intelligence-step p,.intelligence-issue p{margin:4px 0 0}
+.intelligence-issue[data-severity="CONFLICT"]{border-color:var(--bp-error-border);background:var(--bp-error-bg)}
+.intelligence-issue[data-severity="REVIEW"]{border-color:var(--bp-review-border)}
+.intelligence-status{margin:8px 0 16px}
+.declared-context{margin:14px 0;padding:12px 14px;border:1px dashed var(--bp-brand-champagne);border-radius:var(--bp-radius-md);background:var(--bp-gold-wash)}
+.declared-context dl{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 14px;margin:6px 0}
+.declared-context dt{font-weight:600;color:var(--text-secondary)}
+.declared-context dd{margin:0}
+.decision-support,.decision-tension{margin:8px 0;font-size:13px}
+.bp-disclosure{margin-top:12px}
+.bp-disclosure-body{padding:4px 0 0}
+@media (max-width:620px){.intelligence-step,.intelligence-issue{flex-direction:column}.declared-context dl{grid-template-columns:1fr}}

@@ -17,6 +17,9 @@ export interface BrandoState {
   questions:Row[];decisions:Row[];versions:Row[];reviews:Row[];dependencies:Row[];
   evidence:Row[];learnings:Row[];hypotheses:Row[];userInputs:Row[];openQuestions:Row[];
   experiments:Row[];signals:Row[];impacts:unknown[];
+  /** ADR-0025: declared onboarding context and the deterministic intelligence projection, when available. */
+  brandContext?:{geographicInfluence:string|null;primaryMarket:string|null}|null;
+  intelligence?:{issues:readonly object[];reviewPlan:readonly object[]}|null;
 }
 /** Shared server projection. Model output cannot clear or create these obligations. */
 export function attentionFor(c:BrandoState):AttentionItem[] {
@@ -57,8 +60,12 @@ export function brandoPacket(c:BrandoState,brand:{id:string;name:string},context
   add(c.versions.filter(v=>v.versionStatus==='SUPERSEDED'&&(!current||c.decisions.some(d=>d.id===v.decisionId&&d.questionId===current.id))),'DecisionHistory',false,'HISTORICAL_NOT_CURRENT');
   add(c.experiments,'Experiment',false,'HUMAN_RECORDED');
   add(c.signals,'Signal',false,'OBSERVATION_NOT_LEARNING');
+  // Declared context is a starting point, never a decision; system-derived issues are signals, never evidence.
+  if(c.brandContext&&(c.brandContext.geographicInfluence||c.brandContext.primaryMarket))add([{id:`declared-context:${brand.id}`,geographicInfluence:c.brandContext.geographicInfluence,primaryMarket:c.brandContext.primaryMarket}],'DeclaredContext',false,'DECLARED_CONTEXT_NOT_DECISION');
+  add((c.intelligence?.issues??[]).map(x=>x as Row).map(i=>({id:i.id,kind:i.kind,severity:i.severity,origin:i.origin,modules:i.modules,decisionIds:i.decisionIds,versionIds:i.versionIds,hypothesisRefs:i.hypothesisRefs,evidenceRefs:i.evidenceRefs,reviewFirst:i.reviewFirst})),'ConsistencyIssue',false,'SYSTEM_DERIVED_NOT_EVIDENCE');
   // Only questions are carried forward. Prior assistant prose is never an authoritative source.
-  const query={brandId:brand.id,current:current??null,message,previousQuestions:history.map(h=>h.question),attention:attentionFor(c)};
+  const reviewPlan=(c.intelligence?.reviewPlan??[]).map(x=>x as Row).map(r=>({order:r.order,module:r.module,mandatory:r.mandatory}));
+  const query={brandId:brand.id,current:current??null,message,previousQuestions:history.map(h=>h.question),attention:attentionFor(c),reviewPlan};
   return assemble(contextVersion,query,withoutPersonalIds(c.dependencies),withoutPersonalIds(c.reviews),items,24000);
 }
 export function validBrandoReferences(answer:BrandoAnswer,packet:ContextPacket) {

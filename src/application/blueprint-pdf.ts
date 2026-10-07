@@ -31,6 +31,24 @@ const MODULE_LABELS: Record<string, string> = {
   'Priority Experiment': 'Experimento prioritario'
 };
 
+const EVALUATOR_LABELS: Record<string, string> = {
+  PASS: 'Coherente con lo registrado', PASS_WITH_CAUTION: 'Con puntos por revisar', REVIEW_REQUIRED: 'Hay contradicciones que revisar'
+};
+const SEVERITY_LABELS: Record<string, string> = { CONFLICT: 'Contradicción', REVIEW: 'Requiere revisión', INFO: 'Información' };
+function issueSentence(issue: { kind: string; severity: string; modules: string[] }) {
+  const [a, b] = issue.modules.map(m => MODULE_LABELS[m] ?? m);
+  switch (issue.kind) {
+    case 'PENDING_REVIEW': return issue.severity === 'REVIEW' ? `${a} requiere revisión por un cambio conectado.` : `Se sugiere revisar ${a} por un cambio conectado.`;
+    case 'MISSING_BASIS': return `${a} se decidió antes que ${b}, que es su base.`;
+    case 'INVALIDATED_UPSTREAM': return `${a} depende de ${b}, que fue invalidada.`;
+    case 'RELIES_ON_REJECTED_HYPOTHESIS': return `${a} se apoya en una hipótesis rechazada.`;
+    case 'RELIES_ON_WEAKENED_HYPOTHESIS': return `${a} se apoya en una hipótesis debilitada.`;
+    case 'CONTEXT_CHANGED_AFTER_DECISION': return 'El mercado declarado cambió después de decidir la Arena de mercado.';
+    case 'EXPERIMENT_NOT_PLANNED': return 'El experimento prioritario aún no está planeado.';
+    default: return `${a}: revisa la coherencia.`;
+  }
+}
+
 const DEPENDENCY_LABELS: Record<string, string> = {
   HARD: 'Dependencia estricta', SOFT: 'Dependencia sugerida', INFORMATIVE: 'Informativa'
 };
@@ -48,6 +66,8 @@ export type BlueprintInput = {
     evidence: { claim?: string; source?: string; sourceDate?: string; provenance?: string; limitations?: string[] }[];
     hypotheses: { statement?: string; status?: string }[];
     learnings: { interpretation?: string; status?: string; limitations?: string[] }[];
+    /** ADR-0025: deterministic Strategic Intelligence projection, when available. */
+    intelligence?: { evaluatorResult: string; issues: { kind: string; severity: string; modules: string[] }[] };
   };
   competitiveStatus: string;
   generatedAt: Date;
@@ -129,6 +149,7 @@ export function buildBlueprintPdf(input: BlueprintInput): Uint8Array {
   field('Influencia geográfica', brand.geographicInfluence ? (GEOGRAPHY_LABELS[brand.geographicInfluence] ?? brand.geographicInfluence) : NOT_DEFINED);
   field('Mercado principal', brand.primaryMarket?.trim() || NOT_DEFINED);
   field('Contexto competitivo', input.competitiveStatus);
+  if (context.intelligence) field('Coherencia estratégica', EVALUATOR_LABELS[context.intelligence.evaluatorResult] ?? NOT_DEFINED);
   pdf.gap(6);
 
   // --- The strategic decisions ----------------------------------------------------------------------
@@ -153,6 +174,20 @@ export function buildBlueprintPdf(input: BlueprintInput): Uint8Array {
   });
 
   // --- Connected view --------------------------------------------------------------------------
+  // --- Strategic coherence (ADR-0025): system rules, never probabilities nor AI verdicts -------------------
+  if (context.intelligence) {
+    heading('Coherencia estratégica');
+    pdf.text('Puntos detectados por las reglas de Brandopolis sobre lo que registraste. No son decisiones ni certezas: tú decides qué revisar.', { size: 10.5, colour: muted });
+    pdf.gap(6);
+    const issues = context.intelligence.issues;
+    if (!issues.length) pdf.text('No se detectaron tensiones ni revisiones pendientes.', { size: 11 });
+    for (const issue of issues) {
+      pdf.text(`${SEVERITY_LABELS[issue.severity] ?? issue.severity} · ${issueSentence(issue)}`, { size: 11 });
+      pdf.gap(4);
+    }
+    pdf.gap(8);
+  }
+
   heading('Cómo se conectan');
   const moduleOf = (decisionId: string) => {
     const decision = context.decisions.find(d => d.id === decisionId);

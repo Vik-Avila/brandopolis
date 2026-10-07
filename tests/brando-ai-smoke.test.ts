@@ -8,10 +8,14 @@ it('live-smoke harness sends one B1 query with only synthetic context and the pr
   const provider:ModelProvider={name:'fixture',model:'operator-selected',generate:async request=>{requests.push(request);return demoBrando(request.input);}};
   const report=await brandoAiSmoke(provider);
   expect(requests).toHaveLength(1);
-  expect(requests[0]).toMatchObject({task:'BRANDO_CONTEXTUAL',outputSchema:'brando-answer-v2',promptVersion:'brando-contextual-v4'});
+  expect(requests[0]).toMatchObject({task:'BRANDO_CONTEXTUAL',outputSchema:'brando-answer-v2',promptVersion:'brando-contextual-v5'});
   expect(JSON.stringify(requests[0])).toContain('Fixture ficticio');
   expect(report).toMatchObject({outcome:'OK',schemaValid:true,referencesValid:true,model:'operator-selected'});
   expect(report.sources.some(s=>s.type==='DecisionHistory')).toBe(true);
+  // ADR-0025: the declared context and the deterministic issue reach the provider as labelled, non-decision sources.
+  expect(report.sources.filter(s=>['DeclaredContext','ConsistencyIssue'].includes(s.type)).map(s=>s.type).sort()).toEqual(['ConsistencyIssue','DeclaredContext']);
+  expect(JSON.stringify(requests[0])).toContain('DECLARED_CONTEXT_NOT_DECISION');
+  expect(JSON.stringify(requests[0])).toContain('SYSTEM_DERIVED_NOT_EVIDENCE');
   expect(report.attention.map(a=>a.kind)).toEqual(['question','context']);
 });
 it('live-smoke harness withholds fabricated references and never falls back after a provider error',async()=>{

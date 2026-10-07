@@ -8,3 +8,6 @@ Depends on: Master Context v1.0
 # Harness de evaluación
 
 `fixtures/m1-change.json` es DEMO; `golden-cases/cases.json` cubre diez casos; `rubric/` y `adversarial/` contienen gates. Evals definen expectativas antes del código; no reportar passes hasta ejecutarlas. Requisito ↔ eval en `docs/00-index/traceability-matrix.md`.
+
+`strategic-intelligence.json` (ADR-0025) define los fixtures A–H de la proyección determinista de Strategic
+Intelligence; `tests/intelligence.test.ts` los ejecuta. No evalúa respuestas en vivo del proveedor.

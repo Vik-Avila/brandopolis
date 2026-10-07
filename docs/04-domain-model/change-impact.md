@@ -40,3 +40,10 @@ Core Message → GTM Priority (SOFT, primera versión revisable) y conserva Posi
 
 `config/dependencies/v5.json` es la configuración activa desde [ADR-0024](../14-decisions/ADR-0024.md): añade
 GTM Priority → Priority Experiment (SOFT, primera versión revisable). Las versiones anteriores se conservan.
+
+## Change Impact 2.0 · explicación · 2026-10-07
+
+[ADR-0025](../14-decisions/ADR-0025.md) añade `reviewPlan`: orden recomendado (obligatorias primero, luego orden de
+dependencias), cambios que originaron cada revisión, cambios integrados mientras estaba pendiente y, sólo
+como explicación, decisiones que podrían requerir revisión después. No recorre ni escribe downstream; la
+escritura sigue siendo exclusivamente Change Impact v1 tras un commit humano.

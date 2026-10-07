@@ -20,10 +20,13 @@ export async function brandoAiSmoke(provider:ModelProvider,timeoutMs=30000) {
     evidence:[{id:evidenceId,claim:'En seis entrevistas simuladas, cuatro mencionaron pérdida del porqué de las decisiones.',source:'Fixture ficticio de seis entrevistas',sourceDate:'2026-10-01',provenance:'Datos inventados exclusivamente para esta prueba; no son investigación real.',quality:'LOW',relevance:'DIRECT',freshness:'CURRENT',limitations:['Muestra ficticia, pequeña y no representativa.','No valida demanda, tamaño de mercado ni disposición a pagar.']}],
     hypotheses:[{id:randomUUID(),statement:'Las agencias podrían valorar la continuidad de decisiones entre marcas.',status:'UNVALIDATED',evidenceReferences:[evidenceId]}],
     openQuestions:[{id:randomUUID(),statement:'¿Pagarían por una marca activa?',status:'OPEN'}],
-    userInputs:[],learnings:[],reviews:[],dependencies:[],experiments:[],signals:[],impacts:[]
+    userInputs:[],learnings:[],reviews:[],dependencies:[],experiments:[],signals:[],impacts:[],
+    // ADR-0025 contract: declared onboarding context (never a decision) and one deterministic issue (never evidence).
+    brandContext:{geographicInfluence:'NATIONAL',primaryMarket:'Ciudad de México · contexto ficticio de prueba'},
+    intelligence:{issues:[{id:'issue:MISSING_BASIS:smoke',kind:'MISSING_BASIS',severity:'REVIEW',origin:'RULE',modules:['Positioning','Primary Customer'],decisionIds:[decisionId],versionIds:[currentId],hypothesisRefs:[],evidenceRefs:[],reviewFirst:'Positioning'}],reviewPlan:[]}
   };
-  const promptVersion='brando-contextual-v4',contextVersion='synthetic-smoke-'+randomUUID();
-  const message='Explica qué decidimos y por qué; distingue la decisión vigente de la anterior. ¿Qué evidencia tenemos y cuáles son sus límites? ¿Qué necesita atención? Propón una hipótesis, una pregunta y un siguiente paso. No inventes tamaño de mercado ni ingresos. No apruebes ni cambies estrategia.';
+  const promptVersion='brando-contextual-v5',contextVersion='synthetic-smoke-'+randomUUID();
+  const message='Explica qué decidimos y por qué; distingue la decisión vigente de la anterior. ¿Qué no está alineado y qué reviso primero? ¿Qué sabemos del mercado que declaramos, y por qué eso no es todavía nuestra arena? ¿Qué evidencia tenemos y cuáles son sus límites? ¿Qué necesita atención? Propón una hipótesis, una pregunta y un siguiente paso. No inventes tamaño de mercado ni ingresos. No apruebes ni cambies estrategia.';
   const packet=brandoPacket(state,{id:brandId,name:'Lumbre Estudio · marca ficticia de prueba'},contextVersion,message,null,[]);
   const response=await new ModelGateway(provider,promptVersion,timeoutMs).invoke({task:'BRANDO_CONTEXTUAL',module:'Brando B1',promptVersion,contextVersion,input:packet,outputSchema:'brando-answer-v2',budget:{maxCharacters:30000,timeoutMs},tenantScope:{workspaceId:'synthetic-smoke',brandId},questionId});
   const referencesValid=Boolean(response.result&&validBrandoReferences(response.result,packet));

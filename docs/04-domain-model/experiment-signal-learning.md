@@ -12,3 +12,6 @@ Experiment prueba una Hypothesis con intendedSignal y responsable; Signal es obs
 Priority Experiment ([ADR-0024](../14-decisions/ADR-0024.md)) es la Strategic Decision que elige qué supuesto validar
 primero; su ejecución usa estas entidades, enlazando el Experiment a esa decisión. Nada del ciclo modifica
 la decisión, una Hypothesis ni un Learning sin revisión humana.
+
+La memoria estratégica de [ADR-0025](../14-decisions/ADR-0025.md) distingue aprendizajes aceptados de los que
+esperan revisión humana; una señal o un aprendizaje pendiente nunca cuenta como soporte de una decisión.

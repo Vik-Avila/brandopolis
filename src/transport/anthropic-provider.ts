@@ -28,7 +28,7 @@ export class AnthropicProvider implements ModelProvider {
     try {
       message=await this.client.messages.create({
         model:this.model,max_tokens:16000,
-        system:readFileSync(`prompts/${r.task==='BRANDO_CONTEXTUAL'?(r.promptVersion==='brando-contextual-v4'?'brando-contextual-v4':r.promptVersion==='brando-contextual-v3'?'brando-contextual-v3':r.promptVersion==='brando-contextual-v2'?'brando-contextual-v2':'brando-contextual-v1'):PILOT_PROMPT_VERSION}.md`,'utf8'),
+        system:readFileSync(`prompts/${r.task==='BRANDO_CONTEXTUAL'?(r.promptVersion==='brando-contextual-v5'?'brando-contextual-v5':r.promptVersion==='brando-contextual-v4'?'brando-contextual-v4':r.promptVersion==='brando-contextual-v3'?'brando-contextual-v3':r.promptVersion==='brando-contextual-v2'?'brando-contextual-v2':'brando-contextual-v1'):PILOT_PROMPT_VERSION}.md`,'utf8'),
         messages:[{role:'user',content:JSON.stringify({id:randomUUID(),brandId:r.tenantScope.brandId,questionId:r.questionId,contextVersion:r.contextVersion,module:r.module,context:r.input})}],
         output_config:{format:{type:'json_schema',schema:outputSchema}}
       },{timeout:r.budget.timeoutMs});
