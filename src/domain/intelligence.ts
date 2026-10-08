@@ -10,7 +10,7 @@ export const INTELLIGENCE_VERSION='strategic-intelligence-v1';
 export type EvaluatorResult='PASS'|'PASS_WITH_CAUTION'|'REVIEW_REQUIRED';
 export type IssueSeverity='INFO'|'REVIEW'|'CONFLICT';
 export type SupportLevel='STRONG_SUPPORT'|'MODERATE_SUPPORT'|'LIMITED_SUPPORT'|'UNVALIDATED';
-export type IssueKind='PENDING_REVIEW'|'MISSING_BASIS'|'INVALIDATED_UPSTREAM'|'RELIES_ON_REJECTED_HYPOTHESIS'|'RELIES_ON_WEAKENED_HYPOTHESIS'|'CONTEXT_CHANGED_AFTER_DECISION'|'EXPERIMENT_NOT_PLANNED';
+export type IssueKind='PENDING_REVIEW'|'MISSING_BASIS'|'INVALIDATED_UPSTREAM'|'RELIES_ON_REJECTED_HYPOTHESIS'|'RELIES_ON_WEAKENED_HYPOTHESIS'|'CONTEXT_CHANGED_AFTER_DECISION'|'EXPERIMENT_NOT_PLANNED'|'VALIDATION_CHALLENGES_DECISION';
 export interface ConsistencyIssue {
   id:string; kind:IssueKind; severity:IssueSeverity; origin:'RULE';
   modules:string[]; decisionIds:string[]; versionIds:string[];
@@ -41,7 +41,7 @@ export interface StrategicIntelligenceSnapshot {
 type Row=Record<string,unknown>;
 export interface IntelligenceState {
   questions:Row[]; decisions:Row[]; versions:Row[]; dependencies:Row[]; reviews:Row[];
-  evidence:Row[]; hypotheses:Row[]; learnings:Row[]; signals:Row[]; experimentPlans:Row[]; userInputs:Row[];
+  evidence:Row[]; hypotheses:Row[]; learnings:Row[]; signals:Row[]; experimentPlans:Row[]; userInputs:Row[]; experiments?:Row[];
   audit?:Row[]; brandContext?:{geographicInfluence:string|null; primaryMarket:string|null}|null;
 }
 
@@ -110,6 +110,17 @@ export function strategicIntelligence(s:IntelligenceState):StrategicIntelligence
       const h=s.hypotheses.find(x=>x.id===usage.hypothesisId);
       if(h?.status==='REJECTED'||h?.status==='WEAKENED')
         add({kind:h.status==='REJECTED'?'RELIES_ON_REJECTED_HYPOTHESIS':'RELIES_ON_WEAKENED_HYPOTHESIS',severity:h.status==='REJECTED'?'CONFLICT':'REVIEW',modules:[moduleOf(d.id)],decisionIds:[str(d.id)],versionIds:[str(v.id)],hypothesisRefs:[str(h.id)],evidenceRefs:(Array.isArray(h.evidenceReferences)?h.evidenceReferences:[]).map(String),reviewFirst:moduleOf(d.id)});
+    }
+  }
+  // 4b. ADR-0026: a human weakened or rejected a hypothesis that an experiment of this decision tested, after the
+  // decision's current version. Attention only; never a status change. A new human version clears it.
+  for(const h of s.hypotheses.filter(x=>x.status==='WEAKENED'||x.status==='REJECTED')){
+    const reviewedAt=Math.max(0,...(s.audit??[]).filter(a=>a.operation===`HYPOTHESIS_${h.status}`).filter(a=>{try{return JSON.parse(str(a.rationale)).hypothesisId===h.id;}catch{return false;}}).map(a=>time(a.occurredAt)));
+    const tested=(s.experiments??[]).filter(e=>e.hypothesisId===h.id).map(e=>str(s.experimentPlans.find(p=>p.experimentId===e.id)?.decisionId));
+    for(const d of s.decisions.filter(x=>tested.includes(str(x.id)))){
+      const v=active(d);if(!v||reviewedAt<=time(v.approvedAt))continue;
+      if(issues.some(i=>i.decisionIds[0]===d.id&&i.hypothesisRefs.includes(str(h.id))))continue;
+      add({kind:'VALIDATION_CHALLENGES_DECISION',severity:h.status==='REJECTED'?'CONFLICT':'REVIEW',modules:[moduleOf(d.id)],decisionIds:[str(d.id)],versionIds:[str(v.id)],hypothesisRefs:[str(h.id)],evidenceRefs:[],reviewFirst:moduleOf(d.id)});
     }
   }
   // 5. Declared market context changed after the Market Arena version was approved.

@@ -242,7 +242,9 @@ export function buildBlueprintPdf(input: BlueprintInput): Uint8Array {
   if (!openHypotheses.length) pdf.text('Aún no declaras hipótesis para esta marca.', { size: 10.5, colour: muted });
   for (const hypothesis of openHypotheses) {
     pdf.text(String(hypothesis?.statement ?? ''), { size: 10.5 });
-    pdf.text(hypothesis?.status === 'SUPPORTED' ? 'Con soporte registrado · sigue siendo una hipótesis' : 'Por validar', { size: 9, colour: muted });
+    // ADR-0026: the human-reviewed validation state, never a claim of truth.
+    const state = ({ SUPPORTED: 'Respaldada por un aprendizaje aceptado · sigue siendo una hipótesis', WEAKENED: 'Debilitada por un aprendizaje aceptado · revisa las decisiones que la usan', TESTING: 'En prueba · por validar' } as Record<string, string>)[String(hypothesis?.status)] ?? 'Por validar';
+    pdf.text(state, { size: 9, colour: muted });
     pdf.gap(6);
   }
   pdf.gap(8);

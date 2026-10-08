@@ -161,7 +161,8 @@ export function issueText(issue){
   RELIES_ON_REJECTED_HYPOTHESIS:[`${a} se apoya en una hipótesis que rechazaste.`,'El supuesto que sostenía esta decisión ya no se considera válido.'],
   RELIES_ON_WEAKENED_HYPOTHESIS:[`${a} se apoya en una hipótesis que se debilitó.`,'La evidencia reciente no respalda el supuesto como antes.'],
   CONTEXT_CHANGED_AFTER_DECISION:['El mercado que declaraste cambió después de decidir tu Arena de mercado.','Tu Arena no se modificó; comprueba si sigue vigente con el nuevo contexto.'],
-  EXPERIMENT_NOT_PLANNED:['Elegiste tu experimento prioritario, pero aún no lo planeas.','Sin ejecución no habrá señales que revisar; planéalo en Experimentos y aprendizajes.']
+  EXPERIMENT_NOT_PLANNED:['Elegiste tu experimento prioritario, pero aún no lo planeas.','Sin ejecución no habrá señales que revisar; planéalo en Experimentos y aprendizajes.'],
+  VALIDATION_CHALLENGES_DECISION:[issue.severity==='CONFLICT'?`Rechazaste la hipótesis que ${a} puso a prueba.`:`Debilitaste la hipótesis que ${a} puso a prueba.`,'Tu decisión no cambió; revisa si sigue en pie con lo que aprendiste.']
  })[issue.kind]??[`${a}: revisa la coherencia.`,''];
 }
 export function intelligenceHtml(c){
@@ -183,6 +184,37 @@ export function intelligenceHtml(c){
   ${issues?`<h4>Tensiones detectadas</h4><ul class="intelligence-issues">${issues}</ul>`:'<p>No se detectaron tensiones en las reglas del sistema.</p>'}
   <details class="bp-disclosure"><summary><span>Cambios recientes y soporte de evidencia</span></summary><div class="bp-disclosure-body">${changes?`<ul>${changes}</ul>`:'<p>Aún no hay versiones nuevas.</p>'}<p>${gaps?`${gaps} ${gaps===1?'decisión vigente no tiene':'decisiones vigentes no tienen'} evidencia vinculada.`:'Las decisiones vigentes con evidencia vinculada se muestran en cada sección.'} El soporte describe la fuerza de lo registrado, no la probabilidad de acertar.</p></div></details>
  </section>`;
+}
+/** ADR-0026 · Validation & Learning. Pure presentation of the deterministic validation projection. */
+export const hypothesisWords={UNTESTED:'Sin probar',TESTING:'En prueba',SUPPORTED:'Respaldada',WEAKENED:'Debilitada',REJECTED:'Rechazada'};
+export const planQualityWords={READY:'Plan listo',READY_WITH_CAUTION:'Listo con cautela',REWORK:'Conviene replantear'};
+export const planFindingWords={NO_HYPOTHESIS:'Falta la hipótesis.',EMPTY_OBJECTIVE:'Falta el objetivo.',EMPTY_SIGNAL:'Falta la señal esperada.',SIGNAL_NOT_OBSERVABLE:'La señal describe una opinión; conviene algo que puedas observar y registrar.',CIRCULAR_CRITERIA:'El criterio de éxito repite el objetivo o la señal.',NO_DISCONFIRMING_CRITERIA:'Define qué resultado te diría que la hipótesis no se sostiene.',NO_METHOD:'Describe cómo vas a observarlo.'};
+export const directionWords={EXPECTED:'Esperada',CONTRARY:'Contraria',AMBIGUOUS:'Ambigua'};
+export function nextValidationText(n,c){
+ const h=c?.validation?.hypotheses?.find(x=>x.id===n.ref);
+ const quote=h?`«${h.statement}»`:'';
+ return ({
+  REVIEW_LEARNING:['Revisa un aprendizaje pendiente.','Antes de crear más trabajo, decide si lo que interpretaste se sostiene.'],
+  INTERPRET_SIGNALS:['Interpreta las señales registradas.','Una señal es una observación; todavía no es aprendizaje.'],
+  RESOLVE_HYPOTHESIS:[`Revisa la hipótesis ${quote}.`,'Ya tienes un aprendizaje aceptado sobre ella; decide si queda respaldada, debilitada o rechazada.'],
+  REVIEW_AFFECTED_DECISION:[`Revisa ${moduleLabel(n.module)}.`,`Se apoyaba en ${quote||'una hipótesis'} y lo que aprendiste la cuestiona. Nada cambia sin tu confirmación.`],
+  RESOLVE_INCONCLUSIVE:['Un experimento quedó no concluyente.','Es un resultado válido: decide si lo replanteas o lo dejas así.'],
+  TEST_ASSUMPTION_IN_USE:[`Pon a prueba ${quote}.`,`${moduleLabel(n.module)} la usa como supuesto y aún no tiene experimento.`],
+  EXECUTE_PRIORITY_EXPERIMENT:['Planea tu experimento prioritario.','Ya elegiste qué validar primero; falta convertirlo en un plan.'],
+  RETEST_WEAKENED:[`Considera volver a probar ${quote}.`,'Quedó debilitada; puede valer un experimento distinto.']
+ })[n.kind]??['Siguiente validación.',''];
+}
+export function validationNextHtml(c,{withHeading=true}={}){
+ const v=c?.validation;if(!v)return '';
+ const items=v.nextValidation.slice(0,3);
+ const counts=Object.entries(hypothesisWords).map(([k,w])=>[w,v.hypotheses.filter(h=>h.status===k).length]).filter(([,n])=>n);
+ if(!items.length&&!v.hypotheses.length)return '';
+ const list=items.map((n,i)=>{const [what,why]=nextValidationText(n,c);return `<li class="validation-step" data-kind="${escape(n.kind)}"><span class="badge ${i?'':'warn'}">${i?'Después':'Ahora'}</span> <strong>${escape(what)}</strong>${why?`<p class="hint">${escape(why)}</p>`:''}</li>`;}).join('');
+ return `<section class="validation-next" aria-labelledby="validation-next-title">${withHeading?'<p class="eyebrow">Validación y aprendizaje</p>':''}<h3 id="validation-next-title">Siguiente validación recomendada</h3><p class="hint">Reglas del sistema · una recomendación, nunca una decisión.</p>${list?`<ol class="validation-steps">${list}</ol>`:'<p>No hay validaciones pendientes.</p>'}${withHeading?'<button type="button" class="secondary" id="validation-open">Ver siguiente validación</button>':''}${counts.length?`<p class="hint">Hipótesis: ${escape(counts.map(([w,n])=>`${n} ${w.toLowerCase()}`).join(' · '))}</p>`:''}</section>`;
+}
+export function planQualityHtml(q){
+ if(!q)return '';
+ return `<div class="plan-quality" data-quality="${escape(q.result)}"><span class="badge ${q.result==='READY'?'':'warn'}">${planQualityWords[q.result]}</span>${q.findings.length?`<ul>${q.findings.map(f=>`<li>${escape(planFindingWords[f]??f)}</li>`).join('')}</ul>`:''}<p class="hint">Revisión del sistema; tú decides si lo inicias.</p></div>`;
 }
 /** What the brand already declared, shown as context for a decision. Context reused is never a decision. */
 export function declaredContextHtml(c,module){

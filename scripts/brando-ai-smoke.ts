@@ -9,7 +9,7 @@ import { AnthropicProvider } from '../src/transport/anthropic-provider.js';
 // Reuses the configured adapter (including its existing retry policy and output-token bound).
 export async function brandoAiSmoke(provider:ModelProvider,timeoutMs=30000) {
   const brandId=randomUUID(),questionId=randomUUID(),positioningId=randomUUID();
-  const decisionId=randomUUID(),currentId=randomUUID(),oldId=randomUUID(),evidenceId=randomUUID();
+  const decisionId=randomUUID(),currentId=randomUUID(),oldId=randomUUID(),evidenceId=randomUUID(),hypothesisId=randomUUID(),experimentId=randomUUID(),signalId=randomUUID();
   const state:BrandoState={
     questions:[{id:questionId,module:'Primary Customer',text:'¿Quién es el cliente prioritario?'},{id:positioningId,module:'Positioning',text:'¿Cómo nos posicionaremos?'}],
     decisions:[{id:decisionId,questionId,activeVersionId:currentId,reviewStatus:'APPROVED'}],
@@ -18,15 +18,20 @@ export async function brandoAiSmoke(provider:ModelProvider,timeoutMs=30000) {
       {id:oldId,decisionId,sequence:1,versionStatus:'SUPERSEDED',selectedOption:'Cualquier pequeña empresa',rationale:'Hipótesis inicial demasiado amplia; sustituida por un foco de piloto más concreto.'}
     ],
     evidence:[{id:evidenceId,claim:'En seis entrevistas simuladas, cuatro mencionaron pérdida del porqué de las decisiones.',source:'Fixture ficticio de seis entrevistas',sourceDate:'2026-10-01',provenance:'Datos inventados exclusivamente para esta prueba; no son investigación real.',quality:'LOW',relevance:'DIRECT',freshness:'CURRENT',limitations:['Muestra ficticia, pequeña y no representativa.','No valida demanda, tamaño de mercado ni disposición a pagar.']}],
-    hypotheses:[{id:randomUUID(),statement:'Las agencias podrían valorar la continuidad de decisiones entre marcas.',status:'UNVALIDATED',evidenceReferences:[evidenceId]}],
+    hypotheses:[{id:hypothesisId,statement:'Las agencias podrían valorar la continuidad de decisiones entre marcas.',status:'UNVALIDATED',evidenceReferences:[evidenceId]}],
     openQuestions:[{id:randomUUID(),statement:'¿Pagarían por una marca activa?',status:'OPEN'}],
-    userInputs:[],learnings:[],reviews:[],dependencies:[],experiments:[],signals:[],impacts:[],
+    userInputs:[],reviews:[],dependencies:[],impacts:[],
+    // ADR-0026 contract: one running experiment, a contrary signal and a candidate learning that is NOT accepted.
+    experiments:[{id:experimentId,hypothesisId,intendedSignal:'Agencias ficticias que consultan su historial cada semana',method:'Seguimiento ficticio de uso',disconfirmingCriteria:'Menos de dos agencias regresan',status:'RUNNING'}],
+    signals:[{id:signalId,experimentId,observation:'Una de cinco agencias ficticias regresó',source:'Fixture ficticio',observedAt:'2026-10-05T12:00:00.000Z',direction:'CONTRARY'}],
+    learnings:[{id:randomUUID(),signalIds:[signalId],hypothesisId,interpretation:'Borrador: el regreso semanal no se sostiene',limitations:['Muestra ficticia'],status:'CANDIDATE',origin:'MANUAL'}],
+    validation:{hypotheses:[{status:'TESTING'}],signalBalance:{[experimentId]:{expected:0,contrary:1,ambiguous:0,unclassified:0}},nextValidation:[{kind:'REVIEW_LEARNING',ref:'candidate',module:null}]},
     // ADR-0025 contract: declared onboarding context (never a decision) and one deterministic issue (never evidence).
     brandContext:{geographicInfluence:'NATIONAL',primaryMarket:'Ciudad de México · contexto ficticio de prueba'},
     intelligence:{issues:[{id:'issue:MISSING_BASIS:smoke',kind:'MISSING_BASIS',severity:'REVIEW',origin:'RULE',modules:['Positioning','Primary Customer'],decisionIds:[decisionId],versionIds:[currentId],hypothesisRefs:[],evidenceRefs:[],reviewFirst:'Positioning'}],reviewPlan:[]}
   };
-  const promptVersion='brando-contextual-v5',contextVersion='synthetic-smoke-'+randomUUID();
-  const message='Explica qué decidimos y por qué; distingue la decisión vigente de la anterior. ¿Qué no está alineado y qué reviso primero? ¿Qué sabemos del mercado que declaramos, y por qué eso no es todavía nuestra arena? ¿Qué evidencia tenemos y cuáles son sus límites? ¿Qué necesita atención? Propón una hipótesis, una pregunta y un siguiente paso. No inventes tamaño de mercado ni ingresos. No apruebes ni cambies estrategia.';
+  const promptVersion='brando-contextual-v6',contextVersion='synthetic-smoke-'+randomUUID();
+  const message='Explica qué decidimos y por qué; distingue la decisión vigente de la anterior. ¿Qué no está alineado y qué reviso primero? ¿Qué sabemos del mercado que declaramos, y por qué eso no es todavía nuestra arena? ¿Qué evidencia tenemos y cuáles son sus límites? ¿Qué necesita atención? Ayúdame a interpretar las señales del experimento: qué apoyan, qué no, explicaciones alternativas y si el aprendizaje candidato es prematuro. Propón una hipótesis, una pregunta y un siguiente paso. No inventes tamaño de mercado ni ingresos. No apruebes ni cambies estrategia.';
   const packet=brandoPacket(state,{id:brandId,name:'Lumbre Estudio · marca ficticia de prueba'},contextVersion,message,null,[]);
   const response=await new ModelGateway(provider,promptVersion,timeoutMs).invoke({task:'BRANDO_CONTEXTUAL',module:'Brando B1',promptVersion,contextVersion,input:packet,outputSchema:'brando-answer-v2',budget:{maxCharacters:30000,timeoutMs},tenantScope:{workspaceId:'synthetic-smoke',brandId},questionId});
   const referencesValid=Boolean(response.result&&validBrandoReferences(response.result,packet));

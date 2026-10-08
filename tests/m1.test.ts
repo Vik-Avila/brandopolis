@@ -27,6 +27,7 @@ import { gtmCases } from './gtm-cases.js';
 import { priorityExperimentCases } from './priority-experiment-cases.js';
 import { phase1ClosureCases } from './phase1-closure-cases.js';
 import { strategicIntelligenceCases } from './strategic-intelligence-cases.js';
+import { validationCases } from './validation-cases.js';
 let local:Awaited<ReturnType<typeof startLocalDb>>,connection:ReturnType<typeof connect>,engine:Engine;
 brandoCases(()=>connection);
 pilotCases(()=>connection);
@@ -38,6 +39,7 @@ gtmCases(()=>connection);
 priorityExperimentCases(()=>connection);
 phase1ClosureCases(()=>connection);
 strategicIntelligenceCases(()=>connection);
+validationCases(()=>connection);
 beforeAll(async()=>{
   local=await startLocalDb(true);
   const name=`m1_${randomUUID().replaceAll('-','')}`;
@@ -216,7 +218,8 @@ describe('PostgreSQL M1',()=>{
     expect((await engine.blueprint(s.who.token,s.brand.id)).learnings).toMatchObject([{status:'ACCEPTED',reviewedBy:s.who.userId}]);
     expect((await engine.assembleContext(s.who.token,s.brand.id,s.customer.id)).items.find(i=>i.type==='Learning')?.trust).toBe('HUMAN_ACCEPTED');
     expect((await s.context()).versions).toHaveLength(1);expect((await s.context()).decisions[0].activeVersionId).toBe(decision.versionId);
-    expect(await engine.practice(s.who.token)).toHaveLength(1);expect(await engine.practice(other.who.token)).toEqual([]);expect(await s.context()).not.toHaveProperty('capabilityEvents');
+    // ADR-0026: the decision plus the human acceptance of the learning are descriptive practice; never another user's.
+    expect(await engine.practice(s.who.token)).toHaveLength(2);expect(await engine.practice(other.who.token)).toEqual([]);expect(await s.context()).not.toHaveProperty('capabilityEvents');
   });
   it('DEMO recommendation preserves human authority, rejection, modification and stale context',async()=>{
     const s=await setup();

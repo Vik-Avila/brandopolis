@@ -511,8 +511,10 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           return send(res,200,result);
         }
         if(path==='/api/recommendations/reject') return send(res,200,await engine.rejectRecommendation(token,string(input.brandId),string(input.recommendationId),string(input.rationale)));
-        if(path==='/api/learning/create') return send(res,201,await engine.createLearningObject(token,string(input.brandId),string(input.kind),input.entity as Record<string,unknown>,input.decisionId===undefined?undefined:string(input.decisionId),input.plan as {objective:string;successCriteria:string}|undefined));
-        if(path==='/api/learning/transition') return send(res,200,await engine.transitionLearningObject(token,string(input.brandId),string(input.kind),string(input.objectId),string(input.expectedStatus),string(input.status)));
+        if(path==='/api/learning/create') return send(res,201,await engine.createLearningObject(token,string(input.brandId),string(input.kind),input.entity as Record<string,unknown>,input.decisionId===undefined?undefined:string(input.decisionId),input.plan as {objective:string;successCriteria:string}|undefined,input.idempotencyKey===undefined?undefined:string(input.idempotencyKey)));
+        if(path==='/api/learning/transition') return send(res,200,await engine.transitionLearningObject(token,string(input.brandId),string(input.kind),string(input.objectId),string(input.expectedStatus),string(input.status),input.rationale===undefined?undefined:string(input.rationale)));
+        if(path==='/api/learning/revise') return send(res,200,await engine.reviseLearning(token,string(input.brandId),string(input.learningId),string(input.expectedStatus),input.changes as Record<string,unknown>));
+        if(path==='/api/hypotheses/review') return send(res,200,await engine.reviewHypothesis(token,string(input.brandId),input.review as Parameters<Engine['reviewHypothesis']>[2]));
         if(path==='/api/questions/transition') return send(res,200,await engine.transitionQuestion(token,string(input.brandId),string(input.questionId),string(input.status)));
         if(path==='/api/brands/strategic-sections') return send(res,200,await engine.addStrategicSections(token,string(input.brandId)));
         if(path==='/api/questions/prepare') return send(res,200,await engine.prepareQuestion(token,string(input.brandId),string(input.questionId),input.expectedActiveVersion===null?null:string(input.expectedActiveVersion)));

@@ -168,3 +168,11 @@ conserva 44px. Sin nuevos assets, tokens ni animaciones.
   de Brando (tarjeta, entrada de atención, orientación por sección, botones de consulta). Esmeralda de marca intacto.
 - **Inteligencia estratégica:** sección sobria en «Qué necesita atención» con veredicto en palabras, orden de
   revisión, tensiones con «por qué importa» y severidad con palabra (nunca sólo color).
+
+## Validation Workspace · ADR-0026 (2026-10-07)
+
+- «Experimentos y aprendizajes» sigue el recorrido Hipótesis → Experimento → Señales → Aprendizaje → Impacto.
+- «Siguiente validación recomendada» (`.validation-next`): Ahora / Después con palabras, nunca sólo color;
+  también en «Qué necesita atención».
+- Calidad de plan (`.plan-quality`), estado de hipótesis (`.hypothesis-card`) y dirección de señal con
+  insignia y palabra. Sin nuevos tokens, assets ni archivos de runtime.

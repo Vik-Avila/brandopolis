@@ -44,3 +44,20 @@ métricas históricas. Los fallos y reintentos explícitos también consumen sol
 silencioso en la interfaz. La conversación no se persiste.
 
 | brando_suggestion_reviewed | Rechazo humano razonado o aceptación/modificación confirmada como nueva Decision; USER; no es recommendation_generated/accepted/rejected ni prueba de calidad del aprendizaje. | CONFIDENTIAL |
+
+## Validation & Learning · ADR-0026 (2026-10-07)
+
+Mismo envelope; sin texto estratégico en el payload. Ninguno es evento de alto valor nuevo; las métricas
+históricas no se recalculan.
+
+| Evento | Trigger / actor / entidad | Clase de privacidad |
+|---|---|---|
+| experiment_planned | experimento creado como PLANNED (junto a `experiment_created`) / USER / Brand | CONFIDENTIAL |
+| experiment_started | transición humana PLANNED → RUNNING / USER / Brand | CONFIDENTIAL |
+| learning_reviewed | CANDIDATE → REVIEWED / USER / Brand | CONFIDENTIAL |
+| learning_accepted | REVIEWED → ACCEPTED (además de `learning_created`, sin cambiar su significado) / USER / Brand | CONFIDENTIAL |
+| learning_rejected | REVIEWED → REJECTED con criterio / USER / Brand | CONFIDENTIAL |
+| hypothesis_reviewed | revisión humana de hipótesis / USER / Brand | CONFIDENTIAL |
+| validation_impact_reviewed | nueva versión humana de una decisión afectada por una hipótesis debilitada o rechazada / USER / Brand | CONFIDENTIAL |
+
+`signal_added` y `learning_candidate_created` conservan su definición.

@@ -1,3 +1,33 @@
+## 2026-10-07 · PHASE 3 — VALIDATION & LEARNING ENGINE · candidato
+
+PHASE 3 — VALIDATION & LEARNING ENGINE · IMPLEMENTATION COMPLETE · AUTOMATED VALIDATION COMPLETE ·
+HUMAN REVIEW PENDING · RELEASE CANDIDATE OUTSIDE PRODUCTION. Rama feat/phase3-validation-learning-engine desde
+main 32f98d2. Sin merge, sin deploy, sin tag, sin migración. Phase 4 no iniciada.
+
+Implementado ([ADR-0026](docs/14-decisions/ADR-0026.md)): ciclo de vida de hipótesis 2.0 sólo humano
+(criterio, aprendizaje aceptado para estados resueltos, 409, idempotencia, auditoría); diseño de experimento
+(método, criterio que refuta, periodo, límites) con calidad de plan determinista; señales con dirección;
+aprendizaje editable mientras está pendiente, rechazo con criterio, qué apoya / qué no / alternativas;
+procedencia manual/asistida determinada por el servidor; impacto de validación como atención de Strategic
+Intelligence (`VALIDATION_CHALLENGES_DECISION`, sin reescritura ni segundo motor); siguiente validación
+recomendada; Brando B3 (prompt v6, aprendizajes candidatos `CANDIDATE_NOT_ACCEPTED`); Validation Workspace;
+Mapa/PDF con estado de hipótesis; telemetría nueva; invariantes VAL-001..010. Defecto corregido: `ownerUserId`
+ya no llega al proveedor de IA.
+
+Gates (salida real, DEMO aislada en 3001 con el código final): typecheck PASS; lint PASS; pnpm test 15
+archivos / 320 PASS (incluye regresión tras el cambio de procedencia); skills:check PASS; Brando browser 42/42
+PASS; test:e2e 126 PASS + 2 FAIL en la pasada completa (flujo 4 de Phase 3 en desktop por espera insuficiente
+en la prueba; possibilities-handoff en compact con 59 min de bloqueo del equipo) → ambos re-ejecutados en los
+5 viewports 10/10 PASS tras esperar el render en la prueba; flujos Phase 3 + Phase 2 tras el último ajuste de
+texto 43 PASS + 2 SKIP intencionales; test:visual 10 PASS + 1 SKIP preexistente; test:pilot:e2e 10/10 PASS;
+Foundation 0 errores; validador UI PASS; validador de marca PASS; git diff --check limpio. 11 capturas de
+referencia actualizadas. Revisión de seguridad independiente: sin hallazgos explotables.
+LIVE BRANDO SMOKE: NOT RUN (sin clave en el entorno del agente). Producción sin cambios; Jury Production
+Freeze vigente.
+
+Deuda técnica: `reviewHypothesis` filtra las señales de la marca en memoria y la verificación de procedencia
+lee la telemetría de la marca (diferido por el propietario; volúmenes de piloto pequeños).
+
 ## 2026-10-07 · PHASE 2 — STRATEGIC INTELLIGENCE · COMPLETE
 
 PHASE 2 — STRATEGIC INTELLIGENCE · STATUS: COMPLETE · OWNER ACCEPTED · RELEASE-READY OUTSIDE PRODUCTION.

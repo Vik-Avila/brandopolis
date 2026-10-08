@@ -1,0 +1,15 @@
+{
+  "version": "brando-contextual-v6",
+  "source": "ADR-0026",
+  "notes": "Deterministic evaluation of what Brando B3 (Learning Copilot) is allowed to see and how each source is labelled. These fixtures never call a provider; semantic quality of live answers is evaluated only by the human-only Brando smoke.",
+  "fixtures": [
+    {"id": "A", "name": "candidate learning is a proposal", "includes": {"CandidateLearning": "CANDIDATE_NOT_ACCEPTED"}, "excludesTypes": ["Learning"]},
+    {"id": "B", "name": "rejected learning never reaches the provider", "includes": {}, "excludesTypes": ["Learning", "CandidateLearning"]},
+    {"id": "C", "name": "accepted learning is human accepted", "includes": {"Learning": "HUMAN_ACCEPTED"}, "excludesTypes": ["CandidateLearning"]},
+    {"id": "D", "name": "contrary signal keeps its direction and stays an observation", "includes": {"Signal": "OBSERVATION_NOT_LEARNING"}, "containsText": ["CONTRARY"]},
+    {"id": "E", "name": "query carries the deterministic next validation", "includes": {}, "queryValidation": ["REVIEW_LEARNING"]},
+    {"id": "F", "name": "no personal identifiers", "includes": {"CandidateLearning": "CANDIDATE_NOT_ACCEPTED"}, "notContainsText": ["user-private-1"]},
+    {"id": "G", "name": "rejected hypothesis is withheld", "includes": {}, "excludesTypes": ["Hypothesis"]},
+    {"id": "H", "name": "inconclusive experiment with its plan stays visible", "includes": {"Experiment": "HUMAN_RECORDED"}, "containsText": ["INCONCLUSIVE", "disconfirmingCriteria"], "notContainsText": ["user-private-1"]}
+  ]
+}

@@ -1,3 +1,11 @@
+## 2026-10-07 · Phase 3 — Validation & Learning Engine (candidato, revisión humana pendiente)
+
+- ADR-0026: hipótesis con revisión humana, plan de experimento con criterio que refuta y calidad, señales con dirección.
+- Aprendizajes editables mientras están pendientes, rechazo razonado, procedencia determinada por el servidor.
+- Atención de validación sobre decisiones afectadas sin reescritura; siguiente validación recomendada.
+- Brando B3 (prompt v6) y retirada de `ownerUserId` del paquete de IA.
+- Gates del agente en verde; LIVE BRANDO SMOKE: NOT RUN. Sin merge ni deploy; Phase 4 no iniciada.
+
 ## 2026-10-07 · Phase 2 — Strategic Intelligence: COMPLETE
 
 - Aceptada por el propietario; release-ready fuera de producción. Smoke de Brando en vivo: NOT RUN (riesgo aceptado).

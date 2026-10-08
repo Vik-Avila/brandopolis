@@ -34,6 +34,30 @@
         "INCONCLUSIVE",
         "CANCELLED"
       ]
+    },
+    "method": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "disconfirmingCriteria": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "plannedPeriod": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1000
+      },
+      "maxItems": 10
     }
   },
   "required": [

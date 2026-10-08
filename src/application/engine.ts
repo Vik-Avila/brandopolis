@@ -9,6 +9,7 @@ import * as t from '../persistence/schema.js';
 import { journey, modulesVersion, learningMoments } from '../domain/modules.js';
 import { assemble } from '../domain/context-assembler.js';
 import { strategicIntelligence } from '../domain/intelligence.js';
+import { HYPOTHESIS_TRANSITIONS,RESOLVED_STATUSES,validationSnapshot,type HypothesisStatus } from '../domain/validation.js';
 import { GEOGRAPHIC_INFLUENCE,type GeographicInfluence } from '../domain/brand-context.js';
 import { ModelGateway, DemoProvider, evaluate, type Recommendation } from '../domain/analysis.js';
 
@@ -1114,7 +1115,7 @@ export class Engine {
     const actor=await this.me(token);
     // Operational request only: separate name so pilot recommendation metrics stay unchanged.
     await this.db.transaction(async tx=>{const s=await this.scope(tx,token,brandId);await this.event(tx,s,'brando_requested');});
-    const response=await this.gateway.invoke({task:'BRANDO_CONTEXTUAL',module:'Brando B1',promptVersion:'brando-contextual-v5',contextVersion:packet.contextVersion,input:packet,outputSchema:'brando-answer-v2',budget:{maxCharacters:30000,timeoutMs:this.gateway.timeoutMs},tenantScope:{workspaceId:actor.workspaceId,brandId},questionId:questionId??''});
+    const response=await this.gateway.invoke({task:'BRANDO_CONTEXTUAL',module:'Brando B1',promptVersion:'brando-contextual-v6',contextVersion:packet.contextVersion,input:packet,outputSchema:'brando-answer-v2',budget:{maxCharacters:30000,timeoutMs:this.gateway.timeoutMs},tenantScope:{workspaceId:actor.workspaceId,brandId},questionId:questionId??''});
     const after=await snapshot(); // Re-authorize after provider latency, before returning any content.
     if(after.fingerprint!==before.fingerprint)throw new AppError('CONFLICT','Brando context changed');
     const answer=response.result;
@@ -1186,11 +1187,26 @@ export class Engine {
       await this.event(tx,s,'recommendation_rejected');return {resolution:'REJECTED'};
     });
   }
-  async createLearningObject(token:string,brandId:string,kind:string,input:Record<string,unknown>,decisionId?:string,plan?:{objective:string;successCriteria:string}) {
+  async createLearningObject(token:string,brandId:string,kind:string,input:Record<string,unknown>,decisionId?:string,plan?:{objective:string;successCriteria:string},idempotencyKey?:string) {
     if(!['experiment','signal','learning'].includes(kind)||!input||Array.isArray(input)||JSON.stringify(input).length>16000)throw new AppError('INVALID','Invalid learning object');
     if(plan&&[plan.objective,plan.successCriteria].some(v=>typeof v!=='string'||!v.trim()||v.length>4000))throw new AppError('INVALID','Experiment plan required');
+    if(idempotencyKey!==undefined&&(typeof idempotencyKey!=='string'||!idempotencyKey.trim()||idempotencyKey.length>200))throw new AppError('INVALID','Invalid idempotency key');
+    // Provenance is decided by the server (ADR-0026): the browser may only ask for assistance to be considered.
+    const assisted=kind==='learning'&&input.brandoAssisted===true;
+    if(kind==='learning'){const {origin:_o,brandoAssisted:_b,...rest}=input;input=rest;}
     return this.db.transaction(async tx=>{
       const s=await this.scope(tx,token,brandId),now=new Date(),objectId=id();
+      const command=`CREATE_${kind.toUpperCase()}`,fingerprint=hash(JSON.stringify([input,assisted,decisionId??null,plan??null]));
+      if(kind==='learning'){
+        // BRANDO_ASSISTED only if this user really consulted Brando on this brand in the last two hours.
+        const since=now.getTime()-2*3600000;
+        const consulted=(await tx.select().from(t.telemetry).where(and(eq(t.telemetry.workspaceId,s.workspaceId),eq(t.telemetry.brandId,brandId)))).some(e=>{const p=e.payload as {name?:string;userId?:string;occurredAtUtc?:string};return p.name==='brando_requested'&&p.userId===s.userId&&Date.parse(String(p.occurredAtUtc))>=since;});
+        input={...input,origin:assisted&&consulted?'BRANDO_ASSISTED':'MANUAL'};
+      }
+      if(idempotencyKey){
+        const [prior]=await tx.select().from(t.idempotency).where(and(inScope(t.idempotency,s),eq(t.idempotency.actorUserId,s.userId),eq(t.idempotency.command,command),eq(t.idempotency.key,idempotencyKey)));
+        if(prior){if(prior.fingerprint!==fingerprint)throw new AppError('CONFLICT','Idempotency key reused with different content');return prior.result as Record<string,unknown>;}
+      }
       const payload:Record<string,unknown>={...input,id:objectId,brandId,...(kind==='experiment'?{ownerUserId:s.userId,status:'PLANNED'}:kind==='learning'?{status:'CANDIDATE',reviewedBy:null}:{})};validate(kind,payload);
       if(Object.values(payload).some(v=>typeof v==='string'&&!v.trim()))throw new AppError('INVALID','Empty content');
       const base={id:objectId,workspaceId:s.workspaceId,brandId,payload,createdBy:s.userId,createdAt:now};
@@ -1208,17 +1224,24 @@ export class Engine {
       } else {
         const signalIds=payload.signalIds as string[];
         if(new Set(signalIds).size!==signalIds.length)throw new AppError('INVALID','Duplicate signals');
+        if(payload.hypothesisId!==undefined){const [hypothesis]=await tx.select().from(t.hypotheses).where(and(inScope(t.hypotheses,s),eq(t.hypotheses.id,String(payload.hypothesisId))));if(!hypothesis)throw new AppError('NOT_FOUND','Hypothesis unavailable');}
         for(const signalId of signalIds) {const [signal]=await tx.select().from(t.signals).where(and(inScope(t.signals,s),eq(t.signals.id,signalId)));if(!signal)throw new AppError('NOT_FOUND','Signal unavailable');}
         await tx.insert(t.learnings).values(base);
         await tx.insert(t.learningSignals).values(signalIds.map(signalId=>({workspaceId:s.workspaceId,brandId,learningId:objectId,signalId})));
       }
       await tx.update(t.recommendations).set({resolution:'STALE'}).where(and(inScope(t.recommendations,s),eq(t.recommendations.resolution,'GENERATED')));
       await this.audit(tx,s,{operation:`${kind.toUpperCase()}_CREATED`,idempotencyKey:objectId,decisionId:kind==='experiment'?decisionId:undefined});
-      await this.event(tx,s,kind==='signal'?'signal_added':kind==='learning'?'learning_candidate_created':'experiment_created');return payload;
+      await this.event(tx,s,kind==='signal'?'signal_added':kind==='learning'?'learning_candidate_created':'experiment_created');
+      if(kind==='experiment')await this.event(tx,s,'experiment_planned');
+      if(idempotencyKey)await tx.insert(t.idempotency).values({workspaceId:s.workspaceId,brandId:s.brandId,actorUserId:s.userId,command,key:idempotencyKey,fingerprint,result:payload});
+      return payload;
     });
   }
-  async transitionLearningObject(token:string,brandId:string,kind:string,objectId:string,expectedStatus:string,status:string) {
+  async transitionLearningObject(token:string,brandId:string,kind:string,objectId:string,expectedStatus:string,status:string,rationale?:string) {
     if(!['experiment','learning'].includes(kind))throw new AppError('INVALID','Invalid transition type');
+    if(rationale!==undefined&&(typeof rationale!=='string'||rationale.length>2000))throw new AppError('INVALID','Invalid rationale');
+    const why=rationale?.trim()||null;
+    if(kind==='learning'&&status==='REJECTED'&&!why)throw new AppError('INVALID','Explain why this learning is rejected');
     return this.db.transaction(async tx=>{
       const s=await this.scope(tx,token,brandId),table=kind==='experiment'?t.experiments:t.learnings;
       const [row]=await tx.select().from(table).where(and(inScope(table,s),eq(table.id,objectId)));
@@ -1233,8 +1256,81 @@ export class Engine {
       if(kind==='experiment')await tx.update(t.experiments).set({payload,...(status==='RUNNING'?{startedAt:new Date()}:{completedAt:new Date()})}).where(and(inScope(t.experiments,s),eq(t.experiments.id,objectId)));
       else await tx.update(t.learnings).set({payload}).where(and(inScope(t.learnings,s),eq(t.learnings.id,objectId)));
       await tx.update(t.recommendations).set({resolution:'STALE'}).where(and(inScope(t.recommendations,s),eq(t.recommendations.resolution,'GENERATED')));
-      if(kind==='learning'&&status==='ACCEPTED')await this.event(tx,s,'learning_created');
-      await this.audit(tx,s,{operation:`${kind.toUpperCase()}_${status}`,idempotencyKey:id(),rationale:`${objectId}: ${expectedStatus} -> ${status}`});return payload;
+      if(kind==='learning'&&status==='ACCEPTED'){await this.event(tx,s,'learning_created');await this.event(tx,s,'learning_accepted');}
+      if(kind==='learning'&&status==='REVIEWED')await this.event(tx,s,'learning_reviewed');
+      if(kind==='learning'&&status==='REJECTED')await this.event(tx,s,'learning_rejected');
+      if(kind==='experiment'&&status==='RUNNING'){
+        // The hypothesis is never moved automatically (ADR-0024/0026): the person marks it TESTING explicitly.
+        await this.event(tx,s,'experiment_started');
+      }
+      if(kind==='learning'&&(status==='ACCEPTED'||status==='REJECTED')){
+        const capability={id:id(),userId:s.userId,capability:'Experimentation & Learning',behavior:status==='ACCEPTED'?'Revisaste una interpretación de señales y la aceptaste como aprendizaje.':'Revisaste una interpretación de señales y la descartaste con tu criterio.',decisionId:null,occurredAt:new Date().toISOString()};
+        validate('capability-event',capability);
+        await tx.insert(t.capabilityEvents).values({id:capability.id,userId:s.userId,payload:capability});
+      }
+      await this.audit(tx,s,{operation:`${kind.toUpperCase()}_${status}`,idempotencyKey:id(),rationale:why?`${objectId}: ${expectedStatus} -> ${status} · ${why}`:`${objectId}: ${expectedStatus} -> ${status}`});return payload;
+    });
+  }
+  /** Human edit of a learning that is not yet accepted or rejected. Accepted learnings are historical record. */
+  async reviseLearning(token:string,brandId:string,learningId:string,expectedStatus:string,changes:Record<string,unknown>) {
+    const editable=['interpretation','limitations','supports','doesNotSupport','alternativeExplanations','hypothesisId'];
+    if(!changes||typeof changes!=='object'||Array.isArray(changes)||!Object.keys(changes).length||Object.keys(changes).some(k=>!editable.includes(k))||JSON.stringify(changes).length>16000)throw new AppError('INVALID','Invalid learning revision');
+    if(!['CANDIDATE','REVIEWED'].includes(expectedStatus))throw new AppError('CONFLICT','Only pending learnings can be edited');
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId);
+      const [row]=await tx.select().from(t.learnings).where(and(inScope(t.learnings,s),eq(t.learnings.id,learningId)));
+      if(!row)throw new AppError('NOT_FOUND','Object unavailable');
+      if(row.payload.status!==expectedStatus)throw new AppError('CONFLICT','State changed; reload');
+      if(changes.hypothesisId!==undefined){const [hypothesis]=await tx.select().from(t.hypotheses).where(and(inScope(t.hypotheses,s),eq(t.hypotheses.id,String(changes.hypothesisId))));if(!hypothesis)throw new AppError('NOT_FOUND','Hypothesis unavailable');}
+      const payload={...row.payload,...changes};validate('learning',payload);
+      if(Object.values(payload).some(v=>typeof v==='string'&&!v.trim()))throw new AppError('INVALID','Empty content');
+      await tx.update(t.learnings).set({payload}).where(and(inScope(t.learnings,s),eq(t.learnings.id,learningId)));
+      await this.audit(tx,s,{operation:'LEARNING_REVISED',idempotencyKey:id(),rationale:`${learningId}: ${Object.keys(changes).sort().join(',')}`});
+      return payload;
+    });
+  }
+  /**
+   * Human review of a Hypothesis (ADR-0026). Never automatic: SUPPORTED / WEAKENED / REJECTED require the
+   * person's rationale and an ACCEPTED learning about this hypothesis. Decisions that rely on it are reported,
+   * never rewritten (no automatic cascade; Strategic Intelligence raises the attention).
+   */
+  async reviewHypothesis(token:string,brandId:string,input:{hypothesisId:string;expectedStatus:string;status:string;rationale:string;learningId?:string|null;idempotencyKey:string}) {
+    if(!input||typeof input!=='object'||[input.hypothesisId,input.expectedStatus,input.status,input.rationale,input.idempotencyKey].some(v=>typeof v!=='string')||input.rationale.length>2000||input.idempotencyKey.length>200||!input.idempotencyKey.trim())throw new AppError('INVALID','Invalid hypothesis review');
+    if(!input.rationale.trim())throw new AppError('INVALID','Explain your review');
+    if(input.learningId!=null&&typeof input.learningId!=='string')throw new AppError('INVALID','Invalid learning');
+    const to=input.status as HypothesisStatus,resolved=RESOLVED_STATUSES.includes(to);
+    if(resolved&&!input.learningId)throw new AppError('INVALID','An accepted learning is required');
+    return this.db.transaction(async tx=>{
+      const s=await this.scope(tx,token,brandId);
+      const fingerprint=hash(JSON.stringify([input.hypothesisId,input.expectedStatus,input.status,input.rationale.trim(),input.learningId??null]));
+      const [prior]=await tx.select().from(t.idempotency).where(and(inScope(t.idempotency,s),eq(t.idempotency.actorUserId,s.userId),eq(t.idempotency.command,'REVIEW_HYPOTHESIS'),eq(t.idempotency.key,input.idempotencyKey)));
+      if(prior){if(prior.fingerprint!==fingerprint)throw new AppError('CONFLICT','Hypothesis already reviewed differently');return prior.result as Record<string,unknown>;}
+      const [row]=await tx.select().from(t.hypotheses).where(and(inScope(t.hypotheses,s),eq(t.hypotheses.id,input.hypothesisId)));
+      if(!row)throw new AppError('NOT_FOUND','Hypothesis unavailable');
+      if(row.payload.status!==input.expectedStatus)throw new AppError('CONFLICT','State changed; reload');
+      if(!HYPOTHESIS_TRANSITIONS[input.expectedStatus as HypothesisStatus]?.includes(to))throw new AppError('CONFLICT','Invalid human transition');
+      if(resolved){
+        const [learning]=await tx.select().from(t.learnings).where(and(inScope(t.learnings,s),eq(t.learnings.id,String(input.learningId))));
+        if(!learning||learning.payload.status!=='ACCEPTED')throw new AppError('CONFLICT','Learning must be accepted first');
+        const experiments=(await tx.select().from(t.experiments).where(and(inScope(t.experiments,s),eq(t.experiments.hypothesisId,row.id)))).map(e=>e.id);
+        const signals=(await tx.select().from(t.signals).where(inScope(t.signals,s))).filter(x=>experiments.includes(x.experimentId)).map(x=>x.id);
+        const linked=learning.payload.hypothesisId===row.id||(learning.payload.signalIds as string[]).some(x=>signals.includes(x));
+        if(!linked)throw new AppError('CONFLICT','Learning is not about this hypothesis');
+      }
+      const payload={...row.payload,status:to};validate('hypothesis',payload);
+      await tx.update(t.hypotheses).set({payload}).where(and(inScope(t.hypotheses,s),eq(t.hypotheses.id,row.id)));
+      await tx.update(t.recommendations).set({resolution:'STALE'}).where(and(inScope(t.recommendations,s),eq(t.recommendations.resolution,'GENERATED')));
+      await this.audit(tx,s,{operation:`HYPOTHESIS_${to}`,idempotencyKey:input.idempotencyKey,rationale:JSON.stringify({hypothesisId:row.id,from:input.expectedStatus,to,learningId:input.learningId??null,rationale:input.rationale.trim()})});
+      const capability={id:id(),userId:s.userId,capability:'Experimentation & Learning',behavior:`Revisaste una hipótesis con aprendizaje aceptado y la marcaste como ${({TESTING:'en prueba',SUPPORTED:'respaldada',WEAKENED:'debilitada',REJECTED:'rechazada',UNTESTED:'sin probar'} as const)[to]}.`,decisionId:null,occurredAt:new Date().toISOString()};
+      validate('capability-event',capability);
+      await tx.insert(t.capabilityEvents).values({id:capability.id,userId:s.userId,payload:capability});
+      await this.event(tx,s,'hypothesis_reviewed');
+      const projection=await this.contextProjection(tx,s);
+      const view=projection.validation.hypotheses.find(h=>h.id===row.id);
+      const affected=[...(view?.inUseBy??[]),...(view?.testedBy??[])].filter((x,i,all)=>all.findIndex(y=>y.decisionId===x.decisionId)===i);
+      const result={hypothesis:payload,affectedDecisions:to==='WEAKENED'||to==='REJECTED'?affected:[],strategyChanged:false};
+      await tx.insert(t.idempotency).values({workspaceId:s.workspaceId,brandId:s.brandId,actorUserId:s.userId,command:'REVIEW_HYPOTHESIS',key:input.idempotencyKey,fingerprint,result});
+      return result;
     });
   }
   async practice(token:string) {
@@ -1398,6 +1494,11 @@ export class Engine {
         await this.event(tx,s,'brando_suggestion_reviewed');
       }
       if(previous) await this.event(tx,s,'decision_superseded');
+      if(previous){
+        const weak=(await tx.select().from(t.hypotheses).where(inScope(t.hypotheses,s))).filter(h=>h.payload.status==='WEAKENED'||h.payload.status==='REJECTED').map(h=>h.id);
+        const tested=(await tx.select().from(t.experiments).where(and(inScope(t.experiments,s),eq(t.experiments.decisionId,decision.id)))).map(e=>e.hypothesisId);
+        if(weak.some(h=>(previous.hypothesisUsages as {hypothesisId:string}[]|null??[]).some(u=>u.hypothesisId===h)||tested.includes(h)))await this.event(tx,s,'validation_impact_reviewed');
+      }
       // Dependencies were synced above, so a first version sees edges to decisions approved before it (ADR-0021).
       if(previous||(await this.firstVersionEdges(tx,s,decision.id)).length) {
         await tx.insert(t.impacts).values({workspaceId:s.workspaceId,brandId:s.brandId,triggerVersionId:version.id,status:'IMPACT_PENDING'});
@@ -1472,9 +1573,10 @@ export class Engine {
       for(const [name,rows] of [['strategic-question',output.questions],['decision',output.decisions],['decision-version',output.versions],['dependency',output.dependencies],['review-item',output.reviews]] as const) for(const row of rows) validate(name,row);
       const [profile]=await tx.select().from(t.brandProfiles).where(and(eq(t.brandProfiles.workspaceId,s.workspaceId),eq(t.brandProfiles.brandId,s.brandId)));
       const brandContext={geographicInfluence:profile?.geographicInfluence??null,primaryMarket:profile?.primaryMarket??null};
+      const validation=validationSnapshot({...output});
       const intelligence=strategicIntelligence({...output,brandContext});
       const brandoContextVersion=hash(JSON.stringify([brandContext,output.questions,output.decisions,output.versions,output.dependencies,output.reviews,output.evidence,output.hypotheses,output.userInputs,output.openQuestions,output.learnings,output.experiments,output.signals,output.impacts]));
-      return {...output,brandContext,intelligence,attention:attentionFor(output),brandoContextVersion};
+      return {...output,brandContext,intelligence,validation,attention:attentionFor(output),brandoContextVersion};
   }
 }
 export function versionOutput(v:typeof t.versions.$inferSelect) {
