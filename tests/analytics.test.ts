@@ -195,7 +195,7 @@ describe('GA4 base instrumentation', () => {
 
   it('leaves the product and UX contracts of the workspace untouched', () => {
     // This patch is instrumentation only: the surfaces the pilot was signed off on must not move.
-    expect(html).toContain('<button id="blueprint" class="secondary">Mapa estratégico</button>');
+    expect(html).toContain('<span class="nav-label">Mapa estratégico</span>');
     expect(app).toContain('Mapa estratégico · estrategia vigente');
     expect(app).toContain('<h4 class="context-market-title">Entorno competitivo</h4>');
     expect(app).toContain('${versions.length} de ${context.questions.length}');

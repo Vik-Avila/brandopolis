@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/personal-reflection.v1",
+  "title": "personal-reflection",
+  "x-version": "v1",
+  "description": "ADR-0027 · a private reflection that belongs to one user. It is never Brand Context: it does not change decisions, hypotheses, learnings or evidence, and it is never sent to an AI provider.",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "brandId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "decisionId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "changedThinking": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "learnedFromDecision": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "doDifferently": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "id",
+    "brandId",
+    "decisionId",
+    "createdAt"
+  ],
+  "anyOf": [
+    {
+      "required": [
+        "changedThinking"
+      ]
+    },
+    {
+      "required": [
+        "learnedFromDecision"
+      ]
+    },
+    {
+      "required": [
+        "doDifferently"
+      ]
+    }
+  ],
+  "examples": [
+    {
+      "id": "pr-1",
+      "brandId": null,
+      "decisionId": null,
+      "changedThinking": "Aprendí a delimitar el mercado antes de elegir mensajes.",
+      "createdAt": "2026-10-08T12:00:00Z"
+    }
+  ]
+}

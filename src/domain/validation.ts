@@ -4,8 +4,29 @@
  * remains an explicit, audited human action in the engine.
  */
 export type HypothesisStatus='UNTESTED'|'TESTING'|'SUPPORTED'|'WEAKENED'|'REJECTED';
-/** Canonical state machine (docs/04-domain-model/state-machines.md): UNTESTED → TESTING → SUPPORTED / WEAKENED / REJECTED. */
-export const HYPOTHESIS_TRANSITIONS:Record<HypothesisStatus,readonly HypothesisStatus[]>={UNTESTED:['TESTING'],TESTING:['SUPPORTED','WEAKENED','REJECTED'],SUPPORTED:[],WEAKENED:[],REJECTED:[]};
+/**
+ * Canonical state machine (ADR-0026): UNTESTED → TESTING → SUPPORTED / WEAKENED / REJECTED. SUPPORTED and WEAKENED
+ * describe the evidence available now, so a person may open a new validation cycle (→ TESTING). REJECTED is final:
+ * a different formulation is a new Hypothesis, never a silent rewrite.
+ */
+export const HYPOTHESIS_TRANSITIONS:Record<HypothesisStatus,readonly HypothesisStatus[]>={UNTESTED:['TESTING'],TESTING:['SUPPORTED','WEAKENED','REJECTED'],SUPPORTED:['TESTING'],WEAKENED:['TESTING'],REJECTED:[]};
+type AuditRow={operation?:unknown;rationale?:unknown;occurredAt?:unknown};
+const at=(a:AuditRow)=>a.occurredAt instanceof Date?a.occurredAt.getTime():Date.parse(String(a.occurredAt))||0;
+const about=(a:AuditRow,hypothesisId:string)=>{try{return JSON.parse(String(a.rationale)).hypothesisId===hypothesisId;}catch{return false;}};
+/**
+ * Start of a retest cycle: the latest human move to TESTING that follows an earlier resolution. The first cycle
+ * returns 0, because signals are usually gathered before the person marks the hypothesis TESTING.
+ */
+export function validationCycleStart(audit:readonly AuditRow[],hypothesisId:string):number {
+  const mine=audit.filter(a=>about(a,hypothesisId));
+  const testing=Math.max(0,...mine.filter(a=>a.operation==='HYPOTHESIS_TESTING').map(at));
+  const resolvedBefore=mine.some(a=>['HYPOTHESIS_SUPPORTED','HYPOTHESIS_WEAKENED'].includes(String(a.operation))&&at(a)<=testing);
+  return resolvedBefore?testing:0;
+}
+/** When a person accepted a learning (from the audit trail); 0 when unknown. */
+export function learningAcceptedAt(audit:readonly AuditRow[],learningId:string):number {
+  return Math.max(0,...audit.filter(a=>a.operation==='LEARNING_ACCEPTED'&&String(a.rationale).startsWith(`${learningId}:`)).map(at));
+}
 export const RESOLVED_STATUSES:readonly HypothesisStatus[]=['SUPPORTED','WEAKENED','REJECTED'];
 
 export type PlanQuality='READY'|'READY_WITH_CAUTION'|'REWORK';
@@ -40,6 +61,8 @@ export interface NextValidation {kind:NextValidationKind; ref:string; module:str
 export interface HypothesisView {
   id:string; statement:string; status:string; inUseBy:{decisionId:string;module:string}[]; testedBy:{decisionId:string;module:string}[];
   experimentIds:string[]; signalIds:string[]; acceptedLearningIds:string[]; pendingLearningIds:string[];
+  /** Accepted learnings that belong to the current validation cycle (accepted after the latest move to TESTING). */
+  cycleLearningIds:string[]; cycles:number;
   lastReview:{status:string;at:string;actorUserId:string}|null;
 }
 export interface ValidationSnapshot {
@@ -67,7 +90,9 @@ export function validationSnapshot(s:ValidationState):ValidationSnapshot {
     const id=str(h.id),experimentIds=experimentsOf(id),signalIds=signalsOf(experimentIds),learnings=learningsFor(id,signalIds);
     const last=reviews.filter(a=>{try{return JSON.parse(str(a.rationale)).hypothesisId===id;}catch{return false;}}).sort((a,b)=>time(b.occurredAt)-time(a.occurredAt))[0];
     return {id,statement:str(h.statement),status:str(h.status),inUseBy:usesOf(id),testedBy:testedOf(id).filter(t=>!usesOf(id).some(u=>u.decisionId===t.decisionId)),experimentIds,signalIds,
-      acceptedLearningIds:learnings.filter(l=>l.status==='ACCEPTED').map(l=>str(l.id)),pendingLearningIds:learnings.filter(l=>l.status==='CANDIDATE'||l.status==='REVIEWED').map(l=>str(l.id)),
+      acceptedLearningIds:learnings.filter(l=>l.status==='ACCEPTED').map(l=>str(l.id)),
+      cycleLearningIds:learnings.filter(l=>l.status==='ACCEPTED'&&(validationCycleStart(s.audit??[],id)===0||learningAcceptedAt(s.audit??[],str(l.id))>validationCycleStart(s.audit??[],id))).map(l=>str(l.id)),
+      cycles:(s.audit??[]).filter(a=>a.operation==='HYPOTHESIS_TESTING'&&str(a.rationale).includes(`"hypothesisId":"${id}"`)).length,pendingLearningIds:learnings.filter(l=>l.status==='CANDIDATE'||l.status==='REVIEWED').map(l=>str(l.id)),
       lastReview:last?{status:str(last.operation).replace('HYPOTHESIS_',''),at:new Date(time(last.occurredAt)).toISOString(),actorUserId:str(last.actorUserId)}:null};
   });
   const plan=(experimentId:string)=>s.experimentPlans.find(p=>p.experimentId===experimentId);
@@ -92,7 +117,7 @@ export function validationSnapshot(s:ValidationState):ValidationSnapshot {
   for(const id of learningsAwaitingReview)next.push({kind:'REVIEW_LEARNING',ref:id,module:null});
   if(uninterpretedSignals.length)next.push({kind:'INTERPRET_SIGNALS',ref:uninterpretedSignals[0],module:null});
   for(const h of hypotheses){
-    if(h.status==='TESTING'&&h.acceptedLearningIds.length)next.push({kind:'RESOLVE_HYPOTHESIS',ref:h.id,module:null});
+    if(h.status==='TESTING'&&h.cycleLearningIds.length)next.push({kind:'RESOLVE_HYPOTHESIS',ref:h.id,module:null});
     if(h.status==='WEAKENED'||h.status==='REJECTED')for(const use of [...h.inUseBy,...h.testedBy])next.push({kind:'REVIEW_AFFECTED_DECISION',ref:h.id,module:use.module});
   }
   for(const id of inconclusive)next.push({kind:'RESOLVE_INCONCLUSIVE',ref:id,module:null});

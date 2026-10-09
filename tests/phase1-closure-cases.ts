@@ -8,7 +8,7 @@ import type { connect } from '../src/persistence/database.js';
 import type { CommitCommand } from '../src/domain/contracts.js';
 
 const SPINE=['Strategic Objective','Market Arena','Primary Customer','Value Mechanism','Positioning','Brand Promise','Core Message','GTM Priority','Priority Experiment'];
-const LABELS=['Objetivo estratégico','Arena de mercado','Cliente principal','Modelo de valor','Posicionamiento','Promesa de marca','Mensaje principal','Prioridad de lanzamiento','Experimento prioritario'];
+const LABELS=['Objetivo estratégico','Mercado objetivo','Cliente principal','Modelo de valor','Posicionamiento','Promesa de marca','Mensaje principal','Prioridad de lanzamiento','Experimento prioritario'];
 // The decisions added by this expansion (ADR-0021..ADR-0024); the original four keep their own M1 suites.
 const NEW=['Strategic Objective','Market Arena','Brand Promise','GTM Priority','Priority Experiment'];
 

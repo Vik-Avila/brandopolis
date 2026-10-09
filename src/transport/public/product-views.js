@@ -1,6 +1,16 @@
 // Pure presentation projections. No writes, requests, inferred strategic state or domain rules.
 export const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export const labels={'Strategic Objective':'Objetivo estratégico','Market Arena':'Arena de mercado','Primary Customer':'Cliente principal','Value Mechanism':'Modelo de valor','Positioning':'Posicionamiento','Brand Promise':'Promesa de marca','Core Message':'Mensaje principal','GTM Priority':'Prioridad de lanzamiento','Priority Experiment':'Experimento prioritario'};
+// Owner decision 2026-10-08 (ADR-0027): the visible name of `Market Arena` is «Mercado objetivo». The internal
+// module key, schema, API, dependency graph and history keep `Market Arena`.
+export const labels={'Strategic Objective':'Objetivo estratégico','Market Arena':'Mercado objetivo','Primary Customer':'Cliente principal','Value Mechanism':'Modelo de valor','Positioning':'Posicionamiento','Brand Promise':'Promesa de marca','Core Message':'Mensaje principal','GTM Priority':'Prioridad de lanzamiento','Priority Experiment':'Experimento prioritario'};
+/** Plain-language question shown for a decision when it differs from the stored canonical question text. */
+export const questionText={
+ 'Market Arena':'¿En qué mercado quieres competir?',
+ 'Primary Customer':'Dentro de ese mercado, ¿a qué tipo de cliente atenderás primero?'
+};
+export const questionHelp={
+ 'Market Arena':'Define el tipo de mercado, la necesidad que atenderás y su alcance geográfico, cuando sea relevante.'
+};
 export const fmt=value=>new Date(value).toLocaleString('es-MX',{dateStyle:'medium',timeStyle:'short'});
 export const needsReview=(context,decision)=>!!decision&&(decision.reviewStatus==='NEEDS_REVIEW'||context.reviews.some(r=>r.downstreamDecisionId===decision.id&&r.status!=='COMPLETED'));
 export function decisionState(context,question){
@@ -12,7 +22,6 @@ export function stateBadge(version,review){return `<span class="badge ${review?'
 // Display names for the canonical capability keys of the strategic method (config/strategic-method/learning-moments.v5.json).
 const capabilityLabels={'Market Reasoning':'Razonamiento de mercado','Brand Thinking':'Pensamiento de marca','GTM Prioritization':'Priorización del lanzamiento','Experimentation & Learning':'Experimentación y aprendizaje','Customer Understanding':'Comprensión del cliente','Business Model Thinking':'Modelo de negocio','Strategic Differentiation':'Diferenciación estratégica','Message Prioritization':'Priorización del mensaje','Problem Framing':'Encuadre del problema'};
 export const capabilityLabel=key=>capabilityLabels[key]??key;
-const plural=(n,one,many)=>`${n} ${n===1?one:many}`;
 
 const legacyCapabilityBehavior='Explicitó una elección y su criterio como Estratega de Marca.';
 const personalizedCapabilityBehavior={
@@ -58,7 +67,7 @@ export function practiceHtml(events,limit){
  return `<section class="learning-dashboard">
   <section class="learning-hero">
    <p class="eyebrow">Mi aprendizaje</p>
-   <h2>Aprendes mientras construyes tu marca.</h2>
+   <h3>Aprendes mientras construyes tu marca.</h3>
    <p>Cada decisión te ayuda a practicar una capacidad estratégica. Aquí puedes ver qué has ejercitado y qué conviene practicar después.</p>
   </section>
 
@@ -147,7 +156,9 @@ export function reviewUpdatesHtml(updates){
 }
 /* Strategic Intelligence (ADR-0025): presentation of the server's deterministic projection. Words carry every
    state; nothing here infers, writes or calls a provider. */
-const evaluatorWords={PASS:'Coherente con lo registrado',PASS_WITH_CAUTION:'Con puntos por revisar',REVIEW_REQUIRED:'Hay contradicciones que revisar'};
+// Owner decision 2026-10-09: say what the rules found, never an empty «coherente» stamp.
+const evaluatorWords={PASS:'No se detectan contradicciones relevantes entre tus decisiones actuales.',PASS_WITH_CAUTION:'Hay puntos entre tus decisiones que conviene revisar.',REVIEW_REQUIRED:'Hay contradicciones entre tus decisiones que conviene revisar.'};
+const FEW_DECISIONS='Aún hay pocas decisiones definidas para evaluar su coherencia.';
 const severityWords={CONFLICT:'Contradicción',REVIEW:'Requiere revisión',INFO:'Información'};
 const supportWords={STRONG_SUPPORT:'Soporte fuerte',MODERATE_SUPPORT:'Soporte moderado',LIMITED_SUPPORT:'Soporte limitado',UNVALIDATED:'Sin validar'};
 const geographyWords={LOCAL:'Local / ciudad',REGIONAL:'Regional',STATE:'Estatal',NATIONAL:'Nacional',LATAM:'Latinoamérica',GLOBAL:'Global'};
@@ -160,7 +171,7 @@ export function issueText(issue){
   INVALIDATED_UPSTREAM:[`${a} depende de ${b}, que fue invalidada.`,'Una base invalidada no sostiene la decisión que depende de ella.'],
   RELIES_ON_REJECTED_HYPOTHESIS:[`${a} se apoya en una hipótesis que rechazaste.`,'El supuesto que sostenía esta decisión ya no se considera válido.'],
   RELIES_ON_WEAKENED_HYPOTHESIS:[`${a} se apoya en una hipótesis que se debilitó.`,'La evidencia reciente no respalda el supuesto como antes.'],
-  CONTEXT_CHANGED_AFTER_DECISION:['El mercado que declaraste cambió después de decidir tu Arena de mercado.','Tu Arena no se modificó; comprueba si sigue vigente con el nuevo contexto.'],
+  CONTEXT_CHANGED_AFTER_DECISION:['El ámbito geográfico que declaraste cambió después de decidir tu Mercado objetivo.','Tu Mercado objetivo no se modificó; comprueba si sigue vigente con el nuevo contexto.'],
   EXPERIMENT_NOT_PLANNED:['Elegiste tu experimento prioritario, pero aún no lo planeas.','Sin ejecución no habrá señales que revisar; planéalo en Experimentos y aprendizajes.'],
   VALIDATION_CHALLENGES_DECISION:[issue.severity==='CONFLICT'?`Rechazaste la hipótesis que ${a} puso a prueba.`:`Debilitaste la hipótesis que ${a} puso a prueba.`,'Tu decisión no cambió; revisa si sigue en pie con lo que aprendiste.']
  })[issue.kind]??[`${a}: revisa la coherencia.`,''];
@@ -178,7 +189,7 @@ export function intelligenceHtml(c){
  const issues=tensions.map(x=>{const [what,why]=issueText(x);return `<li class="intelligence-issue" data-severity="${escape(x.severity)}"><div><span class="badge ${x.severity==='INFO'?'':'warn'}">${severityWords[x.severity]}</span> <strong>${escape(what)}</strong>${why?`<p class="hint">Por qué importa: ${escape(why)}</p>`:''}</div><button class="tertiary" data-attention-module="${escape(x.reviewFirst)}">Revisar ${escape(moduleLabel(x.reviewFirst).toLowerCase())}</button></li>`;}).join('');
  const changes=i.recentChanges.map(r=>`<li>${escape(moduleLabel(r.module))} · v${r.sequence} · ${escape(fmt(r.approvedAt))}</li>`).join('');
  return `<section class="intelligence-summary" aria-labelledby="intelligence-title" data-evaluator="${escape(i.evaluatorResult)}">
-  <div class="section-heading"><div><p class="eyebrow">Inteligencia estratégica</p><h3 id="intelligence-title">Coherencia de tu estrategia: ${evaluatorWords[i.evaluatorResult]}</h3><p class="hint">Reglas del sistema sobre lo que registraste · sin consulta a la IA. Tú decides qué hacer con cada punto.</p></div>
+  <div class="section-heading"><div><p class="eyebrow">Inteligencia estratégica</p><h3 id="intelligence-title">Coherencia de tu estrategia</h3><p class="coherence-sentence">${escape(evaluatorLabel(i.evaluatorResult,c))}</p><p class="hint">Reglas del sistema sobre lo que registraste · sin consulta a la IA. Tú decides qué hacer con cada punto.</p></div>
   <button type="button" id="intelligence-ask-brando" class="secondary brando-action">Preguntar a Brando qué no está alineado</button></div>
   ${plan?`<h4>Orden de revisión recomendado</h4><ol class="intelligence-plan">${plan}</ol>`:'<p>No hay revisiones pendientes.</p>'}
   ${issues?`<h4>Tensiones detectadas</h4><ul class="intelligence-issues">${issues}</ul>`:'<p>No se detectaron tensiones en las reglas del sistema.</p>'}
@@ -225,7 +236,7 @@ export function declaredContextHtml(c,module){
   if(item.kind==='GEOGRAPHY'){const geo=c.brandContext??{};return `${geo.geographicInfluence?`<dt>Alcance declarado</dt><dd>${escape(geographyWords[geo.geographicInfluence]??geo.geographicInfluence)}</dd>`:''}${geo.primaryMarket?`<dt>Mercado principal</dt><dd>${escape(geo.primaryMarket)}</dd>`:''}`;}
   return `<dt>${kindWords[item.kind]??'Contexto'}</dt><dd>${escape(item.text)}</dd>`;
  }).join('');
- const lead=module==='Market Arena'?'Este contexto es un punto de partida, no tu Arena de mercado. Ahora delimita dónde compites, frente a qué alternativas y qué queda fuera.':'Este contexto es un punto de partida, no tu decisión. Úsalo, ajústalo o descártalo con tu criterio.';
+ const lead=module==='Market Arena'?'Este contexto es un punto de partida, no tu Mercado objetivo. Dónde operas o vendes orienta la decisión, pero no la define: elige el mercado, la necesidad que atenderás y frente a qué alternativas compites.':'Este contexto es un punto de partida, no tu decisión. Úsalo, ajústalo o descártalo con tu criterio.';
  return `<section class="declared-context" aria-labelledby="declared-context-title"><p class="eyebrow" id="declared-context-title">Lo que ya sabemos de tu marca</p><dl>${rows}</dl><p class="hint">${lead}</p></section>`;
 }
 /** Support and tensions for one decision, from the same projection. */
@@ -236,14 +247,19 @@ export function decisionIntelligenceHtml(c,module){
  const support=memory?.activeVersionId?`<p class="decision-support"><span class="label">Soporte registrado:</span> ${supportWords[memory.support]}${memory.support==='UNVALIDATED'?' · no hay evidencia vinculada a esta decisión.':'.'} <span class="hint">Describe la fuerza de lo registrado, no la probabilidad de acertar.</span></p>`:'';
  return `${support}${issues.map(x=>{const [what,why]=issueText(x);return `<p class="decision-tension"><span class="badge ${x.severity==='INFO'?'':'warn'}">${severityWords[x.severity]}</span> ${escape(what)} ${why?`<span class="hint">${escape(why)}</span>`:''}</p>`;}).join('')}`;
 }
-export function evaluatorLabel(result){return evaluatorWords[result]??'';}
+/** One plain sentence backed by the deterministic engine; with fewer than two decisions there is nothing to compare yet. */
+export function evaluatorLabel(result,c){
+ const defined=c?(c.decisions??[]).filter(d=>d.activeVersionId).length:2;
+ if(defined<2&&result==='PASS')return FEW_DECISIONS;
+ return evaluatorWords[result]??'';
+}
 /** Section-specific writing guide for the decision editor. Guidance only: it never fills or validates the text. */
 export const decisionGuide={
  'Strategic Objective':'Incluye qué quieres construir o cambiar con tu marca y cómo reconocerás que avanzas. Es distinto de una meta comercial puntual.',
- 'Market Arena':'Incluye dónde compites primero, frente a qué alternativas (también no hacer nada) y qué queda fuera. Tu ubicación no define por sí sola tu arena.',
+ 'Market Arena':'Incluye el tipo de mercado, la necesidad que atenderás, frente a qué alternativas compites (también no hacer nada) y qué queda fuera. Tu ubicación no define por sí sola tu mercado objetivo.',
  'Brand Promise':'Incluye qué puede esperar tu cliente de tu marca y por qué es creíble hoy. Debe expresar tu posicionamiento; tu mensaje principal se apoyará en ella.',
  'GTM Priority':'Incluye dónde concentrarás primero tus recursos (canal, comunidad o alianza), por qué ahí llegas a tu cliente prioritario y qué dejas para después. Sin evidencia, el canal elegido es una hipótesis.',
- 'Priority Experiment':'Incluye qué supuesto crítico validarás primero, por qué es el más riesgoso y qué señal observable te diría si se sostiene. La ejecución se planea y registra en «Experimentos y aprendizajes».'
+ 'Priority Experiment':'Incluye qué supuesto crítico validarás primero, por qué es el más riesgoso y qué señal observable te diría si se sostiene. La ejecución se planea y registra en «Validación».'
 };
 /** Shown when an existing brand lacks a journey section. Adding it is an explicit human action (ADR-0021). */
 export function strategicSectionsHtml(label,missing=[label]){
@@ -255,46 +271,93 @@ export function historyHtml(versions,decision,userId){
  const items=versions.map(h=>{const current=h.versionStatus!=='SUPERSEDED',next=versions.find(x=>x.previousVersionId===h.id);return `<li class="history-item ${current?'is-current':''}"><div class="version-marker">v${h.sequence}</div><article><div class="history-meta"><span class="badge ${current?'':'muted'}">${current?'Vigente':'Sustituida'}</span><time datetime="${escape(h.approvedAt)}">${escape(fmt(h.approvedAt))}</time><span>${h.actorUserId===userId?'Tú':'Persona autorizada'}</span></div><h4>${escape(h.selectedOption)}</h4><p><span class="label">Criterio de esta versión</span><br>${escape(h.rationale)}</p>${next?`<p class="lineage-note">Continúa en v${next.sequence} · esta versión permanece en el historial.</p>`:'<p class="lineage-note">Esta es la versión vigente de tu decisión.</p>'}</article></li>`;}).join('');
  return `<details class="history" open><summary>Versiones registradas</summary><div class="history-intro"><p class="eyebrow">Evolución estratégica</p><h3>El criterio detrás de cada cambio.</h3><p>Tu estrategia evoluciona. Su historia permanece.</p></div><ol class="timeline">${items}</ol>${decision?.reviewStatus==='NEEDS_REVIEW'?'<p class="hint">La versión actual requiere la revisión del Estratega de Marca por un cambio en una decisión conectada.</p>':''}</details>`;
 }
+/** ADR-0027 · Inicio. Deterministic next step from the real Brand state: human reviews and pending learning first,
+ *  then validation impact, then the next undecided decision in journey order (which follows the HARD dependency
+ *  path), then validation suggestions. A recommendation for the person, never an action. */
+const shortCta={'Strategic Objective':'Definir objetivo','Market Arena':'Definir mercado','Primary Customer':'Definir cliente','Value Mechanism':'Definir modelo de valor','Positioning':'Definir posicionamiento','Brand Promise':'Definir promesa','Core Message':'Definir mensaje','GTM Priority':'Definir prioridad','Priority Experiment':'Elegir experimento'};
+const stepCopy={
+ 'Strategic Objective':'Precisa qué quieres construir o cambiar con tu marca y cómo reconocerás que avanzas.',
+ 'Market Arena':'Elige en qué mercado quieres competir. Brando puede ayudarte a explorar posibilidades.',
+ 'Primary Customer':'Dentro de tu mercado, decide a qué tipo de cliente atenderás primero.',
+ 'Value Mechanism':'Conecta la necesidad de tu cliente con el valor que ofrecerás y cómo lo capturas.',
+ 'Positioning':'Define la diferencia por la que quieres ser elegido frente a otras alternativas.',
+ 'Brand Promise':'Expresa qué puede esperar tu cliente de tu marca y por qué es creíble hoy.',
+ 'Core Message':'Elige la idea central que comunicarás primero.',
+ 'GTM Priority':'Decide dónde concentrarás primero tus recursos para llegar a tu cliente.',
+ 'Priority Experiment':'Elige qué supuesto crítico validar primero y qué señal te diría si se sostiene.'
+};
+const definedVerb={'Strategic Objective':'Define tu objetivo estratégico','Market Arena':'Define tu mercado objetivo','Primary Customer':'Define tu cliente principal','Value Mechanism':'Define tu modelo de valor','Positioning':'Define tu posicionamiento','Brand Promise':'Define tu promesa de marca','Core Message':'Define tu mensaje principal','GTM Priority':'Define tu prioridad de lanzamiento','Priority Experiment':'Elige tu experimento prioritario'};
+const VALIDATION_ISSUES=['RELIES_ON_REJECTED_HYPOTHESIS','RELIES_ON_WEAKENED_HYPOTHESIS','VALIDATION_CHALLENGES_DECISION'];
+export function strategyProgress(c){
+ const order=Object.keys(labels);
+ const segments=order.map(module=>{const q=c.questions.find(x=>x.module===module);if(!q)return {module,state:'missing'};const {version,review}=decisionState(c,q);return {module,state:review?'review':version?'defined':'open'};});
+ return {defined:segments.filter(s=>s.state==='defined'||s.state==='review').length,total:order.length,segments};
+}
+export function nextStep(c){
+ const plan=c.intelligence?.reviewPlan??[],v=c.validation??{nextValidation:[],learningsAwaitingReview:[]};
+ const mandatory=plan.find(s=>s.mandatory);
+ if(mandatory){const why=mandatory.triggers.map(t=>labels[t.module]??t.module).join(', ');return {kind:'REVIEW',tone:'review',badge:'Revisión obligatoria',title:`Revisa tu ${(labels[mandatory.module]??mandatory.module).toLowerCase()}`,text:`${why||'Una decisión conectada'} cambió. Confirma si tu decisión sigue alineada; nada cambia sin tu confirmación.`,cta:`Abrir ${(labels[mandatory.module]??'').toLowerCase()}`,action:{type:'module',module:mandatory.module}};}
+ const challenged=(c.intelligence?.issues??[]).find(i=>VALIDATION_ISSUES.includes(i.kind));
+ if(challenged){const label=labels[challenged.reviewFirst]??challenged.reviewFirst;return {kind:'VALIDATION_IMPACT',tone:'review',badge:'Revisión estratégica',title:`Revisa tu ${label.toLowerCase()}`,text:'Una hipótesis en la que se apoya cambió después de lo que aprendiste. Tu decisión no se modificó: confirma si sigue en pie.',cta:`Abrir ${label.toLowerCase()}`,action:{type:'module',module:challenged.reviewFirst}};}
+ const open=strategyProgress(c).segments.find(s=>s.state==='open');
+ if(open)return {kind:'DECISION',tone:'decision',badge:'Siguiente decisión',title:definedVerb[open.module],text:stepCopy[open.module],cta:shortCta[open.module],action:{type:'module',module:open.module},brando:true};
+ // Owner decision 2026-10-09: strategy is the main path. Optional validation work (a learning or a hypothesis to
+ // resolve) follows the next decision instead of taking over Inicio; strategic reviews above still come first.
+ if(v.learningsAwaitingReview?.length)return {kind:'LEARNING',tone:'review',badge:'Aprendizaje por revisar',title:'Revisa un aprendizaje pendiente',text:'Interpretaste señales de tus experimentos. Decide si el aprendizaje se sostiene antes de crear más trabajo.',cta:'Abrir validación',action:{type:'view',view:'validation'}};
+ const resolve=v.nextValidation?.find(n=>n.kind==='RESOLVE_HYPOTHESIS');
+ if(resolve)return {kind:'HYPOTHESIS',tone:'review',badge:'Hipótesis por revisar',title:'Revisa una hipótesis',text:'Ya tienes un aprendizaje aceptado sobre ella: decide si queda respaldada, debilitada o rechazada.',cta:'Abrir validación',action:{type:'view',view:'validation'}};
+ const suggested=plan[0];
+ if(suggested)return {kind:'SUGGESTED_REVIEW',tone:'review',badge:'Revisión sugerida',title:`Revisa tu ${(labels[suggested.module]??'').toLowerCase()}`,text:'Una decisión conectada cambió. Revisarla es opcional y nada cambia sin tu confirmación.',cta:`Abrir ${(labels[suggested.module]??'').toLowerCase()}`,action:{type:'module',module:suggested.module}};
+ const validation=v.nextValidation?.[0];
+ if(validation)return {kind:'VALIDATION',tone:'decision',badge:'Siguiente validación',title:'Comprueba lo que sostiene tu estrategia',text:'Tus nueve decisiones están definidas. Definida no significa validada: sigue con la validación recomendada.',cta:'Abrir validación',action:{type:'view',view:'validation'}};
+ return {kind:'UP_TO_DATE',tone:'decision',badge:'Tu estrategia hoy',title:'Tu estrategia está al día',text:'Tus decisiones tienen una versión vigente y no hay revisiones pendientes. Revisa tu mapa o sigue aprendiendo del mercado.',cta:'Abrir mapa estratégico',action:{type:'view',view:'map'}};
+}
+/** What deserves attention, split into «Requiere tu decisión» and «Observación». Counts are real, never invented. */
+export function attentionGroups(c,documentState={pending:0,candidateClaims:0,processed:0}){
+ const decide=[],observe=[],plan=c.intelligence?.reviewPlan??[],v=c.validation??{};
+ for(const step of plan.filter(s=>s.mandatory))decide.push({text:`${labels[step.module]??step.module} requiere revisión`,detail:`${step.triggers.map(t=>labels[t.module]??t.module).join(', ')||'Una decisión conectada'} cambió.`,action:{type:'module',module:step.module},label:'Revisar'});
+ if(v.learningsAwaitingReview?.length)decide.push({text:v.learningsAwaitingReview.length===1?'Hay un aprendizaje pendiente de revisión':`Hay ${v.learningsAwaitingReview.length} aprendizajes pendientes de revisión`,detail:'Sólo tú puedes aceptarlo o rechazarlo.',action:{type:'view',view:'validation'},label:'Revisar'});
+ for(const issue of (c.intelligence?.issues??[]).filter(i=>VALIDATION_ISSUES.includes(i.kind)))decide.push({text:`${labels[issue.reviewFirst]??issue.reviewFirst} se apoya en una hipótesis que cambió`,detail:'Tu decisión no se modificó.',action:{type:'module',module:issue.reviewFirst},label:'Revisar'});
+ if(v.nextValidation?.some(n=>n.kind==='RESOLVE_HYPOTHESIS'))decide.push({text:'Una hipótesis tiene aprendizaje aceptado y espera tu revisión',detail:'Respaldada, debilitada o rechazada: tú decides.',action:{type:'view',view:'validation'},label:'Revisar'});
+ if(documentState.candidateClaims)decide.push({text:`${documentState.candidateClaims} hallazgo${documentState.candidateClaims===1?'':'s'} de tus documentos por revisar`,detail:'Ningún hallazgo entra a tu contexto sin tu revisión.',action:{type:'view',view:'documents'},label:'Revisar'});
+ for(const step of plan.filter(s=>!s.mandatory))observe.push({text:`Podrías revisar ${(labels[step.module]??step.module).toLowerCase()}`,detail:'Revisión sugerida por un cambio conectado.',action:{type:'module',module:step.module},label:'Ver observación'});
+ for(const issue of (c.intelligence?.issues??[]).filter(i=>i.kind!=='PENDING_REVIEW'&&!VALIDATION_ISSUES.includes(i.kind))){const [what]=issueText(issue);observe.push({text:what,detail:'Observación de las reglas del sistema.',action:{type:'module',module:issue.reviewFirst},label:'Ver observación'});}
+ const running=(c.experiments??[]).filter(e=>e.status==='RUNNING').length;
+ if(running)observe.push({text:running===1?'Tu experimento continúa en ejecución':`${running} experimentos continúan en ejecución`,detail:'Registra lo que observes como señales.',action:{type:'view',view:'validation'},label:'Ver validación'});
+ if(v.uninterpretedSignals?.length)observe.push({text:`${v.uninterpretedSignals.length} señal${v.uninterpretedSignals.length===1?'':'es'} sin interpretar`,detail:'Una señal es una observación; todavía no es aprendizaje.',action:{type:'view',view:'validation'},label:'Ver validación'});
+ if(v.inconclusive?.length)observe.push({text:'Un experimento quedó no concluyente',detail:'Es un resultado válido; decide si lo replanteas.',action:{type:'view',view:'validation'},label:'Ver validación'});
+ if(documentState.pending)observe.push({text:`${documentState.pending} documento${documentState.pending===1?'':'s'} pendiente${documentState.pending===1?'':'s'} de procesar`,detail:'Ya están guardados.',action:{type:'view',view:'documents'},label:'Procesar'});
+ if((c.impacts??[]).some(i=>i.status==='IMPACT_PENDING'))decide.unshift({text:'Hay un impacto pendiente de cálculo',detail:'Abre una decisión para reintentarlo antes de otro cambio.',action:{type:'view',view:'map'},label:'Revisar'});
+ return {decide,observe,mandatoryReviews:plan.filter(s=>s.mandatory).length};
+}
+const actionAttrs=a=>a.type==='module'?`data-attention-module="${escape(a.module)}"`:`data-home-action="${escape(a.view)}"`;
+const attentionRow=(item,kind)=>`<li class="attention-item" data-kind="${kind}"><span class="attention-mark" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" focusable="false"><use href="#i-${kind==='decide'?'alert':'info'}"/></svg></span><p><span class="visually-hidden">${kind==='decide'?'Requiere tu decisión: ':'Observación: '}</span>${escape(item.text)}<small>${escape(item.detail)}</small></p><button type="button" class="link-action" ${actionAttrs(item.action)}>${escape(item.label)} <svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></button></li>`;
+export function attentionListHtml(c,documentState){
+ const {decide,observe,mandatoryReviews}=attentionGroups(c,documentState);
+ const clear=mandatoryReviews?'':`<li class="attention-item is-clear"><span class="attention-mark" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" focusable="false"><use href="#i-check"/></svg></span><p>Sin revisiones obligatorias pendientes</p></li>`;
+ return `${decide.length?`<p class="attention-group-label">Requiere tu decisión</p><ul class="attention-items">${decide.map(i=>attentionRow(i,'decide')).join('')}</ul>`:''}${observe.length?`<p class="attention-group-label">Observación</p><ul class="attention-items">${observe.map(i=>attentionRow(i,'observe')).join('')}</ul>`:''}<ul class="attention-items">${clear}</ul>`;
+}
 export function homeHtml(context,documentState={total:0,pending:0,processed:0,candidateClaims:0}){
- const documentAttention=documentState.pending
-  ?`<section class="document-attention" aria-labelledby="document-attention-title">
-      <div>
-       <p class="eyebrow">Documentos de la marca</p>
-       <h3 id="document-attention-title">${documentState.pending} documento${documentState.pending===1?' pendiente':'s pendientes'} de procesar</h3>
-       <p>Ya están guardados. Procésalos para que Brandopolis pueda convertir su contenido en hallazgos candidatos.</p>
-      </div>
-      <button id="attention-documents" class="secondary">Procesar documentos →</button>
-     </section>`
-  :documentState.candidateClaims
-   ?`<section class="document-attention" aria-labelledby="document-attention-title">
-       <div>
-        <p class="eyebrow">Revisión documental</p>
-        <h3 id="document-attention-title">${documentState.candidateClaims} hallazgo${documentState.candidateClaims===1?' pendiente':'s pendientes'} de revisión</h3>
-        <p>Brandopolis identificó información en tus documentos. Ningún hallazgo cambiará tu Brand Context hasta que tú lo revises.</p>
-       </div>
-       <button id="attention-documents" class="secondary">Revisar hallazgos →</button>
-      </section>`
-   :documentState.processed
-    ?`<section class="document-attention is-ready" aria-labelledby="document-attention-title">
-        <div>
-         <p class="eyebrow">Documentos de la marca</p>
-         <h3 id="document-attention-title">${documentState.processed} documento${documentState.processed===1?' procesado':'s procesados'}</h3>
-         <p>El contenido ya está extraído. Genera hallazgos para identificar información que valga la pena revisar.</p>
-        </div>
-        <button id="attention-documents" class="secondary">Generar hallazgos →</button>
-       </section>`
-    :'';
-
- const reviewQuestions=context.questions.filter(q=>(context.attention??[]).some(i=>i.kind==='review'&&i.module===q.module));
- const open=context.questions.filter(q=>!decisionState(context,q).version);
- const active=context.experiments.filter(e=>['PLANNED','RUNNING'].includes(e.status));
- const unreviewed=context.learnings.filter(l=>['CANDIDATE','REVIEWED'].includes(l.status));
- const uninterpreted=context.signals.filter(s=>!context.learnings.some(l=>l.signalIds.includes(s.id)));
- const approved=context.decisions.filter(d=>d.activeVersionId).length;
- const hypotheses=context.hypotheses.filter(h=>!['SUPPORTED','REJECTED'].includes(h.status));
- const next=reviewQuestions[0]??open[0];
- const reviewRows=reviewQuestions.map(q=>{const {decision}=decisionState(context,q);const reviews=context.reviews.filter(r=>r.downstreamDecisionId===decision.id&&r.status!=='COMPLETED');const sources=[...new Set(reviews.map(r=>{const version=context.versions.find(v=>v.id===r.triggerVersionId),source=context.decisions.find(d=>d.id===version?.decisionId);return labels[context.questions.find(q=>q.id===source?.questionId)?.module]??'Decisión conectada';}))];return `<article class="attention-row"><div><h3>${escape(labels[q.module])}</h3><p>${escape(sources.join(' · ')||'Una decisión conectada')} cambió. Revisa si tu elección sigue alineada.</p></div><button class="secondary" data-attention-module="${escape(q.module)}">Abrir ${escape(labels[q.module].toLowerCase())}</button></article>`;}).join('');
- return `<div class="home-heading"><div><p class="eyebrow">Tu estrategia hoy</p><h2>Claridad para tu siguiente decisión.</h2><p class="view-lead">Decisiones vigentes, cambios conectados y aprendizaje de tu marca.</p></div>${next?`<button data-attention-module="${escape(next.module)}">${reviewQuestions.length?'Revisar estrategia':'Continuar estrategia'} <span aria-hidden="true">→</span></button>`:''}</div><ul class="kpis" aria-label="Resumen de tu estrategia"><li><strong>${approved}<small> / ${context.questions.length}</small></strong><span>Decisiones vigentes</span></li><li class="${reviewQuestions.length?'attention':''}"><strong>${reviewQuestions.length}</strong><span>Necesitan revisión</span></li><li class="${hypotheses.length?'':'is-zero'}"><strong>${hypotheses.length}</strong><span>Hipótesis abiertas</span></li><li class="${active.length?'':'is-zero'}"><strong>${active.length}</strong><span>Experimentos activos</span></li></ul>${context.impacts.some(i=>i.status==='IMPACT_PENDING')?'<p class="review">Hay un impacto pendiente de cálculo. Abre una decisión para reintentarlo.</p>':''}${context.intelligence?.reviewPlan?.length?'':reviewQuestions.length?`<section class="attention-section"><div class="section-heading"><div><p class="eyebrow">Atención estratégica</p><h3>Tu estrategia ha evolucionado.</h3></div><span>${reviewQuestions.length} decisiones por revisar</span></div>${reviewRows}</section>`:`<section class="clear-state"><span class="eyebrow">${open.length?'Tu punto de partida':'Sin revisiones pendientes'}</span><p>${open.length?'Empieza por tu cliente y construye desde ahí.':'Tus decisiones conservan una versión vigente. Sigue aprendiendo de lo que ocurre en el mercado.'}</p></section>`}${documentAttention}${strategyMap(context)}<section class="learning-summary"><div><p class="eyebrow">Del mercado al aprendizaje</p><h3>La estrategia también se comprueba.</h3></div><div class="learning-counts"><span><strong>${uninterpreted.length}</strong> señales por interpretar</span><span><strong>${unreviewed.length}</strong> aprendizajes por revisar</span></div><button id="attention-learning" class="secondary">Abrir experimentos y aprendizajes</button></section><section class="context-next"><div><p class="eyebrow">Memoria de tu marca</p><h3>Contexto para seguir decidiendo</h3><p>${plural(context.evidence.length,'fuente registrada','fuentes registradas')} · ${plural(hypotheses.length,'hipótesis abierta','hipótesis abiertas')}. Revisa su procedencia y sus límites.</p></div><button id="attention-context" class="secondary">Abrir contexto estratégico</button></section>`;
+ const step=nextStep(context),progress=strategyProgress(context);
+ // Each segment opens its decision (owner decision 2026-10-09): number · name — state, for mouse, keyboard and touch.
+ const segments=progress.segments.map((s,i)=>{const state=s.state==='defined'?'Definida':s.state==='review'?'Requiere revisión':s.state==='missing'?'No disponible':'Pendiente',name=`${String(i+1).padStart(2,'0')} · ${labels[s.module]} — ${state}`;return `<li class="${s.state==='defined'?'is-defined':s.state==='review'?'is-review':''}">${s.state==='missing'?`<span class="segment" title="${escape(name)}"><span class="visually-hidden">${escape(name)}</span></span>`:`<button type="button" class="segment" data-attention-module="${escape(s.module)}" aria-label="${escape(name)}" title="${escape(name)}"><span class="segment-tip" aria-hidden="true">${escape(name)}</span></button>`}</li>`;}).join('');
+ return `<div class="ws-hero home-heading"><p class="eyebrow">Inicio</p><h2>Tu siguiente paso</h2><p class="ws-lead">Avanza con claridad, una decisión a la vez.</p></div>
+ <section class="next-step" data-tone="${step.tone}" data-kind="${step.kind}" aria-labelledby="next-step-title"><div><p class="step-badge">${escape(step.badge)}</p><h3 id="next-step-title">${escape(step.title)}</h3><p>${escape(step.text)}</p><div class="actions"><button type="button" id="next-step-action" ${actionAttrs(step.action)}>${escape(step.cta)} <svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></button>${step.brando?`<button type="button" id="next-step-brando" class="link-action brando-action" data-module="${escape(step.action.module)}">Explorar con Brando <svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></button>`:''}</div></div><div class="next-step-art" aria-hidden="true"><img src="/brand/symbol-premium.webp" alt="" width="96" height="96"></div></section>
+ <section class="strategy-progress" aria-label="Avance de tu estrategia"><p><strong>Estrategia de marca</strong> · <b>${progress.defined}</b> de ${progress.total} decisiones definidas</p><ol class="progress-segments" aria-label="Abrir una decisión">${segments}</ol><p class="hint">Definida no significa validada: describe completitud, no calidad ni evidencia.</p></section>
+ <section class="home-attention" aria-labelledby="home-attention-title"><h3 id="home-attention-title">Lo que merece tu atención</h3>${attentionListHtml(context,documentState)}<div class="home-more"><button type="button" id="home-open-attention" class="link-action">Ver inteligencia estratégica completa</button><button type="button" id="attention-learning" class="link-action">Abrir validación</button><button type="button" id="attention-context" class="link-action">Abrir contexto estratégico</button>${documentState.pending||documentState.processed||documentState.candidateClaims?'<button type="button" id="attention-documents" class="link-action">Revisar documentos</button>':''}</div></section>`;
+}
+/** Rail · Atención: the whole deterministic picture on demand (Phase 2 intelligence + Phase 3 validation). */
+export function railAttentionHtml(c){return `<section class="rail-attention"><p class="eyebrow">Qué requiere atención</p>${attentionListHtml(c)}</section>${intelligenceHtml(c)}${validationNextHtml(c,{withHeading:true})}`;}
+/** Rail · Historial: versions of the open decision, or the latest changes of the brand. Deep history stays in each decision. */
+export function railHistoryHtml(c,module){
+ const q=module?c.questions.find(x=>x.module===module):null,d=q?c.decisions.find(x=>x.questionId===q.id):null;
+ if(q){
+  const versions=c.versions.filter(v=>v.decisionId===d?.id).sort((a,b)=>b.sequence-a.sequence);
+  return `<p class="eyebrow">${escape(labels[module])}</p>${versions.length?`<ol class="rail-history-list">${versions.map(v=>`<li><strong>v${v.sequence}</strong> · ${escape(fmt(v.approvedAt))}${v.id===d.activeVersionId?' · <span class="badge">Vigente</span>':''}<p>${escape(v.selectedOption)}</p><p class="hint">Por qué: ${escape(v.rationale)}</p></li>`).join('')}</ol><button type="button" class="link-action" data-history-module="${escape(module)}">Ver historial completo</button>`:'<p class="hint">Aún no hay versiones de esta decisión.</p>'}`;
+ }
+ const latest=c.versions.slice().sort((a,b)=>new Date(b.approvedAt)-new Date(a.approvedAt)).slice(0,8);
+ const moduleOf=v=>c.questions.find(x=>x.id===c.decisions.find(d=>d.id===v.decisionId)?.questionId)?.module;
+ return `<p class="eyebrow">Cambios recientes de tu marca</p>${latest.length?`<ol class="rail-history-list">${latest.map(v=>`<li><strong>${escape(labels[moduleOf(v)]??'Decisión')}</strong> · v${v.sequence}<p class="hint">${escape(fmt(v.approvedAt))}</p><button type="button" class="link-action" data-attention-module="${escape(moduleOf(v)??'')}">Abrir decisión</button></li>`).join('')}</ol>`:'<p class="hint">Aún no hay decisiones registradas.</p>'}`;
 }
 
 /** Defensive display translation; canonical sources and their identifiers remain intact. */
@@ -313,7 +376,7 @@ export function brandoSectionOrientation(c,questionId){
  if(!q||!Object.hasOwn(labels,q.module))return null;
  const focus={
   'Strategic Objective':'Precisa qué quieres construir o cambiar y cómo reconocerás que avanzas, sin reducirlo a una sola cifra.',
-  'Market Arena':'Delimita dónde compites, frente a qué alternativas y qué queda fuera. Tu ubicación no define por sí sola tu arena.',
+  'Market Arena':'Delimita en qué mercado compites, frente a qué alternativas y qué queda fuera. Tu ubicación no define por sí sola tu mercado objetivo.',
   'Primary Customer':'Precisa a quién atender y qué problema necesitas comprobar.',
   'Value Mechanism':'Conecta el problema del cliente con el valor que ofrecerás.',
   Positioning:'Revisa por qué elegirían tu marca frente a otras alternativas.',
@@ -341,7 +404,7 @@ export function brandoSectionOrientation(c,questionId){
   const inUse=new Set((c.versions??[]).filter(v=>v.versionStatus==='APPROVED').flatMap(v=>(v.hypothesisUsages??[]).filter(u=>u.assumptionInUse).map(u=>u.hypothesisId)));
   const used=open.filter(h=>inUse.has(h.id)).length;
   message+=open.length?` Hay ${open.length===1?'1 hipótesis sin validar':`${open.length} hipótesis sin validar`}${used?` (${used} ${used===1?'sostiene':'sostienen'} una decisión vigente)`:''}; elige cuál validar primero.`:' Aún no hay hipótesis registradas: anota en el contexto el supuesto que más te preocupa.';
-  message+=version?' Planea y registra su ejecución en Experimentos y aprendizajes; una señal no es aprendizaje hasta que la revises.':'';
+  message+=version?' Planea y registra su ejecución en Validación; una señal no es aprendizaje hasta que la revises.':'';
  }
  const changes=review?[...c.reviews.filter(r=>r.downstreamDecisionId===decision.id&&r.status!=='COMPLETED').map(r=>{
   const changed=c.versions.find(v=>v.id===r.triggerVersionId),up=c.decisions.find(d=>d.id===changed?.decisionId),source=c.questions.find(q=>q.id===up?.questionId);
@@ -349,26 +412,36 @@ export function brandoSectionOrientation(c,questionId){
  }).filter(Boolean),...reviewUpdates(c,decision).map(u=>({label:`${u.label} · v${u.sequence} (cambió después)`,choice:u.choice,rationale:u.rationale}))]:[];
  return {state,message,focus,changes,title:labels[q.module],query:`Ayúdame a explorar propuestas para ${labels[q.module]}. ${focus} Explica qué está registrado y qué falta comprobar; considera las decisiones conectadas y las revisiones pendientes. Propón alternativas concretas para esta pregunta cuando el contexto lo permita. Distingue hechos, hipótesis y límites; no apruebes ni cambies estrategia.`};
 }
+/** Brando's auxiliary card (owner decision 2026-10-08): compact, AFTER the decision's main card, one CTA that opens
+ *  the contextual Brando already docked in the rail. The full system orientation stays one click away. */
 export function brandoSectionHtml(orientation,{busy=false,hasAnswer=false}={}){
  if(!orientation)return '';
- return `<section id="brando-section" class="brando-section" aria-labelledby="brando-section-title" data-orientation="${escape(orientation.state)}"><img src="/brando/idle.webp" width="32" height="32" alt=""><div><p class="eyebrow" id="brando-section-title">Brando · ${escape(orientation.title)}</p><p>${escape(orientation.message)} ${escape(orientation.focus)}</p>${orientation.changes.length?`<details><summary>Qué cambió en las decisiones conectadas</summary>${orientation.changes.map(change=>`<p><strong>${escape(change.label)}:</strong> ${escape(change.choice)}</p><p><strong>Criterio registrado:</strong> ${escape(change.rationale)}</p>`).join('')}</details>`:''}<p class="hint">Orientación del sistema · sin consulta a la IA</p><button type="button" id="brando-section-explore" class="secondary" ${busy?'disabled aria-busy="true"':''}>${busy?'Pensando…':hasAnswer?'Ver propuestas de esta sección':'Explorar propuestas con Brando'}</button></div></section>`;
+ const changes=orientation.changes.length?`<p><strong>Qué cambió en las decisiones conectadas</strong></p>${orientation.changes.map(change=>`<p><strong>${escape(change.label)}:</strong> ${escape(change.choice)}</p><p><strong>Criterio registrado:</strong> ${escape(change.rationale)}</p>`).join('')}`:'';
+ return `<section id="brando-section" class="brando-section brando-aux" aria-labelledby="brando-section-title" data-orientation="${escape(orientation.state)}"><img src="/brando/idle.webp" width="40" height="40" alt=""><div class="brando-aux-copy"><p class="brando-aux-title" id="brando-section-title"><strong>Brando</strong> · Tu copiloto estratégico</p><p class="brando-aux-line">${hasAnswer?'Ya tienes propuestas de Brando para esta decisión.':'¿Quieres explorar otras posibilidades?'}</p><details class="brando-aux-more"><summary><span>Orientación · ${escape(orientation.title)}</span></summary><div class="brando-aux-body"><p>${escape(orientation.message)} ${escape(orientation.focus)}</p>${changes}<p class="hint">Orientación del sistema · sin consulta a la IA</p></div></details></div><button type="button" id="brando-section-explore" class="secondary brando-action" ${busy?'disabled aria-busy="true"':''}>${busy?'Pensando…':hasAnswer?'Ver propuestas de esta sección':'Explorar con Brando'} <svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></button></section>`;
 }
 export function brandoSuggestionButtons(ticket,expired=false){
  if(ticket.reviewed)return '<p class="hint">Ya registraste tu criterio sobre esta propuesta.</p>';
  if(expired)return '<p class="hint">Esta propuesta venció. Consulta de nuevo para revisarla.</p>';
  const id=escape(ticket.ticketId);
  if(ticket.kind!=='STRATEGY')return `<button type="button" class="secondary" data-brando-ticket="${id}" data-brando-action="${ticket.kind==='EVIDENCE'?'EVIDENCE':'CONTEXT'}">${ticket.kind==='EVIDENCE'?'Revisar fuentes':'Abrir contexto'}</button>`;
- return `<div class="brando-review-actions">${['ACCEPT','MODIFY','REJECT'].map((action,j)=>`<button type="button" class="secondary" data-brando-ticket="${id}" data-brando-action="${action}">${['Aceptar','Modificar','Rechazar'][j]}</button>`).join('')}</div>`;
+ return `<div class="brando-review-actions">${['ACCEPT','MODIFY','REJECT'].map((action,j)=>`<button type="button" class="secondary" data-brando-ticket="${id}" data-brando-action="${action}">${['Llevar al borrador','Modificar','Descartar'][j]}</button>`).join('')}</div><p class="hint">Llevar al borrador no guarda ni aprueba: revisas, escribes tu criterio y confirmas tú.</p>`;
 }
+/** Brando answer, practical value first (owner decision 2026-10-09): each proposed alternative in bold and «Sin
+ *  aprobar», then why it could work, then what to consider; evidence, attention and sources stay one click away.
+ *  Every model string is escaped text: no model HTML ever reaches the page. Nothing here saves or approves. */
 export function brandoAnswerHtml(result){
  const a=result.answer;
  if(!a)return '<p>No hay una respuesta validada disponible. Puedes continuar trabajando manualmente.</p>';
- const section=(title,rows)=>rows.length?`<section><h3>${title}</h3><ul>${rows.map(t=>`<li>${escape(brandoPlainText(t))}</li>`).join('')}</ul></section>`:'';
- return `<p class="badge">${result.provider==='DEMO_FIXTURE'?'DEMO determinista · sin IA en vivo':'Asistencia estratégica · revisa con tu criterio'}</p><p>${escape(brandoPlainText(a.answer))}</p>
- ${section('Lo registrado',a.facts.map(f=>`${f.text} (Fuentes: ${f.referenceIds.map(id=>result.sources.findIndex(s=>s.id===id)+1).join(', ')})`))}${section('Hipótesis por validar',a.hypotheses)}${a.suggestions.length?`<section><h3>Sugerencias</h3><ul>${a.suggestions.map((text,i)=>`<li><p>${escape(brandoPlainText(text))}</p>${result.suggestionTickets?.[i]?brandoSuggestionButtons(result.suggestionTickets[i],brandoTicketExpired(result.suggestionTickets[i],result.receivedAt??Date.now())):''}</li>`).join('')}</ul><p class="hint">Aceptar o modificar lleva a tu revisión antes de cambiar estrategia.</p></section>`:''}${section('Preguntas para ti',a.questions)}${section('Límites de esta respuesta',a.limitations)}
- ${result.omitted.length?`<p class="review">Contexto parcial: se omitieron ${result.omitted.length} elementos por espacio. La respuesta no es exhaustiva.</p>`:''}
+ const list=rows=>`<ul>${rows.map(t=>`<li>${escape(brandoPlainText(t))}</li>`).join('')}</ul>`;
+ const section=(title,rows)=>rows.length?`<section><h3>${title}</h3>${list(rows)}</section>`:'';
+ const proposals=a.suggestions.length?`<section class="brando-proposals" aria-label="Alternativas propuestas">${a.suggestions.map((text,i)=>`<article class="brando-proposal"><p class="brando-proposal-label">Alternativa propuesta <span class="proposal-chip">Sin aprobar</span></p><p class="brando-proposal-text"><strong>${escape(brandoPlainText(text))}</strong></p>${result.suggestionTickets?.[i]?brandoSuggestionButtons(result.suggestionTickets[i],brandoTicketExpired(result.suggestionTickets[i],result.receivedAt??Date.now())):''}</article>`).join('')}</section>`:'';
+ const consider=[...a.hypotheses.map(h=>`Por validar: ${h}`),...a.limitations,...(result.omitted.length?[`Contexto parcial: se omitieron ${result.omitted.length} elementos por espacio; la respuesta no es exhaustiva.`]:[])];
+ return `<p class="badge">${result.provider==='DEMO_FIXTURE'?'DEMO determinista · sin IA en vivo':'Asistencia estratégica · revisa con tu criterio'}</p>${proposals}
+ <section class="brando-why"><h3>${a.suggestions.length?'Por qué podría funcionar':'Respuesta'}</h3><p>${escape(brandoPlainText(a.answer))}</p></section>
+ ${consider.length?`<section class="brando-consider"><h3>Qué conviene considerar</h3>${list(consider)}</section>`:''}${section('Preguntas para ti',a.questions)}
+ <details class="brando-more"><summary><span>Lo registrado, atención y fuentes</span></summary>${section('Lo registrado',a.facts.map(f=>`${f.text} (Fuentes: ${f.referenceIds.map(id=>result.sources.findIndex(s=>s.id===id)+1).join(', ')})`))}
  <section><h3>Qué necesita atención</h3>${result.attention.length?result.attention.map(i=>`<p>${escape(labels[i.module]??'Contexto y aprendizaje')}: ${escape(i.label)} <button type="button" class="tertiary" data-brando-module="${escape(i.module??'')}">Abrir</button></p>`).join(''):'<p>Sin pendientes en las categorías consultadas. Esto no certifica la calidad de la estrategia.</p>'}</section>
- ${result.sources.length?`<section><h3>Fuentes consultadas</h3>${result.sources.map((source,index)=>`<details><summary>Fuente ${index+1} · ${escape(brandoSourceLabel(source.type))}</summary>${brandoSourceHtml(source)}</details>`).join('')}</section>`:''}`;
+ ${result.sources.length?`<section><h3>Fuentes consultadas</h3>${result.sources.map((source,index)=>`<details><summary>Fuente ${index+1} · ${escape(brandoSourceLabel(source.type))}</summary>${brandoSourceHtml(source)}</details>`).join('')}</section>`:''}</details>`;
 }
 
 function brandoSourceLabel(type){return {Decision:'Decisión registrada',DecisionHistory:'Versión anterior',Evidence:'Evidencia',Hypothesis:'Hipótesis',Learning:'Aprendizaje aceptado',UserInput:'Información aportada',Brand:'Marca',OpenQuestion:'Pregunta abierta',Experiment:'Experimento',Signal:'Señal'}[type]??'Contexto registrado';}

@@ -21,12 +21,15 @@ export const runtimeAssets={
   '/product-context.css':['src/transport/public/product-context.css','text/css; charset=utf-8'],
   '/product-views.css':['src/transport/public/product-views.css','text/css; charset=utf-8'],
   '/product-responsive.css':['src/transport/public/product-responsive.css','text/css; charset=utf-8'],
+  '/product-workspace.css':['src/transport/public/product-workspace.css','text/css; charset=utf-8'],
   '/tokens.css':['design/brandopolis-ui/tokens/brandopolis.tokens.css','text/css; charset=utf-8'],
   // Identity: byte-identical copies of the canonical Brand Master (design/brandopolis-ui/brand-master/
   // final-canonical-2026-09-25); tests/brand-runtime.test.ts fails on any drift.
   '/brand/logo.svg':['public/brand/logo/brandopolis-logo-horizontal.svg','image/svg+xml'],
   '/brand/logo-premium.webp':['public/brand/logo/brandopolis-logo-premium-660.webp','image/webp'],
   '/brand/symbol.svg':['public/brand/symbols/brandopolis-symbol.svg','image/svg+xml'],
+  // Owner rule 2026-10-08: visible product surfaces use the CANONICAL PREMIUM symbol (Brand Master 03_premium), never the flat 2D one.
+  '/brand/symbol-premium.webp':['design/brandopolis-ui/brand-master/final-canonical-2026-09-25/03_premium/brandopolis-symbol-premium-512.webp','image/webp'],
   '/favicon.ico':['public/brand/ui/favicon.ico','image/x-icon'],
   '/brand/favicon-32.png':['public/brand/ui/favicon-32.png','image/png'],
   '/brand/apple-touch-icon.png':['public/brand/ui/apple-touch-icon.png','image/png'],

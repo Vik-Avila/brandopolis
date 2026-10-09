@@ -26,3 +26,9 @@ Work below is **not** required to start Phase 10 (real testers). Listing it here
 | Commercial | Billing, subscriptions, CRM | Not needed for testers. |
 | Quality | Formal WCAG audit, browsers beyond Chrome | Keyboard, focus, contrast and reduced motion verified by automated checks. |
 | Hand-off | Completion hand-off for the document-claims review in Brand Context | Found 2026-09-29 while fixing the missing hand-off in Entorno competitivo. Document claims share the same resolvable review shape (CANDIDATE/ACCEPTED/REJECTED) and also offer no next step, but their completion is ambiguous: processing another document reopens it, so a «fase completada» panel there is a product decision, not a defect fix. `showPhaseHandoff()` is already reusable if that decision is taken. The learning loop has no comparable canonical completed state. |
+
+## 2026-10-08 · «Próximamente» (ADR-0027)
+
+Productos y servicios (portafolio/ofertas), Plan de marketing (activación) y Resultados (medición) aparecen en la
+navegación sólo como «Próximamente». Siguen diferidos: sin modelo, pantalla, formularios, conectores ni datos.
+Corresponden a decisiones futuras (puente Fase 3–4, Fase 4 y Fase 5) que requieren aprobación expresa.

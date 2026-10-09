@@ -8,8 +8,8 @@ const base=():ValidationState=>({questions:[{id:'q-pe',module:'Priority Experime
  experimentPlans:[{experimentId:'x1',decisionId:'d-pe',objective:'Medir regreso',successCriteria:'Tres de cinco',startedAt:'2026-10-01T00:00:00.000Z'}],signals:[],learnings:[],audit:[],now:Date.parse('2026-10-07T00:00:00.000Z')});
 
 describe('ADR-0026 · validation rules',()=>{
- it('hypothesis state machine is canonical and resolved states are final',()=>{
-  expect(HYPOTHESIS_TRANSITIONS).toEqual({UNTESTED:['TESTING'],TESTING:['SUPPORTED','WEAKENED','REJECTED'],SUPPORTED:[],WEAKENED:[],REJECTED:[]});
+ it('hypothesis state machine: supported and weakened can be retested, rejected is final',()=>{
+  expect(HYPOTHESIS_TRANSITIONS).toEqual({UNTESTED:['TESTING'],TESTING:['SUPPORTED','WEAKENED','REJECTED'],SUPPORTED:['TESTING'],WEAKENED:['TESTING'],REJECTED:[]});
  });
  it('plan quality is deterministic guidance',()=>{
   expect(experimentPlanQuality({hypothesisId:'h',objective:'Medir regreso',intendedSignal:'Agencias que regresan cada semana',successCriteria:'Tres de cinco',disconfirmingCriteria:'Menos de dos',method:'Uso'})).toEqual({result:'READY',findings:[]});

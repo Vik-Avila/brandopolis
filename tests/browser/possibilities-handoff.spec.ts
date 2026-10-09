@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { navigate } from '../workspace-nav.js';
 import { readFileSync } from 'node:fs';
 
 // Production regressions this file exists for:
@@ -15,12 +16,6 @@ import { readFileSync } from 'node:fs';
 // Every journey section of a new brand: Objetivo and Arena first (ADR-0021), Promesa before Mensaje (ADR-0022), GTM (ADR-0023), Experimento prioritario last (ADR-0024).
 const PHASES = ['01 Objetivo estratégico', '02 Arena de mercado', '03 Cliente principal', '04 Modelo de valor', '05 Posicionamiento', '06 Promesa de marca', '07 Mensaje principal', '08 Prioridad de lanzamiento', '09 Experimento prioritario'];
 
-async function navigate(page: Page, name: string) {
-  await page.locator('#workspace').waitFor();
-  const menu = page.getByRole('button', { name: 'Abrir navegación', exact: true });
-  if (await menu.isVisible()) await menu.click();
-  await page.getByRole('button', { name, exact: true }).click();
-}
 
 async function signIn(page: Page, brand: string) {
   const session = JSON.parse(readFileSync(process.env.BRANDOPOLIS_SESSION_FILE ?? '.local/demo-session.json', 'utf8'));

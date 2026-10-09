@@ -8,6 +8,7 @@ const sha=(p:string)=>createHash('sha256').update(readFileSync(p)).digest('hex')
 const canonical:Record<string,string>={
   '/brand/logo.svg':`${master}/01_master/brandopolis-logo-horizontal-master.svg`,
   '/brand/symbol.svg':`${master}/01_master/brandopolis-symbol-master.svg`,
+  '/brand/symbol-premium.webp':`${master}/03_premium/brandopolis-symbol-premium-512.webp`,
   '/favicon.ico':`${master}/02_runtime/favicon/favicon.ico`,
   '/brand/favicon-32.png':`${master}/02_runtime/favicon/favicon-32.png`,
   '/brand/apple-touch-icon.png':`${master}/02_runtime/app-icons/app-icon-180.png`,
@@ -23,7 +24,10 @@ describe('canonical brand runtime',()=>{
     expect(statSync(file).size).toBeLessThan(25000);
     const html=readFileSync('src/transport/public/index.html','utf8');
     expect(html).toContain('src="/brand/logo-premium.webp" alt="Brandopolis" width="660" height="151"');
-    expect(html).toContain('srcset="/brand/symbol.svg"');
+    // Owner rule 2026-10-08: no visible surface uses the flat-looking vector master; the canonical premium symbol is used.
+    expect(html).toContain('srcset="/brand/symbol-premium.webp"');
+    expect(html).not.toMatch(/(src|srcset)="\/brand\/symbol\.svg"/);
+    expect(readFileSync('src/transport/public/product-views.js','utf8')).not.toContain('/brand/symbol.svg');
     expect(html).not.toContain('src="/brand/logo.svg"');
   });
   it('every identity route serves a byte-identical copy of the Brand Master',()=>{

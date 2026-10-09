@@ -9,18 +9,30 @@ import { migrateDatabase } from './migrate.js';
 import { createCompetitionDemo } from './competition-demo.js';
 import { startServer } from '../src/transport/server.js';
 import { readiness } from '../src/persistence/readiness.js';
+import { ModelGateway } from '../src/domain/analysis.js';
+import { AnthropicProvider,PILOT_PROMPT_VERSION } from '../src/transport/anthropic-provider.js';
 
 const profile=competitionProfile(process.argv.includes('--isolated'));
+// ADR-0026 · local live AI: explicit opt-in only. Same DEMO data class, local DB and 127.0.0.1; only the provider changes.
+const liveAi=process.argv.includes('--live-ai');
 let ownedDb:Awaited<ReturnType<typeof startLocalDb>>|undefined,app:Awaited<ReturnType<typeof startServer>>|undefined,connection:ReturnType<typeof connect>|undefined;
 let closing=false;
 async function stop(){if(closing)return;closing=true;await app?.stop();await connection?.pool.end();connection=undefined;if(ownedDb)await stopLocalDb(ownedDb);}
 async function portAvailable(port:number){const probe=createServer();try{await new Promise<void>((resolve,reject)=>{probe.once('error',reject);probe.listen(port,'127.0.0.1',resolve);});return true;}catch{return false;}finally{if(probe.listening)await new Promise<void>(resolve=>probe.close(()=>resolve()));}}
 try {
   checkRuntime();
+  let gateway:ModelGateway|undefined;
+  if(liveAi){
+    const key=process.env.ANTHROPIC_API_KEY?.trim(),model=process.env.ANTHROPIC_MODEL?.trim();
+    // Fail closed: never fall back silently to the DEMO fixture when live AI was requested.
+    if(!key||!model)throw new CompetitionError('Live AI local requiere ANTHROPIC_API_KEY y ANTHROPIC_MODEL en el entorno temporal.');
+    gateway=new ModelGateway(new AnthropicProvider(key,model),PILOT_PROMPT_VERSION,40000);
+  }
   const existingServer=!(await portAvailable(profile.port));
   if(existingServer){
     let healthy=false;try{const r=await fetch(`http://127.0.0.1:${profile.port}/health`,{signal:AbortSignal.timeout(2500)}),h=await r.json();healthy=r.ok&&h.application==='brandopolis-competition'&&h.protocol==='rc1';}catch{/* Never kill an unknown process. */}
     if(!healthy)throw new CompetitionError(`Puerto ${profile.port} ocupado por una instancia incompatible. Cierra esa instancia o usa --isolated.`);
+    if(liveAi)throw new CompetitionError(`Ya hay una DEMO en el puerto ${profile.port}. Ciérrala para iniciar la DEMO con IA en vivo.`);
   }
   let url=localCompetitionUrl(profile),reachable=false;
   if(url){connection=connect(url);try{await connection.pool.query('select 1');reachable=true;}catch{await connection.pool.end();connection=undefined;}}
@@ -35,7 +47,8 @@ try {
   if(existsSync(profile.demoFile))try{const saved=JSON.parse(readFileSync(profile.demoFile,'utf8'));const brands=await engine.listBrands(identity.token);if(brands.some(b=>b.id===saved.brandId&&b.dataClass==='DEMO'))demo=saved;}catch{/* Inaccessible demos are never reused. */}
   if(!demo)demo=await createCompetitionDemo(connection!.db,profile);
   await connection!.pool.end();connection=undefined;
-  if(!existingServer)app=await startServer(url!,profile.port);
+  if(!existingServer)app=await startServer(url!,profile.port,gateway);
+  if(liveAi)console.log(`DEMO LOCAL · IA EN VIVO · proveedor ANTHROPIC · modelo ${process.env.ANTHROPIC_MODEL!.trim()}. Sólo las consultas explícitas se envían al proveedor.`);
   console.log(`DEMO lista: http://127.0.0.1:${profile.port}/?brand=${encodeURIComponent(demo.brandId)}&module=Primary%20Customer`);
   console.log(`Acceso: copia sólo el campo token del archivo privado ${profile.sessionFile}. No lo compartas.`);
   console.log('Guía: docs/15-handoff/competition-demo-runbook.md. Para otra marca: pnpm demo:competition'+(process.argv.includes('--isolated')?' --isolated':''));

@@ -1,3 +1,17 @@
+## 2026-10-09 · Phase 3 — Validation & Learning Engine: COMPLETE
+
+- Progreso clicable, revisión con causa antes de las opciones, Brando con la alternativa primero, Validación opcional en cuatro pasos, fondos más claros, Mapa con tarjetas blancas.
+- Corregido el selector «Aprendizaje aceptado que lo sustenta» (estado sin aprendizaje elegible).
+- ADR-0029: eliminación segura de marcas (migración 0015).
+- Gates en verde (unit 346, E2E 202/0 fallos, Brando 42, visual 10, PILOT 10, Foundation 0); seguridad sin HIGH/MEDIUM. Live AI final PASS (A–E, 2 llamadas reales, claude-opus-5-5). Integrada en main vía PR #9; sin deploy. Fase 4 lista, no iniciada.
+
+## 2026-10-08 · Phase 3 — refinamiento UX/UI + Brand Book (candidato local, revisión humana pendiente)
+
+- ADR-0027: Strategic Workspace (Inicio, Estrategia, Próximamente, Validación, Mi aprendizaje, Mapa, Ayuda; rail unificado; Modo enfoque) y modo local de IA en vivo.
+- ADR-0028: escala tipográfica y espaciado como tokens, paleta cálida, símbolo premium canónico, línea vertical de las nueve decisiones, Brando como tarjeta auxiliar después de la tarjeta principal.
+- Dos documentos A4 editoriales: Mapa estratégico ejecutivo (rediseñado) y Brand Book integral (nuevo, `GET /api/brandbook/pdf`) con índice de páginas reales, marcadores, capítulos adaptativos y naturaleza de cada afirmación; sin IA, sin reflexiones, sin otras marcas.
+- Gates del agente en verde (detalle en SESSION_STATE). LIVE AI: NOT RUN (sin clave en el entorno del agente). Sin commit, push, merge ni deploy; Phase 4 no iniciada.
+
 ## 2026-10-07 · Phase 3 — Validation & Learning Engine (candidato, revisión humana pendiente)
 
 - ADR-0026: hipótesis con revisión humana, plan de experimento con criterio que refuta y calidad, señales con dirección.

@@ -264,29 +264,34 @@ describe('production verification hotfix', () => {
       expect(app, stage).toContain(stage);
   });
 
-  it('places Entorno competitivo under strategic preparation without making it a decision', () => {
+  it('keeps the owner-approved navigation: Inicio, nine decisions, Validación, «Próximamente» and secondary access (ADR-0027/0029)', () => {
     // The public header has its own <nav>, so the closing tag must be found after this one opens.
     const navStart = html.indexOf('<nav id="journey"');
     const nav = html.slice(navStart, html.indexOf('</nav>', navStart));
-    const groups = [...nav.matchAll(/<p class="nav-group">([^<]+)<\/p>/g)].map(m => m[1]);
-    expect(groups).toEqual(['Preparación estratégica', 'Estrategia', 'Contexto y aprendizaje', 'Práctica y visión']);
-    // Research informs the four decisions, so it sits above them.
-    expect(nav.indexOf('Preparación estratégica')).toBeLessThan(nav.indexOf('id="competitive-context"'));
-    expect(nav.indexOf('id="competitive-context"')).toBeLessThan(nav.indexOf('>Estrategia<'));
-    // It is NOT a decision: no number, no data-module. The Decision Spine has exactly the nine journey
-    // sections (ADR-0021 Objetivo and Arena first; ADR-0022 Promesa before Mensaje; ADR-0023 GTM; ADR-0024 Experimento last), in canonical order.
-    expect([...nav.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(['Strategic Objective', 'Market Arena', 'Primary Customer', 'Value Mechanism', 'Positioning', 'Brand Promise', 'Core Message', 'GTM Priority', 'Priority Experiment']);
-    const competitive = nav.slice(nav.indexOf('id="competitive-context"'), nav.indexOf('</button>', nav.indexOf('id="competitive-context"')));
-    expect(competitive).not.toMatch(/<span>\d/);
-    expect(competitive).not.toContain('data-module');
-    // Every item survives the move, in its new home.
-    const learning = nav.slice(nav.indexOf('>Contexto y aprendizaje<'), nav.indexOf('>Práctica y visión<'));
-    expect(learning).toContain('id="brand-context"');
-    expect(learning).toContain('id="learning-loop"');
-    expect(learning).not.toContain('id="competitive-context"');
-    const practice = nav.slice(nav.indexOf('>Práctica y visión<'));
-    expect(practice).toContain('id="practice"');
-    expect(practice).toContain('id="blueprint"');
+    const labels = [...nav.matchAll(/<span class="nav-label">([^<]+)/g)].map(m => m[1]);
+    expect(labels).toEqual(['Inicio', 'Estrategia', 'Productos y servicios', 'Validación', 'Plan de marketing', 'Resultados', 'Mi aprendizaje', 'Mapa estratégico', 'Configuración de marca', 'Ayuda']);
+    // The Decision Spine keeps exactly the nine journey sections, in canonical order, inside the Estrategia group.
+    const group = nav.slice(nav.indexOf('id="strategy-list"'), nav.indexOf('</div></div>', nav.indexOf('id="strategy-list"')));
+    expect([...group.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(['Strategic Objective', 'Market Arena', 'Primary Customer', 'Value Mechanism', 'Positioning', 'Brand Promise', 'Core Message', 'GTM Priority', 'Priority Experiment']);
+    expect(group).toContain('<span>02</span> Mercado objetivo');
+    expect(nav).not.toContain('Arena de mercado');
+    // «Próximamente» destinations are announced and disabled, never a navigation target.
+    const soon = [...nav.matchAll(/<button[^>]*data-soon="([^"]+)"[^>]*>/g)];
+    expect(soon.map(m => m[1])).toEqual(['products', 'marketing', 'results']);
+    for (const m of soon) { expect(m[0]).toContain('aria-disabled="true"'); expect(m[0]).not.toContain('data-module'); expect(m[0]).not.toMatch(/id="/); }
+    expect(nav.match(/Próximamente<\/span>/g)).toHaveLength(3);
+    // Entorno competitivo and Contexto estratégico are preparation and context, never decisions: they live in the
+    // rail's Contexto tool, with no number and no data-module.
+    const rail = html.slice(html.indexOf('id="rail-panel"'), html.indexOf('</aside></div></section></main>'));
+    for (const id of ['competitive-context', 'brand-context']) {
+      expect(nav).not.toContain(`id="${id}"`);
+      const button = rail.slice(rail.indexOf(`id="${id}"`), rail.indexOf('</button>', rail.indexOf(`id="${id}"`)));
+      expect(button).not.toMatch(/<span>\d/);
+      expect(button).not.toContain('data-module');
+    }
+    expect(nav).toContain('id="learning-loop"');
+    expect(nav.indexOf('id="practice"')).toBeGreaterThan(nav.indexOf('class="nav-divider"'));
+    expect(nav.indexOf('id="blueprint"')).toBeGreaterThan(nav.indexOf('id="practice"'));
   });
 
   it('mirrors one AI activity state beside the control that started it', () => {
@@ -343,19 +348,25 @@ describe('production verification hotfix', () => {
   });
 
   it('offers the Mapa estratégico as a downloaded document, not a navigation', () => {
-    expect(app).toContain('id="blueprint-pdf"');
+    expect(app).toContain("doc('blueprint-pdf','Mapa estratégico ejecutivo'");
+    expect(app).toContain("doc('brandbook-pdf','Brand Book integral'");
+    expect(app).toContain('id="${id}"');
     expect(app).toContain('>Descargar PDF<');
-    const handler = app.slice(app.indexOf("$('#blueprint-pdf')?.addEventListener"));
-    const body = handler.slice(0, 1400);
-    expect(body).toContain("button.textContent='Preparando tu mapa…'");
-    expect(body).toContain('/api/blueprint/pdf?brandId=');
+    // ADR-0028: the Mapa and the Brand Book share one download routine, each with its own endpoint and words.
+    expect(app).toContain("$('#blueprint-pdf')?.addEventListener('click',event=>downloadDocument(event.currentTarget,'blueprint'))");
+    expect(app).toContain("$('#brandbook-pdf')?.addEventListener('click',event=>downloadDocument(event.currentTarget,'brandbook'))");
+    expect(app).toContain("endpoint:'/api/blueprint/pdf',busy:'Preparando tu mapa…'");
+    expect(app).toContain("endpoint:'/api/brandbook/pdf',busy:'Preparando tu Brand Book…'");
+    const body = app.slice(app.indexOf('function downloadDocument('), app.indexOf('function downloadDocument(') + 1600);
+    expect(body).toContain('${spec.endpoint}?brandId=');
     expect(body).toContain("credentials:'same-origin'");
     // The participant stays in Brandopolis: a blob download, then the object URL is released.
     expect(body).toContain('URL.createObjectURL');
     expect(body).toContain('URL.revokeObjectURL');
     expect(body).toContain('link.download=');
     // Failure is safe and retryable, and never carries transport detail.
-    expect(body).toContain('No pudimos preparar tu mapa estratégico en este momento. Vuelve a intentarlo.');
+    expect(body).toContain('No pudimos preparar ${spec.noun} en este momento. Vuelve a intentarlo.');
+    expect(app).toContain("noun:'tu mapa estratégico'");
     expect(body).not.toContain('response.statusText');
   });
 
@@ -363,21 +374,22 @@ describe('production verification hotfix', () => {
     // «Blueprint» is industry jargon an entrepreneur should not need explained. One vocabulary is used
     // everywhere it is read, including the exported document.
     const nav = html.slice(html.indexOf('<nav id="journey"'), html.indexOf('</nav>', html.indexOf('<nav id="journey"')));
-    expect(nav).toContain('<button id="blueprint" class="secondary">Mapa estratégico</button>');
+    expect(nav).toContain('id="blueprint"');
+    expect(nav).toContain('<span class="nav-label">Mapa estratégico</span>');
     expect(nav, 'no jargon left in the navigation').not.toContain('Blueprint');
     expect(app).toContain("enterView('#blueprint','Mapa estratégico')");
     expect(app).toContain('Mapa estratégico · estrategia vigente');
     expect(app).toContain('Mapa estratégico descargado.');
     expect(pdf).toContain("pdf.text('Mapa estratégico de la marca'");
-    expect(pdf).toContain('Mapa estratégico · ${brand.name}');
-    // The heading that already read plainly is left alone.
-    expect(app).toContain('Una visión conectada de tu marca.');
+    expect(pdf).toContain('Mapa estratégico · ${k.brand.name}');
+    // Owner decision 2026-10-08 (view 08): the map reads as one plain sentence.
+    expect(app).toContain('Las decisiones que dan rumbo a tu marca, en un solo lugar.');
 
     // Routes, ids, endpoints and the download filename keep their technical names: no URL changes.
     expect(app).toContain("$('#blueprint')");
-    expect(app).toContain('/api/blueprint/pdf?brandId=');
+    expect(app).toContain("endpoint:'/api/blueprint/pdf'");
     expect(app).toContain("api(`/api/blueprint?brandId=");
-    expect(pdf).toContain('Brandopolis-Blueprint-${slug}');
+    expect(pdf).toContain('Brandopolis-Blueprint-${documentSlug(brandName)}');
   });
 
   it('ranks the right panel: heading, section label, section item, then status', () => {
@@ -465,7 +477,7 @@ describe('production verification hotfix', () => {
     // Semantic structure: one h1, labelled section, and the decorative mark is hidden from AT.
     expect(page.match(/<h1/g) ?? []).toHaveLength(1);
     expect(page).toContain('aria-labelledby="gratitude-title"');
-    expect(page).toContain('class="gratitude-mark" src="/brand/symbol.svg" alt=""');
+    expect(page).toContain('class="gratitude-mark" src="/brand/symbol-premium.webp" alt=""');
     // The canonical symbol is reused as-is; the Ribbon B is never redrawn here.
     expect(page).not.toContain('<svg');
     // No participant or survey data can appear on a page the server renders identically for everyone.

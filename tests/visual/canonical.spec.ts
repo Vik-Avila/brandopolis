@@ -60,9 +60,10 @@ test('canonical screenshots (desktop 1440×900, mobile 390×844)',async({browser
     await page.goto('/login');await page.waitForLoadState('networkidle');await shot(page,`login-${suffix}`);
     await page.goto('/request-access');await page.waitForLoadState('networkidle');await shot(page,`request-access-${suffix}`);
     await signIn(page,seeded.brand.id,'Primary Customer');
-    await page.getByRole('button',{name:suffix==='mobile'?'Abrir navegación':'Qué necesita atención',exact:true}).click();
-    if(suffix==='mobile')await page.getByRole('button',{name:'Qué necesita atención',exact:true}).click();
-    await expect(page.locator('.kpis')).toBeVisible();await shot(page,`m1-workspace-${suffix}`);
+    // ADR-0027: Inicio («Tu siguiente paso») replaces «Qué necesita atención».
+    if(suffix==='mobile')await page.getByRole('button',{name:'Abrir navegación',exact:true}).click();
+    await page.locator('#journey').getByRole('button',{name:'Inicio',exact:true}).click();
+    await expect(page.locator('.next-step')).toBeVisible();await shot(page,`m1-workspace-${suffix}`);
     await signIn(page,seeded.brand.id,'Primary Customer');
     if(suffix==='desktop')await shot(page,'decision-card-desktop');
     await page.getByText(/Historial · \d versiones/).click();await expect(page.locator('.history-item.is-current')).toBeVisible();await page.locator('details:has(.history-item)').scrollIntoViewIfNeeded();await shot(page,`history-${suffix}`);
@@ -71,7 +72,7 @@ test('canonical screenshots (desktop 1440×900, mobile 390×844)',async({browser
     await page.getByLabel('¿Por qué eliges esta opción?').fill('Revisión tras el cambio de cliente.');await shot(page,`m1-guided-review-${suffix}`);
     await page.getByRole('button',{name:'Cancelar',exact:true}).click();
     if(suffix==='mobile')await page.getByRole('button',{name:'Abrir navegación',exact:true}).click();
-    await page.getByRole('button',{name:'Mapa estratégico',exact:true}).click();await expect(page.locator('.blueprint-grid')).toBeVisible();await shot(page,`blueprint-${suffix}`);
+    await page.getByRole('button',{name:'Mapa estratégico',exact:true}).click();await expect(page.locator('.map-grid')).toBeVisible();await shot(page,`blueprint-${suffix}`);
     await context.close();
   }
 });

@@ -103,3 +103,11 @@ Crear `.venv` con `python -m venv .venv` e instalar sólo `requirements-foundati
 DB normal: `.local/postgres/data`; configuración privada: `.local/postgres/connection.json`; sesión y enlace: `.local/demo-session.json` y `.local/competition-demo.json`. Perfil aislado: los mismos elementos bajo `.local/rc1-smoke`. Son datos DEMO, no producción ni piloto.
 
 Para un respaldo físico coherente, apagar limpiamente PostgreSQL, confirmar que su puerto ya no escucha y copiar el directorio completo del perfil, incluidos data y connection.json, a almacenamiento privado junto con el SHA del checkout. No copiar data con PostgreSQL activo; no versionar contraseñas ni sesiones. Windows requiere permisos de carpeta privados: mode 0600 no sustituye ACL. No se automatizó restauración ni se ensayó recuperación desde backup; conservar el original y validar cualquier restore futuro en una copia aislada con la misma versión de PostgreSQL.
+
+## DEMO local con IA en vivo (ADR-0026, 2026-10-08)
+
+Opt-in explícito: `pnpm competition:start --isolated --live-ai`. Requiere `ANTHROPIC_API_KEY` y
+`ANTHROPIC_MODEL` en el entorno temporal de esa terminal (nunca en `.env`, archivos, git ni historial); si
+falta uno, no arranca. Sigue siendo DEMO local (127.0.0.1, base aislada); sin OIDC, PILOT ni producción.
+La interfaz muestra «DEMO LOCAL · IA EN VIVO» y sólo las acciones explícitas consultan al proveedor.
+Verificación técnica con la DEMO levantada: `pnpm demo:live-ai-smoke` (dos llamadas reales, datos sintéticos).

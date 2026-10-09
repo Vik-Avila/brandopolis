@@ -1,3 +1,64 @@
+## 2026-10-09 · PHASE 3 — VALIDATION & LEARNING ENGINE · COMPLETE (iteración 3 de 6)
+
+PHASE 3 COMPLETE · todos los gates en verde, incluido Live AI sobre el código final · integrada en `main` mediante
+el PR #9 (el SHA exacto del merge queda en GitHub). Producción sin cambios; Jury Production Freeze vigente.
+Roadmap: Fase 1 COMPLETE · Fase 2 COMPLETE · Fase 3 COMPLETE · Fase 4 READY TO START — NOT STARTED · Fases 5 y 6
+NOT STARTED.
+
+Implementado en este cierre (adenda de [ADR-0028](docs/14-decisions/ADR-0028.md) y
+[ADR-0029](docs/14-decisions/ADR-0029.md)): fondos más claros; progreso de Inicio clicable (nueve segmentos,
+mouse/teclado/touch); Inicio prioriza la estrategia sobre la validación opcional; coherencia con frase respaldada
+por el motor; revisión de decisiones afectadas con causa, decisión vigente y origen antes de las opciones; Brando
+con la alternativa primero, en negritas y «Sin aprobar»; Validación como camino opcional en cuatro pasos;
+**defecto del selector de aprendizaje corregido** (sin aprendizaje elegible ya no se muestra un selector vacío y
+deshabilitado: mensaje, causa y acción; con elegibles, elección explícita y detalle); Mapa con tarjetas blancas;
+**Configuración de marca → Zona de peligro → Eliminar marca** (ADMIN, nombre exacto, idempotente, transaccional,
+purga de archivos con FILES_PENDING y reintento; reflexiones y analítica conservadas y desvinculadas; migración
+0015 con relajación acotada de los triggers de historia sólo dentro de una eliminación registrada).
+Handoff: [PHASE4_HANDOFF](docs/15-handoff/PHASE4_HANDOFF.md).
+
+Gates sobre el código final (servidor de desarrollo 127.0.0.1:3007, base aislada propia 55438): typecheck PASS;
+lint PASS; pnpm test 16 archivos / 346 PASS; skills:check PASS; Brando browser 42/42; test:e2e completa
+202 PASS · 0 FAIL · 13 SKIP intencionales (repetida completa tras el último cambio, que fue sólo de prueba:
+navegación con «Configuración de marca»); test:visual 10 PASS + 1 SKIP preexistente (11 capturas canónicas
+regeneradas a propósito y sus hashes actualizados); test:pilot:e2e 10/10; Foundation 0 errores; validador UI PASS;
+validador de marca PASS; git diff --check limpio; escaneo de secretos limpio. Revisión de seguridad independiente
+del diff completo: 0 BLOCKER/HIGH/MEDIUM; LOW documentados en ADR-0029.
+LIVE AI sobre el código final: PASS. DEMO 127.0.0.1:3005 (`--live-ai`, base y sesión propias; clave introducida
+por el propietario en una ventana oculta, sólo en memoria del proceso), modelo `claude-opus-5-5` confirmado por la
+API de modelos de Anthropic; `pnpm demo:live-ai-ui` A–E PASS con 2 llamadas reales (generación de posibilidades y
+Brando B3), proveedor ANTHROPIC sin error, propuestas sin aprobar y ninguna estrategia modificada.
+Preflight GitHub: el repositorio no tiene workflows de Actions ni rulesets; producción no contiene las Fases 1 y 2
+aunque ya están en `main`, por lo que integrar en `main` no despliega automáticamente.
+
+## 2026-10-08 · PHASE 3 — REFINAMIENTO UX/UI + BRAND BOOK · candidata local
+
+PHASE 3 · LOCAL CANDIDATE · NOT RELEASE-READY (live AI gate y aprobación humana pendientes). Rama
+feat/phase3-validation-learning-engine sobre 9b656af, cambios sin commit. Sin push, sin merge, sin deploy, PR #9
+sin actualizar, Phase 4 no iniciada. Producción sin cambios; Jury Production Freeze vigente.
+
+Implementado: ADR-0026 (continuación: ciclo continuo de hipótesis, procedencia por prueba de un solo uso,
+revisión de aprendizajes con 409, reflexiones personales privadas · migración 0014, modo local `--live-ai`),
+[ADR-0027](docs/14-decisions/ADR-0027.md) (Strategic Workspace) y [ADR-0028](docs/14-decisions/ADR-0028.md)
+(tokens de tipografía/espaciado/paleta, símbolo premium canónico, línea vertical del recorrido, Brando como tarjeta
+auxiliar después de la tarjeta principal, Mapa estratégico ejecutivo rediseñado y Brand Book integral nuevo en
+`GET /api/brandbook/pdf`). Traspaso: [PHASE3_LOCAL_CANDIDATE_2026-10-08](docs/15-handoff/PHASE3_LOCAL_CANDIDATE_2026-10-08.md).
+
+Gates (salida real, servidor de desarrollo del agente en 127.0.0.1:3005 sobre la DB DEMO aislada; el 3001 del
+propietario no se tocó): typecheck PASS; lint PASS; pnpm test 16 archivos / 340 PASS (código final);
+skills:check PASS; Brando browser 32/42 en la pasada completa → causa: la tarjeta auxiliar dejó de nombrar su
+sección; corregido (la orientación vuelve a nombrarla) → 42/42 PASS sin tocar las pruebas; test:e2e completa
+174 PASS + 11 SKIP intencionales (antes de esa corrección de una línea de presentación) y re-ejecución de
+workspace/micro-hotfix/phase3 en los 5 viewports con el código final 96 PASS + 9 SKIP intencionales;
+test:visual 10 PASS + 1 SKIP preexistente (capturas canónicas regeneradas a propósito: 17 archivos, hashes
+actualizados en `specs/brand-assets.json`); test:pilot:e2e 10/10 PASS; Foundation 0 errores; validador UI PASS;
+validador de marca PASS; git diff --check limpio. QA de PDF: texto extraído y páginas renderizadas con pdf.js
+(escenarios A/B/C, índice con páginas reales, marcadores). Revisión de seguridad independiente de los
+documentos: sin hallazgos HIGH/MEDIUM; tres LOW corregidos (el Brand Book no registra `blueprint_viewed`,
+límites en el decodificador PNG, hipótesis rechazadas en apartado propio).
+LIVE AI: NOT RUN (no hay `ANTHROPIC_API_KEY` ni `ANTHROPIC_MODEL` en el entorno del agente; requiere que el
+propietario arranque `--live-ai`). Commit local pendiente de ese gate y de la aprobación humana.
+
 ## 2026-10-07 · PHASE 3 — VALIDATION & LEARNING ENGINE · candidato
 
 PHASE 3 — VALIDATION & LEARNING ENGINE · IMPLEMENTATION COMPLETE · AUTOMATED VALIDATION COMPLETE ·

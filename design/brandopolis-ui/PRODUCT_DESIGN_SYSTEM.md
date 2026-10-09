@@ -24,6 +24,7 @@ Premium, editorial, calm, warm, precise B2B strategy software. Never an admin pa
 | Product shell | `product-shell.css` | Subtle (header, sidebar) |
 | Decision, context, views | `product-decision.css`, `product-context.css`, `product-views.css` | Solid / near-solid for dense content |
 | Responsive + motion | `product-responsive.css` | — |
+| Strategic Workspace (ADR-0027) | `product-workspace.css` (loaded last) | Subtle (header, rail) / solid (content) |
 
 One responsive block per breakpoint (≥1500, ≤1500, ≤1400, ≤1279 drawer navigation, ≤1000 single column, portrait tablet 768–1023, ≤767 phone), then a single `prefers-reduced-motion` block.
 
@@ -176,3 +177,65 @@ conserva 44px. Sin nuevos assets, tokens ni animaciones.
   también en «Qué necesita atención».
 - Calidad de plan (`.plan-quality`), estado de hipótesis (`.hypothesis-card`) y dirección de señal con
   insignia y palabra. Sin nuevos tokens, assets ni archivos de runtime.
+
+## Strategic Workspace · ADR-0027 (2026-10-08)
+
+Applies the owner-approved views 04–09 (`.local/phase3-ux-references/…`, not versioned). Layer: `product-workspace.css`.
+
+- **Cabecera:** logo canónico · selector de marca · insignia de modo (DEMO LOCAL / DEMO LOCAL · IA EN VIVO / PILOT) ·
+  Nueva marca · Salir · presencia de Brando (isotipo 48px, «Brando», «Tu copiloto estratégico», «Consultar»,
+  borde `--bp-brando-emerald`). En < 1001px la presencia baja al inicio del contenido.
+- **Navegación:** «Mi marca» + control «Contraer navegación». Iconos de trazo 24px (sprite `#i-*` en
+  `index.html`, mismo estilo que los pilares públicos): casa Inicio, diana Estrategia, caja Productos y servicios,
+  matraz Validación, megáfono Plan de marketing, barras Resultados, brote Mi aprendizaje, mapa Mapa estratégico,
+  ayuda Ayuda. Un icono por concepto. Plegada: sólo iconos con tooltip (hover y foco) y el control de apertura;
+  la decisión activa se indica en el icono de Estrategia. «Próximamente»: píldora bajo el nombre, `aria-disabled`.
+- **Rail derecho:** tira de iconos (abrir/contraer, Brando con su isotipo, Contexto, Atención con punto, Historial)
+  y un solo panel de 392px. Brando se acopla al panel (no modal) en escritorio. Ambos laterales plegados = «Modo
+  enfoque» (indicador en palabras).
+- **Titulares:** (sustituido por la escala editorial de ADR-0028, abajo) serif para el título de vista y la bajada; controles en
+  sans ≥ 14px. Tarjeta principal con radio 20px, sin anidar tarjetas dentro de tarjetas.
+- **Estados:** progreso de 9 segmentos (verde definida, champagne en revisión); «Requiere tu decisión» (alerta
+  ámbar) frente a «Observación» (info azul) siempre con palabra, nunca sólo color; chip «Sin aprobar» para
+  propuestas de IA.
+- **Responsive:** sin overflow horizontal en 360–1920px (matriz verificada); en móvil la navegación y las
+  herramientas son drawers con foco contenido, Escape y retorno de foco.
+
+## Editorial refinement · ADR-0028 (2026-10-08)
+
+Bloque final de `product-workspace.css` («Editorial refinement»). Prioridad de diseño: 1366×768.
+
+- **Escala tipográfica (tokens):** `--ws-fs-screen` 30–42px (título de pantalla) · `--ws-fs-decision` 26–34px
+  (título de decisión) · `--ws-fs-card` 18–24px (encabezado de tarjeta) · `--ws-fs-lead` 16–19px ·
+  `--ws-fs-body` 15.5px (interfaz) · `--ws-fs-meta` 13.5px (ayuda y metadatos).
+- **Espaciado:** `--ws-s1..s7` = 4 · 8 · 12 · 16 · 20 · 24 · 32px. Tarjetas compactas en todas las vistas.
+- **Superficies:** `--ws-surface #FFFDF9`, `--ws-surface-soft #FBF8F2`, `--ws-surface-sunk #F5F1E8`,
+  `--ws-select #F0ECE2`, `--ws-human-soft #F3F6F1`; líneas `--ws-line #E7E2D6` / `--ws-line-strong #D6CFBF`.
+  Sin blanco puro general. El verde se reserva para acción, selección y decisión humana. Contraste WCAG AA.
+- **Jerarquía de decisión:** título → pregunta → tarjeta principal → tarjeta auxiliar de Brando
+  (`.brando-section.brando-aux`: isotipo 40px, una línea, un CTA «Explorar con Brando», orientación en
+  desplegable, borde izquierdo `--bp-brando-emerald`) → contexto y conexiones. La vista no tiene tarjeta
+  contenedora exterior.
+- **Logotipo:** símbolo premium canónico (`/brand/symbol-premium.webp`) en cabecera móvil, navegación, pie e
+  Inicio; nunca el vector plano `symbol.svg` en la interfaz.
+- **Recorrido:** `#journey .strategy-list::before`, línea vertical de 1px que une los nueve nodos; nodo definido
+  (verde suave), actual (anillo esmeralda), atención (champagne), pendiente (neutro).
+- **Documentos para compartir:** en Mapa estratégico, dos tarjetas (`.map-document`) con nombre, propósito y
+  «Descargar PDF»: Mapa estratégico ejecutivo y Brand Book integral. Los PDF usan el lenguaje editorial de
+  `src/application/editorial-kit.ts` (serif Times para titulares, Helvetica para texto, A4).
+
+## Phase 3 closing pass · ADR-0028 addendum and ADR-0029 (2026-10-09)
+
+- **Superficies más claras:** `--ws-page #FCFAF6` (página), `--ws-panel #FAF8F3 → --ws-panel-end #F7F4EE` (panel
+  izquierdo); rail sobre la misma base. Sin blanco puro general; el blanco `#FFFFFF` sólo en las nueve tarjetas del
+  Mapa estratégico (`.map-cell`: borde `--ws-line`, sombra perimetral sutil, radio 14px).
+- **Progreso de Inicio:** `.progress-segments button.segment` (área táctil ampliada con `::before`), tooltip
+  `.segment-tip` fuera del flujo (`display:none`) salvo en hover y foco, para no ensanchar la página en móvil.
+- **Revisión:** `.review-brief` (título con la causa, `.review-tip`, decisión vigente, por qué, `.review-origin-item`
+  antes → ahora) y después «Qué puedes hacer».
+- **Brando:** `.brando-proposal` (etiqueta «Alternativa propuesta» + chip «Sin aprobar», texto en negritas),
+  `.brando-why`, `.brando-consider`, `.brando-more` (desplegable).
+- **Validación:** `.validation-path` / `.validation-path-step` (cuatro pasos; no confundir con `.validation-steps`
+  de «Siguiente validación recomendada»), `.learning-missing` para el estado sin aprendizaje elegible.
+- **Configuración de marca:** `.settings-card` y `.danger-zone` (borde y fondo rojizos suaves, nunca verde);
+  `button.danger` deshabilitado hasta escribir el nombre exacto.

@@ -2,6 +2,7 @@ import { it,expect } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { and,eq } from 'drizzle-orm';
 import { Engine } from '../src/application/engine.js';
+import { BrandoAssistance } from '../src/domain/brando-suggestions.js';
 import { seedIdentity } from '../scripts/seed.js';
 import type { connect } from '../src/persistence/database.js';
 import * as t from '../src/persistence/schema.js';
@@ -45,6 +46,7 @@ export function validationCases(connection:()=>ReturnType<typeof connect>){
   await expect(review(hypothesis.id,'UNTESTED','SUPPORTED',learning.id),'no skipping TESTING').rejects.toMatchObject({code:'CONFLICT'});
   await expect(review(hypothesis.id,'TESTING','TESTING'),'stale expected status').rejects.toMatchObject({code:'CONFLICT'});
   await expect(review(hypothesis.id,'UNTESTED','TESTING',null,randomUUID(),'   '),'rationale required').rejects.toMatchObject({code:'INVALID'});
+  await expect(review(hypothesis.id,'UNTESTED','TESTING',learning.id),'a move to TESTING never carries a learning').rejects.toMatchObject({code:'INVALID'});
   const key=randomUUID();
   const first=await review(hypothesis.id,'UNTESTED','TESTING',null,key);
   expect(await review(hypothesis.id,'UNTESTED','TESTING',null,key),'exact replay returns the same result').toEqual(first);
@@ -58,7 +60,7 @@ export function validationCases(connection:()=>ReturnType<typeof connect>){
   await expect(engine.reviewHypothesis(foreign.token,brand.id,{hypothesisId:String(hypothesis.id),expectedStatus:'TESTING',status:'SUPPORTED',rationale:'x',learningId:String(learning.id),idempotencyKey:randomUUID()})).rejects.toMatchObject({code:'NOT_FOUND'});
   const result=await review(hypothesis.id,'TESTING','SUPPORTED',learning.id);
   expect(result).toMatchObject({hypothesis:{status:'SUPPORTED'},affectedDecisions:[],strategyChanged:false});
-  await expect(review(hypothesis.id,'SUPPORTED','REJECTED',learning.id),'resolved states are final').rejects.toMatchObject({code:'CONFLICT'});
+  await expect(review(hypothesis.id,'SUPPORTED','REJECTED',learning.id),'a supported hypothesis is only reopened by retesting').rejects.toMatchObject({code:'CONFLICT'});
   const audits=(await db.select().from(t.audits).where(eq(t.audits.brandId,brand.id))).filter(a=>a.operation.startsWith('HYPOTHESIS_'));
   expect(audits.map(a=>a.operation).sort()).toEqual(['HYPOTHESIS_SUPPORTED','HYPOTHESIS_TESTING','HYPOTHESIS_TESTING']);
   expect(audits.every(a=>a.actorUserId===who.userId)).toBe(true);
@@ -105,28 +107,119 @@ export function validationCases(connection:()=>ReturnType<typeof connect>){
   expect(c.validation.signalBalance[String(experiment.id)]).toEqual({expected:1,contrary:0,ambiguous:0,unclassified:0});
   const learning=await engine.createLearningObject(who.token,brand.id,'learning',{signalIds:[signal.id],interpretation:'Hay recomendación',limitations:['Un caso']});
   expect(learning.origin).toBe('MANUAL');
-  // Provenance is server-authoritative: a client-declared origin is ignored, assistance needs a real consult.
+  // Provenance is server-authoritative: a client-declared origin or flag is ignored; only a proof counts (VAL-011).
   const forged=await engine.createLearningObject(who.token,brand.id,'learning',{signalIds:[signal.id],interpretation:'Forjado',limitations:['x'],origin:'BRANDO_ASSISTED'});
   expect(forged.origin).toBe('MANUAL');
   const claimed=await engine.createLearningObject(who.token,brand.id,'learning',{signalIds:[signal.id],interpretation:'Sin consulta',limitations:['x'],brandoAssisted:true});
   expect(claimed.origin,'no Brando consult was recorded').toBe('MANUAL');
   await engine.askBrando(who.token,brand.id,'Ayúdame a interpretar',null);
   const assisted=await engine.createLearningObject(who.token,brand.id,'learning',{signalIds:[signal.id],interpretation:'Con consulta',limitations:['x'],brandoAssisted:true});
-  expect(assisted.origin).toBe('BRANDO_ASSISTED');
+  expect(assisted.origin,'a recent consult without proof is not provenance').toBe('MANUAL');
   for(const id of [forged.id,claimed.id,assisted.id]){await engine.transitionLearningObject(who.token,brand.id,'learning',String(id),'CANDIDATE','REVIEWED');await engine.transitionLearningObject(who.token,brand.id,'learning',String(id),'REVIEWED','REJECTED','Prueba de procedencia');}
   c=await ctx();
   expect(c.validation.nextValidation[0],'review what you already learned first').toEqual({kind:'REVIEW_LEARNING',ref:learning.id,module:null});
-  const revised=await engine.reviseLearning(who.token,brand.id,String(learning.id),'CANDIDATE',{interpretation:'Hay una recomendación aislada',alternativeExplanations:['Amistad previa']});
+  await expect(engine.reviseLearning(who.token,brand.id,String(learning.id),'CANDIDATE',{interpretation:'x'},{}),'the person states what they saw').rejects.toMatchObject({code:'INVALID'});
+  await expect(engine.reviseLearning(who.token,brand.id,String(learning.id),'CANDIDATE',{interpretation:'x'},{interpretation:'Otra cosa'}),'a concurrent edit is a 409, never an overwrite').rejects.toMatchObject({code:'CONFLICT'});
+  const revised=await engine.reviseLearning(who.token,brand.id,String(learning.id),'CANDIDATE',{interpretation:'Hay una recomendación aislada',alternativeExplanations:['Amistad previa']},{interpretation:'Hay recomendación',alternativeExplanations:undefined});
   expect(revised).toMatchObject({status:'CANDIDATE',interpretation:'Hay una recomendación aislada'});
-  await expect(engine.reviseLearning(who.token,brand.id,String(learning.id),'CANDIDATE',{status:'ACCEPTED'}),'status is never edited').rejects.toMatchObject({code:'INVALID'});
-  await expect(engine.reviseLearning(who.token,brand.id,String(learning.id),'REVIEWED',{interpretation:'x'})).rejects.toMatchObject({code:'CONFLICT'});
+  await expect(engine.reviseLearning(who.token,brand.id,String(learning.id),'CANDIDATE',{status:'ACCEPTED'},{status:'CANDIDATE'}),'status is never edited').rejects.toMatchObject({code:'INVALID'});
+  await expect(engine.reviseLearning(who.token,brand.id,String(learning.id),'REVIEWED',{interpretation:'x'},{interpretation:'Hay una recomendación aislada'})).rejects.toMatchObject({code:'CONFLICT'});
+  // Editing a REVIEWED learning reopens its review: a stale acceptance of the old text is a 409.
+  await engine.transitionLearningObject(who.token,brand.id,'learning',String(learning.id),'CANDIDATE','REVIEWED');
+  const reopened=await engine.reviseLearning(who.token,brand.id,String(learning.id),'REVIEWED',{interpretation:'Recomendación aislada, posiblemente por amistad'},{interpretation:'Hay una recomendación aislada'});
+  expect(reopened).toMatchObject({status:'CANDIDATE',reviewedBy:null});
+  await expect(engine.transitionLearningObject(who.token,brand.id,'learning',String(learning.id),'REVIEWED','ACCEPTED'),'stale acceptance').rejects.toMatchObject({code:'CONFLICT'});
   await engine.transitionLearningObject(who.token,brand.id,'learning',String(learning.id),'CANDIDATE','REVIEWED');
   await expect(engine.transitionLearningObject(who.token,brand.id,'learning',String(learning.id),'REVIEWED','REJECTED'),'rejection needs a reason').rejects.toMatchObject({code:'INVALID'});
   await engine.transitionLearningObject(who.token,brand.id,'learning',String(learning.id),'REVIEWED','REJECTED','Es un caso de amistad');
-  await expect(engine.reviseLearning(who.token,brand.id,String(learning.id),'REJECTED',{interpretation:'x'}),'decided learnings are history').rejects.toMatchObject({code:'CONFLICT'});
-  expect([await events('learning_reviewed'),await events('learning_rejected'),await events('learning_accepted')]).toEqual([4,4,0]);
+  await expect(engine.reviseLearning(who.token,brand.id,String(learning.id),'REJECTED',{interpretation:'x'},{interpretation:'Recomendación aislada, posiblemente por amistad'}),'decided learnings are history').rejects.toMatchObject({code:'CONFLICT'});
+  expect([await events('learning_reviewed'),await events('learning_rejected'),await events('learning_accepted')]).toEqual([5,4,0]);
   c=await ctx();
   expect(c.validation.learningsAwaitingReview).toEqual([]);
+ });
+
+ it('VAL-011: BRANDO_ASSISTED provenance needs a valid, current, single-use proof for the same actor, brand, signals and hypothesis',async()=>{
+  const {db,engine,who,brand,ctx,commit}=await setup();
+  const hypothesis=await engine.captureContext(who.token,brand.id,'hypothesis',{statement:'Las agencias vuelven'});
+  const other=await engine.captureContext(who.token,brand.id,'hypothesis',{statement:'Otra hipótesis'});
+  const priority=await commit('Priority Experiment','Validar regreso');
+  const experiment=await engine.createLearningObject(who.token,brand.id,'experiment',{hypothesisId:hypothesis.id,intendedSignal:'Agencias que vuelven cada semana'},priority.decisionId,{objective:'Medir regreso',successCriteria:'Tres de cinco'});
+  await engine.transitionLearningObject(who.token,brand.id,'experiment',String(experiment.id),'PLANNED','RUNNING');
+  const add=(observation:string,direction:string)=>engine.createLearningObject(who.token,brand.id,'signal',{experimentId:experiment.id,observation,source:'Registro',observedAt:new Date().toISOString(),direction});
+  const s1=await add('Una regresó','EXPECTED'),s2=await add('Cuatro no regresaron','CONTRARY');
+  const ask=()=>engine.askBrando(who.token,brand.id,'Ayúdame a interpretar estas señales',null,[],{signalIds:[String(s1.id),String(s2.id)],hypothesisId:String(hypothesis.id),experimentId:String(experiment.id)});
+  const learn=(extra:Record<string,unknown>,signals=[s1.id,s2.id])=>engine.createLearningObject(who.token,brand.id,'learning',{signalIds:signals,interpretation:'Interpretación',limitations:['Muestra'],...extra});
+  await expect(engine.askBrando(who.token,brand.id,'x',null,[],{signalIds:['ajena']}),'unknown signal').rejects.toMatchObject({code:'NOT_FOUND'});
+  const answer=await ask();
+  expect(answer.assistanceProof).toMatchObject({proofId:expect.any(String)});
+  const proof=answer.assistanceProof!.proofId;
+  expect((await learn({})).origin,'manual').toBe('MANUAL');
+  expect((await learn({assistanceProof:'forjado'})).origin,'forged').toBe('MANUAL');
+  expect((await learn({assistanceProof:proof,hypothesisId:other.id})).origin,'different hypothesis').toBe('MANUAL');
+  expect((await learn({assistanceProof:proof})).origin,'a proof about a hypothesis needs that hypothesis on the learning').toBe('MANUAL');
+  // Another actor of the same workspace, and another workspace, can never use this proof.
+  const colleague=await seedIdentity(db,'ADMIN',who.workspaceId);
+  expect((await engine.createLearningObject(colleague.token,brand.id,'learning',{signalIds:[s1.id],hypothesisId:hypothesis.id,interpretation:'x',limitations:['x'],assistanceProof:proof})).origin,'other actor').toBe('MANUAL');
+  const foreign=await seedIdentity(db);
+  await expect(engine.createLearningObject(foreign.token,brand.id,'learning',{signalIds:[s1.id],interpretation:'x',limitations:['x'],assistanceProof:proof}),'other workspace').rejects.toMatchObject({code:'NOT_FOUND'});
+  const otherBrand=await engine.createBrand(who.token,'Otra marca');
+  await expect(engine.createLearningObject(who.token,otherBrand.id,'learning',{signalIds:[s1.id],interpretation:'x',limitations:['x'],assistanceProof:proof}),'other brand cannot even see the signal').rejects.toMatchObject({code:'NOT_FOUND'});
+  const valid=await learn({assistanceProof:proof,hypothesisId:hypothesis.id});
+  expect(valid.origin,'valid proof').toBe('BRANDO_ASSISTED');
+  expect((await learn({assistanceProof:proof,hypothesisId:hypothesis.id})).origin,'a proof is single-use; replay never attributes').toBe('MANUAL');
+  // Changing the hypothesis of an assisted learning leaves Brando's scope: provenance becomes MANUAL.
+  const rescoped=await engine.reviseLearning(who.token,brand.id,String(valid.id),'CANDIDATE',{hypothesisId:other.id},{hypothesisId:hypothesis.id});
+  expect(rescoped.origin).toBe('MANUAL');
+  // Unrelated signals: a proof for s1 only does not cover s2.
+  const narrow=(await engine.askBrando(who.token,brand.id,'Interpreta',null,[],{signalIds:[String(s1.id)]})).assistanceProof!.proofId;
+  expect((await learn({assistanceProof:narrow})).origin,'unrelated signal').toBe('MANUAL');
+  // Stale context: a change to an interpreted source after the answer invalidates the proof.
+  const stale=(await ask()).assistanceProof!.proofId;
+  await engine.reviewHypothesis(who.token,brand.id,{hypothesisId:String(hypothesis.id),expectedStatus:'UNTESTED',status:'TESTING',rationale:'Empiezo a probarla',idempotencyKey:randomUUID()});
+  expect((await learn({assistanceProof:stale,hypothesisId:hypothesis.id})).origin,'stale context').toBe('MANUAL');
+  // Expired proof.
+  const clock={now:Date.now()};
+  (engine as unknown as {brandoAssistance:BrandoAssistance}).brandoAssistance=new BrandoAssistance(()=>clock.now);
+  const expiring=(await ask()).assistanceProof!.proofId;
+  clock.now+=31*60*1000;
+  expect((await learn({assistanceProof:expiring,hypothesisId:hypothesis.id})).origin,'expired').toBe('MANUAL');
+  // Positive control on the same clock: a current proof still works, so each negative case above is isolated.
+  const current=(await ask()).assistanceProof!.proofId;
+  expect((await learn({assistanceProof:current,hypothesisId:hypothesis.id})).origin).toBe('BRANDO_ASSISTED');
+  // Duplicate ids in the scope are normalised, never a silent mismatch.
+  const dup=(await engine.askBrando(who.token,brand.id,'Interpreta',null,[],{signalIds:[String(s1.id),String(s1.id),String(s2.id)],hypothesisId:String(hypothesis.id)})).assistanceProof!.proofId;
+  expect((await learn({assistanceProof:dup,hypothesisId:hypothesis.id})).origin).toBe('BRANDO_ASSISTED');
+  expect((await ctx()).learnings.filter(l=>l.origin==='BRANDO_ASSISTED')).toHaveLength(2);
+ });
+
+ it('VAL-012: SUPPORTED and WEAKENED can be retested; a new cycle needs a learning accepted after it; REJECTED is final',async()=>{
+  const {engine,who,brand,ctx,loop,review}=await setup();
+  const {hypothesis,learning,signal}=await loop();
+  await review(hypothesis.id,'UNTESTED','TESTING');
+  await review(hypothesis.id,'TESTING','SUPPORTED',learning.id);
+  await new Promise(r=>setTimeout(r,5));
+  await review(hypothesis.id,'SUPPORTED','TESTING');
+  await expect(review(hypothesis.id,'TESTING','SUPPORTED',learning.id),'the old learning cannot resolve the new cycle').rejects.toMatchObject({code:'CONFLICT'});
+  let view=(await ctx()).validation.hypotheses.find(h=>h.id===hypothesis.id)!;
+  expect(view).toMatchObject({status:'TESTING',cycles:2,cycleLearningIds:[],acceptedLearningIds:[learning.id]});
+  expect((await ctx()).validation.nextValidation.some(n=>n.kind==='RESOLVE_HYPOTHESIS'),'no impossible recommendation').toBe(false);
+  await new Promise(r=>setTimeout(r,5));
+  const fresh=await engine.createLearningObject(who.token,brand.id,'learning',{signalIds:[signal.id],hypothesisId:hypothesis.id,interpretation:'En el nuevo ciclo el regreso cae',limitations:['Muestra']});
+  await engine.transitionLearningObject(who.token,brand.id,'learning',String(fresh.id),'CANDIDATE','REVIEWED');
+  await engine.transitionLearningObject(who.token,brand.id,'learning',String(fresh.id),'REVIEWED','ACCEPTED');
+  view=(await ctx()).validation.hypotheses.find(h=>h.id===hypothesis.id)!;
+  expect(view.cycleLearningIds).toEqual([fresh.id]);
+  await review(hypothesis.id,'TESTING','WEAKENED',fresh.id);
+  expect((await ctx()).validation.nextValidation.map(n=>n.kind)).toContain('REVIEW_AFFECTED_DECISION');
+  await new Promise(r=>setTimeout(r,5));
+  await review(hypothesis.id,'WEAKENED','TESTING');
+  await expect(review(hypothesis.id,'TESTING','REJECTED',fresh.id),'previous cycle learning').rejects.toMatchObject({code:'CONFLICT'});
+  // History is kept: every learning remains.
+  expect((await ctx()).learnings.filter(l=>l.status==='ACCEPTED')).toHaveLength(2);
+  const second=await setup(),l2=await second.loop();
+  await second.review(l2.hypothesis.id,'UNTESTED','TESTING');
+  await second.review(l2.hypothesis.id,'TESTING','REJECTED',l2.learning.id);
+  await expect(second.review(l2.hypothesis.id,'REJECTED','TESTING'),'REJECTED is final').rejects.toMatchObject({code:'CONFLICT'});
  });
 
  it('VAL-008/009/010: weakened or rejected hypotheses raise deduplicated attention and never rewrite the decision',async()=>{
@@ -174,7 +267,7 @@ export function validationCases(connection:()=>ReturnType<typeof connect>){
   const {hypothesis,learning}=await loop();
   const other=await engine.createBrand(who.token,'Otra marca');
   await expect(engine.reviewHypothesis(who.token,other.id,{hypothesisId:String(hypothesis.id),expectedStatus:'UNTESTED',status:'TESTING',rationale:'x',idempotencyKey:randomUUID()})).rejects.toMatchObject({code:'NOT_FOUND'});
-  await expect(engine.reviseLearning(who.token,other.id,String(learning.id),'CANDIDATE',{interpretation:'x'})).rejects.toMatchObject({code:'NOT_FOUND'});
+  await expect(engine.reviseLearning(who.token,other.id,String(learning.id),'CANDIDATE',{interpretation:'x'},{interpretation:'x'})).rejects.toMatchObject({code:'NOT_FOUND'});
   expect((await engine.context(who.token,other.id)).validation.hypotheses).toEqual([]);
   const member=await seedIdentity(db,'MEMBER',who.workspaceId);
   await expect(engine.reviewHypothesis(member.token,brand.id,{hypothesisId:String(hypothesis.id),expectedStatus:'UNTESTED',status:'TESTING',rationale:'x',idempotencyKey:randomUUID()})).rejects.toMatchObject({code:'FORBIDDEN'});

@@ -1,8 +1,8 @@
 import { test,expect,type Page } from '@playwright/test';
+import { navigate, openTool } from '../workspace-nav.js';
 import { readFileSync } from 'node:fs';
 
 // ADR-0025 · Strategic Intelligence and the Focusable Intelligent Strategic Workspace (UX JTBD A–D).
-async function navigate(page:Page,name:string){await page.locator('#workspace').waitFor();const menu=page.getByRole('button',{name:'Abrir navegación',exact:true});if(await menu.isVisible())await menu.click();await page.getByRole('button',{name,exact:true}).click();}
 async function signIn(page:Page,brand:string,geography=true){
  const session=JSON.parse(readFileSync(process.env.BRANDOPOLIS_SESSION_FILE??'.local/demo-session.json','utf8'));
  await page.goto('/');await page.getByLabel('Token de sesión local').fill(session.token);await page.getByRole('button',{name:'Entrar al espacio estratégico'}).click();
@@ -26,7 +26,7 @@ test('B · Market Arena shows the declared market as context, never as the decis
  await expect(card).toContainText('Lo que ya sabemos de tu marca');
  await expect(card).toContainText('Local / ciudad');
  await expect(card).toContainText('Xalapa, Veracruz');
- await expect(card).toContainText('no tu Arena de mercado');
+ await expect(card).toContainText('no tu Mercado objetivo');
  await expect(page.locator('#decision')).toContainText('Por decidir');
  await expect(page.locator('#decision .current')).toHaveCount(0);
  expect(asks,'navigation never queries the provider').toEqual([]);
@@ -38,8 +38,11 @@ test('Strategic Intelligence summary explains review order and asks Brando only 
  await decide(page,'03 Cliente principal','Agencias pequeñas');
  await decide(page,'05 Posicionamiento','Continuidad estratégica');
  await decide(page,'03 Cliente principal','Equipos internos','Preparar nueva versión');
- await navigate(page,'Qué necesita atención');
- const summary=page.locator('.intelligence-summary');
+ // ADR-0027: the full Strategic Intelligence lives in the rail's Atención tool; Inicio keeps one next step.
+ await navigate(page,'Inicio');
+ await expect(page.locator('.next-step')).toContainText('Revisa tu posicionamiento');
+ await openTool(page,'attention');
+ const summary=page.locator('#rail-attention .intelligence-summary');
  await expect(summary).toContainText('Coherencia de tu estrategia');
  await expect(summary).toContainText('sin consulta a la IA');
  await expect(summary.locator('.intelligence-step').first()).toContainText('Posicionamiento');
@@ -70,34 +73,37 @@ test('A · disclosures are labelled next to their title and open by click or key
 });
 
 test('C · panels collapse independently into Focus Mode and keep drafts and state',async({page},info)=>{
- test.skip(['tablet','mobile'].includes(info.project.name),'Below 1001px the journey is a drawer and the rail stacks; the controls are intentionally hidden.');
+ test.skip(['tablet','mobile'].includes(info.project.name),'Below 1001px the journey is a drawer and the rail tools are a drawer; the side controls are intentionally hidden.');
  await signIn(page,`Paneles ${info.project.name} ${Date.now()}`,false);
  await navigate(page,'03 Cliente principal');
  await page.getByRole('button',{name:'Preparar decisión',exact:true}).click();
  await page.getByLabel('Tu decisión',{exact:true}).fill('Borrador que debe sobrevivir');
  const width=()=>page.locator('.primary-workspace').evaluate(el=>el.getBoundingClientRect().width);
- const before=await width();
+ // ADR-0027: the rail starts collapsed (icons only); opening a tool takes space, collapsing gives it back.
  const right=page.locator('#toggle-rail');
+ await expect(right).toHaveAttribute('aria-expanded','false');
+ const collapsed=await width();
+ await right.click();
  await expect(right).toHaveAttribute('aria-expanded','true');
+ await expect(page.locator('#rail-panel')).toBeVisible();
+ expect(await width(),'an open tool takes the rail width').toBeLessThan(collapsed);
  await right.click();
  await expect(right).toHaveAttribute('aria-expanded','false');
- await expect(page.locator('#intelligence-rail')).toBeHidden();
- expect(await width(),'the centre gains the rail width').toBeGreaterThan(before);
+ await expect(page.locator('#rail-panel')).toBeHidden();
+ expect(await width(),'the centre gains the rail width back').toBeGreaterThan(collapsed-2);
  const left=page.locator('#toggle-journey');
  if(await left.isVisible()){
   await left.click();
   await expect(left).toHaveAttribute('aria-expanded','false');
-  await expect(page.locator('#journey')).toBeHidden();
+  await expect(page.locator('#journey')).toBeVisible();
   await expect(page.locator('.focus-mode-label')).toBeVisible();
  }
  await expect(page.getByLabel('Tu decisión',{exact:true})).toHaveValue('Borrador que debe sobrevivir');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
- // Changing module does not reopen panels; reload keeps them for the session.
+ // Reload keeps the layout for the session.
  await page.reload();await page.locator('#workspace').waitFor();
  await expect(right).toHaveAttribute('aria-expanded','false');
- await expect(page.locator('#intelligence-rail')).toBeHidden();
- await right.click();if(await left.isVisible()&&(await left.getAttribute('aria-expanded'))==='false')await left.click();
- await expect(page.locator('#intelligence-rail')).toBeVisible();
+ if(await left.isVisible()&&(await left.getAttribute('aria-expanded'))==='false')await left.click();
  await expect(page.locator('.focus-mode-label')).toBeHidden();
 });
 

@@ -6,7 +6,7 @@ import { ModelGateway } from '../src/domain/analysis.js';
 import { AnthropicProvider,UnavailableProvider,PILOT_PROMPT_VERSION } from '../src/transport/anthropic-provider.js';
 import { AnthropicCompetitiveResearch,CompetitiveResearchUnavailable } from '../src/transport/competitive-research.js';
 import { AnthropicDocumentClaims,DocumentClaimsUnavailable } from '../src/transport/document-claims.js';
-import { createApp } from '../src/transport/http.js';
+import { createApp,purgePendingBrandFiles } from '../src/transport/http.js';
 import { loadAsset } from '../src/transport/assets.js';
 import { pilotAuth,ConfigError,loadAiNotice } from '../src/transport/pilot-auth.js';
 import { pilotConfig } from './pilot-config.js';
@@ -40,6 +40,8 @@ try {
     documentClaims
   );
   await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(settings.port,settings.bindHost,resolve);});
+  // ADR-0029: retry Brand file purges left FILES_PENDING. Best-effort and non-blocking; logs counts only.
+  void purgePendingBrandFiles(engine).then(r=>{if(r.purged||r.pending)console.log(JSON.stringify({event:'brand_files_purge_retry',...r}));}).catch(()=>undefined);
   console.log(JSON.stringify({event:'pilot_started',port:settings.port,ai:provider.name,model:provider.model,aiNotice:ai.notice?.version??null,trustProxy:settings.trustProxy}));
   let closing=false;
   const stop=async()=>{if(closing)return;closing=true;console.log(JSON.stringify({event:'pilot_stopping'}));await new Promise<void>(r=>server.close(()=>r()));lock?.release(true);await connection!.pool.end();console.log(JSON.stringify({event:'pilot_stopped'}));};
