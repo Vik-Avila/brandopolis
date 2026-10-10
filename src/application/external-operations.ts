@@ -421,12 +421,16 @@ export class ExternalOperations {
 
   /**
    * Evidence that an attempt can no longer emit its call (C1). Only a termination observed AFTER the attempt started,
-   * or the attempt's own credential expiring, counts. Lease loss, suspension or deadlines never do.
+   * or the PROVIDER's own confirmation that the attempt's credential is no longer accepted (recorded as an
+   * EMIT_IMPOSSIBLE outcome with source PROVIDER_CONFIRMED), counts. A credential expiry stored only in Brandopolis,
+   * lease loss, suspension or deadlines never do.
    */
   private async emitEvidence(tx: Transaction, attempt: typeof t.externalAttempts.$inferSelect): Promise<EmitImpossibleEvidence | null> {
     const [worker] = await tx.select().from(t.workerInstances).where(eq(t.workerInstances.id, attempt.workerInstanceId));
     if (worker?.terminatedAt && worker.terminatedAt > attempt.startedAt && worker.terminationEvidence?.type === 'PROCESS_TERMINATED') return { type: 'PROCESS_TERMINATED', observer: String(worker.terminationEvidence.observer), observedAt: worker.terminatedAt };
-    if (attempt.credentialExpiresAt && attempt.credentialExpiresAt.getTime() + this.config.clockSkewMs < this.clock().getTime()) return { type: 'CREDENTIAL_UNUSABLE', reason: 'EXPIRED', at: new Date(attempt.credentialExpiresAt.getTime() + this.config.clockSkewMs) };
+    const outcomes = await tx.select().from(t.externalAttemptOutcomes).where(and(eq(t.externalAttemptOutcomes.attemptId, attempt.id), eq(t.externalAttemptOutcomes.kind, 'EMIT_IMPOSSIBLE')));
+    const confirmed = outcomes.find(o => o.evidence?.type === 'CREDENTIAL_UNUSABLE' && o.evidence?.source === 'PROVIDER_CONFIRMED' && o.recordedAt > attempt.startedAt);
+    if (confirmed) return { type: 'CREDENTIAL_UNUSABLE', reason: confirmed.evidence?.reason === 'EXPIRED' ? 'EXPIRED' : 'REVOKED', at: confirmed.recordedAt };
     return null;
   }
 
@@ -459,6 +463,12 @@ export class ExternalOperations {
       let write: { kind: OutcomeKind; providerIds: Record<string, string>; evidence: Record<string, unknown> | null; status: StepStatus } | null = null;
       const found = await this.adapter.findByTag(plan.provider, step.remoteTag, plan.secret);
       if (found) write = { kind: 'RECONCILED_FOUND', providerIds: found, evidence: null, status: 'SUCCEEDED' };
+      else if (!evidence && this.adapter.confirmAttemptCredentialUnusable) {
+        // C1: only the provider can confirm that the attempt's credential is no longer accepted. Recorded as evidence
+        // now; absence can be confirmed on a later run, after the processing window.
+        const confirmation = await this.adapter.confirmAttemptCredentialUnusable(plan.provider, attempt.id, plan.secret);
+        if (confirmation) await this.db.transaction(tx => this.outcome(tx, attempt, 'EMIT_IMPOSSIBLE', {}, { type: 'CREDENTIAL_UNUSABLE', source: 'PROVIDER_CONFIRMED', reason: confirmation.reason, confirmedAt: confirmation.confirmedAt.toISOString() }));
+      }
       else if (evidence) {
         const evidenceAt = evidence.type === 'PROCESS_TERMINATED' ? evidence.observedAt : evidence.at;
         if (this.clock().getTime() >= evidenceAt.getTime() + this.config.processingWindowMs) {

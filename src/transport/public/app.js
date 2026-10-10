@@ -1,6 +1,6 @@
 import {createBrandoPresence} from './brando-presence.js';
 const $=s=>document.querySelector(s);
-import {escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
+import {offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
 import {trapFocus,decisionTabs,viewTabs} from './product-interactions.js';
 import * as analytics from './analytics.js';
 import {PILOT_EVENTS} from './analytics.js';
@@ -981,6 +981,7 @@ $('#create-brand').addEventListener('submit',event=>{event.preventDefault();run(
  const competitiveReferences=$('#competitive-references').value.trim();
  const competitiveResearch=$('#competitive-research').checked;
  const brandDocuments=[...$('#brand-documents').files];
+ const workIntent=selectedWorkIntent($('#create-brand'),'brand');
 
  for(const file of brandDocuments){
   const validation=documentFileError(file);
@@ -1036,6 +1037,8 @@ $('#create-brand').addEventListener('submit',event=>{event.preventDefault();run(
 
  if(brandDocuments.length)
   await uploadSourceDocuments(brand.id,brandDocuments);
+ // PHASE4_SPEC §4.9 · optional work priority, saved with its brand (append-only). Never a decision or permission.
+ if(workIntent)await api('/api/brands/work-priority',{brandId:brand.id,intent:workIntent,idempotencyKey:crypto.randomUUID()});
 
  $('#brand-name').value='';
  $('#brand-stage').value='idea';
@@ -1045,6 +1048,7 @@ $('#create-brand').addEventListener('submit',event=>{event.preventDefault();run(
  $('#competitive-research').checked=false;
  $('#brand-documents').value='';
  $('#brand-document-selection').innerHTML=selectedDocumentsHtml([]);
+ $('#brand-work-intent').innerHTML=workIntentFieldsHtml('brand');
 
  $('#brand-dialog').close();
  // New brands start the journey at its first section (ADR-0021); existing brands are never redirected.
@@ -1067,6 +1071,11 @@ $('#create-brand').addEventListener('submit',event=>{event.preventDefault();run(
  }
 },event.submitter);});
 bindDocumentSelection('#brand-documents','#brand-document-selection');
+// Work priority radio group: «Otras necesidades» reveals its four options (keyboard and pointer alike).
+$('#brand-work-intent').innerHTML=workIntentFieldsHtml('brand');
+document.addEventListener('change',event=>{const input=event.target;if(!(input instanceof HTMLInputElement)||input.type!=='radio')return;const group=input.closest('.work-intent');if(!group||input.name!==`${group.dataset.prefix}-intent`)return;const other=group.querySelector('.work-intent-other');if(other)other.hidden=input.value!=='OTHER';});
+/** Selected work intent of a radio group, or null (none chosen, or «Otras necesidades» without a choice). */
+function selectedWorkIntent(root,prefix){const main=root.querySelector(`input[name="${prefix}-intent"]:checked`)?.value??null;if(main!=='OTHER')return main;return root.querySelector(`input[name="${prefix}-intent-other"]:checked`)?.value??null;}
 $('#new-brand').addEventListener('click',()=>{$('#brand-dialog').showModal();$('#brand-name').focus();});
 $('#cancel-brand').addEventListener('click',()=>$('#brand-dialog').close());
 $('#brand-dialog').addEventListener('close',()=>$('#new-brand').focus());
@@ -1957,8 +1966,9 @@ function downloadDocument(button,kind){
 function currentStrategySummary(){return `<details><summary>Lo que decidiste y lo que requiere revisión</summary>${context.questions.map(q=>{const d=context.decisions.find(d=>d.questionId===q.id),v=context.versions.find(v=>v.id===d?.activeVersionId);return `<p><strong>${escape(labels[q.module])}</strong><br>${escape(v?.selectedOption??'Pregunta estratégica abierta')}${needsReview(context,d)?'<br><span class="badge warn">Requiere revisión</span>':''}</p>`;}).join('')}</details>`;}
 async function showHome(){
  if(!enterView('#home','Inicio'))return;
- const [nextContext,sourceDocuments,documentClaims]=await Promise.all([
+ const [nextContext,priority,sourceDocuments,documentClaims]=await Promise.all([
   api(`/api/context?brandId=${encodeURIComponent(brandId)}`),
+  api(`/api/brands/work-priority?brandId=${encodeURIComponent(brandId)}`),
   api(`/api/documents?brandId=${encodeURIComponent(brandId)}`),
   api(`/api/document-claims?brandId=${encodeURIComponent(brandId)}`)
  ]);
@@ -1972,13 +1982,54 @@ async function showHome(){
  };
  // ADR-0027 · Inicio: one next step from the real Brand state, a brief real progress and what needs attention.
  // The full Strategic Intelligence stays one click away in the rail (Atención); nothing here asks the AI.
- $('#decision').innerHTML=homeHtml(context,documentState);
+ // Areas that already exist in this build; the others are named as not available yet (never a fake button).
+ $('#decision').innerHTML=homeHtml(context,documentState,priority.current,{SELL_OFFER:true});
+ bindWorkPriorityForm();
+ $('#decision').querySelector('[data-priority-area="SELL_OFFER"]')?.addEventListener('click',()=>run(showOffers));
  bindAttentionActions($('#decision'));
  $('#next-step-brando')?.addEventListener('click',event=>{const module=event.currentTarget.dataset.module;openModule(module,false);$('#brando-section-explore')?.click();});
  $('#home-open-attention')?.addEventListener('click',event=>selectRailTool('attention',event.currentTarget));
  $('#attention-learning')?.addEventListener('click',()=>run(showLearning));
  $('#attention-context')?.addEventListener('click',()=>run(showBrandContext));
  $('#attention-documents')?.addEventListener('click',()=>openDocuments());
+}
+/** PHASE4_SPEC §4.1 · Productos y servicios. Every change goes through the engine (scope, revision 409, audit). */
+let offersCache=[];
+async function showOffers(){
+ if(!enterView('#offers','Productos y servicios'))return;
+ const [nextContext,offers]=await Promise.all([api(`/api/context?brandId=${encodeURIComponent(brandId)}`),api(`/api/offers?brandId=${encodeURIComponent(brandId)}`)]);
+ context=nextContext;offersCache=offers;renderContext();
+ $('#decision').innerHTML=offersHtml(offers);
+ $('#offer-new').addEventListener('click',()=>openOfferEditor(null));
+ const byId=id=>offersCache.find(o=>o.id===id);
+ $('#decision').querySelectorAll('[data-offer-edit]').forEach(b=>b.addEventListener('click',()=>openOfferEditor(byId(b.dataset.offerEdit))));
+ const command=(action,payload,message)=>run(async()=>{await api(`/api/offers/${action}`,{brandId,...payload});await showOffers();notice(message);});
+ $('#decision').querySelectorAll('[data-offer-submit]').forEach(b=>b.addEventListener('click',()=>{const o=byId(b.dataset.offerSubmit);command('submit',{offerId:o.id,expectedRevision:o.revision},'Versión enviada a revisión. Ya no se edita; una persona la aprueba o pide cambios.');}));
+ $('#decision').querySelectorAll('[data-offer-new-draft]').forEach(b=>b.addEventListener('click',()=>{const o=byId(b.dataset.offerNewDraft);command('new-draft',{offerId:o.id,expectedRevision:o.revision},'Nueva versión en borrador. La versión aprobada sigue vigente mientras tanto.');}));
+ $('#decision').querySelectorAll('[data-offer-retire]').forEach(b=>b.addEventListener('click',()=>{const o=byId(b.dataset.offerRetire);command('retire',{offerId:o.id,expectedRevision:o.revision},'Oferta retirada. Se conserva con su historial.');}));
+ $('#decision').querySelectorAll('.offer-decide').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const criterion=form.querySelector('textarea').value.trim();if(criterion.length<10){form.querySelector('textarea').focus();notice('Escribe al menos diez caracteres para explicar tu decisión.',true);return;}const decision=event.submitter?.value;command('decide',{offerId:form.dataset.offer,versionId:form.dataset.version,fingerprint:form.dataset.fingerprint,decision,criterion},decision==='APPROVE'?'Versión aprobada. Es la que usarán materiales, sitio y campañas.':'Cambios solicitados. Se crean en una versión nueva.');}));
+}
+function openOfferEditor(offer){
+ const host=$('#offer-editor');host.innerHTML=offerFormHtml(context,offer?.draft?.content??null,offer);
+ const form=$('#offer-form');$('#offer-name').focus();
+ $('#offer-has-price').addEventListener('change',event=>{form.querySelector('.offer-price').hidden=!event.currentTarget.checked;});
+ $('#offer-cancel').addEventListener('click',()=>{host.innerHTML='';$('#offer-new').focus();});
+ form.addEventListener('submit',event=>{event.preventDefault();
+  const lines=id=>$(id).value.split('\n').map(s=>s.trim()).filter(Boolean),checked=name=>[...form.querySelectorAll(`input[name="${name}"]:checked`)].map(i=>i.value);
+  const amount=Number(String($('#offer-amount')?.value??'').replace(',','.'));
+  if(!$('#offer-name').value.trim()){$('#offer-form-status').textContent='Escribe el nombre de la oferta.';$('#offer-name').focus();return;}
+  if($('#offer-has-price').checked&&!(amount>=0&&$('#offer-amount').value.trim())){$('#offer-form-status').textContent='Escribe el monto o desmarca el precio.';$('#offer-amount').focus();return;}
+  const content={name:$('#offer-name').value,kind:$('#offer-kind').value,audience:{customerDecisionVersionId:$('#offer-customer')?.checked?$('#offer-customer').value:null,segment:$('#offer-segment').value},need:$('#offer-need').value,outcome:$('#offer-outcome').value,benefits:lines('#offer-benefits'),differentiators:lines('#offer-differentiators'),conditions:$('#offer-conditions').value,proofIds:checked('proof'),sourceDecisionVersionIds:checked('source'),hypothesisIds:checked('hypothesis'),price:$('#offer-has-price').checked?{amountMinor:Math.round(amount*100),currency:$('#offer-currency').value.trim().toUpperCase(),validFrom:$('#offer-valid-from').value||null,validUntil:$('#offer-valid-until').value||null,certainty:$('#offer-certainty').value}:null};
+  run(async()=>{
+   if(offer)await api('/api/offers/draft',{brandId,offerId:offer.id,expectedRevision:offer.revision,content});
+   else await api('/api/offers/create',{brandId,content,idempotencyKey:crypto.randomUUID()});
+   await showOffers();notice(offer?'Borrador guardado.':'Oferta creada en borrador. Complétala cuando quieras y envíala a revisión.');
+  },event.submitter);
+ });
+}
+/** Inicio · «Tu prioridad»: save a new priority (append-only) and re-render. Never changes decisions or permissions. */
+function bindWorkPriorityForm(){
+ $('#work-priority-form')?.addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget;const intent=selectedWorkIntent(form,'home');if(!intent){$('#work-priority-status').textContent='Elige una opción para guardar tu prioridad.';return;}run(async()=>{await api('/api/brands/work-priority',{brandId,intent,idempotencyKey:crypto.randomUUID()});await showHome();notice('Prioridad guardada. Inicio ordena sus sugerencias con ella; puedes cambiarla cuando quieras.');},event.submitter);});
 }
 /** Shared by Inicio and the rail: open a decision or a view. Navigation only; it never writes or asks the AI. */
 function bindAttentionActions(root){
@@ -1995,6 +2046,7 @@ function renderRailTool(){
 }
 function mountLearningMoment(question){const m=user.learningMoments?.[question.module];if(m)$('#decision').insertAdjacentHTML('beforeend',`<details class="learning-moment"><summary>Qué estás aprendiendo aquí</summary><div class="learning-moment-body"><p class="eyebrow">${escape(capabilityLabel(m.capability))}</p><p>${escape(m.why)}</p><p><strong>Prueba esto:</strong> ${escape(m.apply)}</p><details><summary>Ver una pista más</summary><p><strong>Observa:</strong> ${escape(m.observe)}</p><p><strong>Cuidado:</strong> ${escape(m.caution)}</p></details></div></details>`);}
 $('#learning-loop').addEventListener('click',()=>run(showLearning));
+$('#offers').addEventListener('click',()=>run(showOffers));
 // ADR-0026: the next Brando question may carry an interpretation scope; a valid answer returns a server proof.
 let brandoInterpretation=null,brandoAssistanceProof=null;
 const assistActive=()=>!!brandoAssistanceProof&&brandoAssistanceProof.brandId===brandId&&Date.parse(brandoAssistanceProof.expiresAt)>Date.now();

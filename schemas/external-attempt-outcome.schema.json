@@ -5,7 +5,7 @@
   "$id": "https://brandopolis.ai/schemas/external-attempt-outcome.v1",
   "title": "external-attempt-outcome",
   "x-version": "v1",
-  "description": "ADR-0031 · append-only evidence about one dispatch attempt of a remote step. Late results are added, never overwrite earlier evidence. EMIT_IMPOSSIBLE records verifiable evidence that the attempt can no longer reach the provider (terminated process observed by its supervisor, or the attempt's credential expired or revoked); losing a lease, a suspension, an expired deadline or an empty lookup is never such evidence.",
+  "description": "ADR-0031 · append-only evidence about one dispatch attempt of a remote step. Late results are added, never overwrite earlier evidence. EMIT_IMPOSSIBLE records verifiable evidence that the attempt can no longer reach the provider (terminated process observed by its supervisor, or the provider's own confirmation that the attempt's credential is no longer accepted; an expiry recorded only in Brandopolis never counts); losing a lease, a suspension, an expired deadline or an empty lookup is never such evidence.",
   "properties": {
     "id": { "type": "string", "minLength": 1 },
     "attemptId": { "type": "string", "minLength": 1 },

@@ -248,6 +248,16 @@ está «verificada con proveedor»: Google, Meta y Canva siguen pendientes de ac
 | Implementado · verificado en DEMO | INT-002, INT-003, PRT-005, VER-001…003 y APR-001/002 (reglas de dominio), EXT-001, EXT-002, EXT-004, EXT-005, EXT-007, EXT-009, EXT-013, EXT-015, EXT-016 (dominio), EXT-018…026, DEL-001, DEL-003, DEL-006 |
 | Parcial | EXT-006 (éxito parcial: cubierto con rechazo y continuación; el caso «grupo incierto» se apoya en EXT-004/022), EXT-010 (estados separados en datos; sin interfaz todavía), DEL-002/004/005 (bloqueo y conservación de conexiones probados; falta el recorrido `BrandClosure`) |
 | Pendiente | Todo lo demás: navegación, ofertas, plan, identidad, entregables, sitios, medición, Canva, Ads reales, invitados y resultados |
+## Estado de implementación · bloque 3 (avance, 2026-10-10)
+
+Sobre el código del commit de resguardo del bloque 3; la regresión completa (test:e2e, test:visual) sigue pendiente.
+
+| Estado | Criterios |
+|---|---|
+| Implementado · verificado en DEMO | INT-001 (U `tests/work-priority-views.test.ts`, E `tests/browser/phase4-priority.spec.ts`), INT-002 (E añadida), INT-007 (E, 5 proyectos), MKT-003, MKT-004, MKT-005, MKT-006 (U, E), APR-001/002 y VER-001/002 aplicados a ofertas (U `tests/offers-cases.ts`, E `tests/browser/phase4-offers.spec.ts`), MKT-001 para ofertas (otra organización → 404, otra marca sin acceso a la oferta) |
+| Parcial | MKT-002 (sólo ofertas citando decisiones; la prueba vive en `tests/offers-cases.ts`, no en el archivo previsto), INT-005 (el área de identidad aún no existe: se nombra sin botón), INT-006 (orientación determinista probada; falta el recorrido completo sin IA), INT-008 (prioridad sin efecto en permisos; invitados y telemetría aún no existen), VER-003 (sin selección explícita de versión anterior en ofertas) |
+| Pendiente | INT-004, plan, entregables, navegación de siete entradas, Brando marketing y los demás bloques |
+
 ## Gates por bloque
 
 Matriz de brandopolis-review según archivos tocados: typecheck, lint, `pnpm test` (incluye INV-001..010, VAL, WS,
@@ -266,3 +276,4 @@ Ninguna prueba se debilita para pasar.
 | v4 | 2026-10-10 | Dictamen v3: EXT-015…019 (envío tardío tras `DISPATCHING`, plazo de envío, revocación a ambos lados del inicio, repetición humana con evidencia, resultado tardío contradictorio); MEA-012/013 (compatibilidad de publicación); INT-001…008 como alcance base de la pregunta de prioridad; ONB-001…004 trasladados a INT, ONB-005…012 siguen condicionados al inicio guiado completo |
 | v5 | 2026-10-10 | Aprobación del propietario: ONB-005…012 obligatorios; EXT-018 ajustado al C1 final; EXT-020 (suspensión tras la última comprobación del plazo) y EXT-021 (sin atajo por otro trabajo); DOM-001…006, CNS-001…004 e IVT-001…005 nuevos; todas las pruebas siguen pendientes |
 | v6 | 2026-10-10 | Bloque 2: EXT-022…026 y DEL-006 (correcciones de la revisión de seguridad) y sección «Estado de implementación»; el resto sigue pendiente |
+| v7 | 2026-10-10 | Bloque 3 (avance): prioridad de trabajo y ofertas; sección «Estado de implementación · bloque 3» |

@@ -1,3 +1,48 @@
+## 2026-10-10 · PHASE 4 · bloque 3 en curso (prioridad y ofertas) · regresión completa pendiente
+
+PHASE 4 · BLOCK 3 IN PROGRESS · NOT RELEASE-READY. Rama `feat/phase4-marketing-web-collaboration` sobre `f3e370e`.
+Sin push, PR ni deploy; producción sin cambios. Migración aditiva `0018` aplicada sólo a la base de pruebas efímera y
+al perfil aislado `rc1-smoke`.
+
+**Hecho en el bloque 3:**
+- Pregunta «¿Qué te gustaría trabajar primero con tu marca?» en el alta (opcional) y en Inicio («Tu prioridad»,
+  cambio append-only), con orientación determinista y áreas aún inexistentes nombradas sin botón falso.
+- Productos y servicios (ADR-0030, PHASE4_SPEC §4.1): migración `0018` (`offers`, `offer_versions`; CHECK de estados
+  y huella; trigger que congela contenido y huella fuera de DRAFT e impide borrar versiones salvo cierre de marca),
+  schema `offer-version` v1, dominio `src/domain/offers.ts`, aplicación `src/application/offers.ts`, endpoints
+  GET `/api/offers` y POST `/api/offers/{create,draft,submit,decide,new-draft,retire}` bajo `withBrandActor`
+  (alcance, revisión 409, idempotencia, auditoría). Vista con borrador → revisión → aprobación con criterio, nueva
+  versión sin tocar la aprobada, precio opcional («Estimado, no confirmado»), huecos y «Origen actualizado» como
+  proyección. La entrada del menú deja de ser «Próximamente»; `tests/pre-tester.test.ts` se actualiza a ese estado
+  aprobado (Marketing y Resultados siguen «Próximamente»; se añade que Productos es destino real).
+
+**Comprobado (salida real, código de este punto):** typecheck PASS; lint PASS; Foundation 0 errores (32 schemas);
+`git diff --check` limpio; UI validator PASS (antes de ofertas); pnpm test 18 archivos / 396 PASS; E2E nuevas en los 5
+proyectos: `phase4-priority` 10/10 y `phase4-offers` 5/5. Regresión visual 10 PASS · 1 SKIP con la pregunta de
+prioridad, antes de habilitar Productos.
+
+**Pendiente:** test:e2e completa y test:visual sobre este código (la ejecución anterior se detuvo por memoria baja del
+equipo tras 7 pruebas en verde; se repite por separado con un worker). Capturas canónicas conservadas: cualquier
+diferencia se presentará con comparación y nombres de archivo antes de pedir actualización. test:pilot:e2e, UI
+validator y revisión de seguridad de los endpoints de ofertas por repetir antes del cierre del bloque. Siguiente:
+plan anual con instantánea y avance, entregables, navegación a siete entradas y Brando marketing.
+
+## 2026-10-10 · PHASE 4 · bloque 2 cerrado con E2E completa
+
+Commit local de resguardo `f3e370e` (sobre `1f1cece`; sin push ni deploy) con la aprobación y el bloque 2, que dejó
+constancia de E2E pendiente. Después, por precisión del propietario sobre C1: una credencial sólo es evidencia si el
+**proveedor** confirma que ya no la acepta para ese intento; se eliminó la rama que aceptaba una caducidad registrada
+sólo en Brandopolis y se añadió una prueba (registro local ignorado; confirmación del proveedor + ventana → ausencia
+confirmada → liberación humana → un solo envío). ADR-0031 (nota de implementación), schema y dominio alineados.
+
+Comprobaciones sobre el código definitivo (salida real): typecheck PASS; lint PASS; Foundation 0 errores;
+`skills:check` idéntico; `git diff --check` limpio; pnpm test 17 archivos / 387 PASS; **test:e2e 215 pruebas
+completas: 202 PASS · 13 SKIP intencionales · 0 FAIL** (mismo resultado que la base de Fase 3), ejecutadas proyecto a
+proyecto con un solo worker contra el perfil aislado `rc1-smoke` (3001) para limitar memoria: wide 42/1, desktop
+42/1, compact 42/1, tablet 38/5, mobile 38/5. test:pilot:e2e 10/10 sobre el código del commit (la precisión C1 posterior
+no toca flujos PILOT). Ningún proceso ajeno se detuvo. Operaciones reales con proveedores: pendientes de acceso y de
+la comprobación contra la versión exacta de campaña (bloque 8). Siguiente: bloque 3.
+
 ## 2026-10-10 · PHASE 4 · APROBADA · bloque 2 (datos, autoridad, conexiones, ejecución externa) en curso
 
 PHASE 4 · SCOPE APPROVED · BLOCK 2 IN PROGRESS · NOT RELEASE-READY. Rama `feat/phase4-marketing-web-collaboration`,

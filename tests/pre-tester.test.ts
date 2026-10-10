@@ -264,7 +264,7 @@ describe('production verification hotfix', () => {
       expect(app, stage).toContain(stage);
   });
 
-  it('keeps the owner-approved navigation: Inicio, nine decisions, Validación, «Próximamente» and secondary access (ADR-0027/0029)', () => {
+  it('keeps the owner-approved navigation: Inicio, nine decisions, Validación, Productos y servicios, «Próximamente» and secondary access (ADR-0027/0029/0030)', () => {
     // The public header has its own <nav>, so the closing tag must be found after this one opens.
     const navStart = html.indexOf('<nav id="journey"');
     const nav = html.slice(navStart, html.indexOf('</nav>', navStart));
@@ -277,9 +277,13 @@ describe('production verification hotfix', () => {
     expect(nav).not.toContain('Arena de mercado');
     // «Próximamente» destinations are announced and disabled, never a navigation target.
     const soon = [...nav.matchAll(/<button[^>]*data-soon="([^"]+)"[^>]*>/g)];
-    expect(soon.map(m => m[1])).toEqual(['products', 'marketing', 'results']);
+    // ADR-0030 (Phase 4, owner-approved 2026-10-10): «Productos y servicios» is a real destination, never a soon pill.
+    expect(soon.map(m => m[1])).toEqual(['marketing', 'results']);
     for (const m of soon) { expect(m[0]).toContain('aria-disabled="true"'); expect(m[0]).not.toContain('data-module'); expect(m[0]).not.toMatch(/id="/); }
-    expect(nav.match(/Próximamente<\/span>/g)).toHaveLength(3);
+    expect(nav.match(/Próximamente<\/span>/g)).toHaveLength(2);
+    const offers = nav.match(/<button[^>]*id="offers"[^>]*>/)?.[0] ?? '';
+    expect(offers).not.toContain('aria-disabled');
+    expect(offers).not.toContain('data-soon');
     // Entorno competitivo and Contexto estratégico are preparation and context, never decisions: they live in the
     // rail's Contexto tool, with no number and no data-module.
     const rail = html.slice(html.indexOf('id="rail-panel"'), html.indexOf('</aside></div></section></main>'));

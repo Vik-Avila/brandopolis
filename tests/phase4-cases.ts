@@ -245,6 +245,31 @@ export function phase4Cases(connection: () => ReturnType<typeof connect>) {
       expect((await x.view(jobId)).status).toBe('SUCCEEDED');
     });
 
+    it('C1 evidence: a credential expiry recorded only in Brandopolis never counts; the provider confirmation does', async () => {
+      const x = await prepare({ leaseMs: 1_000, processingWindowMs: 10_000 });
+      const { jobId } = await x.enqueue((await x.authorize()).id);
+      const a = await x.ext.registerWorker('host-a', 1), b = await x.ext.registerWorker('host-b', 2);
+      x.hooks.beforeNetworkWrite = () => { throw new Error('process crashed after DISPATCHING'); };
+      await expect(x.ext.runJob(a, (await x.ext.claimNext(a))!)).rejects.toThrow(/crashed/);
+      x.hooks.beforeNetworkWrite = undefined;
+      x.advance(2_000);
+      expect(await x.ext.claimNext(b)).toBeUndefined();
+      const [attempt] = await x.db.select().from(t.externalAttempts).where(eq(t.externalAttempts.brandId, x.brand.id));
+      // A local record claiming the credential is unusable (not confirmed by the provider) is ignored.
+      await x.db.insert(t.externalAttemptOutcomes).values({ id: randomUUID(), workspaceId: x.who.workspaceId, brandId: x.brand.id, attemptId: attempt.id, kind: 'EMIT_IMPOSSIBLE', providerIds: {}, evidence: { type: 'CREDENTIAL_UNUSABLE', source: 'BRANDOPOLIS', reason: 'EXPIRED' }, recordedAt: x.clock() });
+      x.advance(11_000);
+      expect(await x.ext.reconcile(jobId)).toEqual([{ step: 'budget', resolution: 'UNRESOLVED' }]);
+      await expect(x.retry(jobId, 'budget', 'La credencial venció según Brandopolis')).rejects.toThrow(/NO_EVIDENCE_THAT_ATTEMPT_CANNOT_EMIT/);
+      // The provider confirms it no longer accepts that attempt's credential: recorded as evidence, then the window.
+      x.sim.revokeAttemptCredential(attempt.id);
+      expect(await x.ext.reconcile(jobId)).toEqual([{ step: 'budget', resolution: 'UNRESOLVED' }]);
+      await expect(x.retry(jobId, 'budget', 'El proveedor revocó la credencial')).rejects.toThrow(/REMOTE_RESULT_UNRESOLVED/);
+      x.advance(11_000);
+      expect(await x.ext.reconcile(jobId)).toEqual([{ step: 'budget', resolution: 'ABSENCE_CONFIRMED' }]);
+      expect(await x.retry(jobId, 'budget', 'El proveedor revocó la credencial y no hay creación')).toMatchObject({ queued: true });
+      expect(await x.ext.runJob(b, (await x.ext.claimNext(b))!)).toBe('DONE');
+      expect(x.calls('budget')).toBe(1);
+    });
     it('C1 evidence: the supervisor records a real child-process exit as PROCESS_TERMINATED for that worker only', async () => {
       const x = await prepare();
       const { spawn } = await import('node:child_process');

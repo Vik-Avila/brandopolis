@@ -15,6 +15,7 @@ import { ModelGateway, DemoProvider, evaluate, type Recommendation } from '../do
 import { effectiveCapabilities } from '../domain/brand-capabilities.js';
 import { changeCapability, grantedCapabilities, listCapabilityGrants, readWorkPriority, recordWorkPriority, type BrandActor } from './brand-access.js';
 import { ExternalOperations } from './external-operations.js';
+import { createOffer, decideOffer, listOffers, newOfferDraft, retireOffer, saveOfferDraft, submitOffer } from './offers.js';
 
 const id=()=>randomUUID();
 export const hash=(value:string)=>createHash('sha256').update(value).digest('hex');
@@ -89,6 +90,21 @@ export class Engine {
       if(!saved.replayed)await this.audit(tx,{...actor},{operation:'WORK_PRIORITY_SET',idempotencyKey:String(input.idempotencyKey)});
       return saved;
     });
+  }
+  /** PHASE4_SPEC §4.1 · offers of a brand (versions, gaps, «origin updated» projection). Reading never writes. */
+  async offers(token:string,brandId:string) {
+    return this.withBrandActor(token,brandId,(tx,actor)=>listOffers(tx,actor));
+  }
+  /** PHASE4_SPEC §4.1 · one offer operation under the brand scope; every change is audited. */
+  async offerCommand(token:string,action:'create'|'draft'|'submit'|'decide'|'new-draft'|'retire',input:Record<string,unknown>) {
+    if(!input||typeof input!=='object'||Array.isArray(input))throw new AppError('INVALID','Invalid offer request');
+    const run={create:createOffer,draft:saveOfferDraft,submit:submitOffer,decide:decideOffer,'new-draft':newOfferDraft,retire:retireOffer}[action];
+    if(!run)throw new AppError('INVALID','Unknown offer operation');
+    return this.withBrandActor(token,input.brandId as string,async(tx,actor)=>{
+      const result=await (run as (tx:Transaction,a:BrandActor,i:Record<string,unknown>)=>Promise<Record<string,unknown>>)(tx,actor,input);
+      if(!result.replayed)await this.audit(tx,{...actor},{operation:`OFFER_${action.toUpperCase().replace('-','_')}`,idempotencyKey:typeof input.idempotencyKey==='string'?input.idempotencyKey:randomUUID(),rationale:typeof input.criterion==='string'?input.criterion:undefined});
+      return result;
+    },true);
   }
   /** ADR-0033 · the caller's capabilities on this brand and the active member grants. */
   async brandCapabilities(token:string,brandId:string) {
@@ -786,7 +802,7 @@ export class Engine {
         // before decisions; the self reference of versions is satisfied because the whole chain goes in one statement.
         // Phase 4 rows of this Brand (append-only tables allow it only inside this registered deletion). Workspace
         // connections are NOT deleted here: only this Brand's links to them (a credential may serve other brands).
-        for(const table of [t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
+        for(const table of [t.offerVersions,t.offers,t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));
         for(const table of [t.audits,t.telemetry,t.idempotency,t.reviewReceipts,t.reviews,t.impacts,t.dependencies,t.learningSignals,t.signals,t.learnings,t.experiments,t.analyses,t.documentClaims,t.documentExtractions,t.sourceDocuments,t.versions,t.decisions,t.recommendations,t.questions,t.userInputs,t.evidence,t.hypotheses,t.openQuestions,t.brandProfiles,t.assignments] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));

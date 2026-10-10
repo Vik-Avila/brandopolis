@@ -117,8 +117,8 @@ export type RetryDecision = { allowed: true } | { allowed: false; reason: string
 
 /**
  * ADR-0031 C1 · may a person retry an uncertain step? Only when all three hold:
- * 1. evidence that the attempt can no longer emit (terminated process observed by its supervisor, or the attempt's
- *    own credential expired/revoked); nothing else counts;
+ * 1. evidence that the attempt can no longer emit (terminated process observed by its supervisor, or the PROVIDER's
+ *    confirmation that the attempt's credential is no longer accepted — a date stored in Brandopolis is not evidence);
  * 2. the remote result is resolved after that evidence: a found resource is LINKED and never retried; absence must be
  *    confirmed by the provider's change history covering the whole attempt, consulted after evidence + processing window;
  * 3. a valid authorization covering the step, a human criterion and the spend capability.

@@ -19,6 +19,10 @@ export function decisionState(context,question){
 }
 // One status vocabulary everywhere. «Vigente» is a display relation over the active version, never a Decision.status.
 export function stateBadge(version,review){return `<span class="badge ${review?'warn':''}">${review?'Requiere revisión':version?'Vigente · v'+version.sequence:'Por decidir'}</span>`;}
+// ADR-0030 · editorial status vocabulary (offers, deliverables, kit, site, campaign). Canonical values live in
+// schemas/editorial-version; this is the only place that turns them into words. Never colour alone: always a word.
+const EDITORIAL_WORDS={DRAFT:'Borrador',IN_REVIEW:'En revisión',CHANGES_REQUESTED:'Cambios solicitados',APPROVED:'Aprobada',SUPERSEDED:'Reemplazada'};
+export function editorialStateBadge(status,sequence){const word=EDITORIAL_WORDS[status]??'';return `<span class="badge ${status==='CHANGES_REQUESTED'?'warn':''}">${escape(word)}${sequence?` · v${sequence}`:''}</span>`;}
 // Display names for the canonical capability keys of the strategic method (config/strategic-method/learning-moments.v5.json).
 const capabilityLabels={'Market Reasoning':'Razonamiento de mercado','Brand Thinking':'Pensamiento de marca','GTM Prioritization':'Priorización del lanzamiento','Experimentation & Learning':'Experimentación y aprendizaje','Customer Understanding':'Comprensión del cliente','Business Model Thinking':'Modelo de negocio','Strategic Differentiation':'Diferenciación estratégica','Message Prioritization':'Priorización del mensaje','Problem Framing':'Encuadre del problema'};
 export const capabilityLabel=key=>capabilityLabels[key]??key;
@@ -337,12 +341,54 @@ export function attentionListHtml(c,documentState){
  const clear=mandatoryReviews?'':`<li class="attention-item is-clear"><span class="attention-mark" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" focusable="false"><use href="#i-check"/></svg></span><p>Sin revisiones obligatorias pendientes</p></li>`;
  return `${decide.length?`<p class="attention-group-label">Requiere tu decisión</p><ul class="attention-items">${decide.map(i=>attentionRow(i,'decide')).join('')}</ul>`:''}${observe.length?`<p class="attention-group-label">Observación</p><ul class="attention-items">${observe.map(i=>attentionRow(i,'observe')).join('')}</ul>`:''}<ul class="attention-items">${clear}</ul>`;
 }
-export function homeHtml(context,documentState={total:0,pending:0,processed:0,candidateClaims:0}){
+// PHASE4_SPEC §4.9 · «¿Qué te gustaría trabajar primero con tu marca?». Intent ids mirror schemas/work-priority (v1).
+// The priority orders suggestions only: it never hides an area, changes permissions or approves anything.
+export const WORK_INTENTS_MAIN=[['STRATEGY_FULL','Desarrollar mi estrategia completa'],['STRATEGY_POINT','Definir o mejorar un punto de mi estrategia'],['MARKETING_PLAN','Organizar mi marketing'],['CAMPAIGN','Preparar una campaña']];
+export const WORK_INTENTS_OTHER=[['CONTENT','Crear contenidos o materiales'],['WEBSITE','Crear o mejorar mi sitio web'],['VISUAL_IDENTITY','Incorporar, completar o crear mi identidad visual'],['SELL_OFFER','Vender un producto o servicio']];
+export const workIntentLabel=id=>[...WORK_INTENTS_MAIN,...WORK_INTENTS_OTHER,['HELP_ME_CHOOSE','No estoy seguro; ayúdame a elegir']].find(([k])=>k===id)?.[1]??'';
+/** Radio group (native keyboard support). `prefix` keeps ids unique when the group appears twice. */
+export function workIntentFieldsHtml(prefix,current=null){
+ const otherIds=WORK_INTENTS_OTHER.map(([k])=>k),otherChosen=otherIds.includes(current);
+ const radio=([k,label],name=`${prefix}-intent`,checked=current===k)=>`<label class="work-intent-option"><input type="radio" name="${name}" value="${k}"${checked?' checked':''}> <span>${escape(label)}</span></label>`;
+ return `<fieldset class="work-intent" data-prefix="${escape(prefix)}"><legend>¿Qué te gustaría trabajar primero con tu marca?</legend><p class="hint">Elige por dónde empezar. Podrás cambiarlo después.</p><div class="work-intent-options">${WORK_INTENTS_MAIN.map(o=>radio(o)).join('')}${radio(['OTHER','Otras necesidades'],undefined,otherChosen)}<div class="work-intent-other" ${otherChosen?'':'hidden'}>${WORK_INTENTS_OTHER.map(o=>radio(o,`${prefix}-intent-other`,current===o[0])).join('')}</div>${radio(['HELP_ME_CHOOSE','No estoy seguro; ayúdame a elegir'])}</div></fieldset>`;
+}
+// Where an intent leads today. Areas of the next blocks are named honestly as not available yet; the suggestion falls
+// back to the strategic decisions that prepare them. Never a button to a capability that does not exist.
+const INTENT_GUIDE={
+ MARKETING_PLAN:{area:'Marketing · Plan de Marketing',modules:['Strategic Objective','GTM Priority']},
+ CAMPAIGN:{area:'Marketing · Campañas digitales',modules:['Primary Customer','Core Message']},
+ CONTENT:{area:'Marketing · Redes sociales y materiales',modules:['Core Message','Brand Promise']},
+ WEBSITE:{area:'Marketing · Sitio web',modules:['Positioning','Core Message']},
+ VISUAL_IDENTITY:{area:'Marca y recursos · Identidad visual',modules:['Positioning','Brand Promise']},
+ SELL_OFFER:{area:'Productos y servicios',modules:['Primary Customer','Value Mechanism']}
+};
+/** Inicio · «Tu prioridad»: the saved priority, what it suggests now and a way to change it. Pure projection. */
+export function priorityHtml(priority,context,available={}){
+ const intent=priority?.intent??null;
+ const decided=new Set(context.decisions.filter(d=>d.activeVersionId).map(d=>context.questions.find(q=>q.id===d.questionId)?.module));
+ const moduleButtons=modules=>`<div class="priority-modules">${modules.map(m=>`<button type="button" class="secondary" data-attention-module="${escape(m)}">${escape(labels[m])}${decided.has(m)?' · Definida':''}</button>`).join('')}</div>`;
+ let body;
+ if(!intent) body=`<p>Aún no has elegido por dónde empezar. Elegirlo ordena las sugerencias de Inicio; no limita lo que puedes hacer.</p>`;
+ else if(intent==='STRATEGY_FULL') body=`<p>Sigue el recorrido completo de las nueve decisiones. Tu siguiente paso aparece arriba.</p>`;
+ else if(intent==='STRATEGY_POINT') body=`<p>Elige el punto de tu estrategia que quieres trabajar. No necesitas recorrer las nueve decisiones.</p>${moduleButtons(Object.keys(labels))}`;
+ else if(intent==='HELP_ME_CHOOSE'){
+  const pending=Object.keys(labels).filter(m=>!decided.has(m)).slice(0,3);
+  body=pending.length?`<p>Una base sólida empieza por la estrategia. Te sugerimos empezar por estas decisiones; tú eliges.</p>${moduleButtons(pending)}`:`<p>Tus nueve decisiones están definidas. Puedes elegir una prioridad concreta para ordenar el siguiente trabajo.</p>`;
+ }
+ else {
+  const guide=INTENT_GUIDE[intent];
+  body=available[intent]?`<p>Puedes empezar en <strong>${escape(guide.area)}</strong>.</p><div class="actions"><button type="button" data-priority-area="${escape(intent)}">Ir a ${escape(guide.area)}</button></div>`
+   :`<p><strong>${escape(guide.area)}</strong> todavía no está disponible en tu espacio. Mientras tanto, estas decisiones preparan ese trabajo:</p>${moduleButtons(guide.modules)}`;
+ }
+ return `<section class="work-priority" aria-labelledby="work-priority-title"><div class="work-priority-head"><h3 id="work-priority-title">Tu prioridad</h3>${intent?`<p class="badge">${escape(workIntentLabel(intent))}</p>`:''}</div>${body}<details class="work-priority-change"><summary>${intent?'Cambiar prioridad':'Elegir prioridad'}</summary><form id="work-priority-form">${workIntentFieldsHtml('home',intent)}<p id="work-priority-status" role="status" aria-live="polite"></p><button type="submit">Guardar prioridad</button></form></details></section>`;
+}
+export function homeHtml(context,documentState={total:0,pending:0,processed:0,candidateClaims:0},priority=undefined,available={}){
  const step=nextStep(context),progress=strategyProgress(context);
  // Each segment opens its decision (owner decision 2026-10-09): number · name — state, for mouse, keyboard and touch.
  const segments=progress.segments.map((s,i)=>{const state=s.state==='defined'?'Definida':s.state==='review'?'Requiere revisión':s.state==='missing'?'No disponible':'Pendiente',name=`${String(i+1).padStart(2,'0')} · ${labels[s.module]} — ${state}`;return `<li class="${s.state==='defined'?'is-defined':s.state==='review'?'is-review':''}">${s.state==='missing'?`<span class="segment" title="${escape(name)}"><span class="visually-hidden">${escape(name)}</span></span>`:`<button type="button" class="segment" data-attention-module="${escape(s.module)}" aria-label="${escape(name)}" title="${escape(name)}"><span class="segment-tip" aria-hidden="true">${escape(name)}</span></button>`}</li>`;}).join('');
  return `<div class="ws-hero home-heading"><p class="eyebrow">Inicio</p><h2>Tu siguiente paso</h2><p class="ws-lead">Avanza con claridad, una decisión a la vez.</p></div>
  <section class="next-step" data-tone="${step.tone}" data-kind="${step.kind}" aria-labelledby="next-step-title"><div><p class="step-badge">${escape(step.badge)}</p><h3 id="next-step-title">${escape(step.title)}</h3><p>${escape(step.text)}</p><div class="actions"><button type="button" id="next-step-action" ${actionAttrs(step.action)}>${escape(step.cta)} <svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></button>${step.brando?`<button type="button" id="next-step-brando" class="link-action brando-action" data-module="${escape(step.action.module)}">Explorar con Brando <svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></button>`:''}</div></div><div class="next-step-art" aria-hidden="true"><img src="/brand/symbol-premium.webp" alt="" width="96" height="96"></div></section>
+  ${priority===undefined?'':priorityHtml(priority,context,available)}
  <section class="strategy-progress" aria-label="Avance de tu estrategia"><p><strong>Estrategia de marca</strong> · <b>${progress.defined}</b> de ${progress.total} decisiones definidas</p><ol class="progress-segments" aria-label="Abrir una decisión">${segments}</ol><p class="hint">Definida no significa validada: describe completitud, no calidad ni evidencia.</p></section>
  <section class="home-attention" aria-labelledby="home-attention-title"><h3 id="home-attention-title">Lo que merece tu atención</h3>${attentionListHtml(context,documentState)}<div class="home-more"><button type="button" id="home-open-attention" class="link-action">Ver inteligencia estratégica completa</button><button type="button" id="attention-learning" class="link-action">Abrir validación</button><button type="button" id="attention-context" class="link-action">Abrir contexto estratégico</button>${documentState.pending||documentState.processed||documentState.candidateClaims?'<button type="button" id="attention-documents" class="link-action">Revisar documentos</button>':''}</div></section>`;
 }
@@ -462,4 +508,61 @@ export function brandoContextHtml(c,questionId){
  <dl class="brando-context-counts"><div><dt>Decisiones vigentes</dt><dd>${count} de ${c.questions.length}</dd></div><div><dt>Evidencias</dt><dd>${evidence.length}</dd></div><div><dt>Hipótesis registradas</dt><dd>${hypotheses.length}</dd></div></dl>
  <details id="brando-attention-details" class="brando-context-detail"><summary>Qué necesita atención <span>${attention.length}</span></summary>${attention.length?`<ul>${attention.slice(0,4).map(item=>`<li><span>${escape(labels[item.module]??'Contexto de marca')} · ${escape(item.label)}</span><button type="button" class="tertiary" data-brando-module="${escape(item.module??'')}">Abrir</button></li>`).join('')}</ul>${attention.length>4?`<p>Y ${attention.length-4} pendientes más.</p>`:''}`:'<p>Sin pendientes en las categorías registradas. Esto no certifica la calidad de tu estrategia.</p>'}<button type="button" class="tertiary" data-brando-view="attention">Ver atención de la marca</button></details>
  <details class="brando-context-detail"><summary>Evidencia e hipótesis</summary><h4>Evidencia registrada</h4>${evidence.length?`<ul>${textRows(evidence,'claim')}</ul>`:'<p>Aún no hay evidencia registrada.</p>'}<h4>Hipótesis registradas</h4>${hypotheses.length?`<ul>${textRows(hypotheses,'statement')}</ul>`:'<p>Aún no hay hipótesis registradas.</p>'}<p class="hint">Registrar información no equivale a validarla. Revisa su origen y sus límites.</p><button type="button" class="tertiary" data-brando-view="context">Abrir contexto estratégico</button></details>`;
+}
+
+// ─── PHASE4_SPEC §4.1 · Productos y servicios (pure projections; operations live in app.js) ───
+const GAP_WORDS={AUDIENCE:'A quién va dirigida',NEED:'Qué necesidad resuelve',BENEFITS:'Beneficios',PROOF:'Pruebas que la respalden'};
+export function priceText(price){
+ if(!price)return 'Sin precio registrado';
+ let amount;try{amount=new Intl.NumberFormat('es-MX',{style:'currency',currency:price.currency}).format(price.amountMinor/100);}catch{amount=`${(price.amountMinor/100).toFixed(2)} ${price.currency}`;}
+ const validity=price.validFrom||price.validUntil?` · vigencia ${price.validFrom??'—'} a ${price.validUntil??'sin fecha final'}`:'';
+ return `${amount} · ${price.certainty==='ESTIMATED'?'Estimado, no confirmado':'Confirmado'}${validity}`;
+}
+function offerSummaryHtml(content){
+ const rows=[['Para quién',content.audience.segment||(content.audience.customerDecisionVersionId?'Cliente principal definido':'')],['Necesidad',content.need],['Resultado buscado',content.outcome],['Beneficios',content.benefits.join(' · ')],['Diferencias',content.differentiators.join(' · ')],['Condiciones',content.conditions],['Precio',priceText(content.price)]].filter(([,v])=>v);
+ return `<dl class="offer-facts">${rows.map(([k,v])=>`<div><dt>${escape(k)}</dt><dd>${escape(v)}</dd></div>`).join('')}</dl>`;
+}
+/** Offers list. Each card shows the approved version, the working draft, versions waiting for review and what is missing. */
+export function offersHtml(offers){
+ const card=o=>{
+  const shown=o.approved??o.draft??o.inReview[0];
+  const title=shown?.content.name??'Oferta';
+  const parts=[];
+  if(o.approved)parts.push(`<div class="offer-version"><p class="offer-version-head">${editorialStateBadge('APPROVED',o.approved.sequence)} <span class="hint">Versión que usan materiales, sitio y campañas.</span></p>${offerSummaryHtml(o.approved.content)}${o.approved.originOutdated.length?`<p class="offer-origin" role="note"><strong>Origen actualizado:</strong> una decisión que cita esta oferta tiene una versión más reciente. Revisa si conviene crear una versión nueva; nada se cambia solo.</p>`:''}</div>`);
+  for(const v of o.inReview)parts.push(`<div class="offer-version"><p class="offer-version-head">${editorialStateBadge('IN_REVIEW',v.sequence)}</p>${offerSummaryHtml(v.content)}<form class="offer-decide" data-offer="${escape(o.id)}" data-version="${escape(v.id)}" data-fingerprint="${escape(v.fingerprint)}"><label for="offer-criterion-${escape(v.id)}">¿Por qué apruebas o pides cambios?</label><textarea id="offer-criterion-${escape(v.id)}" required minlength="10" maxlength="2000" rows="2"></textarea><div class="actions"><button type="submit" name="decision" value="APPROVE">Aprobar esta versión</button><button type="submit" name="decision" value="REQUEST_CHANGES" class="secondary">Pedir cambios</button></div></form></div>`);
+  if(o.draft)parts.push(`<div class="offer-version"><p class="offer-version-head">${editorialStateBadge('DRAFT',o.draft.sequence)}</p>${offerSummaryHtml(o.draft.content)}${o.draft.gaps.length?`<p class="hint">Para que sea útil, aún falta: ${escape(o.draft.gaps.map(g=>GAP_WORDS[g]).join(', '))}.</p>`:''}${o.status==='ACTIVE'?`<div class="actions"><button type="button" class="secondary" data-offer-edit="${escape(o.id)}">Editar borrador</button><button type="button" data-offer-submit="${escape(o.id)}">Enviar a revisión</button></div>`:''}</div>`);
+  const tail=o.status==='RETIRED'?'<p class="hint">Oferta retirada: se conserva con su historial y ya no se edita.</p>':`<div class="actions offer-tail">${!o.draft?`<button type="button" class="secondary" data-offer-new-draft="${escape(o.id)}">Crear una nueva versión</button>`:''}<button type="button" class="link-action" data-offer-retire="${escape(o.id)}">Retirar oferta</button></div>`;
+  return `<article class="offer-card" data-offer-id="${escape(o.id)}" data-revision="${o.revision}"><header><p class="eyebrow">${shown?.content.kind==='PRODUCT'?'Producto':'Servicio'}</p><h3>${escape(title)}</h3></header>${parts.join('')}${tail}</article>`;
+ };
+ return `<div class="ws-hero"><p class="eyebrow">Productos y servicios</p><h2>Qué ofreces y por qué te elegirían</h2><p class="ws-lead">Cada oferta conecta a quién sirve, qué necesidad resuelve, qué resultado busca y qué la respalda.</p></div>
+ <div class="actions"><button type="button" id="offer-new">Nueva oferta</button></div><div id="offer-editor"></div>
+ ${offers.length?`<div class="offer-list">${offers.map(card).join('')}</div>`:'<p class="hint offer-empty">Aún no hay ofertas. Empieza con la que más te importa vender ahora; puedes completarla poco a poco.</p>'}`;
+}
+/** Offer form. Only references of this brand are offered (the server checks them again). */
+export function offerFormHtml(c,content=null,offer=null){
+ const v=content??{name:'',kind:'SERVICE',audience:{customerDecisionVersionId:null,segment:''},need:'',outcome:'',benefits:[],differentiators:[],conditions:'',proofIds:[],sourceDecisionVersionIds:[],hypothesisIds:[],price:null};
+ const moduleOf=id=>c.questions.find(q=>q.id===c.decisions.find(d=>d.id===id)?.questionId)?.module;
+ const activeVersions=c.decisions.filter(d=>d.activeVersionId).map(d=>c.versions.find(x=>x.id===d.activeVersionId)).filter(Boolean);
+ const customer=activeVersions.find(x=>moduleOf(x.decisionId)==='Primary Customer');
+ const check=(name,id,label,checked)=>`<label class="check-option"><input type="checkbox" name="${name}" value="${escape(id)}"${checked?' checked':''}> <span>${escape(label)}</span></label>`;
+ const evidence=(c.evidence??[]).map(e=>check('proof',e.id,e.claim??e.source??'Evidencia',v.proofIds.includes(e.id))).join('');
+ const decisions=activeVersions.map(x=>check('source',x.id,`${labels[moduleOf(x.decisionId)]??'Decisión'} · v${x.sequence}: ${x.selectedOption}`,v.sourceDecisionVersionIds.includes(x.id))).join('');
+ const hypotheses=(c.hypotheses??[]).map(h=>check('hypothesis',h.id,h.statement??'Hipótesis',v.hypothesisIds.includes(h.id))).join('');
+ const p=v.price;
+ return `<form id="offer-form" class="offer-form" data-offer="${escape(offer?.id??'')}" data-revision="${offer?.revision??''}" novalidate>
+ <h3>${offer?'Editar borrador':'Nueva oferta'}</h3>
+ <label for="offer-name">Nombre</label><input id="offer-name" maxlength="160" required value="${escape(v.name)}">
+ <label for="offer-kind">Tipo</label><select id="offer-kind"><option value="SERVICE"${v.kind==='SERVICE'?' selected':''}>Servicio</option><option value="PRODUCT"${v.kind==='PRODUCT'?' selected':''}>Producto</option></select>
+ <fieldset><legend>Para quién</legend>${customer?`<label class="check-option"><input type="checkbox" id="offer-customer" value="${escape(customer.id)}"${v.audience.customerDecisionVersionId===customer.id?' checked':''}> <span>Usar tu cliente principal: ${escape(customer.selectedOption)}</span></label>`:'<p class="hint">Aún no hay un cliente principal definido; puedes describir el público aquí.</p>'}<label for="offer-segment">Segmento o público</label><input id="offer-segment" maxlength="500" value="${escape(v.audience.segment)}" placeholder="Ej. agencias pequeñas con clientes recurrentes"></fieldset>
+ <label for="offer-need">¿Qué necesidad resuelve?</label><textarea id="offer-need" maxlength="1000" rows="2">${escape(v.need)}</textarea>
+ <label for="offer-outcome">¿Qué resultado busca quien la compra?</label><textarea id="offer-outcome" maxlength="1000" rows="2">${escape(v.outcome)}</textarea>
+ <label for="offer-benefits">Beneficios (uno por línea)</label><textarea id="offer-benefits" rows="3">${escape(v.benefits.join('\n'))}</textarea>
+ <label for="offer-differentiators">Qué la diferencia (uno por línea)</label><textarea id="offer-differentiators" rows="2">${escape(v.differentiators.join('\n'))}</textarea>
+ <label for="offer-conditions">Condiciones</label><textarea id="offer-conditions" maxlength="1500" rows="2">${escape(v.conditions)}</textarea>
+ <fieldset><legend>Pruebas que la respaldan</legend>${evidence||'<p class="hint">Aún no hay evidencias registradas en esta marca.</p>'}</fieldset>
+ <fieldset><legend>Decisiones de origen</legend>${decisions||'<p class="hint">Aún no hay decisiones definidas.</p>'}</fieldset>
+ <fieldset><legend>Supuestos que usa (hipótesis)</legend>${hypotheses||'<p class="hint">Aún no hay hipótesis registradas.</p>'}</fieldset>
+ <fieldset><legend>Precio <span class="hint">opcional</span></legend><label class="check-option"><input type="checkbox" id="offer-has-price"${p?' checked':''}> <span>Registrar un precio</span></label><div class="offer-price"${p?'':' hidden'}><label for="offer-amount">Monto</label><input id="offer-amount" inputmode="decimal" value="${p?(p.amountMinor/100).toFixed(2):''}"><label for="offer-currency">Moneda</label><input id="offer-currency" maxlength="3" value="${escape(p?.currency??'MXN')}"><label for="offer-valid-from">Vigente desde</label><input id="offer-valid-from" type="date" value="${escape(p?.validFrom??'')}"><label for="offer-valid-until">Vigente hasta</label><input id="offer-valid-until" type="date" value="${escape(p?.validUntil??'')}"><label for="offer-certainty">¿Qué tan seguro es?</label><select id="offer-certainty"><option value="ESTIMATED"${p?.certainty!=='CONFIRMED'?' selected':''}>Estimado</option><option value="CONFIRMED"${p?.certainty==='CONFIRMED'?' selected':''}>Confirmado</option></select></div></fieldset>
+ <p id="offer-form-status" role="status" aria-live="polite"></p>
+ <div class="actions"><button type="submit">${offer?'Guardar borrador':'Crear borrador'}</button><button type="button" class="secondary" id="offer-cancel">Cancelar</button></div></form>`;
 }

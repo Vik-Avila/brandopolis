@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/offer-version.v1",
+  "title": "offer-version",
+  "x-version": "v1",
+  "description": "ADR-0030 · content of one version of an offer (product or service): audience, need, outcome, benefits, differences, conditions, proofs (Evidence with provenance), origin decision versions and assumptions (hypotheses of the Validation engine). A price is optional; an estimate is labelled ESTIMATED and never shown as confirmed. Immutable once it leaves DRAFT.",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "kind": { "type": "string", "enum": ["PRODUCT", "SERVICE"] },
+    "audience": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "customerDecisionVersionId": { "type": ["string", "null"], "maxLength": 200 },
+        "segment": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["customerDecisionVersionId", "segment"]
+    },
+    "need": { "type": "string", "maxLength": 1000 },
+    "outcome": { "type": "string", "maxLength": 1000 },
+    "benefits": { "type": "array", "maxItems": 12, "items": { "type": "string", "minLength": 1, "maxLength": 300 } },
+    "differentiators": { "type": "array", "maxItems": 12, "items": { "type": "string", "minLength": 1, "maxLength": 300 } },
+    "conditions": { "type": "string", "maxLength": 1500 },
+    "proofIds": { "type": "array", "maxItems": 20, "items": { "type": "string", "minLength": 1, "maxLength": 200 } },
+    "sourceDecisionVersionIds": { "type": "array", "maxItems": 20, "items": { "type": "string", "minLength": 1, "maxLength": 200 } },
+    "hypothesisIds": { "type": "array", "maxItems": 20, "items": { "type": "string", "minLength": 1, "maxLength": 200 } },
+    "price": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "amountMinor": { "type": "integer", "minimum": 0 },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "validFrom": { "type": ["string", "null"], "format": "date" },
+        "validUntil": { "type": ["string", "null"], "format": "date" },
+        "certainty": { "type": "string", "enum": ["CONFIRMED", "ESTIMATED"] }
+      },
+      "required": ["amountMinor", "currency", "validFrom", "validUntil", "certainty"]
+    }
+  },
+  "required": ["name", "kind", "audience", "need", "outcome", "benefits", "differentiators", "conditions", "proofIds", "sourceDecisionVersionIds", "hypothesisIds", "price"],
+  "examples": [
+    {
+      "name": "Diagnóstico de marca en 30 días",
+      "kind": "SERVICE",
+      "audience": { "customerDecisionVersionId": null, "segment": "Agencias pequeñas con clientes recurrentes" },
+      "need": "Ordenar la estrategia del cliente antes de producir materiales",
+      "outcome": "Una estrategia aprobada y un plan de 90 días",
+      "benefits": ["Menos retrabajo"],
+      "differentiators": ["Decisiones conectadas con evidencia"],
+      "conditions": "Pago en dos partes",
+      "proofIds": [],
+      "sourceDecisionVersionIds": [],
+      "hypothesisIds": [],
+      "price": { "amountMinor": 1500000, "currency": "MXN", "validFrom": "2026-11-01", "validUntil": null, "certainty": "ESTIMATED" }
+    }
+  ]
+}

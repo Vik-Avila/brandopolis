@@ -1,3 +1,14 @@
+## 2026-10-10 · Phase 4 — bloque 3 en curso: prioridad de trabajo y ofertas (regresión completa pendiente)
+
+- Pregunta de prioridad en el alta y en Inicio, append-only, con orientación determinista.
+- Productos y servicios: migración aditiva 0018, schema offer-version v1, versiones editoriales con aprobación por huella y criterio, precio opcional etiquetado, «Origen actualizado» como proyección; entrada del menú habilitada.
+- Evidencia: pnpm test 396 PASS; E2E nuevas 15/15 (5 proyectos); Foundation 0 errores. test:e2e completa y test:visual pendientes de repetir (ejecución detenida por memoria baja).
+
+## 2026-10-10 · Phase 4 — bloque 2 cerrado
+
+- C1: la credencial sólo cuenta como evidencia con confirmación del proveedor; una caducidad registrada sólo en Brandopolis se ignora (prueba nueva).
+- Evidencia: pnpm test 387 PASS; test:e2e 202 PASS · 13 SKIP · 0 FAIL (215, por proyecto, un worker); test:pilot:e2e 10/10; Foundation 0 errores.
+
 ## 2026-10-10 · Phase 4 — aprobada; bloque 2 en curso (fuera de producción)
 
 - Aprobación del propietario registrada: ADR-0030…0034 accepted (ADR-0031 con el ajuste C1 final); inicio guiado, dominio propio, invitaciones y consentimiento incluidos.
