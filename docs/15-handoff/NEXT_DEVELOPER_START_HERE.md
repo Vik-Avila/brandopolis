@@ -22,6 +22,10 @@ Brandopolis is **the Brand Operating System**: a B2B web product where a brand's
 
 ## Current MVP state
 
+> Reconciled 2026-10-10: `main` contains Phases 1–3 (merge of PR #9, `1f1cece`). Phase 4 (Marketing, websites and
+> collaboration) started on 2026-10-10 on `feat/phase4-marketing-web-collaboration`: [PHASE4_SPEC](PHASE4_SPEC.md).
+> The bullets below are the 2026-10-04 snapshot; [SESSION_STATE](../../SESSION_STATE.md) is the current record.
+
 - Engineering foundation and MVP phases 1–9: **closed** ([closure](MVP_PHASES_1_TO_9_CLOSURE.md)).
 - Local DEMO: complete and deterministic (no external services).
 - PILOT mode (HTTPS, OIDC, per-tester workspaces, optional AI with notice and caps, feedback, telemetry): engineering-ready, **external configuration not performed** ([checklist](LIVE_PILOT_LAUNCH_CHECKLIST.md)).
@@ -32,7 +36,7 @@ Brandopolis is **the Brand Operating System**: a B2B web product where a brand's
 
 `handoff/phase10b-final-2026-09-25` on `origin` (https://github.com/Vik-Avila/brandopolis).
 
-> **Important:** GitHub's default branch `main` still contains only the original Engineering Foundation docs. Always clone this branch (or the tag below). Merging into `main` is a human decision and has not been done.
+> **Historical (2026-09-25):** at that date `main` contained only the original Engineering Foundation docs. Since then the work has been merged: clone `main` (see SESSION_STATE for the current state). The branch and tag below remain as the MVP handoff record.
 
 ## Final handoff tag
 
@@ -64,7 +68,7 @@ TypeScript **modular monolith** + **PostgreSQL 17**, no frontend build step.
 | Path | Contents |
 |---|---|
 | `src/` | Application code (above) |
-| `drizzle/` | SQL migrations 0000–0008 + journal. **Never edit an applied migration** (readiness compares hashes). |
+| `drizzle/` | SQL migrations 0000–0015 + journal (2026-10-10). **Never edit an applied migration** (readiness compares hashes). |
 | `scripts/` | DEMO/PILOT tooling (`competition-*`, `db:*`, `pilot:*`), Foundation check, encoding diagnosis |
 | `tests/` | Vitest (`*.test.ts`), Playwright: `browser/` (DEMO E2E), `pilot-browser/`, `visual/`, `boot/` |
 | `config/`, `schemas/`, `prompts/`, `evals/`, `telemetry/` | Versioned rules, JSON Schemas v1, prompt functions, golden cases, telemetry events |
@@ -298,5 +302,9 @@ See the list in [FINAL_MVP_HANDOFF_2026-09-25.md](FINAL_MVP_HANDOFF_2026-09-25.m
 Supplied separately, never committed: hosting account, PILOT `DATABASE_URL`, OIDC client, DNS, Anthropic key/model/budget (optional), request-access destination, tester identities. GitHub access to `Vik-Avila/brandopolis`.
 
 ## First recommended next task
+
+Current (2026-10-10): continue Phase 4 from [PHASE4_SPEC](PHASE4_SPEC.md) and its
+[acceptance matrix](PHASE4_ACCEPTANCE_MATRIX.md). The paragraph below is the 2026-09-25 recommendation, kept as
+history.
 
 Run the founder visual acceptance on the local DEMO (the only pending gate that is not external), record the verdict in `SESSION_STATE.md`, and then execute [LIVE_PILOT_LAUNCH_CHECKLIST](LIVE_PILOT_LAUNCH_CHECKLIST.md) step 1 (choose hosting + OIDC provider) — no feature work until real pilot evidence exists.

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/editorial-version.v1",
+  "title": "editorial-version",
+  "x-version": "v1",
+  "description": "ADR-0030 · editorial state of a version of an offer, deliverable, brand kit, site or campaign. Immutable once it leaves DRAFT. SUPERSEDED applies to an approved version only when a later version is approved. The parent keeps separate pointers for the working draft, the current approved version and the published version.",
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "sequence": { "type": "integer", "minimum": 1 },
+    "status": { "type": "string", "enum": ["DRAFT", "IN_REVIEW", "CHANGES_REQUESTED", "APPROVED", "SUPERSEDED"] },
+    "fingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "previousVersionId": { "type": ["string", "null"] }
+  },
+  "required": ["id", "sequence", "status", "fingerprint", "previousVersionId"],
+  "examples": [
+    { "id": "v-2", "sequence": 2, "status": "IN_REVIEW", "fingerprint": "0000000000000000000000000000000000000000000000000000000000000000", "previousVersionId": "v-1" }
+  ]
+}

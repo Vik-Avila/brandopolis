@@ -32,3 +32,12 @@ Work below is **not** required to start Phase 10 (real testers). Listing it here
 Productos y servicios (portafolio/ofertas), Plan de marketing (activación) y Resultados (medición) aparecen en la
 navegación sólo como «Próximamente». Siguen diferidos: sin modelo, pantalla, formularios, conectores ni datos.
 Corresponden a decisiones futuras (puente Fase 3–4, Fase 4 y Fase 5) que requieren aprobación expresa.
+
+## 2026-10-10 · Fase 4 reabre parte del alcance diferido
+
+Por decisión del propietario ([scope-mvp · Resolución 2026-10-10](../01-product/scope-mvp.md),
+[ADR-0030](../14-decisions/ADR-0030.md)) salen de este registro, sólo fuera de producción: Productos y
+servicios, Plan de marketing, Resultados esenciales, comentarios, exportaciones, invitación y aprobación del
+cliente, sitios multipágina, Google Ads, Meta Ads, Canva e identidad visual de cada marca
+([ADR-0034](../14-decisions/ADR-0034.md)). Siguen diferidos: CRM, billing, colaboración en
+tiempo real, API pública, búsqueda global, notificaciones, analítica avanzada (Fase 5) y el resto de la tabla.

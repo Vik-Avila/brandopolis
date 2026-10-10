@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/brand-capability.v1",
+  "title": "brand-capability",
+  "x-version": "v1",
+  "description": "ADR-0033 · a capability granted to a workspace MEMBER for one brand. A workspace ADMIN holds every capability; a guest never holds any. Grants and revocations are audited.",
+  "properties": {
+    "brandId": { "type": "string", "minLength": 1 },
+    "userId": { "type": "string", "minLength": 1 },
+    "capability": {
+      "type": "string",
+      "enum": ["PUBLISH_SITE", "PUBLISH_BRAND_KIT", "AUTHORIZE_SPEND", "MANAGE_CONNECTIONS", "MANAGE_GUESTS"]
+    },
+    "grantedBy": { "type": "string", "minLength": 1 },
+    "grantedAt": { "type": "string", "format": "date-time" }
+  },
+  "required": ["brandId", "userId", "capability", "grantedBy", "grantedAt"],
+  "examples": [
+    { "brandId": "b-1", "userId": "u-2", "capability": "AUTHORIZE_SPEND", "grantedBy": "u-1", "grantedAt": "2026-10-10T12:00:00Z" }
+  ]
+}

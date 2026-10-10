@@ -1,3 +1,136 @@
+## 2026-10-10 · PHASE 4 · APROBADA · bloque 2 (datos, autoridad, conexiones, ejecución externa) en curso
+
+PHASE 4 · SCOPE APPROVED · BLOCK 2 IN PROGRESS · NOT RELEASE-READY. Rama `feat/phase4-marketing-web-collaboration`,
+base `1f1cece05b168b00e43ea62c6f9a2581039ad02f`, sin commits. Sin commit, push, PR, deploy ni operaciones con
+proveedores; migraciones sólo en bases de desarrollo/prueba locales. Producción sin cambios.
+
+**Aprobación del propietario (2026-10-10 14:49, America/Mexico_City; paquete BP-P4-V4-APROBADA-20261010 sobre el
+candidato v4 `c211b914…d8f9e124`):** ADR-0030…0034 aceptados (ADR-0031 con el ajuste C1 final incorporado: la
+repetición exige evidencia verificable de que el intento no puede emitir, resultado remoto resuelto después y
+autorización vigente; ningún trabajo nuevo la elude). Incluidos: inicio guiado completo, dominio propio del cliente,
+invitaciones por email con enlace alternativo y controles de consentimiento. Desarrollo, DEMO y migraciones aditivas
+autorizados sólo en desarrollo/ensayo (decisión humana nueva exigida por CLAUDE.md § Pilot freeze, punto 4).
+Registrada en scope-mvp, ADR (Status accepted + historial), PHASE4_SPEC v5 §10–§11, matriz y requisitos externos.
+
+**Bloque 2 implementado (evidencia: pruebas automáticas con simulador; ninguna verificación con proveedor):**
+- Migraciones aditivas `0016` (capacidades por marca, prioridad de trabajo, conexiones, vínculos de cuenta,
+  autorizaciones, trabajos, pasos, intentos y evidencias, instancias de worker; CHECK y triggers append-only con la
+  relajación acotada de `0015`) y `0017` (liberaciones humanas por intento; un trabajo abierto por campaña). Ninguna
+  tabla existente se modifica. Aplicadas sólo a la base de pruebas efímera y al perfil aislado `rc1-smoke`.
+- Schemas v1 nuevos (fuente de estados): work-priority, brand-capability, editorial-version,
+  operation-authorization, external-job, external-attempt-outcome.
+- Dominio puro: versiones editoriales con tres punteros, capacidades por marca, prioridad de trabajo, máquinas de
+  estado y regla C1 de operaciones externas. Aplicación: `Engine.withBrandActor`, prioridad de trabajo y capacidades
+  (endpoints GET/POST `/api/brands/work-priority` y `/api/brands/capabilities`), almacén de credenciales AES-256-GCM,
+  adaptador de proveedor con simulador, cola con concesión, intentos por paso, conciliación fuera de transacción,
+  liberación humana, supervisor de procesos y guarda de eliminación de marca.
+- Revisión de seguridad independiente del diff: 1 BLOCKER, 3 HIGH, 4 MEDIUM y varios LOW, **todos corregidos** con
+  pruebas de regresión (EXT-022…026, DEL-006); pendientes declarados: huella de contenido contra la versión de
+  campaña (bloque 8), entrega a terceros y recorrido `BrandClosure` completo.
+- Las pruebas que fijaban el número de migraciones se actualizaron de 16 a 18, como hizo la Fase 3 con 14 → 16.
+
+**Comprobaciones ejecutadas (salida real, código definitivo):** typecheck PASS; lint PASS; Foundation 267
+Markdown / 85 JSON / 31 schemas / 15 requirements / 13 golden cases / 0 errores; `skills:check` idéntico;
+`git diff --check` limpio; pnpm test 17 archivos / 386 PASS; test:pilot:e2e 10/10 PASS. **test:e2e: NO COMPLETADO**
+sobre el código definitivo: Claude Code detuvo las tareas en segundo plano por falta de memoria del sistema
+(≈0,6 GB libres de 7,8 GB) antes de ejecutar sus 215 pruebas; una pasada anterior, con código previo a las
+correcciones de seguridad, se detuvo a propósito a mitad y no cuenta como evidencia. test:visual y validadores de
+UI no aplican (sin cambios de presentación). Pendiente: repetir test:e2e cuando haya memoria disponible.
+
+## 2026-10-10 · PHASE 4 · especificación v4 tras el dictamen v3 (precisiones C1, C3 y pregunta inicial)
+
+PHASE 4 · SPECIFICATION v4 PROPOSED · NO PRODUCT CODE · NOT RELEASE-READY. Misma rama y base
+(`1f1cece05b168b00e43ea62c6f9a2581039ad02f`), sin commits; antes de editar el árbol contenía los 21 archivos del
+candidato v3 (ZIP `2170d436…eed6f8d1`, el revisado). Sin commit, push, PR, migración, dependencia ni deploy;
+ningún registro, solicitud o envío a proveedores. ADR-0030…0034 siguen `proposed`.
+
+Entrada: dictamen v3 del revisor (C2 y C4 resueltos; precisiones en C1 y C3) e instrucciones actualizadas.
+Cambios: ADR-0031 v4 (inicio lógico del intento en `DISPATCHING`, plazo de envío y ventana de cierre con riesgo
+residual declarado, repetición humana sólo con evidencia remota), ADR-0032 v4 (`MeasurementCompatibility` para
+publicaciones compatibles), ADR-0030 v3 (única dependencia nueva: `BrandWorkPriority`), PHASE4_SPEC v4, matriz v4.
+
+**Corrección fechada de la entrada v3 de hoy:** allí la pregunta inicial figuraba como parte de una propuesta
+pendiente. Es un **requisito confirmado** por el propietario: preguntar qué quiere trabajar primero la persona,
+guardar la prioridad con su marca, adaptar preguntas y siguiente acción y permitir cambiarla, con el formulario
+actual de alta (PHASE4_SPEC §4.9; INT-001…008, alcance base; esfuerzo dentro del bloque 3 sin cifra nueva). Sigue
+**propuesto** el inicio guiado completo (§4.10). La entrada v3 no se reescribe.
+
+Comprobaciones ejecutadas ahora sobre el candidato v4 (salida real): Foundation 267 Markdown / 77 JSON / 25
+schemas / 15 requirements / 13 golden cases / 0 errores; `skills:check` idéntico (skills sin cambios en v4);
+typecheck PASS; lint PASS; pnpm test 16 archivos / 346 PASS; git diff --check limpio. Matriz v4: 9 recorridos y
+109 criterios (118 identificadores únicos), todas las pruebas pendientes; suites de navegador no aplicables.
+
+## 2026-10-10 · PHASE 4 · especificación v3 tras el dictamen v2 (C1–C4) e inicio guiado propuesto
+
+PHASE 4 · SPECIFICATION v3 PROPOSED · NO PRODUCT CODE · NOT RELEASE-READY. Misma rama y base
+(`1f1cece05b168b00e43ea62c6f9a2581039ad02f`), sin commits; antes de editar el árbol contenía los 21 archivos del
+candidato v2. Sin commit, push, PR, migración, dependencia ni deploy; ningún registro, solicitud o envío a
+proveedores. ADR-0030…0034 siguen `proposed`.
+
+Entrada: dictamen v2 del revisor sobre el ZIP `86a2b5e5…7ea8c8` (diseño favorable de ADR-0030, ADR-0033 y
+ADR-0034; ajustes C1–C3 en ADR-0031/0032 y C4 en la estimación) y petición del propietario del 2026-10-10 de
+incorporar una pregunta inicial sobre qué quiere lograr el usuario. Cambios sólo en ADR-0031, ADR-0032,
+PHASE4_SPEC, PHASE4_ACCEPTANCE_MATRIX y PHASE4_EXTERNAL_REQUIREMENTS (tabla C1–C4 en PHASE4_SPEC §9). El inicio
+guiado (con «¿Qué quieres lograr?» como paso 0, reutilizando el alta actual y el contexto declarado de ADR-0025)
+queda como **propuesta pendiente** de inclusión; también siguen pendientes dominio propio, modalidad de
+invitación, política de consentimiento y dominio de sitios. Estimación corregida: pendiente 43–63 sesiones; total
+45–65 con el bloque 1; propuestas aparte (dominio propio 3–5, inicio guiado 4–6).
+
+Comprobaciones ejecutadas ahora sobre el candidato v3 (salida real): Foundation 267 Markdown / 77 JSON / 25
+schemas / 15 requirements / 13 golden cases / 0 errores; `skills:check` idéntico (skills sin cambios en v3);
+typecheck PASS; lint PASS; pnpm test 16 archivos / 346 PASS; git diff --check limpio. Pruebas nuevas de la matriz:
+todas pendientes; suites de navegador no aplicables (sin runtime).
+
+## 2026-10-10 · PHASE 4 · especificación v2 tras la revisión R01–R10
+
+PHASE 4 · SPECIFICATION v2 PROPOSED · NO PRODUCT CODE · NOT RELEASE-READY. Misma rama
+`feat/phase4-marketing-web-collaboration`, base `1f1cece05b168b00e43ea62c6f9a2581039ad02f`, sin commits; antes de
+editar se comprobó que el árbol contenía exactamente los 18 archivos del candidato v1 y que el ZIP revisado tenía
+el SHA-256 citado por el informe (`4de4fecb…ffe14`). Sin commit, push, PR, migración, dependencia ni deploy;
+ningún registro, solicitud o envío a proveedores. ADR-0030…0034 siguen `proposed`.
+
+Entrada: informe del propietario «Brandopolis_Fase4_Revision_ADR_2026-10-10» (dictamen: correcciones antes de
+aceptar), instrucciones actualizadas y documento de decisiones del mismo día, que añaden la identidad visual de
+cada marca a esta fase. Resolución por punto en [PHASE4_SPEC §9](docs/15-handoff/PHASE4_SPEC.md). Nuevo
+[ADR-0034](docs/14-decisions/ADR-0034.md) (identidad visual y kit, siguiente número libre comprobado). El dominio
+propio del cliente queda como recomendación pendiente de revisión, no como decisión del propietario.
+
+Procedencia (R10): la Fase 3 desplegada en PILOT, las 43 marcas y la aceptación del propietario proceden del
+handoff externo del propietario (2026-10-09, no incluido en el repositorio) y de su confirmación del 2026-10-10;
+no son verificaciones de esta sesión.
+
+Comprobaciones ejecutadas ahora sobre el candidato v2 (salida real): Foundation 267 Markdown / 77 JSON / 25
+schemas / 15 requirements / 13 golden cases / 0 errores; `skills:check` idéntico tras `skills:sync`; typecheck
+PASS; lint PASS; pnpm test 16 archivos / 346 PASS (incluye skill-pack); git diff --check limpio. Las pruebas
+nuevas de la matriz de Fase 4 siguen **todas pendientes**; las suites de navegador no aplican (sin runtime).
+
+## 2026-10-10 · PHASE 4 — MARKETING, SITIOS WEB Y COLABORACIÓN · STARTED · especificación (iteración 4 de 6)
+
+PHASE 4 · SPECIFICATION PROPOSED · NO PRODUCT CODE · NOT RELEASE-READY. Rama
+`feat/phase4-marketing-web-collaboration` creada desde `main` = `origin/main` =
+`1f1cece05b168b00e43ea62c6f9a2581039ad02f` (árbol limpio al empezar). Sin commit, push, PR, migración, dependencia
+ni deploy. Producción sin cambios por parte de esta sesión; Jury Production Freeze vigente.
+
+Fuente del propietario (2026-10-10, no verificada por el agente): la Fase 3 se desplegó en PILOT en una
+conversación anterior y el propietario confirmó su aceptación visual y funcional integral. Este archivo no
+contiene el registro de ese despliegue (SHA, migraciones aplicadas, verificación posterior): **pendiente de
+evidencia**. La entrada del 2026-10-09 («Producción sin cambios») describe su momento y no se reescribe. Los
+conteos históricos (16 migraciones, 43 marcas) se contrastarán al preparar un despliegue futuro.
+
+Alcance confirmado: 1A (agencias y consultores), 2C (sitios multipágina con IA, editables y publicables), 3C
+(Google Ads y Meta Ads por API con confirmación humana por operación de publicación o gasto). Documentos:
+[PHASE4_SPEC](docs/15-handoff/PHASE4_SPEC.md), [matriz](docs/15-handoff/PHASE4_ACCEPTANCE_MATRIX.md),
+[requisitos externos](docs/15-handoff/PHASE4_EXTERNAL_REQUIREMENTS.md), [ADR-0030](docs/14-decisions/ADR-0030.md)–
+[ADR-0033](docs/14-decisions/ADR-0033.md) (proposed). Contradicción con non-goals/scope-mvp resuelta por la
+decisión del propietario y registrada como Resolución 2026-10-10. Skill brandopolis-brando conciliada con
+ADR-0025/0026 (B2/B3; B4/B5 sin autorizar).
+
+Comprobaciones de esta sesión: Foundation antes de los cambios 259 Markdown / 77 JSON / 25 schemas / 15
+requirements / 13 golden cases / 0 errores; `skills:check` idéntico antes y después de `skills:sync`. Después de
+los cambios (salida real): Foundation 266 Markdown / 77 JSON / 25 schemas / 15 requirements / 13 golden cases /
+0 errores; typecheck PASS; lint PASS; pnpm test 16 archivos / 346 PASS (incluye skill-pack); git diff --check
+limpio. Suites de navegador no aplicables (sin cambios de runtime).
+
 ## 2026-10-09 · PHASE 3 — VALIDATION & LEARNING ENGINE · COMPLETE (iteración 3 de 6)
 
 PHASE 3 COMPLETE · todos los gates en verde, incluido Live AI sobre el código final · integrada en `main` mediante

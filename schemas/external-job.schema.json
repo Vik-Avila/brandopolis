@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/external-job.v1",
+  "title": "external-job",
+  "x-version": "v1",
+  "description": "ADR-0031 · a queued external operation made of ordered remote steps. The worker lease is persisted (claimedBy, leaseNumber, leaseUntil); a step is dispatched only through a conditional transition, and an uncertain step is never resent automatically.",
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "brandId": { "type": "string", "minLength": 1 },
+    "authorizationId": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["QUEUED", "CLAIMED", "RUNNING", "SUCCEEDED", "FAILED", "NEEDS_CHECK", "PARTIAL", "EXPIRED", "CANCELLED"] },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "key": { "type": "string", "minLength": 1 },
+          "status": { "type": "string", "enum": ["PENDING", "DISPATCHING", "SUCCEEDED", "REJECTED", "NEEDS_CHECK", "NOT_CREATED"] },
+          "providerIds": { "type": "object" }
+        },
+        "required": ["key", "status", "providerIds"]
+      }
+    }
+  },
+  "required": ["id", "brandId", "authorizationId", "status", "steps"],
+  "examples": [
+    { "id": "job-1", "brandId": "b-1", "authorizationId": "auth-1", "status": "NEEDS_CHECK", "steps": [ { "key": "campaign", "status": "SUCCEEDED", "providerIds": { "campaign": "123" } }, { "key": "ad_group", "status": "NEEDS_CHECK", "providerIds": {} } ] }
+  ]
+}

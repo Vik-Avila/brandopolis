@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/external-attempt-outcome.v1",
+  "title": "external-attempt-outcome",
+  "x-version": "v1",
+  "description": "ADR-0031 · append-only evidence about one dispatch attempt of a remote step. Late results are added, never overwrite earlier evidence. EMIT_IMPOSSIBLE records verifiable evidence that the attempt can no longer reach the provider (terminated process observed by its supervisor, or the attempt's credential expired or revoked); losing a lease, a suspension, an expired deadline or an empty lookup is never such evidence.",
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "attemptId": { "type": "string", "minLength": 1 },
+    "kind": { "type": "string", "enum": ["PROVIDER_SUCCESS", "PROVIDER_REJECTED", "AMBIGUOUS", "NOT_SENT_DEADLINE", "RECONCILED_FOUND", "REMOTE_ABSENCE_CONFIRMED", "EMIT_IMPOSSIBLE", "LATE_RESULT"] },
+    "providerIds": { "type": "object" },
+    "evidence": { "type": ["object", "null"] },
+    "recordedAt": { "type": "string", "format": "date-time" }
+  },
+  "required": ["id", "attemptId", "kind", "providerIds", "evidence", "recordedAt"],
+  "examples": [
+    { "id": "o-1", "attemptId": "a-1", "kind": "EMIT_IMPOSSIBLE", "providerIds": {}, "evidence": { "type": "PROCESS_TERMINATED", "observer": "supervisor@host-a", "observedAt": "2026-10-10T12:05:00Z" }, "recordedAt": "2026-10-10T12:05:01Z" }
+  ]
+}

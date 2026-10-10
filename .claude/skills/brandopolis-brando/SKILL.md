@@ -16,7 +16,7 @@ AI proposes. Humans decide. Brandopolis remembers.
 
 ## Stage gate
 
-1. Only B1 (Contextual) is authorized, and only for the stage after the frozen PILOT. B2–B5 need their own human decision.
+1. Authorized levels, outside production only: B1 (Contextual), B2 (Strategic Copilot, [ADR-0025](../../../docs/14-decisions/ADR-0025.md)) and B3 (Learning Copilot, [ADR-0026](../../../docs/14-decisions/ADR-0026.md)); the canonical table is in [brand-intelligence-engine](../../../docs/05-ai/brand-intelligence-engine.md). B4 (Orchestrator) and B5 need their own human decision. New proposal surfaces (for example Phase 4 marketing drafts and visual identity directions, [ADR-0030](../../../docs/14-decisions/ADR-0030.md), [ADR-0034](../../../docs/14-decisions/ADR-0034.md)) stay propose-only: Brando never executes, queues external operations, publishes, spends or changes permissions.
 2. Any runtime change to the AI surfaces of the running PILOT must pass the [freeze gate](../../../CLAUDE.md#pilot-freeze); if it does not, stop and escalate. New Brando capability waits for the next stage (ADR-0015); design and docs are fine.
 
 ## Authority gate (every change)
@@ -35,7 +35,7 @@ AI proposes. Humans decide. Brandopolis remembers.
 
 ## Escalate to a human
 
-Provider or model choice, caps and budget, what data is sent to a provider (see [data classification](../../../docs/12-security/data-classification.md)), any new tool or capability for the model, prompt changes that affect metrics, anything beyond B1.
+Provider or model choice, caps and budget, what data is sent to a provider (see [data classification](../../../docs/12-security/data-classification.md)), any new tool or capability for the model, prompt changes that affect metrics, anything beyond the authorized levels in the stage gate.
 
 ## Never
 

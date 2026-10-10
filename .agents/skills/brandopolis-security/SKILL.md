@@ -24,8 +24,9 @@ Any runtime change must pass the [freeze gate](../../../CLAUDE.md#pilot-freeze),
 3. Admin: each endpoint checks authorization itself, rejections stay indistinguishable, no strategic content or secrets leave the admin layer, metrics reuse the canonical definitions in `pilot-access.ts`.
 4. Identity is the `(issuer, subject)` pair, never email. Keep sign-in fail-closed unless the deployment explicitly enables auto-provisioning.
 5. Logs carry IDs and categories only. Secrets stay server-side and come from the host secret manager.
-6. Add or extend tests in `tests/admin.test.ts`, `tests/pilot-cases.ts` or `tests/m1.test.ts` that fail if the control regresses.
-7. Run the agent's built-in security review on the diff as a complement (Claude Code: `/security-review`; Codex: `/review` with a security focus) and triage its findings here.
+6. External integrations (Phase 4, [ADR-0031](../../../docs/14-decisions/ADR-0031.md), [ADR-0032](../../../docs/14-decisions/ADR-0032.md)): a product integration is never the assistant's own connector; credentials stay encrypted server-side; OAuth state is single-use and bound to session and brand; spend or publish operations need a reserved authorization revalidated before dispatch, and an uncertain dispatch is reconciled, never resent automatically; previews authenticate the viewer on every request; imported files (vector images, documents, fonts) are validated and never served raw.
+7. Add or extend tests in `tests/admin.test.ts`, `tests/pilot-cases.ts` or `tests/m1.test.ts` that fail if the control regresses.
+8. Run the agent's built-in security review on the diff as a complement (Claude Code: `/security-review`; Codex: `/review` with a security focus) and triage its findings here.
 
 ## Escalate to a human
 

@@ -67,3 +67,35 @@ propietario. NEXT PHASE: PHASE 3 — VALIDATION & LEARNING ENGINE.
 
 PHASE 3 — VALIDATION & LEARNING ENGINE · IMPLEMENTATION COMPLETE · AUTOMATED VALIDATION COMPLETE ·
 HUMAN REVIEW PENDING · RELEASE CANDIDATE OUTSIDE PRODUCTION ([ADR-0026](../14-decisions/ADR-0026.md)).
+
+## Resolución · 2026-10-10 · Fase 4 — Marketing, sitios web y colaboración
+
+El propietario confirma 1A (agencias pequeñas y consultores), 2C (sitios completos multipágina con IA, editables
+y publicables) y 3C (campañas Google Ads y Meta Ads por API oficial con confirmación humana específica de cada
+operación que publique o modifique gasto). Esto reabre, **sólo fuera de producción**, elementos de P1/P2 y de
+«Excluido ahora»: invitación y aprobación del cliente, comentarios, exportaciones, web builder, Ads, Canva, guía
+de marca viva y calendario social con registro manual de publicación ([ADR-0030](../14-decisions/ADR-0030.md)).
+Siguen excluidos CRM general, ecommerce, reservas, membresías, constructor de apps, plataforma de email, LMS,
+generadores propios de logos/imágenes, publicación orgánica automática, agent swarm y cambios de facturación.
+La aprobación de alcance no autoriza campañas reales, gasto, compras, DNS, migraciones de producción ni
+despliegues; la Jury Production Freeze sigue vigente.
+
+Adenda del mismo día: el propietario añade la **ingesta o el desarrollo de la identidad visual** de cada marca,
+conectada con todos los canales ([ADR-0034](../14-decisions/ADR-0034.md)). Brandopolis no pasa a ser un generador
+propio de logotipos: Brando propone direcciones y los recursos se obtienen por diseñador, por la integración de
+Canva del producto o por carga de archivos; generar imágenes con un proveedor nuevo exige una decisión humana
+propia. El dominio propio del cliente es una recomendación pendiente de revisión, no parte de esta resolución.
+
+## Resolución · 2026-10-10 14:49 · Aprobación de la Fase 4 y desarrollo autorizado fuera de producción
+
+El propietario respondió «si continuar» a la propuesta de aprobar la fase (paquete BP-P4-V4-APROBADA-20261010,
+sobre el candidato v4 `c211b914…d8f9e124`). Quedan **aceptados** [ADR-0030](../14-decisions/ADR-0030.md) a
+[ADR-0034](../14-decisions/ADR-0034.md), ADR-0031 con el ajuste C1 obligatorio. Se **incluyen** en la Fase 4: la
+pregunta inicial de prioridad, el inicio guiado completo, el dominio propio del cliente con configuración asistida,
+las invitaciones por email con enlace de un solo uso como alternativa y los controles de consentimiento (etiquetas
+opcionales desactivadas hasta aceptar). Se autorizan implementación, pruebas, DEMO y **migraciones aditivas sólo
+en bases aisladas de desarrollo o ensayo**: es la decisión humana nueva que exige
+[CLAUDE.md § Pilot freeze](../../CLAUDE.md#pilot-freeze) punto 4, limitada a esos entornos. No autoriza producción,
+publicación pública, campañas reales, gasto, compras ni DNS; commit, push y merge siguen las reglas del repositorio.
+Pendientes que no bloquean: nombre del dominio de publicación, proveedor de email, textos finales de consentimiento
+y accesos de Google, Meta y Canva.

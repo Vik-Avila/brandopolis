@@ -8,3 +8,11 @@ Depends on: Master Context v1.0
 # No objetivos actuales
 
 No generador de logos, imágenes o posts; scheduler social, Ads Manager, CRM, website builder, email platform, Canva competitor, LMS/academia/cursos/certificaciones, marketplace, chatbot generalista, consultoría automática, brand book generator, agent swarm, enterprise suite ni app nativa. Una integración futura no cambia el núcleo: Strategic Decision conectada y humana. No desarrollar aplicación completa dentro de Foundation.
+
+Nota 2026-10-10: la decisión del propietario para la Fase 4 reabre fuera de producción el web builder
+multipágina, la integración Ads (Google y Meta), el calendario social con registro manual, la guía de marca
+viva, la identidad visual de cada marca y Canva, siempre derivados de estrategia versionada y con autoridad
+humana ([scope-mvp · Resolución 2026-10-10](scope-mvp.md), [ADR-0030](../14-decisions/ADR-0030.md),
+[ADR-0034](../14-decisions/ADR-0034.md)). Brandopolis sigue sin ser un generador propio de logotipos o imágenes:
+los recursos se obtienen por diseñador, integración creativa o carga. El resto de esta lista sigue vigente como no
+objetivo.

@@ -19,7 +19,11 @@ const OWNED = {
   review_receipts: t.reviewReceipts, user_inputs: t.userInputs, evidence: t.evidence, hypotheses: t.hypotheses,
   open_questions: t.openQuestions, analyses: t.analyses, experiments: t.experiments, signals: t.signals, learnings: t.learnings,
   learning_signals: t.learningSignals, source_documents: t.sourceDocuments, document_extractions: t.documentExtractions,
-  document_claims: t.documentClaims
+  document_claims: t.documentClaims,
+  // Phase 4 · block 2 (ADR-0030/0031/0033): Brand-owned rows. Workspace connections are not Brand-owned.
+  brand_capabilities: t.brandCapabilities, brand_work_priorities: t.brandWorkPriorities, connection_brand_links: t.connectionBrandLinks,
+  operation_authorizations: t.operationAuthorizations, external_jobs: t.externalJobs, external_steps: t.externalSteps,
+  external_attempts: t.externalAttempts, external_attempt_outcomes: t.externalAttemptOutcomes, external_step_releases: t.externalStepReleases
 } as const;
 
 /** ADR-0029 · Eliminar marca: admin-only, typed confirmation, complete purge, private reflections unlinked, idempotent. */

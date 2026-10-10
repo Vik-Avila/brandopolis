@@ -19,4 +19,18 @@ Depends on: Master Context v1.0
 
 Agregar secciones del recorrido a una Brand existente (`POST /api/brands/strategic-sections`, [ADR-0021](../14-decisions/ADR-0021.md)) sigue la fila «Ver/editar Context»: sólo crea preguntas OPEN faltantes, sin permisos sobre decisiones. Declarar la geografía de una Brand (`POST /api/brands/geography`, DEMO y PILOT; [ADR-0025](../14-decisions/ADR-0025.md)) exige el mismo `scope` con asignación, audita `BRAND_CONTEXT_UPDATED` y nunca modifica una decisión; PILOT añade su gate de sesión viva. Cada operación verifica sesión, membership activo, Brand bajo Workspace, scope de actor y `expectedActiveVersion`; la URL o id no concede permiso. Eliminar una Brand (`POST /api/brands/delete`, [ADR-0029](../14-decisions/ADR-0029.md)) exige el mismo `scope` más rol ADMIN y el nombre exacto; otra organización recibe 404, es idempotente por actor y clave, desvincula (nunca borra) reflexiones privadas y analítica del piloto, y no alcanza las copias de seguridad externas. Permisos más finos de colaboración P1. Guardar audit actor/fecha/versión por commit.
 
+Fase 4 · bloque 2 (2026-10-10, [ADR-0033](../14-decisions/ADR-0033.md), [ADR-0031](../14-decisions/ADR-0031.md)):
+
+| Acción | Workspace Admin | Member con Brand asignada | Invitado | IA / Brando |
+|---|---|---|---|---|
+| Leer o fijar la prioridad de trabajo de la Brand (`/api/brands/work-priority`) | sí | sí | no | no |
+| Conceder o retirar capacidades por Brand (`/api/brands/capabilities`) | sí, sólo a un MEMBER asignado | no (403) | no | no |
+| Gestionar conexiones de proveedor y vincular cuentas | sí | sólo con `MANAGE_CONNECTIONS` | no | no |
+| Autorizar, encolar o reintentar una operación con gasto | sí | sólo con `AUTHORIZE_SPEND` | no | **no** |
+
+El actor y sus capacidades se resuelven en servidor (`Engine.withBrandActor`: sesión, membresía activa, Brand bajo
+Workspace y asignación). Otra organización → 404; un MEMBER sin asignación → 403. Ejecutar un paso externo revalida
+en el worker la capacidad del actor que autorizó. Las credenciales se cifran en servidor y nunca salen en
+respuestas. Los invitados (ADR-0033) se implementan en un bloque posterior.
+
 Operador PILOT (2026-10-04, [ADR-0016](../14-decisions/ADR-0016.md)): la superficie `/admin` es independiente de esta matriz. Exige sesión PILOT viva, email verificado y pertenencia a `BRANDOPOLIS_ADMIN_EMAILS`, comprobados en cada endpoint; sólo ve metadatos operativos, evidencia agregada y los comentarios de feedback, puede suspender o reactivar el acceso de un participante, y no tiene ningún permiso estratégico (no lee contenido ni hace commit). El autoaprovisionamiento crea un Workspace propio por identidad y no concede permisos fuera de él.

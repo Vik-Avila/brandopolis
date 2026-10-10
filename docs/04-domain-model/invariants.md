@@ -62,3 +62,29 @@ Depends on: Master Context v1.0 + hardening brief 2026-09-24
 | BRD-006 | La historia y la auditoría sólo se borran dentro de una eliminación autorizada de su marca | `DELETE` directo de versiones/auditoría sigue fallando |
 | BRD-007 | Nunca se afirma eliminación completa si los archivos no se purgaron | fallo de purga → `FILES_PENDING`; reintento → `DELETED` |
 | BRD-008 | La purga de archivos queda confinada a `<root>/<workspaceId>/<brandId>` | prefijos fuera de la raíz o de otra profundidad → INVALID |
+
+## Fase 4 · bloque 2 · ADR-0030/0031/0033 (2026-10-10)
+
+Sólo los criterios de [PHASE4_ACCEPTANCE_MATRIX](../15-handoff/PHASE4_ACCEPTANCE_MATRIX.md) que ya tienen prueba ejecutada. Las operaciones externas se verifican con el simulador: prueban la lógica local, no una integración comercial.
+
+| ID | Invariante | Prueba |
+|---|---|---|
+| INT-002 | La prioridad de trabajo es append-only por marca; la vigente es la última; misma clave → mismo registro, otro contenido → 409 | `phase4-cases.ts` |
+| INT-003 | Elegir prioridad no crea versiones, contexto ni planes; UPDATE/DELETE directos fallan | `phase4-cases.ts` |
+| PRT-005 | Sólo un ADMIN concede capacidades por marca, sólo a un MEMBER asignado; auditado | `phase4-cases.ts`, `phase4-domain.test.ts` |
+| EXT-001 | Encolar reserva la autorización en la misma transacción; un trabajo por autorización | `phase4-cases.ts` |
+| EXT-002 | Un worker sin concesión vigente no inicia ningún intento; tras el relevo se envía una sola vez | `phase4-cases.ts` |
+| EXT-004/005/013 | Respuesta perdida → NEEDS_CHECK sin reenvío; recurso visible tarde se vincula | `phase4-cases.ts` |
+| EXT-007 | Autorización vencida al enviar → nada se envía; RESERVED → EXPIRED | `phase4-cases.ts` |
+| EXT-009 | Credenciales cifradas (AES-256-GCM) y ausentes de respuestas y llamadas registradas | `phase4-cases.ts`, `phase4-domain.test.ts` |
+| EXT-015/020 | Intento iniciado y suspendido: el relevo no reenvía; la respuesta tardía del proveedor se vincula sin sobrescribir | `phase4-cases.ts` |
+| EXT-018 | Repetición humana sólo con evidencia de que el intento no puede emitir, ausencia remota confirmada después y autorización vigente | `phase4-cases.ts`, `phase4-domain.test.ts` |
+| EXT-019 | Resultado tardío que contradice una ausencia registrada → posible duplicado, evidencia conservada | `phase4-cases.ts` |
+| EXT-021 | Con un paso incierto, ninguna autorización ni trabajo nuevo para esa campaña | `phase4-cases.ts` |
+| DEL-001/003 | Operaciones externas sin resolver bloquean la eliminación de la marca; al resolverse se borran sus filas y la conexión del workspace se conserva | `phase4-cases.ts`, `brand-deletion-cases.ts` |
+| EXT-022 | Confirmar la ausencia remota nunca vuelve ejecutable un paso: sin liberación humana persistida no se reclama ni se envía | `phase4-cases.ts` |
+| EXT-023 | Un «posible duplicado» no lo borra la conciliación y bloquea la repetición | `phase4-cases.ts` |
+| EXT-024 | Un solo trabajo abierto por campaña; continuar exige la misma cuenta y proveedor | `phase4-cases.ts` |
+| EXT-025 | Un worker registrado como terminado no reclama ni inicia intentos; el supervisor registra la salida real del proceso | `phase4-cases.ts` |
+| EXT-026 | Sólo se vincula una cuenta accesible con la credencial, por quien la conectó o un ADMIN; cada paso lleva esa cuenta | `phase4-cases.ts` |
+| DEL-006 | Una campaña activada sin pausa posterior verificada bloquea la eliminación de la marca | `phase4-cases.ts` |

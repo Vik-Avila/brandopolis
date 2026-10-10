@@ -113,6 +113,20 @@
       "when": 1791573861282,
       "tag": "0015_melted_whiplash",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791667729167,
+      "tag": "0016_typical_roland_deschain",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791670328566,
+      "tag": "0017_giant_bloodstorm",
+      "breakpoints": true
     }
   ]
 }

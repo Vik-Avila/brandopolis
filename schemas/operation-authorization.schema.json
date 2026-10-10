@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/operation-authorization.v1",
+  "title": "operation-authorization",
+  "x-version": "v1",
+  "description": "ADR-0031 · a human authorization for one external operation that publishes or changes spend. It binds the confirmation summary (account, brand, version, destination, currency, budget and its rules, dates, time zone) and the content fingerprint. It is reserved by exactly one job, consumed once, and never extended by the reservation.",
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "brandId": { "type": "string", "minLength": 1 },
+    "connectionId": { "type": "string", "minLength": 1 },
+    "operation": { "type": "string", "enum": ["CREATE_PAUSED", "ACTIVATE", "PAUSE", "UPDATE_BUDGET"] },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "type": "string", "enum": ["CAMPAIGN"] },
+        "id": { "type": "string", "minLength": 1 },
+        "versionId": { "type": "string", "minLength": 1 }
+      },
+      "required": ["kind", "id", "versionId"]
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "accountLabel": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "destination": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "budget": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "type": "string", "enum": ["DAILY_AVERAGE", "LIFETIME_TOTAL"] },
+            "amountMinor": { "type": "integer", "minimum": 1 }
+          },
+          "required": ["kind", "amountMinor"]
+        },
+        "startsOn": { "type": ["string", "null"], "format": "date" },
+        "endsOn": { "type": ["string", "null"], "format": "date" },
+        "timeZone": { "type": "string", "minLength": 1, "maxLength": 64 }
+      },
+      "required": ["accountLabel", "destination", "currency", "budget", "startsOn", "endsOn", "timeZone"]
+    },
+    "contentFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "status": { "type": "string", "enum": ["PENDING", "AUTHORIZED", "RESERVED", "CONSUMED", "CANCELLED", "EXPIRED"] },
+    "expiresAt": { "type": "string", "format": "date-time" }
+  },
+  "required": ["id", "brandId", "connectionId", "operation", "subject", "summary", "contentFingerprint", "status", "expiresAt"],
+  "examples": [
+    {
+      "id": "auth-1",
+      "brandId": "b-1",
+      "connectionId": "c-1",
+      "operation": "CREATE_PAUSED",
+      "subject": { "kind": "CAMPAIGN", "id": "camp-1", "versionId": "camp-1-v1" },
+      "summary": { "accountLabel": "Cuenta de anuncios de prueba", "destination": "https://ejemplo.test/oferta", "currency": "MXN", "budget": { "kind": "DAILY_AVERAGE", "amountMinor": 25000 }, "startsOn": "2026-11-01", "endsOn": "2026-11-30", "timeZone": "America/Mexico_City" },
+      "contentFingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+      "status": "AUTHORIZED",
+      "expiresAt": "2026-10-10T13:00:00Z"
+    }
+  ]
+}

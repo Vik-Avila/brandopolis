@@ -383,6 +383,9 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           }
           return send(res,200,{status,brandId:deleted.brandId});
         }
+        // PHASE4_SPEC §4.9 · work priority (append-only) and ADR-0033 per-brand capabilities: authorization in the engine.
+        if(path==='/api/brands/work-priority') return send(res,201,await engine.setWorkPriority(token,{brandId:input.brandId,intent:input.intent,note:input.note,idempotencyKey:input.idempotencyKey}));
+        if(path==='/api/brands/capabilities') return send(res,200,await engine.changeBrandCapability(token,{brandId:input.brandId,userId:input.userId,capability:input.capability,grant:input.grant}));
         if(path==='/api/brands') return send(res,201,await engine.createBrand(token,string(input.name),input.initialContext===undefined?undefined:string(input.initialContext)));
         if(path==='/api/context/capture') return send(res,201,await engine.captureContext(
           token,
@@ -639,6 +642,8 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           });
           return res.end(Buffer.from(pdf));
         }
+        if(path==='/api/brands/work-priority') return send(res,200,await engine.workPriority(token,string(url.searchParams.get('brandId'))));
+        if(path==='/api/brands/capabilities') return send(res,200,await engine.brandCapabilities(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/brands') return send(res,200,await engine.listBrands(token));
         if(path==='/api/context') return send(res,200,await engine.context(token,string(url.searchParams.get('brandId'))));
       }

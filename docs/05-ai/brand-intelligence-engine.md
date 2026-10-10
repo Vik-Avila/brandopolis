@@ -30,14 +30,23 @@ AI proposes. Humans decide. Brandopolis remembers.
 | Nivel | Nombre | Estado |
 |---|---|---|
 | B1 | Contextual | Autorizado para la siguiente etapa de desarrollo, posterior al PILOT congelado |
-| B2 | Strategic Copilot | Evolución prevista; requiere decisión humana propia |
-| B3 | Learning Copilot | Evolución prevista; requiere decisión humana propia |
+| B2 | Strategic Copilot | Autorizado fuera de producción por el propietario el 2026-10-07 ([ADR-0025](../14-decisions/ADR-0025.md)) |
+| B3 | Learning Copilot | Autorizado fuera de producción por el propietario el 2026-10-07 ([ADR-0026](../14-decisions/ADR-0026.md)) |
 | B4 | Orchestrator | Evolución prevista; requiere decisión humana propia |
 | B5 | Agentic Intelligence | Evolución prevista; requiere decisión humana propia |
 
 **Brando B1** puede: comprender la marca activa y la decisión actual; responder preguntas sobre contexto, decisiones, razones y evidencia; explicar Brandopolis; plantear preguntas e hipótesis; hacer sugerencias; señalar contradicciones o elementos que requieren atención; y alimentar «Qué necesita atención».
 
-B1 no modifica el workspace PILOT congelado ni su runtime actual ([CLAUDE.md § Pilot freeze](../../CLAUDE.md#pilot-freeze)). Los niveles B2–B5 sólo se nombran aquí como dirección; su alcance y sus límites se definirán cuando se aprueben.
+B1 no modifica el workspace PILOT congelado ni su runtime actual ([CLAUDE.md § Pilot freeze](../../CLAUDE.md#pilot-freeze)).
+
+*Texto histórico (2026-10-04), superado para B2 y B3:* «Los niveles B2–B5 sólo se nombran aquí como dirección; su
+alcance y sus límites se definirán cuando se aprueben.»
+
+**Instrucción vigente (conciliación 2026-10-10):** la tabla refleja el estado actual. B1, B2 (ADR-0025) y B3
+(ADR-0026) están autorizados **fuera de producción**; ninguna autorización de desarrollo es una autorización de
+producción (Jury Production Freeze). B4 y B5 siguen sin autorizar. La Fase 4 ([ADR-0030](../14-decisions/ADR-0030.md)
+y [ADR-0034](../14-decisions/ADR-0034.md), propuestos) amplía sólo superficies de propuesta dentro de B2/B3:
+Brando no ejecuta, no encola operaciones externas, no publica, no gasta ni cambia permisos.
 
 ### Contrato de implementación B1 · 2026-10-04
 

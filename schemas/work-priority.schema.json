@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/work-priority.v1",
+  "title": "work-priority",
+  "x-version": "v1",
+  "description": "PHASE4_SPEC §4.9 · what the team wants to work on first with a brand. Append-only: the current priority is the latest record. It orders suggestions and the next step; it never changes permissions, approves anything or writes Strategic Objective.",
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "brandId": { "type": "string", "minLength": 1 },
+    "intent": {
+      "type": "string",
+      "enum": ["STRATEGY_FULL", "STRATEGY_POINT", "MARKETING_PLAN", "CAMPAIGN", "CONTENT", "WEBSITE", "VISUAL_IDENTITY", "SELL_OFFER", "HELP_ME_CHOOSE"]
+    },
+    "note": { "type": ["string", "null"], "maxLength": 500 },
+    "createdBy": { "type": "string", "minLength": 1 },
+    "createdAt": { "type": "string", "format": "date-time" }
+  },
+  "required": ["id", "brandId", "intent", "note", "createdBy", "createdAt"],
+  "examples": [
+    { "id": "wp-1", "brandId": "b-1", "intent": "STRATEGY_POINT", "note": "Queremos revisar el posicionamiento", "createdBy": "u-1", "createdAt": "2026-10-10T12:00:00Z" }
+  ]
+}

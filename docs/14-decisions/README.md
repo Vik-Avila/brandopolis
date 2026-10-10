@@ -34,3 +34,13 @@ ACCEPTED: 0001 monolito modular, 0002 PostgreSQL, 0003 Drizzle, 0005 arquitectur
 - [ADR-0028 · Refinamiento editorial, tarjeta auxiliar de Brando y dos documentos editoriales](ADR-0028.md)
 
 - [ADR-0029 · Eliminar marca](ADR-0029.md)
+
+- [ADR-0030 · Fase 4: alcance, modelo de dominio y autoridad humana](ADR-0030.md) (accepted 2026-10-10)
+
+- [ADR-0031 · Conexiones, credenciales, operaciones externas y cierre de marca](ADR-0031.md) (accepted 2026-10-10)
+
+- [ADR-0032 · Sitios multipágina: renderizador determinista, publicador y vista previa aislados](ADR-0032.md) (accepted 2026-10-10)
+
+- [ADR-0033 · Permisos por marca, invitados, contexto activo, portal y aprobación por versión](ADR-0033.md) (accepted 2026-10-10)
+
+- [ADR-0034 · Identidad visual y kit de marca](ADR-0034.md) (accepted 2026-10-10)

@@ -12,6 +12,9 @@ import { strategicIntelligence } from '../domain/intelligence.js';
 import { HYPOTHESIS_TRANSITIONS,RESOLVED_STATUSES,validationSnapshot,validationCycleStart,learningAcceptedAt,type HypothesisStatus } from '../domain/validation.js';
 import { GEOGRAPHIC_INFLUENCE,type GeographicInfluence } from '../domain/brand-context.js';
 import { ModelGateway, DemoProvider, evaluate, type Recommendation } from '../domain/analysis.js';
+import { effectiveCapabilities } from '../domain/brand-capabilities.js';
+import { changeCapability, grantedCapabilities, listCapabilityGrants, readWorkPriority, recordWorkPriority, type BrandActor } from './brand-access.js';
+import { ExternalOperations } from './external-operations.js';
 
 const id=()=>randomUUID();
 export const hash=(value:string)=>createHash('sha256').update(value).digest('hex');
@@ -60,6 +63,45 @@ export class Engine {
   }
   async me(token:string) {
     return this.db.transaction(async tx=>{const who=await this.identity(tx,token);return {userId:who.userId,workspaceId:who.workspaceId,expiresAt:who.expiresAt,learningMoments};});
+  }
+  /**
+   * Phase 4 services authorize through the same identity + brand scope rules as every other use case, inside one
+   * transaction, and receive the actor's per-brand capabilities (ADR-0033). The actor always comes from the session.
+   */
+  async withBrandActor<T>(token:string,brandId:string,run:(tx:Transaction,actor:BrandActor)=>Promise<T>,lock=false):Promise<T> {
+    if(typeof brandId!=='string'||!brandId||brandId.length>200)throw new AppError('INVALID','Brand required');
+    return this.db.transaction(async tx=>{
+      const who=await this.identity(tx,token);
+      const s=await this.scope(tx,token,brandId,lock);
+      const capabilities=effectiveCapabilities(who.member.role,await grantedCapabilities(tx,s.workspaceId,s.brandId,s.userId));
+      return run(tx,{workspaceId:s.workspaceId,brandId:s.brandId,userId:s.userId,role:who.member.role,capabilities});
+    });
+  }
+  /** PHASE4_SPEC §4.9 · current work priority of a brand and its history. Reading never writes. */
+  async workPriority(token:string,brandId:string) {
+    return this.withBrandActor(token,brandId,(tx,actor)=>readWorkPriority(tx,actor));
+  }
+  /** Appends a work priority (idempotent per author and key). Never touches decisions, context, plans or permissions. */
+  async setWorkPriority(token:string,input:{brandId?:unknown;intent?:unknown;note?:unknown;idempotencyKey?:unknown}) {
+    if(!input||typeof input!=='object'||Array.isArray(input))throw new AppError('INVALID','Invalid work priority');
+    return this.withBrandActor(token,input.brandId as string,async(tx,actor)=>{
+      const saved=await recordWorkPriority(tx,actor,input);
+      if(!saved.replayed)await this.audit(tx,{...actor},{operation:'WORK_PRIORITY_SET',idempotencyKey:String(input.idempotencyKey)});
+      return saved;
+    });
+  }
+  /** ADR-0033 · the caller's capabilities on this brand and the active member grants. */
+  async brandCapabilities(token:string,brandId:string) {
+    return this.withBrandActor(token,brandId,(tx,actor)=>listCapabilityGrants(tx,actor));
+  }
+  /** ADR-0033 · ADMIN-only grant/revoke of a per-brand capability for an assigned MEMBER; audited when it changes. */
+  async changeBrandCapability(token:string,input:{brandId?:unknown;userId?:unknown;capability?:unknown;grant?:unknown}) {
+    if(!input||typeof input!=='object'||Array.isArray(input)||typeof input.grant!=='boolean')throw new AppError('INVALID','Invalid capability change');
+    return this.withBrandActor(token,input.brandId as string,async(tx,actor)=>{
+      const result=await changeCapability(tx,actor,input,input.grant as boolean);
+      if(result.changed)await this.audit(tx,{...actor},{operation:input.grant?'BRAND_CAPABILITY_GRANTED':'BRAND_CAPABILITY_REVOKED',idempotencyKey:randomUUID(),rationale:`${String(input.capability)} → ${String(input.userId)}`});
+      return result;
+    },true);
   }
   async listBrands(token:string) {
     return this.db.transaction(async tx=>{
@@ -725,6 +767,9 @@ export class Engine {
         if(who.member.role!=='ADMIN')throw new AppError('FORBIDDEN','Only a workspace administrator can delete a Brand');
         const [brand]=await tx.select().from(t.brands).where(and(eq(t.brands.workspaceId,s.workspaceId),eq(t.brands.id,s.brandId)));
         if(confirmName!==brand.name)throw new AppError('INVALID','Brand name confirmation does not match');
+        // ADR-0031 · deleting local records never stops remote spend: unresolved external operations block deletion
+        // until they are reconciled, paused or handed over (brand closure).
+        if(await ExternalOperations.unresolvedForBrand(tx,s.workspaceId,s.brandId))throw new AppError('CONFLICT','This brand has external operations that must be resolved before deleting it');
         const documents=await tx.select({id:t.sourceDocuments.id}).from(t.sourceDocuments).where(inScope(t.sourceDocuments,s));
         const storagePrefix=documents.length?`${s.workspaceId}/${s.brandId}`:null;
         const record={id:id(),workspaceId:s.workspaceId,brandId:s.brandId,actorUserId:s.userId,idempotencyKey,status:storagePrefix?'FILES_PENDING':'DELETED',storagePrefix,createdAt:new Date(),completedAt:storagePrefix?null:new Date()};
@@ -739,6 +784,10 @@ export class Engine {
         await tx.update(t.feedback).set({brandId:null}).where(and(eq(t.feedback.workspaceId,ws),eq(t.feedback.brandId,b)));
         // FK-safe order: children before parents. decisions.activeVersionId → versions is DEFERRABLE, so versions go
         // before decisions; the self reference of versions is satisfied because the whole chain goes in one statement.
+        // Phase 4 rows of this Brand (append-only tables allow it only inside this registered deletion). Workspace
+        // connections are NOT deleted here: only this Brand's links to them (a credential may serve other brands).
+        for(const table of [t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
+          await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));
         for(const table of [t.audits,t.telemetry,t.idempotency,t.reviewReceipts,t.reviews,t.impacts,t.dependencies,t.learningSignals,t.signals,t.learnings,t.experiments,t.analyses,t.documentClaims,t.documentExtractions,t.sourceDocuments,t.versions,t.decisions,t.recommendations,t.questions,t.userInputs,t.evidence,t.hypotheses,t.openQuestions,t.brandProfiles,t.assignments] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));
         await tx.delete(t.brands).where(and(eq(t.brands.workspaceId,ws),eq(t.brands.id,b)));

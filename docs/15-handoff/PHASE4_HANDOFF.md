@@ -7,6 +7,14 @@ Depends on: Fase 3 integrada en `main` (ver SESSION_STATE para el SHA exacto y e
 
 # Handoff a Fase 4 · Activation & Orchestration
 
+> **Nota de conciliación · 2026-10-10.** Este documento describe el estado del 2026-10-09 y se conserva como
+> registro histórico. Fuente del propietario (2026-10-10, no verificada por el agente): la Fase 3 se desplegó en
+> PILOT en una conversación anterior y el propietario aceptó su resultado visual y funcional; el registro del
+> despliegue no está en el repositorio. La Fase 4 empezó el 2026-10-10 con alcance confirmado (1A, 2C, 3C) más
+> la identidad visual: [PHASE4_SPEC](PHASE4_SPEC.md) v2, [ADR-0030](../14-decisions/ADR-0030.md) a
+> [ADR-0034](../14-decisions/ADR-0034.md) (proposed, corregidos tras la revisión R01–R10). Estado vigente:
+> [SESSION_STATE](../../SESSION_STATE.md).
+
 Fase 4 está **preparada para comenzar y NO iniciada**. Este documento describe el punto de partida; no autoriza
 implementar nada. Producción no cambia con este cierre (Jury Production Freeze vigente; producción sigue en la
 versión registrada en SESSION_STATE y no incluye las Fases 1–3).

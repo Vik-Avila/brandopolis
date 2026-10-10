@@ -1,3 +1,42 @@
+## 2026-10-10 · Phase 4 — aprobada; bloque 2 en curso (fuera de producción)
+
+- Aprobación del propietario registrada: ADR-0030…0034 accepted (ADR-0031 con el ajuste C1 final); inicio guiado, dominio propio, invitaciones y consentimiento incluidos.
+- Migraciones aditivas 0016 y 0017; schemas v1 nuevos; dominio de versiones editoriales, capacidades, prioridad de trabajo y operaciones externas (C1).
+- Prioridad de trabajo y capacidades por marca con endpoints; credenciales cifradas; cola con concesión, intentos por paso, conciliación, liberación humana, supervisor de procesos; eliminación de marca protegida frente a operaciones externas sin resolver o campañas activas.
+- Revisión de seguridad independiente: todos los hallazgos corregidos con pruebas de regresión.
+- pnpm test 386 PASS, test:pilot:e2e 10/10, Foundation 0 errores. test:e2e no completado (memoria del sistema insuficiente); pendiente de repetir.
+
+## 2026-10-10 · Phase 4 — especificación v4: precisiones del dictamen v3 (sin código de producto)
+
+- ADR-0031 v4: `DISPATCHING` como inicio lógico del intento; plazo de envío y ventana de cierre con riesgo residual declarado; repetición humana sólo con ventana cerrada, evidencia remota y autorización vigente; resultados tardíos añadidos sin sobrescribir; estados de paso alineados.
+- ADR-0032 v4: publicaciones con la misma huella de medición enlazadas a la evidencia original (`MeasurementCompatibility`), sin reescribirla.
+- Pregunta «¿Qué te gustaría trabajar primero con tu marca?» como requisito confirmado de alcance base (PHASE4_SPEC §4.9, `BrandWorkPriority` en ADR-0030 v3, INT-001…008); inicio guiado completo sigue propuesto (§4.10, ONB-005…012). Escenarios de estimación sin doble cómputo.
+- Corrección: la entrada v3 trataba la pregunta inicial como propuesta; se corrige con una entrada fechada, sin reescribir la anterior.
+- ADR siguen `proposed`. Sin runtime, migraciones, dependencias, commit, push ni deploy.
+
+## 2026-10-10 · Phase 4 — especificación v3: ajustes C1–C4 e inicio guiado propuesto (sin código de producto)
+
+- ADR-0031 v3 (C1): caducidad revalidada antes de cada envío, concesión con número de relevo y envío condicionado, paso remoto como unidad de operación, continuación sólo con autorización vigente.
+- ADR-0032 v3 (C2, C3): canje de vista previa ligado a la transacción de navegador e identidad; medición y consentimiento versionados en el sitio, huella de medición, invalidación y revalidación antes de activar captación.
+- PHASE4_SPEC v3: tabla C1–C4, suma de sesiones corregida (43–63 pendientes; 45–65 total), inicio guiado con la pregunta «¿Qué quieres lograr?» como propuesta pendiente y estimación separada. Matriz v3 (EXT-011…014, SITE-009/010, MEA-006…011, ONB-001…012; todas pendientes). Requisitos v3 con la guía oficial de developer tokens de Google como fuente primaria.
+- ADR siguen `proposed`. Sin runtime, migraciones, dependencias, commit, push ni deploy.
+
+## 2026-10-10 · Phase 4 — especificación v2 tras la revisión R01–R10 (sin código de producto)
+
+- Identidad visual incorporada a la fase: ADR-0034 (kit de marca, tres entradas, certeza por valor, requisitos por canal, dependencias e impacto sin cambios silenciosos).
+- ADR-0030…0033 v2: punteros borrador/aprobada/publicada, PlanSnapshot y StrategySnapshot, calidad de exportación; reserva y recuperación de operaciones externas y cierre de marca; vista previa autenticada y medición verificada por destino; lectura del invitado, privacidad de Mi aprendizaje y contexto de actor para varios roles. Dominio propio del cliente registrado como recomendación pendiente.
+- PHASE4_SPEC v2 (tabla de resolución R01–R10, estimación 45–65 sesiones con unidad definida), matriz v2 (pruebas nuevas pendientes) y requisitos externos v2.
+- brand-intelligence-engine: texto histórico frente a instrucción vigente; skills brandopolis-brando y brandopolis-security actualizadas y sincronizadas.
+- Todos los ADR siguen `proposed`. Sin runtime, migraciones, dependencias, commit, push ni deploy.
+
+## 2026-10-10 · Phase 4 — Marketing, sitios web y colaboración: especificación (sin código de producto)
+
+- Alcance confirmado por el propietario (1A, 2C, 3C) registrado como Resolución en scope-mvp; non-goals y alcance diferido anotados.
+- ADR-0030 (alcance, dominio, autoridad), ADR-0031 (conexiones, credenciales, cola y operaciones externas), ADR-0032 (sitios: renderizador determinista y publicador aislado), ADR-0033 (permisos por marca, invitados, portal, aprobación por versión), todos `proposed`.
+- PHASE4_SPEC, PHASE4_ACCEPTANCE_MATRIX y PHASE4_EXTERNAL_REQUIREMENTS.
+- Conciliación: niveles de Brando B2/B3 en brand-intelligence-engine y en la skill brandopolis-brando (antes sólo B1); notas fechadas en PHASE4_HANDOFF y NEXT_DEVELOPER_START_HERE.
+- Sin runtime, migraciones, dependencias, commit, push ni deploy.
+
 ## 2026-10-09 · Phase 3 — Validation & Learning Engine: COMPLETE
 
 - Progreso clicable, revisión con causa antes de las opciones, Brando con la alternativa primero, Validación opcional en cuatro pasos, fondos más claros, Mapa con tarjetas blancas.
