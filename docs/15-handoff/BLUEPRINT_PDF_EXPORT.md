@@ -1,7 +1,7 @@
 Status: canonical
 Owner: Product / Engineering
 Canonical: yes
-Last reviewed: 2026-09-29
+Last reviewed: 2026-10-08
 Related: docs/15-handoff/CURRENT_IMPLEMENTATION_STATE_2026-09-28.md, docs/04-domain-model/invariants.md
 Depends on: Pre-tester UX micro-hotfix (2026-09-29)
 
@@ -87,3 +87,22 @@ que separadores de ruta, comillas y caracteres de control no pueden llegar al en
 Verificación: `tests/blueprint-cases.ts` genera el PDF por HTTP y **lo vuelve a leer con `pdfjs-dist`**
 (ya presente en el proyecto) para comprobar el texto extraído, además del aislamiento entre inquilinos
 y la sanitización del nombre de archivo.
+
+## Dos documentos editoriales (ADR-0028, 2026-10-08)
+
+Desde ADR-0028 hay dos exportaciones independientes, elegibles en «Documentos para compartir» del Mapa
+estratégico. Ambas usan la misma proyección autorizada y el motor `src/application/pdf-editorial.ts`.
+
+| | Mapa estratégico ejecutivo | Brand Book integral |
+|---|---|---|
+| Endpoint | `GET /api/blueprint/pdf` | `GET /api/brandbook/pdf` |
+| Archivo | `Brandopolis-Blueprint-<slug>-YYYY-MM-DD.pdf` | `Brandopolis-Brand-Book-<slug>-YYYY-MM-DD.pdf` |
+| Para qué | Presentar la estrategia en pocas páginas | Libro de referencia de la marca |
+| Identidad | Brandopolis | Neutra, portada tipográfica, «Elaborado con Brandopolis» |
+| Estructura | Portada, resumen, 3×3, fundamentos, conexiones, coherencia, validación, próximas decisiones, contexto, anexo | Portada, índice con páginas reales, cómo leer, capítulos adaptativos, no documentado, anexo |
+| Telemetría | `blueprint_pdf_exported` | `brandbook_pdf_exported` |
+
+Reglas comunes: sólo versiones vigentes; ninguna propuesta de IA; hipótesis siempre marcadas como no validadas;
+aprendizajes sólo aceptados; ni reflexiones personales, ni documentos subidos, ni otras marcas; un capítulo sin
+contenido se omite y se declara «No documentado»; nada de misión, visión, valores, colores, tipografías,
+personalidad o voz inventados. Exportar no escribe estrategia ni cambia el Brand Context.

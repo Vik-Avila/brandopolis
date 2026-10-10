@@ -25,8 +25,9 @@ test('B1 panel: query, safe text, navigation, focus, brand reset and no strategi
  const errors:string[]=[],writes:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.method()==='POST')writes.push(new URL(r.url()).pathname);});
  await page.goto(base+'/?brand=a&module=Primary%20Customer');await expect(page.locator('#workspace')).toBeVisible();
  await expect.poll(()=>page.locator('#brando-card img').evaluate(el=>(el as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
- const placement=await page.locator('#brando-card').evaluate(el=>{const memory=document.querySelector('#context')!,card=el.getBoundingClientRect(),gem=el.querySelector('img')!;return{inRail:el.parentElement?.classList.contains('intelligence-rail'),aboveMemory:card.top<memory.getBoundingClientRect().top,gemSize:gem.getBoundingClientRect().width,loaded:gem.naturalWidth>0};});
- expect(placement.aboveMemory).toBe(true);expect(placement.gemSize).toBeLessThanOrEqual(48);expect(placement.loaded).toBe(true);if(info.project.name==='desktop')expect(placement.inRail).toBe(true);else await expect(page.locator('#brando-mobile-slot #brando-card')).toBeVisible();
+ // ADR-0027: Brando's presence lives in the header on desktop (above all content) and at the top of the content on phones.
+ const placement=await page.locator('#brando-card').evaluate(el=>{const card=el.getBoundingClientRect(),gem=el.querySelector('img')!,decision=document.querySelector('#decision')!.getBoundingClientRect();return{inHeader:!!el.closest('header'),aboveContent:card.top<decision.top,gemSize:gem.getBoundingClientRect().width,loaded:gem.naturalWidth>0};});
+ expect(placement.aboveContent).toBe(true);expect(placement.gemSize).toBeLessThanOrEqual(48);expect(placement.loaded).toBe(true);if(info.project.name==='desktop')expect(placement.inHeader).toBe(true);else await expect(page.locator('#brando-mobile-slot #brando-card')).toBeVisible();
  await page.locator('#open-brando').click();await expect(page.locator('#brando-message')).toBeFocused();
  await page.getByRole('button',{name:'Decisiones y razones',exact:true}).click();
  await page.locator('#brando-form button[type=submit]').click();
@@ -73,15 +74,17 @@ test('Brando attention entry opens the summary; the right entry opens the contex
  await page.emulateMedia({reducedMotion:'reduce'});
  await page.goto(base+'/?brand=a&module=Primary%20Customer');
  if(info.project.name==='mobile')await page.locator('#menu').click();
- await page.getByRole('button',{name:'Qué necesita atención',exact:true}).click();
- await expect(page.locator('#decision .home-heading')).toContainText('Claridad para tu siguiente decisión.');
+ await page.locator('#journey').getByRole('button',{name:'Inicio',exact:true}).click();
+ await expect(page.locator('#decision .home-heading')).toContainText('Tu siguiente paso');
  await expect(page.locator('#brando-dialog')).not.toBeVisible();
- await expect(page.locator('#journey [data-brando-portrait]')).toHaveCount(1);
+ // ADR-0027: Brando's presence is the header card (and the rail icon), not a navigation entry.
+ await expect(page.locator('#brando-card [data-brando-portrait]')).toHaveCount(1);
+ await expect(page.locator('#journey [data-brando-portrait]')).toHaveCount(0);
  expect(writes).toEqual([]);
  await page.locator('#open-brando').click();
  await expect(page.locator('#brando-dialog')).toBeVisible();await expect(page.locator('#brando-message')).toBeFocused();
  await expect(page.locator('#brando-context-overview')).toContainText('Tu estrategia hoy');await expect(page.locator('#brando-context-overview')).toContainText('Decisiones vigentes');
- expect(await page.locator('#brando-dialog').evaluate(el=>{const r=el.getBoundingClientRect(),input=document.querySelector('#brando-message')!.getBoundingClientRect();return Math.abs(r.right-document.documentElement.clientWidth)<2&&r.height>=innerHeight-2&&input.bottom<=innerHeight&&input.top>r.top&&el.scrollWidth<=el.clientWidth;})).toBe(true);
+ expect(await page.locator('#brando-dialog').evaluate(el=>{const r=el.getBoundingClientRect(),input=document.querySelector('#brando-message')!.getBoundingClientRect();const docked=el.classList.contains('brando-docked'),tools=document.querySelector('.rail-tools')!.getBoundingClientRect();return (docked?Math.abs(r.right-tools.left)<2&&r.bottom>=innerHeight-2:Math.abs(r.right-document.documentElement.clientWidth)<2&&r.height>=innerHeight-2)&&input.bottom<=innerHeight&&input.top>r.top&&el.scrollWidth<=el.clientWidth;})).toBe(true);
  expect(writes).toEqual([]);
  await page.screenshot({path:`test-results/brando-drawer-${info.project.name}.png`});
  await page.keyboard.press('Escape');await expect(page.locator('#brando-dialog')).not.toBeVisible();await expect(page.locator('#open-brando')).toBeFocused();
@@ -132,7 +135,7 @@ for(const action of ['ACCEPT','MODIFY'])test(`Brando ${action} selects Modificar
 test('section orientation navigates all nine sections without inference or writes',async({page},info)=>{
  const posts:string[]=[];page.on('request',r=>{if(r.method()==='POST')posts.push(new URL(r.url()).pathname);});
  await page.goto(base+'/?brand=a&module=Primary%20Customer');
- for(const [module,label] of [['Strategic Objective','Objetivo estratégico'],['Market Arena','Arena de mercado'],['Primary Customer','Cliente principal'],['Value Mechanism','Modelo de valor'],['Positioning','Posicionamiento'],['Brand Promise','Promesa de marca'],['Core Message','Mensaje principal'],['GTM Priority','Prioridad de lanzamiento'],['Priority Experiment','Experimento prioritario']]){
+ for(const [module,label] of [['Strategic Objective','Objetivo estratégico'],['Market Arena','Mercado objetivo'],['Primary Customer','Cliente principal'],['Value Mechanism','Modelo de valor'],['Positioning','Posicionamiento'],['Brand Promise','Promesa de marca'],['Core Message','Mensaje principal'],['GTM Priority','Prioridad de lanzamiento'],['Priority Experiment','Experimento prioritario']]){
   if(info.project.name==='mobile')await page.locator('#menu').click();
   await page.locator(`#journey [data-module="${module}"]`).click();
   await expect(page.locator('#brando-section')).toContainText(label);
@@ -174,7 +177,7 @@ test('expired section proposals disable actions and require another explicit que
  await page.clock.fastForward(15*60*1000);
  await expect(page.locator('#brando-conversation [data-brando-action="ACCEPT"]').first()).toBeDisabled();
  await expect(page.locator('#brando-status')).toContainText('propuestas vencidas');
- await page.keyboard.press('Escape');await expect(page.locator('#brando-section-explore')).toHaveText('Explorar propuestas con Brando');
+ await page.keyboard.press('Escape');await expect(page.locator('#brando-section-explore')).toHaveText('Explorar con Brando');
 });
 
 test('section change discards a pending answer and makes no automatic retry',async({page},info)=>{
@@ -198,9 +201,10 @@ test('Objetivo and Arena reuse the orientation, explicit query and editor guide 
  const asks:Record<string,unknown>[]=[],commits:string[]=[];
  page.on('request',r=>{const path=new URL(r.url()).pathname;if(path==='/api/brando/ask')asks.push(r.postDataJSON());if(path==='/api/decisions/commit')commits.push(path);});
  await page.goto(base+'/?brand=a&module=Market%20Arena');
- await expect(page.locator('#decision h2')).toContainText('¿Qué eliges?');
- await expect(page.locator('#brando-section')).toContainText('Arena de mercado');
- await expect(page.locator('#brando-section')).toContainText('Tu ubicación no define por sí sola tu arena');
+ await expect(page.locator('#decision h2')).toContainText('Mercado objetivo');
+ await expect(page.locator('#decision .decision-question')).toHaveText('¿En qué mercado quieres competir?');
+ await expect(page.locator('#brando-section')).toContainText('Mercado objetivo');
+ await expect(page.locator('#brando-section')).toContainText('Tu ubicación no define por sí sola tu mercado objetivo');
  await expect(page.locator('#brando-section')).toContainText('sin consulta a la IA');
  expect(asks,'rendering a section never queries the provider').toEqual([]);
  await page.locator('#edit').click();
@@ -223,7 +227,7 @@ test('an existing brand adds Objetivo and Arena only through the explicit action
  await page.goto(base+'/?brand=c&module=Strategic%20Objective');
  await expect(page.locator('#strategic-sections-title')).toHaveText('Esta sección es nueva en tu recorrido.');
  await expect(page.locator('.strategic-sections')).toContainText('Agregarlas no cambia ninguna decisión');
- await expect(page.locator('.strategic-sections')).toContainText('Objetivo estratégico, Arena de mercado, Promesa de marca, Prioridad de lanzamiento y Experimento prioritario');
+ await expect(page.locator('.strategic-sections')).toContainText('Objetivo estratégico, Mercado objetivo, Promesa de marca, Prioridad de lanzamiento y Experimento prioritario');
  await expect(page.locator('#brando-section')).toHaveCount(0);
  expect(posts,'opening the section writes nothing').toEqual([]);
  await page.locator('#add-strategic-sections').click();

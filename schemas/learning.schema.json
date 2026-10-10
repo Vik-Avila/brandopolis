@@ -46,6 +46,35 @@
         "string",
         "null"
       ]
+    },
+    "hypothesisId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "supports": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "doesNotSupport": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "alternativeExplanations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1000
+      },
+      "maxItems": 10
+    },
+    "origin": {
+      "enum": [
+        "MANUAL",
+        "BRANDO_ASSISTED"
+      ]
     }
   },
   "required": [

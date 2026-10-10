@@ -108,7 +108,7 @@ export function wrap(text: string, width: number, size: number, font: FontName):
 }
 
 /** Encodes a string as WinAnsi bytes, escaped for a PDF literal string. */
-function pdfString(text: string): string {
+export function pdfString(text: string): string {
   let out = '';
   for (const character of text) {
     const replacement = TRANSLITERATE[character];

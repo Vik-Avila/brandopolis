@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import type { Engine } from '../application/engine.js';
 import { contentSecurityPolicy,ga4MeasurementId } from './analytics.js';
 import { buildBlueprintPdf,blueprintFilename } from '../application/blueprint-pdf.js';
+import { buildBrandBookPdf,brandBookFilename } from '../application/brandbook-pdf.js';
 import { NON_INDEXABLE_VIEWS } from './assets.js';
 import { AppError, type CommitCommand } from '../domain/contracts.js';
 import type { PilotBoundary } from './pilot-auth.js';
@@ -9,7 +10,7 @@ import type { CompetitiveResearchService } from './competitive-research.js';
 import type { DocumentClaimsService } from './document-claims.js';
 import { randomUUID,createHash } from 'node:crypto';
 import { open,mkdir,rename,rm } from 'node:fs/promises';
-import { resolve,sep } from 'node:path';
+import { relative,resolve,sep } from 'node:path';
 import { extractDocument } from '../documents/extractor.js';
 
 async function body(req:IncomingMessage):Promise<Record<string,unknown>> {
@@ -79,6 +80,34 @@ function resolveDocumentStoragePath(storageKey:string):string {
 
 const documentExtractorVersion='local-v1';
 
+/**
+ * ADR-0029 · removes the private document directory of a deleted Brand (`<root>/<workspaceId>/<brandId>`).
+ * Same confinement rule as resolveDocumentStoragePath, and stricter: the prefix must resolve to exactly two
+ * levels below the root, so it can never remove the root or a whole workspace. A missing directory is success.
+ */
+export async function purgeBrandFiles(storagePrefix:string):Promise<void> {
+  const root=resolve(documentStorageRoot());
+  const target=resolveDocumentStoragePath(storagePrefix);
+  const parts=relative(root,target).split(sep);
+  if(target===root||parts.length!==2||parts.some(part=>!part||part==='..'||part==='.'))
+    throw new AppError('INVALID','Invalid brand storage prefix');
+  await rm(target,{recursive:true,force:true});
+}
+
+export type BrandFilePurge=(storagePrefix:string)=>Promise<void>;
+
+/** Best-effort retry of every pending purge. Never throws: a failure leaves the record FILES_PENDING for the next try. */
+export async function purgePendingBrandFiles(engine:Pick<Engine,'pendingBrandFilePurges'|'completeBrandFilePurge'>,purge:BrandFilePurge=purgeBrandFiles):Promise<{purged:number;pending:number}> {
+  let purged=0,pending=0;
+  let rows:{id:string;storagePrefix:string}[];
+  try {rows=await engine.pendingBrandFilePurges();} catch {return {purged,pending};}
+  for(const row of rows){
+    try {await purge(row.storagePrefix);await engine.completeBrandFilePurge(row.id);purged++;}
+    catch {pending++;}
+  }
+  return {purged,pending};
+}
+
 
 async function receiveSourceDocument(
   req:IncomingMessage,
@@ -127,8 +156,10 @@ export class RateLimiter implements Limiter {
     return ++entry.count<=limit;
   }
 }
-export const pilotLimits={all:[600,60000],auth:[20,60000],ai:[20,600000],feedback:[20,600000]} as const;
-export function createApp(engine:Engine,assets?:(path:string)=>{content:string|Buffer;type:string;etag?:string}|undefined,health?:()=>Promise<string>,pilot?:PilotBoundary,competitiveResearch?:CompetitiveResearchService,documentClaims?:DocumentClaimsService) {
+export const pilotLimits={all:[600,60000],auth:[20,60000],ai:[20,600000],feedback:[20,600000],reflections:[30,600000]} as const;
+export function createApp(engine:Engine,assets?:(path:string)=>{content:string|Buffer;type:string;etag?:string}|undefined,health?:()=>Promise<string>,pilot?:PilotBoundary,competitiveResearch?:CompetitiveResearchService,documentClaims?:DocumentClaimsService,options?:{brandFilePurge?:BrandFilePurge}) {
+  // ADR-0029: injectable only so tests can simulate a failing file purge; production uses purgeBrandFiles.
+  const brandFilePurge=options?.brandFilePurge??purgeBrandFiles;
   const limiter=pilot?.limiter??new RateLimiter();
   // Resolved once at construction: a malformed Measurement ID fails at boot, never per request.
   const ga4=ga4MeasurementId(),csp=contentSecurityPolicy(ga4);
@@ -152,7 +183,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
       const url=new URL(req.url??'/',pilot?.origin??`http://${req.headers.host}`),path=url.pathname;
       if(pilot&&url.origin!==pilot.origin)throw new AppError('FORBIDDEN','Origin not allowed');
       if(pilot&&await pilot.handle(req,res,url))return;
-      if(req.method==='GET'&&path==='/api/mode')return send(res,200,{mode:pilot?'PILOT':'DEMO',requestAccessUrl:pilot?.requestAccessUrl??null,aiNotice:pilot?.ai?.notice??null,ga4MeasurementId:ga4});
+      if(req.method==='GET'&&path==='/api/mode')return send(res,200,{mode:pilot?'PILOT':'DEMO',liveAi:!pilot&&engine.aiMode==='LIVE',requestAccessUrl:pilot?.requestAccessUrl??null,aiNotice:pilot?.ai?.notice??null,ga4MeasurementId:ga4});
       if(req.method==='GET'&&path==='/health') {
         const ready=health?await health():'UNAVAILABLE';
         if(pilot&&ready!=='READY')console.error(JSON.stringify({event:'readiness',status:ready}));return send(res,ready==='READY'?200:503,{application:pilot?'brandopolis-pilot':'brandopolis-competition',protocol:pilot?'pilot-v1':'rc1',status:ready==='READY'?'ready':'unavailable'});
@@ -203,6 +234,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         }
         if(req.method==='POST'&&path==='/api/ai-notice/accept'){const input=await body(req);return send(res,200,await pilot.acceptAiNotice!(token,string(input.version)));}
         if(req.method==='POST'&&path==='/api/feedback'&&limited('feedback:'+subject,pilotLimits.feedback))return;
+        if(req.method==='POST'&&path==='/api/reflections'&&limited('reflections:'+subject,pilotLimits.reflections))return;
         // Required intake is enforced server-side, not by hiding a screen. Only the endpoints needed to
         // complete it, read identity or leave stay open until the profile exists.
         const intakeOpen=['/api/participant','/api/logout','/api/me','/api/session-state','/api/mode'];
@@ -338,6 +370,18 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(path==='/api/brands/geography'){
           const brandIdInput=string(input.brandId),influence=string(input.geographicInfluence) as never,market=input.primaryMarket==null?null:string(input.primaryMarket);
           return send(res,200,pilot?await pilot.setBrandGeography!(token,brandIdInput,influence,market):await engine.setBrandGeography(token,brandIdInput,influence,market));
+        }
+        // ADR-0029 · Eliminar marca: same Origin/session/intake gates as every POST; authorization, confirmation and
+        // idempotency live in the engine. Files are purged only after the database transaction committed.
+        if(path==='/api/brands/delete'){
+          await purgePendingBrandFiles(engine,brandFilePurge);
+          const deleted=await engine.deleteBrand(token,{brandId:input.brandId,confirmName:input.confirmName,idempotencyKey:input.idempotencyKey});
+          let status=deleted.status;
+          if(status==='FILES_PENDING'&&deleted.storagePrefix){
+            try {await brandFilePurge(deleted.storagePrefix);await engine.completeBrandFilePurge(deleted.deletionId);status='DELETED';}
+            catch {if(pilot)console.error(JSON.stringify({event:'brand_files_pending',requestId}));}
+          }
+          return send(res,200,{status,brandId:deleted.brandId});
         }
         if(path==='/api/brands') return send(res,201,await engine.createBrand(token,string(input.name),input.initialContext===undefined?undefined:string(input.initialContext)));
         if(path==='/api/context/capture') return send(res,201,await engine.captureContext(
@@ -499,7 +543,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
 
         if(path==='/api/brando/suggestions/review')return send(res,200,await engine.reviewBrandoSuggestion(token,string(input.brandId),input.review as Parameters<Engine['reviewBrandoSuggestion']>[2]));
         if(path==='/api/brando/ask') {
-          const result=await engine.askBrando(token,string(input.brandId),string(input.message),input.questionId==null?null:string(input.questionId),input.history as {question:string;answer:string}[]|undefined);
+          const result=await engine.askBrando(token,string(input.brandId),string(input.message),input.questionId==null?null:string(input.questionId),input.history as {question:string;answer:string}[]|undefined,input.interpretation as Parameters<Engine['askBrando']>[5]);
           if(pilot)await pilot.authorize(token);
           if(pilot)console.log(JSON.stringify({event:'brando_request',requestId,outcome:result.error??'OK',provider:result.provider,latencyMs:result.trace.latencyMs,tokenIn:result.trace.tokenIn,tokenOut:result.trace.tokenOut}));
           return send(res,200,result);
@@ -511,8 +555,11 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           return send(res,200,result);
         }
         if(path==='/api/recommendations/reject') return send(res,200,await engine.rejectRecommendation(token,string(input.brandId),string(input.recommendationId),string(input.rationale)));
-        if(path==='/api/learning/create') return send(res,201,await engine.createLearningObject(token,string(input.brandId),string(input.kind),input.entity as Record<string,unknown>,input.decisionId===undefined?undefined:string(input.decisionId),input.plan as {objective:string;successCriteria:string}|undefined));
-        if(path==='/api/learning/transition') return send(res,200,await engine.transitionLearningObject(token,string(input.brandId),string(input.kind),string(input.objectId),string(input.expectedStatus),string(input.status)));
+        if(path==='/api/learning/create') return send(res,201,await engine.createLearningObject(token,string(input.brandId),string(input.kind),input.entity as Record<string,unknown>,input.decisionId===undefined?undefined:string(input.decisionId),input.plan as {objective:string;successCriteria:string}|undefined,input.idempotencyKey===undefined?undefined:string(input.idempotencyKey)));
+        if(path==='/api/learning/transition') return send(res,200,await engine.transitionLearningObject(token,string(input.brandId),string(input.kind),string(input.objectId),string(input.expectedStatus),string(input.status),input.rationale===undefined?undefined:string(input.rationale)));
+        if(path==='/api/reflections') return send(res,201,await engine.createReflection(token,input as Parameters<Engine['createReflection']>[1]));
+        if(path==='/api/learning/revise') return send(res,200,await engine.reviseLearning(token,string(input.brandId),string(input.learningId),string(input.expectedStatus),input.changes as Record<string,unknown>,input.expected as Record<string,unknown>));
+        if(path==='/api/hypotheses/review') return send(res,200,await engine.reviewHypothesis(token,string(input.brandId),input.review as Parameters<Engine['reviewHypothesis']>[2]));
         if(path==='/api/questions/transition') return send(res,200,await engine.transitionQuestion(token,string(input.brandId),string(input.questionId),string(input.status)));
         if(path==='/api/brands/strategic-sections') return send(res,200,await engine.addStrategicSections(token,string(input.brandId)));
         if(path==='/api/questions/prepare') return send(res,200,await engine.prepareQuestion(token,string(input.brandId),string(input.questionId),input.expectedActiveVersion===null?null:string(input.expectedActiveVersion)));
@@ -551,13 +598,17 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           return send(res,200,await pilot.adminEvidence!(token,range));
         }
         if(path==='/api/practice') return send(res,200,await engine.practice(token));
+        if(path==='/api/reflections') return send(res,200,await engine.reflections(token));
         if(path==='/api/blueprint') return send(res,200,await engine.blueprint(token,string(url.searchParams.get('brandId'))));
-        if(path==='/api/blueprint/pdf') {
-          // Every read below is the authorized, workspace-scoped one the Blueprint view already uses,
-          // so the export carries exactly the strategy this participant can already see — no more.
+        if(path==='/api/blueprint/pdf'||path==='/api/brandbook/pdf') {
+          // ADR-0028: two documents over one projection. Every read below is the authorized, workspace-scoped
+          // one the Mapa estratégico view already uses, so either export carries exactly the strategy this
+          // participant can already see — no more. Neither reads proposals, reflections or uploaded documents.
+          const book=path==='/api/brandbook/pdf';
           const brandId=string(url.searchParams.get('brandId'));
           const [projection,brand,rejections]=await Promise.all([
-            engine.blueprint(token,brandId),
+            // The Brand Book is not a view of the Mapa: it reads the same projection without a blueprint_viewed event.
+            book?engine.context(token,brandId):engine.blueprint(token,brandId),
             engine.brandDossier(token,brandId),
             engine.competitiveRejections(token,brandId)
           ]);
@@ -571,18 +622,19 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           });
           const competitiveStatus=incorporated.length||(rejections.claims?.length??0)?'Revisado':'Sin investigar';
           const generatedAt=new Date();
-          const pdf=buildBlueprintPdf({
+          const input={
             brand,
             context:projection as unknown as Parameters<typeof buildBlueprintPdf>[0]['context'],
             competitiveStatus,
             generatedAt
-          });
+          };
+          const pdf=book?buildBrandBookPdf(input):buildBlueprintPdf(input);
           // Recorded only once the document exists, so a failed build never counts as an export.
-          await engine.blueprintExported(token,brandId);
+          await (book?engine.brandBookExported(token,brandId):engine.blueprintExported(token,brandId));
           res.writeHead(200,{
             'Content-Type':'application/pdf',
             'Content-Length':String(pdf.byteLength),
-            'Content-Disposition':`attachment; filename="${blueprintFilename(brand.name,generatedAt)}"`,
+            'Content-Disposition':`attachment; filename="${(book?brandBookFilename:blueprintFilename)(brand.name,generatedAt)}"`,
             'Cache-Control':'no-store'
           });
           return res.end(Buffer.from(pdf));

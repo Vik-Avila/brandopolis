@@ -33,6 +33,9 @@
     "pilot:smoke": "tsx scripts/pilot-smoke.ts",
     "test:visual": "playwright test --config playwright.visual.config.ts",
     "pilot:ai-smoke": "tsx scripts/pilot-ai-smoke.ts",
+    "demo:live-ai-smoke": "tsx scripts/live-ai-app-smoke.ts",
+    "demo:live-ai-ui": "playwright test --config playwright.live.config.ts",
+    "demo:validation-seed": "tsx scripts/validation-demo-seed.ts",
     "skills:sync": "tsx scripts/sync-skills.ts",
     "skills:check": "tsx scripts/sync-skills.ts --check"
   },

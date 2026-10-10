@@ -15,3 +15,15 @@ la decisión, una Hypothesis ni un Learning sin revisión humana.
 
 La memoria estratégica de [ADR-0025](../14-decisions/ADR-0025.md) distingue aprendizajes aceptados de los que
 esperan revisión humana; una señal o un aprendizaje pendiente nunca cuenta como soporte de una decisión.
+
+## Validation & Learning Engine · ADR-0026 (2026-10-07)
+
+- Hipótesis: `UNTESTED → TESTING → SUPPORTED / WEAKENED / REJECTED`, sólo por revisión humana con criterio;
+  los estados resueltos exigen un aprendizaje ACCEPTED sobre esa hipótesis. Historial en auditoría.
+- Experimento: método, criterio que refutaría la hipótesis, periodo y límites (opcionales); calidad de plan
+  determinista como guía. INCONCLUSIVE es legítimo.
+- Señal: dirección esperada / contraria / ambigua y límite. Sigue siendo observación, nunca aprendizaje.
+- Aprendizaje: qué apoya, qué no, explicaciones alternativas, límites, hipótesis y origen; editable sólo
+  mientras está pendiente; rechazar exige criterio.
+- Impacto: atención de Strategic Intelligence, nunca reescritura ni revisión automática. Ver
+  [ADR-0026](../14-decisions/ADR-0026.md).

@@ -26,3 +26,11 @@ ACCEPTED: 0001 monolito modular, 0002 PostgreSQL, 0003 Drizzle, 0005 arquitectur
 - [ADR-0024 · Experimento prioritario en el recorrido](ADR-0024.md)
 
 - [ADR-0025 · Strategic Intelligence y Focusable Intelligent Strategic Workspace](ADR-0025.md)
+
+- [ADR-0026 · Validation & Learning Engine](ADR-0026.md)
+
+- [ADR-0027 · Strategic Workspace, Mercado objetivo y Mi aprendizaje](ADR-0027.md)
+
+- [ADR-0028 · Refinamiento editorial, tarjeta auxiliar de Brando y dos documentos editoriales](ADR-0028.md)
+
+- [ADR-0029 · Eliminar marca](ADR-0029.md)

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { navigate, openTool } from '../workspace-nav.js';
 import { readFileSync } from 'node:fs';
 
 // Production findings behind this file:
@@ -10,13 +11,6 @@ import { readFileSync } from 'node:fs';
 // 3. A fourth navigation group pushed «Mi aprendizaje» and «Mapa estratégico» below the fold.
 // 4. The Mapa estratégico could be read but not taken away.
 
-async function navigate(page: Page, name: string) {
-  await page.locator('#workspace').waitFor();
-  const menu = page.getByRole('button', { name: 'Abrir navegación', exact: true });
-  if (await menu.isVisible()) await menu.click();
-  // The context rail links to Entorno competitivo too, so the drawer is addressed explicitly.
-  await page.locator('#journey').getByRole('button', { name, exact: true }).click();
-}
 
 async function signIn(page: Page, brand: string) {
   const session = JSON.parse(readFileSync(process.env.BRANDOPOLIS_SESSION_FILE ?? '.local/demo-session.json', 'utf8'));
@@ -95,60 +89,28 @@ test('a failed generation clears the local state, keeps the draft and allows a r
   await expect(page.locator('#notice')).not.toContainText('529');
 });
 
-test('navigation presents competitive research as preparation and keeps every item reachable', async ({ page }, testInfo) => {
-  // A laptop height is where the fourth group first pushed the lower items out of view.
+test('navigation keeps every destination reachable at laptop height; preparation stays outside the decisions', async ({ page }, testInfo) => {
+  // ADR-0027 (owner decision 2026-10-08): Inicio · Estrategia (nine decisions) · Validación · three «Próximamente» ·
+  // Mi aprendizaje · Mapa estratégico · Configuración de marca (ADR-0029) · Ayuda. Entorno competitivo and Contexto estratégico live in the rail's
+  // Contexto tool: preparation and context, never decisions.
   await page.setViewportSize({ width: 1366, height: 768 });
   await signIn(page, `Nav density ${testInfo.project.name} ${Date.now()}`);
-
-  const groups = await page.locator('#journey .nav-group').allInnerTexts();
-  expect(groups.map(g => g.toLowerCase())).toEqual(['preparación estratégica', 'estrategia', 'contexto y aprendizaje', 'práctica y visión']);
-
-  // Preparation comes before the decisions, and is not one of them.
-  const order = await page.locator('#journey .nav-group, #journey button').evaluateAll(nodes =>
-    nodes.map(node => node.tagName === 'P' ? `[${node.textContent?.trim()}]` : node.textContent?.trim().replace(/\s+/g, ' ') ?? ''));
-  expect(order.indexOf('[Preparación estratégica]')).toBeLessThan(order.indexOf('Entorno competitivo'));
-  expect(order.indexOf('Entorno competitivo')).toBeLessThan(order.indexOf('[Estrategia]'));
-  // ADR-0021..0024: nine journey sections, Objetivo and Arena first, Experimento prioritario last.
+  const menu = page.getByRole('button', { name: 'Abrir navegación', exact: true });
+  if (await menu.isVisible()) await menu.click();
+  const labels = await page.locator('#journey .nav-label').evaluateAll(nodes => nodes.map(n => (n.firstChild?.textContent ?? '').trim()));
+  expect(labels).toEqual(['Inicio', 'Estrategia', 'Productos y servicios', 'Validación', 'Plan de marketing', 'Resultados', 'Mi aprendizaje', 'Mapa estratégico', 'Configuración de marca', 'Ayuda']);
   await expect(page.locator('#journey [data-module]')).toHaveCount(9);
-  for (const item of ['Qué necesita atención', 'Entorno competitivo', 'Contexto estratégico', 'Experimentos y aprendizajes', 'Mi aprendizaje', 'Mapa estratégico'])
-    expect(order, item).toContain(item);
-
-  // Nothing critical hides at the bottom. On a precise pointer the whole column fits without
-  // scrolling; on a touch device the 44px target is kept on purpose, so the drawer may scroll — there
-  // the requirement is that Blueprint stays reachable and the target stays big enough to hit.
-  const fits = await page.locator('#journey').evaluate(nav => {
-    const blueprint = document.querySelector('#blueprint')!.getBoundingClientRect();
-    const box = nav.getBoundingClientRect();
-    return {
-      withinPanel: blueprint.bottom <= box.bottom + 1,
-      scrolls: nav.scrollHeight > nav.clientHeight + 1,
-      height: blueprint.height,
-      finePointer: matchMedia('(pointer: fine)').matches
-    };
-  });
-  if (fits.finePointer) {
-    expect(fits.withinPanel, 'Mapa estratégico must be visible without scrolling the sidebar').toBe(true);
-    expect(fits.scrolls, 'a laptop height must not need sidebar scrolling').toBe(false);
-    expect(fits.height).toBeGreaterThanOrEqual(32);
-  } else {
-    // Touch keeps the full target, so the drawer scrolls; it must scroll, not trap.
-    expect(fits.height, 'a coarse pointer keeps the 44px target').toBeGreaterThanOrEqual(40);
-    await page.locator('#blueprint').scrollIntoViewIfNeeded();
+  await expect(page.locator('#journey #competitive-context')).toHaveCount(0);
+  await expect(page.locator('#rail-panel #competitive-context')).not.toHaveAttribute('data-module');
+  // Every destination is reachable: when the nine decisions do not fit, the column scrolls instead of clipping.
+  for (const id of ['#home', '#strategy-toggle', '#learning-loop', '#practice', '#blueprint', '#brand-settings', '#help']) {
+    await page.locator(id).scrollIntoViewIfNeeded();
+    await expect(page.locator(id)).toBeVisible();
+    expect((await page.locator(id).boundingBox())!.height, `${id} target`).toBeGreaterThanOrEqual(36);
   }
-  await expect(page.locator('#blueprint')).toBeVisible();
-  await expect(page.locator('#practice')).toBeVisible();
-  // And the page itself gains no horizontal overflow from the denser column.
+  const column = await page.locator('#journey').evaluate(nav => ({ overflowY: getComputedStyle(nav).overflowY, clips: nav.scrollHeight > nav.clientHeight + 1 }));
+  if (column.clips) expect(['auto', 'scroll']).toContain(column.overflowY);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
-  // ADR-0022: with seven journey sections a 1440×900 laptop still shows the whole column, principle included.
-  if (fits.finePointer) {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    const laptop = await page.locator('#journey').evaluate(nav => ({
-      scrolls: nav.scrollHeight > nav.clientHeight + 1,
-      principleInside: document.querySelector('.nav-principle')!.getBoundingClientRect().bottom <= nav.getBoundingClientRect().bottom + 1
-    }));
-    expect(laptop.scrolls, '1440×900 must not need sidebar scrolling').toBe(false);
-    expect(laptop.principleInside, 'the principle stays inside the column').toBe(true);
-  }
 });
 
 test('market context carries its own status and never joins the decision count', async ({ page }, testInfo) => {
@@ -202,6 +164,7 @@ test('the right panel ranks its sections and no static label reacts to hover', a
   };
 
   await signIn(page, `Panel hierarchy ${testInfo.project.name} ${Date.now()}`);
+  await openTool(page, 'context');
 
   const rail = page.locator('#context');
   const railText = (await rail.innerText()).toLowerCase();

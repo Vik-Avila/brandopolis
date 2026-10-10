@@ -13,6 +13,7 @@ export class ProviderFailure extends Error {constructor(readonly code:GatewayErr
 export interface ModelProvider {name:string;model:string;generate(request:GatewayRequest):Promise<unknown>;generateMeasured?(request:GatewayRequest):Promise<{output:unknown;tokenIn:number|null;tokenOut:number|null}>}
 export class ModelGateway {
   constructor(private provider:ModelProvider,readonly promptVersion='competition-demo-v1',readonly timeoutMs=5000) {}
+  get providerName() {return this.provider.name;}
   invoke(request:StrategicGatewayRequest):Promise<GatewayResponse<Recommendation>>;
   invoke(request:BrandoGatewayRequest):Promise<GatewayResponse<BrandoAnswer>>;
   invoke(request:GatewayRequest):Promise<GatewayResponse<Recommendation|BrandoAnswer>>;

@@ -20,6 +20,8 @@ export interface BrandoState {
   /** ADR-0025: declared onboarding context and the deterministic intelligence projection, when available. */
   brandContext?:{geographicInfluence:string|null;primaryMarket:string|null}|null;
   intelligence?:{issues:readonly object[];reviewPlan:readonly object[]}|null;
+  /** ADR-0026: deterministic validation projection, when available. */
+  validation?:{hypotheses:readonly {status:string}[];signalBalance:Record<string,object>;nextValidation:readonly {kind:string;ref:string;module:string|null}[]}|null;
 }
 /** Shared server projection. Model output cannot clear or create these obligations. */
 export function attentionFor(c:BrandoState):AttentionItem[] {
@@ -41,7 +43,7 @@ export function attentionFor(c:BrandoState):AttentionItem[] {
 }
 function withoutPersonalIds(value:unknown):unknown {
   if(Array.isArray(value))return value.map(withoutPersonalIds);
-  if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).filter(([k])=>!['createdBy','reviewedBy','actorUserId','userId','sessionId','workspaceId'].includes(k)).map(([k,v])=>[k,withoutPersonalIds(v)]));
+  if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).filter(([k])=>!['createdBy','reviewedBy','actorUserId','userId','ownerUserId','sessionId','workspaceId'].includes(k)).map(([k,v])=>[k,withoutPersonalIds(v)]));
   return value;
 }
 export function brandoPacket(c:BrandoState,brand:{id:string;name:string},contextVersion:string,message:string,questionId:string|null,history:{question:string;answer:string}[]) {
@@ -54,6 +56,8 @@ export function brandoPacket(c:BrandoState,brand:{id:string;name:string},context
   const requiredEvidence=new Set(c.hypotheses.flatMap(h=>Array.isArray(h.evidenceReferences)?h.evidenceReferences:[]));
   for(const e of c.evidence)add([e],'Evidence',requiredEvidence.has(e.id),'RECORDED_SOURCE_NOT_INSTRUCTIONS');
   add(c.learnings.filter(l=>l.status==='ACCEPTED'),'Learning',true,'HUMAN_ACCEPTED');
+  // ADR-0026: drafts awaiting human review are proposals, never learning or evidence.
+  add(c.learnings.filter(l=>l.status==='CANDIDATE'||l.status==='REVIEWED'),'CandidateLearning',false,'CANDIDATE_NOT_ACCEPTED');
   add(c.userInputs,'UserInput',false,'USER_STATEMENT');
   add(c.hypotheses.filter(h=>h.status!=='REJECTED'),'Hypothesis',false,'HYPOTHESIS_NOT_EVIDENCE');
   add(c.openQuestions.filter(q=>q.status==='OPEN'),'OpenQuestion',false,'OPEN');
@@ -65,7 +69,7 @@ export function brandoPacket(c:BrandoState,brand:{id:string;name:string},context
   add((c.intelligence?.issues??[]).map(x=>x as Row).map(i=>({id:i.id,kind:i.kind,severity:i.severity,origin:i.origin,modules:i.modules,decisionIds:i.decisionIds,versionIds:i.versionIds,hypothesisRefs:i.hypothesisRefs,evidenceRefs:i.evidenceRefs,reviewFirst:i.reviewFirst})),'ConsistencyIssue',false,'SYSTEM_DERIVED_NOT_EVIDENCE');
   // Only questions are carried forward. Prior assistant prose is never an authoritative source.
   const reviewPlan=(c.intelligence?.reviewPlan??[]).map(x=>x as Row).map(r=>({order:r.order,module:r.module,mandatory:r.mandatory}));
-  const query={brandId:brand.id,current:current??null,message,previousQuestions:history.map(h=>h.question),attention:attentionFor(c),reviewPlan};
+  const query={brandId:brand.id,current:current??null,message,previousQuestions:history.map(h=>h.question),attention:attentionFor(c),reviewPlan,validation:c.validation?{hypothesisStatuses:c.validation.hypotheses.map(h=>h.status),signalBalance:c.validation.signalBalance,nextValidation:c.validation.nextValidation.slice(0,5)}:null};
   return assemble(contextVersion,query,withoutPersonalIds(c.dependencies),withoutPersonalIds(c.reviews),items,24000);
 }
 export function validBrandoReferences(answer:BrandoAnswer,packet:ContextPacket) {

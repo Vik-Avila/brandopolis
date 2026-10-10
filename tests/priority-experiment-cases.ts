@@ -88,11 +88,11 @@ export function priorityExperimentCases(connection:()=>ReturnType<typeof connect
   await engine.captureContext(who.token,brand.id,'hypothesis',{statement:'Los equipos vuelven cada semana'});
   c=await ctx();
   expect(views.brandoSectionOrientation(c,qid).message).toContain('Hay 2 hipótesis sin validar');
-  expect(views.brandoSectionOrientation(c,qid).message).not.toContain('Experimentos y aprendizajes');
+  expect(views.brandoSectionOrientation(c,qid).message).not.toContain('registra su ejecución');
   await commit('Priority Experiment','Validar primero si los equipos vuelven cada semana');
   c=await ctx();
   const orientation=views.brandoSectionOrientation(c,qid);
-  expect(orientation.message).toContain('Experimentos y aprendizajes');
+  expect(orientation.message).toContain('Validación');
   expect(orientation.message).toContain('una señal no es aprendizaje hasta que la revises');
  });
 

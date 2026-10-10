@@ -33,7 +33,9 @@ export function strategicSectionsCases(connection:()=>ReturnType<typeof connect>
    const read=async(table:typeof t.decisions|typeof t.versions|typeof t.reviews|typeof t.dependencies|typeof t.impacts|typeof t.recommendations)=>JSON.stringify((await db.select().from(table).where(eq(table.brandId,brand.id))).map(row=>JSON.stringify(row)).sort());
    return {decisions:await read(t.decisions),versions:await read(t.versions),reviews:await read(t.reviews),dependencies:await read(t.dependencies),impacts:await read(t.impacts),recommendations:await read(t.recommendations)};
   };
-  const activeVersions=async()=>{const c=await ctx();return c.decisions.map(d=>c.versions.find(v=>v.id===d.activeVersionId)).map(v=>v&&{id:v.id,decisionId:v.decisionId,sequence:v.sequence,selectedOption:v.selectedOption,rationale:v.rationale,versionStatus:v.versionStatus});};
+  // Decisions come from a query without ORDER BY; after updates PostgreSQL may return them in another physical
+  // order, so the comparison is made in a stable order (same content, same assertion).
+  const activeVersions=async()=>{const c=await ctx();return [...c.decisions].sort((a,b)=>a.id.localeCompare(b.id)).map(d=>c.versions.find(v=>v.id===d.activeVersionId)).map(v=>v&&{id:v.id,decisionId:v.decisionId,sequence:v.sequence,selectedOption:v.selectedOption,rationale:v.rationale,versionStatus:v.versionStatus});};
   const sectionAudits=async()=>(await db.select().from(t.audits).where(and(eq(t.audits.brandId,brand.id),eq(t.audits.operation,'STRATEGIC_SECTIONS_ADDED')))).length;
   return {db,engine,who,brand,ctx,decisionOf,commit,strategy,activeVersions,sectionAudits};
  };

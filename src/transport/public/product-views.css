@@ -1416,3 +1416,17 @@
 .bp-disclosure{margin-top:12px}
 .bp-disclosure-body{padding:4px 0 0}
 @media (max-width:620px){.intelligence-step,.intelligence-issue{flex-direction:column}.declared-context dl{grid-template-columns:1fr}}
+/* ADR-0026 · Validation & Learning Engine: next validation, plan quality and hypothesis review. */
+.validation-next{margin:20px 0;padding:18px 20px;border:1px solid var(--border-default);border-radius:var(--bp-radius-lg);background:var(--surface-card)}
+.validation-next h3{margin:0 0 4px}
+.validation-steps{list-style:none;margin:12px 0;padding:0;display:grid;gap:10px}
+.validation-step{padding:10px 12px;border:1px solid var(--border-default);border-radius:var(--bp-radius-md)}
+.validation-step:first-child{border-color:var(--bp-review-border)}
+.validation-step p{margin:4px 0 0}
+.plan-quality{margin:8px 0;padding:10px 12px;border:1px dashed var(--border-default);border-radius:var(--bp-radius-md)}
+.plan-quality[data-quality="REWORK"]{border-color:var(--bp-review-border)}
+.plan-quality ul{margin:6px 0 0;padding-left:18px}
+.hypothesis-card[data-status="REJECTED"]{border-color:var(--bp-error-border)}
+.hypothesis-card[data-status="WEAKENED"]{border-color:var(--bp-review-border)}
+.hypothesis-review-form,.learning-revise-form{display:grid;gap:6px;margin-top:8px}
+.analysis-item .actions label{flex-basis:100%}

@@ -92,7 +92,7 @@ export function strategicIntelligenceCases(connection:()=>ReturnType<typeof conn
   const before=await ctx();
   const answer=await engine.askBrando(who.token,brand.id,'¿Qué no está alineado y qué reviso primero?',null);
   expect(answer.error).toBeNull();
-  expect(requests[requests.length-1].promptVersion).toBe('brando-contextual-v5');
+  expect(requests[requests.length-1].promptVersion).toBe('brando-contextual-v6');
   const packet=JSON.stringify(requests[requests.length-1].input);
   expect(packet).toContain('DECLARED_CONTEXT_NOT_DECISION');
   expect(packet).toContain('Xalapa, Veracruz');

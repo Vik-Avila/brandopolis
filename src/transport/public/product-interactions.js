@@ -34,3 +34,17 @@ export function decisionTabs(surface,active,onSelect,versionCount){
  });
  select(entries.some(([key])=>key===active)?active:'overview');
 }
+/** Accessible tabs for a redesigned view (Mi aprendizaje): roving tabindex, arrows/Home/End, remembered per session. */
+export function viewTabs(root,storageKey,fallback,onSelect=()=>{}){
+ const tabs=[...root.querySelectorAll('[role="tab"]')];
+ let active=fallback;try{active=sessionStorage.getItem(storageKey)??fallback;}catch{/* best effort */}
+ const select=key=>{for(const tab of tabs){const on=tab.dataset.tab===key;tab.setAttribute('aria-selected',String(on));tab.tabIndex=on?0:-1;root.querySelector(`#${tab.getAttribute('aria-controls')}`).hidden=!on;}try{sessionStorage.setItem(storageKey,key);}catch{/* best effort */}onSelect(key);};
+ for(const tab of tabs)tab.addEventListener('click',()=>select(tab.dataset.tab));
+ root.querySelector('[role="tablist"]')?.addEventListener('keydown',event=>{
+  if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();
+  const i=tabs.indexOf(document.activeElement),n=event.key==='Home'?0:event.key==='End'?tabs.length-1:(i+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
+  tabs[n].click();tabs[n].focus();
+ });
+ select(tabs.some(t=>t.dataset.tab===active)?active:fallback);
+ return select;
+}

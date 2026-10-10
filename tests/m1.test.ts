@@ -27,6 +27,10 @@ import { gtmCases } from './gtm-cases.js';
 import { priorityExperimentCases } from './priority-experiment-cases.js';
 import { phase1ClosureCases } from './phase1-closure-cases.js';
 import { strategicIntelligenceCases } from './strategic-intelligence-cases.js';
+import { validationCases } from './validation-cases.js';
+import { reflectionCases } from './reflection-cases.js';
+import { brandDocumentsCases } from './brand-documents-cases.js';
+import { brandDeletionCases } from './brand-deletion-cases.js';
 let local:Awaited<ReturnType<typeof startLocalDb>>,connection:ReturnType<typeof connect>,engine:Engine;
 brandoCases(()=>connection);
 pilotCases(()=>connection);
@@ -38,6 +42,10 @@ gtmCases(()=>connection);
 priorityExperimentCases(()=>connection);
 phase1ClosureCases(()=>connection);
 strategicIntelligenceCases(()=>connection);
+validationCases(()=>connection);
+reflectionCases(()=>connection);
+brandDocumentsCases(()=>connection);
+brandDeletionCases(()=>connection);
 beforeAll(async()=>{
   local=await startLocalDb(true);
   const name=`m1_${randomUUID().replaceAll('-','')}`;
@@ -216,7 +224,8 @@ describe('PostgreSQL M1',()=>{
     expect((await engine.blueprint(s.who.token,s.brand.id)).learnings).toMatchObject([{status:'ACCEPTED',reviewedBy:s.who.userId}]);
     expect((await engine.assembleContext(s.who.token,s.brand.id,s.customer.id)).items.find(i=>i.type==='Learning')?.trust).toBe('HUMAN_ACCEPTED');
     expect((await s.context()).versions).toHaveLength(1);expect((await s.context()).decisions[0].activeVersionId).toBe(decision.versionId);
-    expect(await engine.practice(s.who.token)).toHaveLength(1);expect(await engine.practice(other.who.token)).toEqual([]);expect(await s.context()).not.toHaveProperty('capabilityEvents');
+    // ADR-0026: decision, two designed experiments, one observation and one learning review are descriptive practice; never another user's.
+    expect(await engine.practice(s.who.token)).toHaveLength(5);expect(await engine.practice(other.who.token)).toEqual([]);expect(await s.context()).not.toHaveProperty('capabilityEvents');
   });
   it('DEMO recommendation preserves human authority, rejection, modification and stale context',async()=>{
     const s=await setup();
@@ -387,7 +396,7 @@ describe('PostgreSQL M1',()=>{
     const ctx=await s.context();expect(ctx.versions).toHaveLength(3);expect(ctx.reviews[0].status).toBe('OPEN');
   });
   it('M1 migrations have applied exactly once',async()=>{
-    const result=await connection.pool.query('select count(*)::int as n from drizzle.__drizzle_migrations');expect(result.rows[0].n).toBe(14);
+    const result=await connection.pool.query('select count(*)::int as n from drizzle.__drizzle_migrations');expect(result.rows[0].n).toBe(16); // ADR-0027: additive personal_reflections; ADR-0029: brand_deletions
     const server=await connection.pool.query('show server_version');expect(server.rows[0].server_version).toMatch(/^17\./);
   });
   it('superseding without a new current version is rejected by PostgreSQL',async()=>{

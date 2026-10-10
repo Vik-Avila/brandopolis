@@ -215,3 +215,10 @@ Sucesor operativo: [ADR-0025](../14-decisions/ADR-0025.md). Prompt `brando-conte
 paquete autorizado con `DeclaredContext`, `ConsistencyIssue` y `query.reviewPlan`. Mismo proveedor, modelo,
 schema de respuesta v2, topes y aviso. Navegar no consulta; «Preguntar a Brando qué no está alineado» es una
 consulta explícita. Ninguna respuesta aprueba, invalida ni reescribe decisiones.
+
+## B3 · Learning Copilot (ADR-0026, 2026-10-07)
+
+Prompt `brando-contextual-v6`. «Ayúdame a interpretar» en Experimentos y aprendizajes consulta sólo por clic.
+Brando separa qué apoyan y qué no apoyan las señales, alternativas y límites, y puede sugerir —como
+propuesta— un estado de hipótesis. Nunca acepta ni rechaza aprendizajes, nunca cambia hipótesis ni
+decisiones. Smoke en vivo: requiere a una persona con clave temporal (ver SESSION_STATE).

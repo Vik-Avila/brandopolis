@@ -59,3 +59,11 @@ Por decisión del propietario (brief de la Iteración 2), Brando evoluciona a co
 dentro de los mismos límites de autoridad: [ADR-0025](../14-decisions/ADR-0025.md). La inteligencia
 transversal (coherencia, tensiones, orden de revisión, memoria y soporte de evidencia) es una proyección
 determinista del estado de la marca; Brando la explica sólo a petición explícita. B3–B5 siguen sin autorizar.
+
+## Validación · ADR-0026 (2026-10-07)
+
+`context.validation` (`src/domain/validation.ts`) proyecta hipótesis con uso y pruebas, experimentos en
+curso, estancados y no concluyentes, señales sin interpretar, aprendizajes pendientes, balance de señales,
+calidad de plan y la siguiente validación recomendada. Strategic Intelligence añade
+`VALIDATION_CHALLENGES_DECISION`. Ambas son puras: leer no escribe. Brando B3 (`brando-contextual-v6`)
+recibe aprendizajes candidatos como `CANDIDATE_NOT_ACCEPTED`.

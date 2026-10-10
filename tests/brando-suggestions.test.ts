@@ -22,7 +22,7 @@ describe('Human Brando proposal proof',()=>{
   const text='HARD, Fixture DEMO, UNTESTED, READY_FOR_DECISION';
   expect(api.brandoPlainText(text)).toBe('dependencia estricta, datos simulados de demostración, sin validar, lista para decidir');
   const result={provider:'ANTHROPIC',answer:{answer:text,facts:[],hypotheses:[],suggestions:['<script>attack()</script> '+text],questions:[],limitations:[]},omitted:[],attention:[],sources:[],suggestionTickets:[{ticketId:'proof',kind:'STRATEGY'}]};
-  const html=api.brandoAnswerHtml(result);expect(html).not.toContain('<script>');expect(html).toContain('&lt;script&gt;');expect(html).toContain('Aceptar');expect(html).toContain('Modificar');expect(html).toContain('Rechazar');expect(html).not.toContain('READY_FOR_DECISION');
+  const html=api.brandoAnswerHtml(result);expect(html).not.toContain('<script>');expect(html).toContain('&lt;script&gt;');expect(html).toContain('Llevar al borrador');expect(html).toContain('Modificar');expect(html).toContain('Descartar');expect(html).toContain('Alternativa propuesta');expect(html).toContain('Sin aprobar');expect(html).not.toContain('READY_FOR_DECISION');
  });
 });
 
