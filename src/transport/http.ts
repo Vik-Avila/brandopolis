@@ -426,6 +426,23 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           const extracted=await extractDocument({filePath:resolveDocumentStoragePath(asset.storageKey),mediaType:'application/pdf',originalName:asset.originalName});
           return send(res,200,await engine.mergeKitCandidates(token,string(input.brandId),input.expectedRevision,kitCandidatesFromText(extracted.segments.map(s=>({index:s.index,text:s.text})),asset.id)));
         }
+        // ONB-006 · a PDF the brand already uploaded becomes the kit manual without a new upload: same bytes, checked by
+        // signature and hash, stored privately as a kit file (the same content twice → the same kit file).
+        if(path==='/api/brand-kit/reuse-document'){
+          const doc=await engine.kitReusableDocument(token,string(input.brandId),input.documentId);
+          const data=await readFile(resolveDocumentStoragePath(doc.storageKey));
+          if(createHash('sha256').update(data).digest('hex')!==doc.sha256)throw new AppError('CONFLICT','The stored document changed; upload it again');
+          const info=inspectKitAsset(new Uint8Array(data));
+          if(info.kind!=='DOCUMENT')throw new AppError('INVALID','Only a PDF can be used as the brand manual');
+          const assetId=randomUUID(),storageKey=`${doc.workspaceId}/${doc.brandId}/kit-${assetId}/original`,target=resolveDocumentStoragePath(storageKey);
+          await mkdir(dirname(target),{recursive:true});
+          await writeFile(target,data,{flag:'wx'});
+          let result:{assetId:string;reused:boolean};
+          try{result=await engine.registerKitAsset(token,doc.brandId,{id:assetId,role:'MANUAL',originalName:doc.originalName,info,bytes:data.length,sha256:doc.sha256,storageKey});}
+          catch(error){await rm(dirname(target),{recursive:true,force:true});throw error;}
+          if(result.reused)await rm(dirname(target),{recursive:true,force:true});
+          return send(res,result.reused?200:201,result);
+        }
         if(path==='/api/brand-kit/apply-direction') return send(res,200,await engine.applyIdentityDirection(token,input));
         if(path.startsWith('/api/brand-kit/')){const action=path.slice('/api/brand-kit/'.length);if(['start','draft','adopt','submit','decide','publish'].includes(action))return send(res,action==='start'?201:200,await engine.kitCommand(token,action as 'start',input));}
         // PHASE4_SPEC §4.4 · deliverables: one path per operation; authorization, revision and audit in the engine.

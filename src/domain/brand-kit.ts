@@ -47,18 +47,40 @@ export function normalizeKit(input: unknown): KitContent {
   return content;
 }
 
+// Stored content comes back from jsonb with its keys reordered, so values are compared with sorted keys.
+const stable = (v: unknown): unknown => (Array.isArray(v) ? v.map(stable) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map(k => [k, stable((v as Record<string, unknown>)[k])])) : v);
+const stableJson = (v: unknown) => JSON.stringify(stable(v));
+
 /**
  * IDN-003 · nothing becomes CONFIRMED without a person adopting it: a saved draft may only keep CONFIRMED on values that
  * were already CONFIRMED with the same content; adoption is a separate, explicit command.
  */
 export function assertNoSilentConfirmation(previous: KitContent, next: KitContent) {
-  const key = (v: Record<string, unknown>) => JSON.stringify({ ...v, certainty: undefined });
+  const key = (v: Record<string, unknown>) => stableJson({ ...v, certainty: undefined });
   const before = new Map([...previous.logos, ...previous.palette, ...previous.typography].map(v => [v.id, v as Record<string, unknown>]));
   for (const v of [...next.logos, ...next.palette, ...next.typography] as Record<string, unknown>[]) {
     if (v.certainty !== 'CONFIRMED') continue;
     const old = before.get(v.id as string);
     if (!old || old.certainty !== 'CONFIRMED' || key(old) !== key(v)) throw new AppError('INVALID', 'Only an explicit adoption can confirm a value');
   }
+}
+
+export const CORRECTED_NOTE = 'Corregido por una persona';
+/**
+ * ONB-007 · provenance is decided here, not by the client: a value whose content a person changed is attributed to
+ * that person (the earlier file and page stay as a reference) and a new value can only claim a person as its origin.
+ * Certainty is untouched, so a correction is never a confirmation (adoption stays a separate command).
+ */
+export function attributeCorrections(previous: KitContent, next: KitContent): KitContent {
+  const before = new Map([...previous.logos, ...previous.palette, ...previous.typography].map(v => [v.id, v as Record<string, unknown> & { origin: Origin }]));
+  const body = (v: Record<string, unknown>) => stableJson({ ...v, certainty: undefined, origin: undefined });
+  const fix = <T extends { id: string; origin: Origin }>(v: T): T => {
+    const old = before.get(v.id);
+    if (!old) return v.origin.kind === 'PERSON' && !v.origin.assetId ? v : { ...v, origin: { kind: 'PERSON', assetId: null, page: null, note: '' } };
+    if (body(old) === body(v as unknown as Record<string, unknown>)) return { ...v, origin: old.origin };
+    return { ...v, origin: old.origin.kind === 'PERSON' ? old.origin : { kind: 'PERSON', assetId: old.origin.assetId, page: old.origin.page, note: CORRECTED_NOTE } };
+  };
+  return { ...next, logos: next.logos.map(fix), palette: next.palette.map(fix), typography: next.typography.map(fix) };
 }
 
 /** Adopts values by id: they become CONFIRMED (a person with authority over this brand does it). */

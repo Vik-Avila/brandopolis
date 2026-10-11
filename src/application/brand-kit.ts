@@ -3,7 +3,7 @@ import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { AppError } from '../domain/contracts.js';
 import { approve, contentFingerprint, editorialTransition, type EditorialStatus } from '../domain/editorial-versions.js';
-import { adoptValues, assertNoSilentConfirmation, channelGaps, emptyKit, kitDiff, normalizeKit, pairContrast, type KitContent } from '../domain/brand-kit.js';
+import { adoptValues, assertNoSilentConfirmation, attributeCorrections, channelGaps, emptyKit, kitDiff, normalizeKit, pairContrast, type KitContent } from '../domain/brand-kit.js';
 import { resolutionWarning, type KitAssetInfo } from '../domain/kit-assets.js';
 import type { Transaction } from '../persistence/database.js';
 import * as t from '../persistence/schema.js';
@@ -43,8 +43,9 @@ async function checkAssets(tx: Transaction, a: BrandActor, c: KitContent) {
 /** Kit of the brand: pointers, versions, files, what channels still need, contrast per pair, differences and impact. */
 export async function readKit(tx: Transaction, a: BrandActor) {
   const assets = (await tx.select().from(t.kitAssets).where(byBrand(t.kitAssets, a)).orderBy(asc(t.kitAssets.createdAt))).map(r => ({ id: r.id, role: r.role, originalName: r.originalName, format: r.format, bytes: r.bytes, sha256: r.sha256, width: r.width, height: r.height, alpha: r.alpha, rights: r.rights, previewable: ['PNG', 'JPEG', 'WEBP'].includes(r.format), createdAt: r.createdAt.toISOString() }));
+  const reusable = await reusableDocuments(tx, a, assets.map(x => x.sha256));
   const [kit] = await tx.select().from(t.brandKits).where(byBrand(t.brandKits, a));
-  if (!kit) return { kit: null, assets };
+  if (!kit) return { kit: null, assets, reusable };
   const versions = await tx.select().from(t.brandKitVersions).where(and(byBrand(t.brandKitVersions, a), eq(t.brandKitVersions.kitId, kit.id))).orderBy(asc(t.brandKitVersions.sequence));
   const view = (v: typeof versions[number]) => {
     const content = v.content as KitContent;
@@ -60,7 +61,7 @@ export async function readKit(tx: Transaction, a: BrandActor) {
   const deliverableVersions = approved ? await tx.select({ id: t.deliverableVersions.id, deliverableId: t.deliverableVersions.deliverableId, manifest: t.deliverableVersions.manifest, content: t.deliverableVersions.content, status: t.deliverableVersions.status }).from(t.deliverableVersions).where(and(byBrand(t.deliverableVersions, a), eq(t.deliverableVersions.status, 'APPROVED'))) : [];
   const impact = deliverableVersions.filter(v => { const k = (v.manifest as { kitVersionId?: string | null }).kitVersionId; return Boolean(k) && k !== approved!.id; }).map(v => ({ deliverableId: v.deliverableId, versionId: v.id, name: String((v.content as { name?: string }).name ?? ''), kitVersionId: (v.manifest as { kitVersionId: string }).kitVersionId }));
   return {
-    assets,
+    assets, reusable,
     kit: {
       id: kit.id, revision: kit.revision,
       approved: approved ? view(approved) : null,
@@ -106,7 +107,7 @@ async function lockDraft(tx: Transaction, a: BrandActor, expected: unknown) {
 /** Saves the draft. IDN-003: no value can arrive CONFIRMED unless it already was, unchanged. */
 export async function saveKitDraft(tx: Transaction, a: BrandActor, input: { expectedRevision?: unknown; content?: unknown }) {
   const { kit, draft } = await lockDraft(tx, a, input.expectedRevision);
-  const content = normalizeKit(input.content);
+  const content = attributeCorrections(draft.content as KitContent, normalizeKit(input.content));
   assertNoSilentConfirmation(draft.content as KitContent, content);
   await checkAssets(tx, a, content);
   await tx.update(t.brandKitVersions).set({ content, fingerprint: contentFingerprint(content) }).where(eq(t.brandKitVersions.id, draft.id));
@@ -184,6 +185,26 @@ export async function publishKit(tx: Transaction, a: BrandActor, input: { versio
   await tx.insert(t.brandKitPublications).values({ id: randomUUID(), workspaceId: a.workspaceId, brandId: a.brandId, kitId: kit.id, versionId: target.id, fingerprint: target.fingerprint, actorId: a.userId, idempotencyKey, createdAt: new Date() });
   await touch(tx, kit.id, { publishedVersionId: target.id, revision: kit.revision + 1 });
   return { kitId: kit.id, versionId: target.id, previousVersionId: kit.publishedVersionId };
+}
+
+/**
+ * ONB-006 · PDFs this brand already uploaded as source documents (guided start or documents) that are not kit files
+ * yet, matched by content. Offered in Identidad visual so the same manual is never asked for twice.
+ */
+async function reusableDocuments(tx: Transaction, a: BrandActor, kitHashes: readonly string[]) {
+  const rows = await tx.select({ id: t.sourceDocuments.id, originalName: t.sourceDocuments.originalName, bytes: t.sourceDocuments.bytes, sha256: t.sourceDocuments.sha256 }).from(t.sourceDocuments)
+    .where(and(byBrand(t.sourceDocuments, a), eq(t.sourceDocuments.mediaType, 'application/pdf'))).orderBy(asc(t.sourceDocuments.uploadedAt));
+  const seen = new Set(kitHashes);
+  return rows.filter(r => !seen.has(r.sha256) && (seen.add(r.sha256), true)).map(r => ({ id: r.id, originalName: r.originalName, bytes: r.bytes }));
+}
+
+/** ONB-006 · one source document (PDF) of this brand, to be stored as the kit's manual without a new upload. */
+export async function reusableDocument(tx: Transaction, a: BrandActor, documentId: unknown) {
+  if (typeof documentId !== 'string' || !documentId || documentId.length > 200) throw new AppError('INVALID', 'Document required');
+  const [row] = await tx.select().from(t.sourceDocuments).where(and(byBrand(t.sourceDocuments, a), eq(t.sourceDocuments.id, documentId)));
+  if (!row) throw new AppError('NOT_FOUND', 'Document not available');
+  if (row.mediaType !== 'application/pdf') throw new AppError('INVALID', 'Only a PDF can be used as the brand manual');
+  return { workspaceId: a.workspaceId, brandId: a.brandId, id: row.id, originalName: row.originalName, sha256: row.sha256, storageKey: row.storageKey };
 }
 
 /** Registers an uploaded file already validated by signature and stored privately. Same file twice → same record. */

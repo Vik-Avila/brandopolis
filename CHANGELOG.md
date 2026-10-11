@@ -1,3 +1,10 @@
+## 2026-10-11 · Phase 4 — ONB-006 y ONB-007 (identidad en el inicio guiado)
+
+- ONB-006: los PDF aportados al preparar la marca aparecen en Identidad visual («Archivos que ya cargaste») y se usan como manual sin volver a subirlos (`/api/brand-kit/reuse-document`: misma marca, firma y huella comprobadas, mismo contenido = mismo archivo del kit).
+- ONB-007: «Quiero completarla» sin kit aprobado empieza con lo que existe y muestra lo que falta por canal; al corregir un valor inferido, el servidor lo atribuye a la persona (con la página de referencia) y sigue sin confirmar hasta adoptarlo; un valor nuevo no puede atribuirse a un documento.
+- Defecto corregido: tras adoptar un valor, guardar el borrador del kit desde el editor se rechazaba («Only an explicit adoption can confirm a value») porque la comparación dependía del orden de las claves devuelto por jsonb.
+- Evidencia: pnpm test 467 PASS; E2E identidad + inicio guiado 30/30 en los 5 proyectos; PILOT 10/10; validador de UI PASS.
+
 ## 2026-10-11 · Phase 4 — criterios de marketing para agentes (herramientas, sin efecto en runtime)
 
 - Evaluación de Marketing Skills, Claude SEO, Claude Ads y Scrapling con commit fijo, licencia, scripts y dependencias: `docs/15-handoff/PHASE4_AGENT_TOOLING_REVIEW_2026-10-11.md`.

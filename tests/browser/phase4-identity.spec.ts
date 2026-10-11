@@ -27,7 +27,7 @@ test('identity: upload files, ingest, adopt, contrast, approve and publish the k
   await expect(view.locator('h2').first()).toHaveText('Identidad visual');
   await expect(view).toContainText('Guía de marca, Biblioteca y Plantillas llegarán más adelante.');
   await expect(view.getByRole('heading', { name: 'Ya tengo identidad' })).toBeVisible();
-  await expect(view.locator('.kit-entry').nth(1)).toContainText('Disponible cuando tengas un kit aprobado.');
+  await expect(view.locator('.kit-entry').nth(1).getByRole('button', { name: 'Empezar con lo que tengo' })).toBeVisible(); // partial identity (ONB-007)
 
   // Files: a real PNG (previewed, transparency read from the file) and an SVG with a script (stored, never shown).
   await view.getByLabel('¿Qué archivo es?').selectOption('LOGO');
@@ -104,5 +104,82 @@ test('«Quiero crearla»: Brando directions (DEMO labelled) enter the draft as p
   await expect(values.first()).toContainText('Propuesta de Brando');
   await expect(view.locator('.kit-value').filter({ hasText: 'Confirmado por una persona' })).toHaveCount(0);
   await expect(view).not.toContainText('Kit aprobado');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+});
+
+/** A one-page PDF with real text, so the existing extractor reads it (no fixture file in the repository). */
+function textPdf(lines: string[]) {
+  const content = `BT /F1 12 Tf 72 720 Td ${lines.map((l, i) => `${i ? '0 -18 Td ' : ''}(${l}) Tj`).join(' ')} ET`;
+  const objects = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>', `<< /Length ${content.length} >>\nstream\n${content}\nendstream`];
+  let out = '%PDF-1.4\n'; const offsets: number[] = [];
+  objects.forEach((o, i) => { offsets.push(out.length); out += `${i + 1} 0 obj\n${o}\nendobj\n`; });
+  const xref = out.length;
+  out += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets.map(o => `${String(o).padStart(10, '0')} 00000 n \n`).join('')}trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return Buffer.from(out, 'latin1');
+}
+
+test('ONB-006/007: the manual uploaded while preparing the brand is reused, a partial identity is completed and corrections stay unconfirmed', async ({ page }, info) => {
+  test.slow();
+  const session = JSON.parse(readFileSync(process.env.BRANDOPOLIS_SESSION_FILE ?? '.local/demo-session.json', 'utf8'));
+  await page.goto('/'); await page.getByLabel('Token de sesión local').fill(session.token);
+  await page.getByRole('button', { name: 'Entrar al espacio estratégico' }).click(); await page.locator('#workspace').waitFor();
+  await page.locator('#new-brand').click();
+  await page.getByLabel('Nueva marca', { exact: true }).fill(`Parcial ${info.project.name} ${Date.now()}`);
+  await page.locator('#brand-dialog').getByLabel('Mi identidad visual').check();
+  await page.locator('#brand-dialog').getByRole('button', { name: 'Tengo materiales' }).click();
+  const view = page.locator('#decision');
+  // Guided start: the manual is uploaded once, here (plain ASCII text keeps the hand-made PDF simple).
+  await view.locator('#setup-files').setInputFiles({ name: 'manual-de-marca.pdf', mimeType: 'application/pdf', buffer: textPdf(['Manual de marca', 'Color principal #C8102F Pantone 186 C', 'Tipografia principal Montserrat']) });
+  await view.getByRole('button', { name: 'Subir documentos' }).click();
+  await expect(view.locator('#setup-status')).toHaveText('1 documento guardado.');
+  for (let i = 0; i < 6 && await view.locator('#setup-unknown').count(); i++) { await view.locator('#setup-unknown').click(); await page.waitForTimeout(300); }
+  await view.getByRole('button', { name: 'Continuar a Tu identidad' }).click();
+  await expect(view.locator('.setup-identity')).toContainText('Allí podrás usar como manual, sin volver a subirlo: manual-de-marca.pdf.');
+  await expect(view.getByRole('button', { name: /Más adelante/ })).toHaveCount(0); // the priority is the identity itself
+  await view.getByRole('button', { name: /Quiero completarla/ }).click();
+  await view.getByRole('button', { name: 'Guardar y salir' }).click();
+  await expect(page.locator('#notice')).toContainText('Tu borrador quedó guardado');
+
+  // Identidad visual: the same file is offered without a new upload.
+  if (await page.locator('#menu').isVisible()) await page.locator('#menu').click();
+  await page.locator('#brand-resources').click();
+  await expect(view.locator('h2').first()).toHaveText('Identidad visual');
+  const reusable = view.locator('.kit-reusable');
+  await expect(reusable).toContainText('manual-de-marca.pdf · PDF');
+  await reusable.getByRole('button', { name: 'Usar como manual de marca' }).click();
+  await expect(page.locator('#notice')).toContainText('Manual incorporado sin volver a subirlo');
+  await expect(view.locator('.kit-reusable')).toHaveCount(0);
+  await expect(view.locator('.kit-asset').filter({ hasText: 'manual-de-marca.pdf' })).toContainText('Manual de marca (PDF)');
+
+  // Partial identity: start with what exists and see what is missing.
+  await view.getByRole('button', { name: 'Empezar con lo que tengo' }).click();
+  await expect(page.locator('#notice')).toContainText('Borrador listo con lo que ya tienes');
+  await expect(view.locator('.plan-gaps')).toContainText('una paleta de colores');
+  await view.getByRole('button', { name: 'Buscar colores y tipografías en el manual' }).click();
+  await expect(page.locator('#notice')).toContainText('Encontramos 1 color(es) y 1 tipografía(s) en el manual');
+  const inferred = view.locator('.kit-value').filter({ hasText: '#C8102F' });
+  await expect(inferred).toContainText('Declarado, sin adoptar');
+  await expect(inferred).toContainText('Documento, página 1');
+
+  // The inference is wrong: the person corrects it. It is attributed to the person and is still not confirmed.
+  await view.getByRole('button', { name: 'Editar valores' }).click();
+  await view.locator('#kit-form .kit-row[data-kind="color"]').first().getByLabel('Hex').fill('#C8102E');
+  await view.locator('#kit-form').getByRole('button', { name: 'Guardar borrador' }).click();
+  const corrected = view.locator('.kit-value').filter({ hasText: '#C8102E' });
+  await expect(corrected).toContainText('Corregido por una persona (antes: documento, página 1)');
+  await expect(corrected).toContainText('Declarado, sin adoptar');
+  await expect(view.locator('.kit-value').filter({ hasText: 'Montserrat' })).toContainText('Documento, página 1');
+  await corrected.getByLabel('Adoptar').check();
+  await view.getByRole('button', { name: 'Adoptar los seleccionados' }).click();
+  await expect(view.locator('.kit-value').filter({ hasText: '#C8102E' })).toContainText('Confirmado por una persona');
+  await expect(view.locator('.kit-value').filter({ hasText: 'Montserrat' })).toContainText('Declarado, sin adoptar');
+  // Saving the draft again after adopting keeps the adopted value (regression: key order of stored values).
+  await view.getByRole('button', { name: 'Editar valores' }).click();
+  await view.locator('#kit-form').getByLabel('Tono de la marca').fill('Cercano y claro');
+  await view.locator('#kit-form').getByRole('button', { name: 'Guardar borrador' }).click();
+  await expect(page.locator('#notice')).toContainText('Borrador del kit guardado');
+  await expect(view.locator('.kit-value').filter({ hasText: '#C8102E' })).toContainText('Confirmado por una persona');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });

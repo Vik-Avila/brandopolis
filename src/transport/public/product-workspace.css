@@ -440,6 +440,10 @@ body.left-collapsed #journey .nav-item[data-tip]:hover::after, body.left-collaps
 .kit-upload { display: grid; gap: 6px; max-width: 480px; margin: 8px 0 12px; }
 .kit-assets, .kit-values ul, .kit-contrast { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 8px; }
 .kit-asset { display: grid; grid-template-columns: 96px 1fr; gap: 12px; align-items: center; padding: 10px; border: 1px solid var(--ws-line); border-radius: 12px; }
+.kit-reusable { margin: 4px 0 14px; } .kit-reusable h4 { margin: 0 0 4px; }
+.kit-reusable ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.kit-reusable li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px; border: 1px dashed var(--ws-line); border-radius: 12px; }
+.kit-reusable li span { overflow-wrap: anywhere; }
 .kit-asset-preview { width: 96px; height: 72px; display: grid; place-items: center; background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0 / 16px 16px; border-radius: 8px; overflow: hidden; }
 .kit-asset-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .kit-asset-preview .hint { font-size: 12px; text-align: center; padding: 4px; background: var(--surface-card); }

@@ -5,7 +5,7 @@ import type { connect } from '../src/persistence/database.js';
 import { Engine } from '../src/application/engine.js';
 import { seedIdentity } from '../scripts/seed.js';
 import * as t from '../src/persistence/schema.js';
-import { emptyKit } from '../src/domain/brand-kit.js';
+import { emptyKit, kitCandidatesFromText } from '../src/domain/brand-kit.js';
 import { readFileSync } from 'node:fs';
 import type { KitAssetInfo } from '../src/domain/kit-assets.js';
 
@@ -117,6 +117,60 @@ export function brandKitCases(connection: () => ReturnType<typeof connect>) {
       // The same file uploaded twice is one record.
       const again = await x.engine.registerKitAsset(x.who.token, x.brand.id, { id: randomUUID(), role: 'LOGO', originalName: 'otra.png', info: { format: 'PNG', kind: 'RASTER', mediaType: 'image/png', width: 10, height: 10, alpha: false, previewable: true }, bytes: 10, sha256: logo.sha256, storageKey: 'y' });
       expect(again).toEqual({ assetId: logo.assetId, reused: true });
+    });
+
+    it('ONB-006: PDFs uploaded while preparing the brand are offered to the kit once, never across brands or as other formats', async () => {
+      const x = await setup();
+      const now = new Date();
+      const doc = async (brandId: string, mediaType: string, sha256 = createHash('sha256').update(randomUUID()).digest('hex')) => {
+        const id = randomUUID();
+        await x.db.insert(t.sourceDocuments).values({ id, workspaceId: x.who.workspaceId, brandId, originalName: `${id}.pdf`, mediaType, bytes: 2048, sha256, storageKey: `k/${id}`, uploadedBy: x.who.userId, uploadedAt: now });
+        return { id, sha256 };
+      };
+      const manual = await doc(x.brand.id, 'application/pdf'), notes = await doc(x.brand.id, 'text/plain');
+      expect((await x.read()).reusable).toEqual([{ id: manual.id, originalName: `${manual.id}.pdf`, bytes: 2048 }]);
+      expect(await x.engine.kitReusableDocument(x.who.token, x.brand.id, manual.id)).toMatchObject({ id: manual.id, sha256: manual.sha256, brandId: x.brand.id });
+      await expect(x.engine.kitReusableDocument(x.who.token, x.brand.id, notes.id)).rejects.toMatchObject({ code: 'INVALID' });
+      const other = await x.engine.createBrand(x.who.token, 'Otra marca');
+      await expect(x.engine.kitReusableDocument(x.who.token, other.id, manual.id)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      const stranger = await seedIdentity(x.db);
+      await expect(x.engine.kitReusableDocument(stranger.token, x.brand.id, manual.id)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      // Once the same content is a kit file it is no longer offered (it is never asked for twice).
+      await x.engine.registerKitAsset(x.who.token, x.brand.id, { id: randomUUID(), role: 'MANUAL', originalName: 'manual.pdf', info: { format: 'PDF', kind: 'DOCUMENT', mediaType: 'application/pdf', width: null, height: null, alpha: null, previewable: false } as unknown as KitAssetInfo, bytes: 2048, sha256: manual.sha256, storageKey: `x/${randomUUID()}` });
+      expect((await x.read()).reusable).toEqual([]);
+    });
+
+    it('ONB-007: a partial identity starts from what exists; corrected inferences are attributed to the person and stay unconfirmed', async () => {
+      const x = await setup();
+      const manual = await x.upload('MANUAL', { format: 'PDF', kind: 'DOCUMENT', mediaType: 'application/pdf', width: null, height: null, alpha: null, previewable: false } as unknown as Partial<KitAssetInfo>);
+      await x.cmd('start', { entry: 'INGEST', expectedRevision: 0 });
+      let k = (await x.read()).kit!;
+      // The extractor reads a wrong color (#C8102F) and a typeface; both arrive DECLARED with file and page.
+      await x.engine.mergeKitCandidates(x.who.token, x.brand.id, k.revision, kitCandidatesFromText([{ index: 2, text: 'Color principal #C8102F Pantone 186 C. Tipografía principal Montserrat' }], manual.assetId));
+      k = (await x.read()).kit!;
+      const [red] = k.draft!.content.palette, [font] = k.draft!.content.typography;
+      expect([red.certainty, red.origin]).toEqual(['DECLARED', { kind: 'DOCUMENT', assetId: manual.assetId, page: 2, note: '' }]);
+      // Partial identity: only some values exist, so the channels it uses show what is still missing.
+      await x.cmd('draft', { expectedRevision: k.revision, content: { ...k.draft!.content, channels: ['WEBSITE'] } });
+      k = (await x.read()).kit!;
+      expect(k.draft!.gaps.map(g => g.need)).toEqual(expect.arrayContaining(['TONE', 'FAVICON', 'WEB_FONT', 'CONTRAST_PAIRS']));
+      expect(k.draft!.content.palette[0].origin.kind).toBe('DOCUMENT'); // unchanged values keep their origin
+      // The person corrects the color: origin becomes the person (page kept as reference), still not confirmed.
+      const forged = { ...x.color('extra', '#000000'), origin: { kind: 'DOCUMENT', assetId: manual.assetId, page: 9, note: '' } };
+      await x.cmd('draft', { expectedRevision: k.revision, content: { ...k.draft!.content, palette: [{ ...red, hex: '#C8102E' }, forged] } });
+      k = (await x.read()).kit!;
+      const [fixed, added] = k.draft!.content.palette;
+      expect(fixed).toMatchObject({ hex: '#C8102E', certainty: 'DECLARED', origin: { kind: 'PERSON', assetId: manual.assetId, page: 2, note: 'Corregido por una persona' } });
+      expect(added.origin).toEqual({ kind: 'PERSON', assetId: null, page: null, note: '' }); // a new value cannot claim a document
+      expect(k.draft!.content.typography[0]).toMatchObject({ family: font.family, origin: { kind: 'DOCUMENT', page: 2 } });
+      expect(k.draft!.adoptions).toEqual([]);
+      await x.cmd('adopt', { expectedRevision: k.revision, valueIds: [fixed.id] });
+      k = (await x.read()).kit!;
+      expect(k.draft!.content.palette[0]).toMatchObject({ certainty: 'CONFIRMED', origin: { kind: 'PERSON' } });
+      // Saving again from the editor (keys in another order than the stored jsonb) keeps the adopted value as it was.
+      const reordered = (v: Record<string, unknown>) => Object.fromEntries(Object.entries(v).reverse());
+      await x.cmd('draft', { expectedRevision: k.revision, content: { ...k.draft!.content, palette: k.draft!.content.palette.map(reordered) } });
+      expect((await x.read()).kit!.draft!.content.palette[0]).toMatchObject({ hex: '#C8102E', certainty: 'CONFIRMED', origin: { note: 'Corregido por una persona' } });
     });
 
     it('DEL-005 (security review): deleting a brand that only has kit files still schedules the purge of its files', async () => {

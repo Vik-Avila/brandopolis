@@ -21,7 +21,7 @@ import { actionStatus, addAction, addObjective, createPlan, createSnapshot, deci
 import { IdentityDirectionsStore, directionValues, identityPacket, validIdentityProposal } from '../domain/brando-identity.js';
 import { MarketingAssistance, marketingPacket, proposalContent, type MarketingPacket } from '../domain/brando-marketing.js';
 import { DELIVERABLE_TYPES, type DeliverableType } from '../domain/deliverables.js';
-import { applyDirection, draftValueIds, adoptKitValues, decideKit, kitAsset, mergeKitCandidates, publishKit, readKit, registerKitAsset, saveKitDraft, startKitDraft, submitKit } from './brand-kit.js';
+import { applyDirection, draftValueIds, adoptKitValues, decideKit, kitAsset, mergeKitCandidates, reusableDocument, publishKit, readKit, registerKitAsset, saveKitDraft, startKitDraft, submitKit } from './brand-kit.js';
 import type { KitAssetInfo } from '../domain/kit-assets.js';
 import type { KitContent } from '../domain/brand-kit.js';
 import { createDeliverable, decideDeliverable, listDeliverables, newDeliverableDraft, recordPublication, retireDeliverable, saveDeliverableDraft, submitDeliverable } from './deliverables.js';
@@ -147,6 +147,10 @@ export class Engine {
       if(!result.reused)await this.audit(tx,{...actor},{operation:'KIT_ASSET_UPLOAD',idempotencyKey:input.sha256,newVersion:result.assetId});
       return result;
     },true);
+  }
+  /** ONB-006 · a PDF this brand already uploaded, so the transport can store it as the kit manual without a new upload. */
+  async kitReusableDocument(token:string,brandId:string,documentId:unknown) {
+    return this.withBrandActor(token,brandId,(tx,actor)=>reusableDocument(tx,actor,documentId));
   }
   /** A kit file of this brand (authorization on every read; the transport decides what may be previewed). */
   async kitAssetFile(token:string,brandId:string,assetId:unknown) {

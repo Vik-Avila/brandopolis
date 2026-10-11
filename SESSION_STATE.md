@@ -1,3 +1,24 @@
+## 2026-10-11 · PHASE 4 · inicio guiado: ONB-006 y ONB-007
+
+- **ONB-006:** `readKit` devuelve `reusable` (PDF de la marca que aún no son archivos del kit, por huella);
+  `Engine.kitReusableDocument` y la ruta `/api/brand-kit/reuse-document` copian el PDF como manual privado del kit
+  tras comprobar firma y SHA-256 (reintento = mismo archivo). El paso 3 del inicio guiado nombra los PDF que se podrán
+  usar. Sin migración.
+- **ONB-007:** la tarjeta «Quiero completarla» sin kit aprobado inicia un borrador con lo que existe («Empezar con lo
+  que tengo») y muestra lo que falta por canal. `attributeCorrections` (dominio) decide la procedencia en el servidor:
+  valor cambiado → persona, con archivo y página de referencia; valor nuevo → persona; la certeza no cambia, así que
+  corregir nunca confirma. Etiqueta «Declarado, sin adoptar».
+- **Defecto hallado por la nueva regresión y corregido:** `assertNoSilentConfirmation` comparaba con `JSON.stringify`
+  dependiente del orden de claves; jsonb las reordena, así que tras adoptar un valor el editor no podía guardar el
+  borrador. Ahora compara con claves ordenadas (prueba U y E).
+- **Pruebas:** dos casos U nuevos en `tests/brand-kit-cases.ts`; E nueva en `tests/browser/phase4-identity.spec.ts`
+  (PDF de texto generado en la prueba; extracción determinista, sin IA); la E existente de identidad ahora espera
+  «Empezar con lo que tengo» en lugar de «Disponible cuando tengas un kit aprobado».
+- **Resultados:** typecheck y lint 0; Foundation 0 errores; validador de UI PASS; `pnpm test` 467 PASS; E2E
+  `phase4-identity` + `phase4-setup` 6/6 en cada uno de los 5 proyectos; test:pilot:e2e 10/10. La E2E completa no se
+  repitió en este commit (cambios aditivos); queda para el cierre del bloque de colaboración.
+- **Pendiente del inicio guiado:** ONB-009 con un proveedor real que falle; ONB-011 (portal del invitado).
+
 ## 2026-10-11 · PHASE 4 · herramientas para agentes: criterios de marketing
 
 - El análisis adjunto con los enlaces no llegó a la sesión; los repositorios se identificaron por nombre público
