@@ -123,11 +123,11 @@ describe('PHASE4_SPEC §3/§4.4 · area tabs and deliverable views', () => {
   };
   it('Marketing tabs: Plan, Redes sociales, Campañas digitales; Sitio web named as later, never a tab; a selector mirrors the tabs', () => {
     const html = v.areaTabsHtml('marketing', 'social');
-    expect([...html.matchAll(/role="tab"[^>]*>([^<]+)</g)].map(m => m[1])).toEqual(['Plan de Marketing', 'Redes sociales', 'Campañas digitales']);
+    expect([...html.matchAll(/role="tab"[^>]*>([^<]+)</g)].map(m => m[1])).toEqual(['Plan de Marketing', 'Redes sociales', 'Sitio web', 'Campañas digitales']); // ADR-0032: Sitio web is a real tab now
     expect(html).toContain('id="area-tab-social" data-area-tab="social" aria-selected="true" tabindex="0"');
     expect(html).toContain('aria-selected="false" tabindex="-1"');
     expect(html).toContain('<option value="social" selected>Redes sociales</option>');
-    expect(html).toContain('Sitio web llegará más adelante.');
+    expect(html).not.toContain('llegará más adelante');
     expect(html).not.toContain('data-area-tab="web"');
   });
   const post = (extra: Record<string, unknown> = {}) => ({ id: 'd1', type: 'SOCIAL_POST', status: 'ACTIVE', revision: 2, history: [], publications: [], inReview: [], draft: null,

@@ -44,7 +44,7 @@ test('social post: tabs, review, approval, manual publication record and text do
     await expect(page.getByRole('tab', { name: 'Redes sociales' })).toBeHidden();
     await section(page, 'social', 'Redes sociales');
   }
-  await expect(view).toContainText('Sitio web llegará más adelante.');
+  await expect(view).not.toContainText('llegará más adelante'); // ADR-0032: Sitio web is a real tab
 
   await view.getByRole('button', { name: 'Nuevo: Publicación para redes' }).click();
   const form = view.locator('#deliverable-form');

@@ -37,7 +37,9 @@
     "demo:live-ai-ui": "playwright test --config playwright.live.config.ts",
     "demo:validation-seed": "tsx scripts/validation-demo-seed.ts",
     "skills:sync": "tsx scripts/sync-skills.ts",
-    "skills:check": "tsx scripts/sync-skills.ts --check"
+    "skills:check": "tsx scripts/sync-skills.ts --check",
+    "sites:public": "tsx scripts/sites-server.ts --public",
+    "sites:preview": "tsx scripts/sites-server.ts --preview"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

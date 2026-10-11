@@ -10,7 +10,7 @@ import { sessions,memberships,workspaces } from '../src/persistence/schema.js';
 import { seedIdentity } from './seed.js';
 import { runtimeAssets } from '../src/transport/server.js';
 export function competitionProfile(isolated=false) {
-  const root=resolve('.local',isolated?'rc1-smoke':'');return {root,dbDirectory:resolve(root,'postgres'),dbPort:isolated?55434:55432,port:isolated?3001:3000,sessionFile:resolve(root,'demo-session.json'),demoFile:resolve(root,'competition-demo.json')};
+  const root=resolve('.local',isolated?'rc1-smoke':'');return {root,dbDirectory:resolve(root,'postgres'),dbPort:isolated?55434:55432,port:isolated?3001:3000,sitesPort:isolated?3101:3100,previewPort:isolated?3201:3200,sitesRoot:resolve(root,'sites'),sessionFile:resolve(root,'demo-session.json'),demoFile:resolve(root,'competition-demo.json')};
 }
 export function checkRuntime() {
   if(Number(process.versions.node.split('.')[0])!==24)throw new CompetitionError('Se requiere Node 24.x. Usa el runtime documentado en LOCAL_HANDOFF.md.');
@@ -40,4 +40,12 @@ export async function ensureDemoSession(db:Database,profile:ReturnType<typeof co
     } else throw new CompetitionError('La sesión no corresponde a este perfil DEMO. No se cambiará su identidad automáticamente. Usa --isolated.');
   } else saved=await seedIdentity(db);
   mkdirSync(profile.root,{recursive:true});writeFileSync(profile.sessionFile,JSON.stringify(saved),{mode:0o600});return saved;
+}
+
+/** ADR-0032 · development origins of the site servers for a DEMO profile (kept apart from the app's cookie host). */
+export function applySiteEnvironment(profile:ReturnType<typeof competitionProfile>) {
+  process.env.BRANDOPOLIS_SITES_BASE??=`localhost:${profile.sitesPort}`;
+  process.env.BRANDOPOLIS_PREVIEW_ORIGIN??=`http://127.0.0.2:${profile.previewPort}`;
+  process.env.BRANDOPOLIS_APP_ORIGIN??=`http://127.0.0.1:${profile.port}`;
+  process.env.BRANDOPOLIS_SITES_ROOT??=profile.sitesRoot;
 }

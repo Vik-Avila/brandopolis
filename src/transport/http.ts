@@ -16,6 +16,9 @@ import { inspectKitAsset,KIT_ASSET_MAX_BYTES } from '../domain/kit-assets.js';
 import { kitCandidatesFromText } from '../domain/brand-kit.js';
 import { chooseFonts, type FontFile } from '../domain/export-fonts.js';
 import { FONT_MAX_BYTES } from '../domain/ttf.js';
+import { resolveTxt } from 'node:dns/promises';
+import { buildSiteFiles, sitesRoot, snapshotDir, writeSnapshot } from './site-files.js';
+import { siteConfig } from '../application/site-config.js';
 import type { ExportSource } from '../application/exports.js';
 import { deliverableDocx, deliverablePdf, deliverablePptx, guidePdf, type BuiltDocument, type Image } from '../application/export-documents.js';
 
@@ -72,7 +75,7 @@ function documentStorageRoot():string {
     || '/home/wwwbrando/.brandopolis/documents';
 }
 
-function resolveDocumentStoragePath(storageKey:string):string {
+export function resolveDocumentStoragePath(storageKey:string):string {
   const root=resolve(documentStorageRoot());
   const target=resolve(root,storageKey);
 
@@ -98,6 +101,9 @@ export async function purgeBrandFiles(storagePrefix:string):Promise<void> {
   if(target===root||parts.length!==2||parts.some(part=>!part||part==='..'||part==='.'))
     throw new AppError('INVALID','Invalid brand storage prefix');
   await rm(target,{recursive:true,force:true});
+  // ADR-0032 · published and preview snapshots of the brand's sites go with it.
+  const sites=resolve(sitesRoot(),...parts);
+  if(sites.startsWith(sitesRoot()+sep))await rm(sites,{recursive:true,force:true});
 }
 
 export type BrandFilePurge=(storagePrefix:string)=>Promise<void>;
@@ -162,6 +168,8 @@ export class RateLimiter implements Limiter {
     return ++entry.count<=limit;
   }
 }
+// ADR-0032 · TXT lookup for custom domain verification (read-only; a short timeout; never changes DNS).
+async function resolveTxtRecords(name:string):Promise<string[]>{const timer=new Promise<string[][]>((_,reject)=>setTimeout(()=>reject(new Error('timeout')),4000));const records=await Promise.race([resolveTxt(name),timer]);return records.map(r=>r.join(''));}
 // ADR-0030 · export assembly: load the kit files the source names (fonts and logos), within size limits, then build.
 async function loadExportFile(storageKey:string,max:number):Promise<Buffer|null>{
   try{const target=resolveDocumentStoragePath(storageKey),info=await stat(target);if(!info.isFile()||info.size>max)return null;return await readFile(target);}catch{return null;}
@@ -286,7 +294,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         // Required intake is enforced server-side, not by hiding a screen. Only the endpoints needed to
         // complete it, read identity or leave stay open until the profile exists.
         // ADR-0033 · a client guest is not an Estratega de Marca: the portal and invitation acceptance do not need the intake.
-        const intakeOpen=['/api/participant','/api/logout','/api/me','/api/session-state','/api/mode','/api/invitations/accept','/api/portal','/api/portal/brands','/api/portal/comment','/api/portal/decide','/api/portal/asset'];
+        const intakeOpen=['/api/site-preview/code','/api/participant','/api/logout','/api/me','/api/session-state','/api/mode','/api/invitations/accept','/api/portal','/api/portal/brands','/api/portal/comment','/api/portal/decide','/api/portal/asset'];
         if(path.startsWith('/api/admin/'))intakeOpen.push(path);
         if(!intakeOpen.includes(path)&&await pilot.intakeRequired?.(token))
           return send(res,403,{code:'INTAKE_REQUIRED',message:'Completa tu perfil de Estratega de Marca para continuar.'});
@@ -492,6 +500,11 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         }
         // ADR-0033 · collaboration. Team routes go through membership + brand scope; portal routes through the guest
         // context of that exact brand. Neither path reads the other's data.
+        // ADR-0032 · sites (team). Publishing renders and writes the immutable snapshot between the two phases.
+        if(path==='/api/sites/publish'){const r=await engine.publishSite(token,input,async plan=>{const built=await buildSiteFiles(await engine.siteRenderPlan(plan,plan.versionId),loadExportFile,{baseUrl:`${siteConfig().publicScheme}://${plan.host}`,noindex:false});await writeSnapshot(snapshotDir(plan.workspaceId,plan.brandId,plan.siteId,plan.versionId),built.files);});return send(res,'replayed' in r&&r.replayed?200:201,r);}
+        if(path.startsWith('/api/sites/')){const action=path.slice('/api/sites/'.length);if(['create','draft','propose','submit','decide','new-draft','domain-add','domain-check','domain-remove'].includes(action)){const r=await engine.sitesCommand(token,action as 'create',input,resolveTxtRecords);return send(res,action==='create'||action==='domain-add'?(r.replayed?200:201):200,r);}}
+        // ADR-0032 · preview code for the person's own session (team member or guest with the exact version shared).
+        if(path==='/api/site-preview/code')return send(res,200,await engine.issueSitePreviewCode(token,input));
         // ADR-0035 · Clientes (team): membership + brand scope; guests never pass the brand scope.
         if(path.startsWith('/api/clients/')){const action=path.slice('/api/clients/'.length);if(['create','update','segment','form','disable-form'].includes(action)){const r=await engine.clientsCommand(token,action as 'create',input);return send(res,action==='update'||action==='disable-form'||r.replayed?200:201,r);}}
         if(path.startsWith('/api/collaboration/')){const action=path.slice('/api/collaboration/'.length);if(['invite','revoke-invitation','revoke-guest','share','withdraw','comment'].includes(action))return send(res,action==='invite'||action==='share'?201:200,await engine.collaborationCommand(token,action as 'invite',input));}
@@ -778,6 +791,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           res.writeHead(200,{'Content-Type':doc.mediaType,'Content-Length':String(doc.bytes.length),'Content-Disposition':`attachment; filename="${doc.filename}"`,'X-Brandopolis-Notices':encodeURIComponent(JSON.stringify(doc.notices))});
           res.end(doc.bytes);return;
         }
+        if(path==='/api/sites') return send(res,200,await engine.sites(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/clients') return send(res,200,await engine.clients(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/results') return send(res,200,await engine.results(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/brand-guide') return send(res,200,await engine.brandGuide(token,string(url.searchParams.get('brandId'))));

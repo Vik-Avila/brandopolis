@@ -10,6 +10,7 @@ import { channelGaps, pairContrast, type KitContent } from '../domain/brand-kit.
 import type { Transaction } from '../persistence/database.js';
 import * as t from '../persistence/schema.js';
 import type { BrandActor } from './brand-access.js';
+import { siteConfig } from './site-config.js';
 
 /**
  * ADR-0033 · collaboration. Team operations receive a BrandActor (membership + brand scope from Engine.withBrandActor);
@@ -87,6 +88,13 @@ async function shareable(tx: Transaction, a: Scoped, type: ShareTarget, targetId
     if (!s) throw new AppError('NOT_FOUND', 'Snapshot not available');
     if (s.status !== 'APPROVED') throw new AppError('CONFLICT', 'Only the approved plan snapshot can be shared');
     return { fingerprint: s.fingerprint, title: `Plan de Marketing · copia ${s.sequence}` };
+  }
+  if (type === 'SITE_VERSION') {
+    // ADR-0032 · a guest reviews this exact site version in the authenticated preview; never a draft.
+    const [sv] = await tx.select().from(t.siteVersions).where(and(byBrand(t.siteVersions, a), eq(t.siteVersions.id, targetId)));
+    if (!sv) throw new AppError('NOT_FOUND', 'Version not available');
+    if (!['IN_REVIEW', 'APPROVED'].includes(sv.status)) throw new AppError('CONFLICT', 'Only a site version in review or approved can be shared');
+    return { fingerprint: sv.fingerprint, title: `Sitio web «${String((sv.content as { name?: string }).name ?? 'Sitio')}» · versión ${sv.sequence}` };
   }
   const [v] = await tx.select().from(t.brandKitVersions).where(and(byBrand(t.brandKitVersions, a), eq(t.brandKitVersions.id, targetId)));
   if (!v) throw new AppError('NOT_FOUND', 'Version not available');
@@ -167,6 +175,7 @@ export async function readCollaboration(tx: Transaction, a: BrandActor) {
   const deliverables = await tx.select({ id: t.deliverableVersions.id, deliverableId: t.deliverableVersions.deliverableId, sequence: t.deliverableVersions.sequence, status: t.deliverableVersions.status, content: t.deliverableVersions.content }).from(t.deliverableVersions).where(and(byBrand(t.deliverableVersions, a), inArray(t.deliverableVersions.status, ['IN_REVIEW', 'APPROVED'])));
   const snapshots = await tx.select({ id: t.planSnapshots.id, sequence: t.planSnapshots.sequence }).from(t.planSnapshots).where(and(byBrand(t.planSnapshots, a), eq(t.planSnapshots.status, 'APPROVED')));
   const kitVersions = await tx.select({ id: t.brandKitVersions.id, sequence: t.brandKitVersions.sequence, status: t.brandKitVersions.status }).from(t.brandKitVersions).where(and(byBrand(t.brandKitVersions, a), inArray(t.brandKitVersions.status, ['IN_REVIEW', 'APPROVED'])));
+  const siteVersions = await tx.select({ id: t.siteVersions.id, sequence: t.siteVersions.sequence, status: t.siteVersions.status, content: t.siteVersions.content }).from(t.siteVersions).where(and(byBrand(t.siteVersions, a), inArray(t.siteVersions.status, ['IN_REVIEW', 'APPROVED'])));
   const activeTargets = new Set(shares.filter(s => !s.withdrawnAt).map(s => `${s.targetType}:${s.targetId}`));
   const strategy = await strategyContent(tx, a);
   return {
@@ -183,7 +192,8 @@ export async function readCollaboration(tx: Transaction, a: BrandActor) {
       strategy: { decisions: strategy.decisions.length },
       deliverables: deliverables.filter(v => !activeTargets.has(`DELIVERABLE_VERSION:${v.id}`)).map(v => ({ id: v.id, title: `${String((v.content as { name?: string }).name ?? 'Material')} · versión ${v.sequence}`, status: v.status })),
       planSnapshots: snapshots.filter(s => !activeTargets.has(`PLAN_SNAPSHOT:${s.id}`)).map(s => ({ id: s.id, title: `Plan de Marketing · copia ${s.sequence}` })),
-      kitVersions: kitVersions.filter(v => !activeTargets.has(`KIT_VERSION:${v.id}`)).map(v => ({ id: v.id, title: `Identidad visual · versión ${v.sequence}`, status: v.status }))
+      kitVersions: kitVersions.filter(v => !activeTargets.has(`KIT_VERSION:${v.id}`)).map(v => ({ id: v.id, title: `Identidad visual · versión ${v.sequence}`, status: v.status })),
+      siteVersions: siteVersions.filter(v => !activeTargets.has(`SITE_VERSION:${v.id}`)).map(v => ({ id: v.id, title: `Sitio web «${String((v.content as { name?: string }).name ?? 'Sitio')}» · versión ${v.sequence}`, status: v.status }))
     }
   };
 }
@@ -257,6 +267,10 @@ async function shareBody(tx: Transaction, s: Scoped, share: typeof t.portalShare
     const content = snap.content as SnapshotContent;
     return { sequence: snap.sequence, content: { ...content, focus: focusWindow(content.focusStart) }, progress: sharedProgress(content, updates.map(u => ({ actionId: u.actionId, status: u.status as ActionStatus, date: u.date, note: u.note, createdAt: u.createdAt.toISOString() }))) };
   }
+  if (share.targetType === 'SITE_VERSION') {
+    const [sv] = await tx.select({ id: t.siteVersions.id, siteId: t.siteVersions.siteId, sequence: t.siteVersions.sequence, content: t.siteVersions.content }).from(t.siteVersions).where(and(byBrand(t.siteVersions, s), eq(t.siteVersions.id, share.targetId)));
+    return sv ? { siteId: sv.siteId, versionId: sv.id, sequence: sv.sequence, name: String((sv.content as { name?: string }).name ?? 'Sitio'), pages: ((sv.content as { pages?: { title: string }[] }).pages ?? []).map(p => p.title), previewUrl: `${siteConfig().previewOrigin}/b/${s.brandId}/v/${sv.id}/` } : null;
+  }
   const [v] = await tx.select().from(t.brandKitVersions).where(and(byBrand(t.brandKitVersions, s), eq(t.brandKitVersions.id, share.targetId)));
   return v ? kitView(tx, s, v) : null;
 }
@@ -293,7 +307,7 @@ export async function guestDecide(tx: Transaction, g: GuestActor, input: { share
   }
   const [share] = await tx.select().from(t.portalShares).where(and(byBrand(t.portalShares, g), eq(t.portalShares.id, idOf(input.shareId, 'Share')), isNull(t.portalShares.withdrawnAt)));
   if (!share) throw new AppError('NOT_FOUND', 'Share not available');
-  if (share.targetType === 'STRATEGY_SNAPSHOT' || share.targetType === 'PLAN_SNAPSHOT') throw new AppError('INVALID', 'This shared item is for reading and comments');
+  if (share.targetType === 'STRATEGY_SNAPSHOT' || share.targetType === 'PLAN_SNAPSHOT' || share.targetType === 'SITE_VERSION') throw new AppError('INVALID', 'This shared item is for reading and comments');
   if (input.fingerprint !== share.fingerprint) throw new AppError('CONFLICT', 'This version changed since you opened it; reload before deciding');
   const id = randomUUID();
   await tx.insert(t.portalApprovals).values({ id, workspaceId: g.workspaceId, brandId: g.brandId, shareId: share.id, targetType: share.targetType, targetId: share.targetId, fingerprint: share.fingerprint, actorId: g.userId, actorContext: 'GUEST', decision, comment, idempotencyKey, createdAt: new Date() });

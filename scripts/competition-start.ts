@@ -1,7 +1,7 @@
 import { CompetitionError } from './competition-error.js';
 import { existsSync,readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
-import { checkRuntime,competitionProfile,localCompetitionUrl,ensureDemoSession } from './competition-environment.js';
+import { applySiteEnvironment,checkRuntime,competitionProfile,localCompetitionUrl,ensureDemoSession } from './competition-environment.js';
 import { startLocalDb,stopLocalDb } from './local-db.js';
 import { connect } from '../src/persistence/database.js';
 import { Engine } from '../src/application/engine.js';
@@ -13,6 +13,7 @@ import { ModelGateway } from '../src/domain/analysis.js';
 import { AnthropicProvider,PILOT_PROMPT_VERSION } from '../src/transport/anthropic-provider.js';
 
 const profile=competitionProfile(process.argv.includes('--isolated'));
+applySiteEnvironment(profile);
 // ADR-0026 · local live AI: explicit opt-in only. Same DEMO data class, local DB and 127.0.0.1; only the provider changes.
 const liveAi=process.argv.includes('--live-ai');
 let ownedDb:Awaited<ReturnType<typeof startLocalDb>>|undefined,app:Awaited<ReturnType<typeof startServer>>|undefined,connection:ReturnType<typeof connect>|undefined;

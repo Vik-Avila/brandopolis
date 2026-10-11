@@ -1,6 +1,6 @@
 import {createBrandoPresence} from './brando-presence.js';
 const $=s=>document.querySelector(s);
-import {clientsHtml,resultsHtml,guideHtml,collaborationHtml,invitationLinkHtml,portalHtml,setupHtml,SETUP_LABELS,SETUP_STAGES,identityDirectionsHtml,identityHtml,kitFormHtml,brandoProposalHtml,areaTabsHtml,deliverablesHtml,deliverableFormHtml,deliverableText,AREA_TYPES,planHtml,sharedPlanHtml,objectiveFormHtml,focusFormHtml,actionFormHtml,offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
+import {sitesHtml,newSection,clientsHtml,resultsHtml,guideHtml,collaborationHtml,invitationLinkHtml,portalHtml,setupHtml,SETUP_LABELS,SETUP_STAGES,identityDirectionsHtml,identityHtml,kitFormHtml,brandoProposalHtml,areaTabsHtml,deliverablesHtml,deliverableFormHtml,deliverableText,AREA_TYPES,planHtml,sharedPlanHtml,objectiveFormHtml,focusFormHtml,actionFormHtml,offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
 import {trapFocus,decisionTabs,viewTabs} from './product-interactions.js';
 import * as analytics from './analytics.js';
 import {PILOT_EVENTS} from './analytics.js';
@@ -2070,7 +2070,7 @@ async function showHome(){
  // ADR-0027 · Inicio: one next step from the real Brand state, a brief real progress and what needs attention.
  // The full Strategic Intelligence stays one click away in the rail (Atención); nothing here asks the AI.
  // Areas that already exist in this build; the others are named as not available yet (never a fake button).
- $('#decision').innerHTML=homeHtml(context,documentState,priority.current,{SELL_OFFER:true,MARKETING_PLAN:true,CONTENT:true,CAMPAIGN:true,SOCIAL_MEDIA:true,SALES_MATERIALS:true,VISUAL_IDENTITY:true});
+ $('#decision').innerHTML=homeHtml(context,documentState,priority.current,{SELL_OFFER:true,MARKETING_PLAN:true,CONTENT:true,CAMPAIGN:true,SOCIAL_MEDIA:true,SALES_MATERIALS:true,VISUAL_IDENTITY:true,WEBSITE:true});
  bindWorkPriorityForm();
  const setupView=await api(`/api/brand-setup?brandId=${encodeURIComponent(brandId)}`).catch(()=>null);
  if(setupView?.draft){
@@ -2083,6 +2083,7 @@ async function showHome(){
  $('#decision').querySelector('[data-priority-area="CONTENT"]')?.addEventListener('click',()=>{marketingTab='social';run(showMarketing);});
  $('#decision').querySelector('[data-priority-area="CAMPAIGN"]')?.addEventListener('click',()=>{marketingTab='ads';run(showMarketing);});
  $('#decision').querySelector('[data-priority-area="SOCIAL_MEDIA"]')?.addEventListener('click',()=>{marketingTab='social';run(showMarketing);});
+ $('#decision').querySelector('[data-priority-area="WEBSITE"]')?.addEventListener('click',()=>{marketingTab='site';run(showMarketing);});
  $('#decision').querySelector('[data-priority-area="SALES_MATERIALS"]')?.addEventListener('click',()=>{offersTab='materials';run(showOffersArea);});
  $('#decision').querySelector('[data-priority-area="VISUAL_IDENTITY"]')?.addEventListener('click',()=>run(showIdentity));
  bindAttentionActions($('#decision'));
@@ -2175,7 +2176,7 @@ async function showMarketingPlan(){
 }
 /** PHASE4_SPEC §3 · area sections: accessible tabs (arrows, Home/End, roving focus) or a selector on narrow screens. */
 let marketingTab='plan',offersTab='offers';
-const showMarketing=()=>marketingTab==='plan'?showMarketingPlan():showDeliverables(marketingTab);
+const showMarketing=()=>marketingTab==='plan'?showMarketingPlan():marketingTab==='site'?showSites():showDeliverables(marketingTab);
 const showOffersArea=()=>offersTab==='offers'?showOffers():showDeliverables('materials');
 function mountAreaTabs(area,active){
  const hero=$('#decision .ws-hero');if(!hero)return;
@@ -2342,6 +2343,69 @@ async function showCollaboration(link){
  $('#share-form')?.addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget,[targetType,targetId]=$('#share-target').value.split(':');form.dataset.key??=crypto.randomUUID();command('share',{targetType,targetId,idempotencyKey:form.dataset.key},'Compartido. Tu cliente verá esta versión exacta en su portal.');});
  root.querySelectorAll('.share-comment').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const text=form.querySelector('textarea'),body=text.value.trim();if(!body){text.focus();notice('Escribe tu comentario.',true);return;}form.dataset.key??=crypto.randomUUID();command('comment',{shareId:form.dataset.share,body,visibility:form.querySelector('select').value,idempotencyKey:form.dataset.key},'Comentario publicado.');}));
  root.querySelectorAll('[data-withdraw]').forEach(b=>b.addEventListener('click',()=>command('withdraw',{shareId:b.dataset.withdraw},'Dejaste de compartirlo. Tu cliente ya no lo verá.')));
+}
+/** ADR-0032 · Marketing › Sitio web. Edits are kept locally until «Guardar borrador»; every change goes through the engine. */
+let siteData=null,siteUi={siteId:null,draft:null,proposal:null,sources:null,openPage:0};
+async function showSites(keepLocal=false){
+ if(!enterView('#marketing','Marketing · Sitio web'))return;
+ siteData=await api(`/api/sites?brandId=${encodeURIComponent(brandId)}`);
+ const site=siteData.sites.find(s=>s.id===siteUi.siteId)??siteData.sites[0];
+ if(site&&(!keepLocal||siteUi.siteId!==site.id||!siteUi.draft))siteUi={...siteUi,siteId:site.id,draft:site.draft?structuredClone(site.draft):null};
+ if(site&&keepLocal&&siteUi.draft&&site.draft)siteUi.draft.checks=site.draft.checks;
+ renderSites();
+}
+function renderSites(){
+ const root=$('#decision');root.innerHTML=sitesHtml(siteData,{...siteUi,brandId,brandName:$('#brands').selectedOptions[0]?.textContent?.replace(/ · (DEMO|PILOT)$/,'')});marketingTab='site';mountAreaTabs('marketing','site');
+ const site=siteData.sites.find(s=>s.id===siteUi.siteId)??siteData.sites[0];
+ $('#site-create')?.addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget,name=$('#site-name').value.trim(),goal=form.querySelector('input[name="site-goal"]:checked')?.value;if(!name){$('#site-create-status').textContent='Ponle un nombre al sitio.';$('#site-name').focus();return;}form.dataset.key??=crypto.randomUUID();run(async()=>{const r=await api('/api/sites/create',{brandId,name,goal,idempotencyKey:form.dataset.key});siteUi={siteId:r.siteId,draft:null,proposal:null,sources:null,openPage:0};await showSites();notice('Sitio creado. Pide una propuesta a Brando o añade tus páginas.');},event.submitter);});
+ if(!site)return;
+ $('#site-pick')?.addEventListener('change',event=>{siteUi={siteId:event.currentTarget.value,draft:null,proposal:null,sources:null,openPage:0};run(()=>showSites());});
+ const editor=$('#site-editor');
+ const readEditor=()=>{
+  if(!editor||!siteUi.draft)return;
+  const pages=siteUi.draft.content.pages;
+  editor.querySelectorAll('.site-page').forEach(el=>{
+   const page=pages.find(p=>p.id===el.dataset.page);if(!page)return;
+   const v=name=>el.querySelector(`:scope > .site-page-fields [data-field="${name}"]`)?.value;
+   page.title=v('page-title')??page.title;if(v('page-slug')!==undefined)page.slug=v('page-slug');page.description=v('page-description')??page.description;
+   el.querySelectorAll('.site-section').forEach(li=>{
+    const s=page.sections.find(x=>x.id===li.dataset.section);if(!s)return;
+    const f=name=>li.querySelector(`[data-field="${name}"]`);
+    const target=name=>{const sel=f(name);if(!sel)return s[name];return sel.value==='url'?(f(`${name}-url`)?.value.trim()??''):sel.value;};
+    for(const k of ['title','subtitle','ctaLabel','imageAlt','heading','body','text','label','alt','caption'])if(f(k))s[k]=f(k).value;
+    if(f('ctaTarget'))s.ctaTarget=target('ctaTarget');if(f('target'))s.target=target('target');
+    if(f('imageAssetId'))s.imageAssetId=f('imageAssetId').value||null;if(f('assetId'))s.assetId=f('assetId').value;
+    if(s.type==='OFFERS')s.items=siteData.offers.filter(o=>li.querySelector(`[data-offer="${CSS.escape(o.offerId)}"]`)?.checked).map(o=>s.items.find(i=>i.offerId===o.offerId&&i.offerVersionId===o.offerVersionId)??{offerId:o.offerId,offerVersionId:o.offerVersionId,name:o.name,description:[o.outcome||o.need,...o.benefits.slice(0,3).map(b=>`• ${b}`)].filter(Boolean).join('\n')});
+    if(s.type==='FAQ')s.items=s.items.map((q,k)=>({question:f(`q${k}`)?.value??q.question,answer:f(`a${k}`)?.value??q.answer}));
+   });
+  });
+  const open=[...editor.querySelectorAll('.site-page')].findIndex(el=>el.open);siteUi.openPage=open<0?siteUi.openPage:open;
+ };
+ editor?.addEventListener('change',event=>{if(event.target.matches('[data-target-select]')){const url=event.target.parentElement.nextElementSibling;if(url)url.hidden=event.target.value!=='url';}});
+ editor?.querySelectorAll('.site-page').forEach(el=>{
+  const page=()=>siteUi.draft.content.pages.find(p=>p.id===el.dataset.page);
+  el.querySelector('[data-section-add]')?.addEventListener('click',()=>{readEditor();const p=page();if(p.sections.length>=20){notice('Una página admite hasta 20 secciones.',true);return;}p.sections.push(newSection(el.querySelector('[data-section-type]').value));siteUi.openPage=siteUi.draft.content.pages.indexOf(p);renderSites();});
+  el.querySelector('[data-page-remove]')?.addEventListener('click',()=>{readEditor();const p=page();siteUi.draft.content.pages=siteUi.draft.content.pages.filter(x=>x!==p);siteUi.openPage=0;renderSites();});
+  el.querySelectorAll('.site-section').forEach(li=>{
+   const idx=()=>page().sections.findIndex(s=>s.id===li.dataset.section);
+   li.querySelectorAll('[data-section-move]').forEach(b=>b.addEventListener('click',()=>{readEditor();const p=page(),i=idx(),j=i+Number(b.dataset.sectionMove);if(j<0||j>=p.sections.length)return;[p.sections[i],p.sections[j]]=[p.sections[j],p.sections[i]];siteUi.openPage=siteUi.draft.content.pages.indexOf(p);renderSites();}));
+   li.querySelector('[data-section-remove]')?.addEventListener('click',()=>{readEditor();const p=page();p.sections.splice(idx(),1);siteUi.openPage=siteUi.draft.content.pages.indexOf(p);renderSites();});
+   li.querySelector('[data-faq-add]')?.addEventListener('click',()=>{readEditor();const p=page();p.sections[idx()].items.push({question:'',answer:''});siteUi.openPage=siteUi.draft.content.pages.indexOf(p);renderSites();});
+  });
+ });
+ $('#site-page-add')?.addEventListener('click',()=>{readEditor();const pages=siteUi.draft.content.pages;const id=`p-${Math.random().toString(36).slice(2,10)}`;pages.push({id,slug:`pagina-${pages.length+1}`,title:pages.length?'Nueva página':'Inicio',description:'',sections:[]});siteUi.openPage=pages.length-1;renderSites();});
+ const save=async(message,provenance)=>{readEditor();const c=siteUi.draft.content;const r=await api('/api/sites/draft',{brandId,siteId:site.id,expectedRevision:site.revision,content:{...c,navigation:c.pages.map(p=>p.id)},...(provenance?{provenance}:{})});await showSites();notice(message);return r;};
+ editor?.addEventListener('submit',event=>{event.preventDefault();run(async()=>{try{await save('Borrador guardado. Puedes salir y retomarlo cuando quieras.');}catch(error){if(error.code==='CONFLICT')$('#site-save-status').textContent='Alguien cambió este sitio. Recarga para ver la versión actual; tus cambios siguen en pantalla.';else if(error.code==='INVALID')$('#site-save-status').textContent=`Revisa los datos: ${error.message}`;throw error;}},event.submitter);});
+ $('#site-propose')?.addEventListener('click',event=>run(async()=>{readEditor();const r=await api('/api/sites/propose',{brandId,siteId:site.id});siteUi.proposal=r;renderSites();notice('Propuesta lista. Revísala antes de incorporarla: nada se ha guardado todavía.');},event.currentTarget));
+ $('#site-proposal-discard')?.addEventListener('click',()=>{readEditor();siteUi.proposal=null;renderSites();});
+ $('#site-proposal-apply')?.addEventListener('click',event=>run(async()=>{readEditor();const prop=siteUi.proposal;siteUi.draft.content.pages=structuredClone(prop.proposal.pages);siteUi.sources=prop.sources;siteUi.proposal=null;siteUi.openPage=0;await save('Propuesta incorporada al borrador. Edítala como quieras; sigue sin aprobar.','AI_ASSISTED');},event.currentTarget));
+ $('#site-submit')?.addEventListener('click',event=>run(async()=>{readEditor();const fresh=siteData.sites.find(s=>s.id===site.id);await api('/api/sites/submit',{brandId,siteId:site.id,expectedRevision:fresh.revision});siteUi.draft=null;await showSites();notice('Versión enviada a revisión. Ya no se edita; una persona la aprueba o pide cambios.');},event.currentTarget));
+ $('#site-new-draft')?.addEventListener('click',event=>run(async()=>{await api('/api/sites/new-draft',{brandId,siteId:site.id,expectedRevision:site.revision});siteUi.draft=null;await showSites();notice('Nueva versión en borrador. La publicada sigue igual mientras tanto.');},event.currentTarget));
+ document.querySelectorAll('.site-decide').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const criterion=form.querySelector('textarea').value.trim();if(criterion.length<10){form.querySelector('textarea').focus();notice('Escribe al menos diez caracteres para explicar tu decisión.',true);return;}const decision=event.submitter?.value;const keyName=`key${decision}`;form.dataset[keyName]??=crypto.randomUUID();run(async()=>{await api('/api/sites/decide',{brandId,siteId:site.id,versionId:form.dataset.version,fingerprint:form.dataset.fingerprint,decision,criterion,idempotencyKey:form.dataset[keyName]});await showSites();notice(decision==='APPROVE'?'Versión aprobada. Publicar es un paso aparte.':'Pediste cambios. Crea una versión nueva para corregirla.');},event.submitter);}));
+ document.querySelectorAll('[data-site-publish]').forEach(b=>b.addEventListener('click',()=>{const host=site.domains.find(x=>x.kind==='BRANDOPOLIS')?.hostname,sequence=Number(b.dataset.sequence),restore='restore' in b.dataset;if(!window.confirm(`${restore?'Restaurar':'Publicar'} «${site.name}», versión ${sequence}, en ${host}. ¿Confirmas?`))return;b.dataset.key??=crypto.randomUUID();run(async()=>{const r=await api('/api/sites/publish',{brandId,siteId:site.id,versionId:b.dataset.sitePublish,confirm:{siteName:site.name,sequence,host},idempotencyKey:b.dataset.key});await showSites();notice(r.status==='PUBLISHED'?(restore?`Restaurada la versión ${sequence}: es la que está en línea.`:`Publicada la versión ${sequence} en el servidor de desarrollo.`):'No se pudo publicar. La versión anterior sigue en línea.',r.status!=='PUBLISHED');},b);}));
+ $('#site-domain-form')?.addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget,hostname=$('#site-domain').value.trim();if(!hostname){$('#site-domain').focus();return;}form.dataset.key??=crypto.randomUUID();run(async()=>{await api('/api/sites/domain-add',{brandId,siteId:site.id,hostname,idempotencyKey:form.dataset.key});await showSites();notice('Dominio añadido. Agrega el registro que se indica en tu DNS y luego pulsa «Comprobar».');},event.submitter);});
+ document.querySelectorAll('[data-domain-check]').forEach(b=>b.addEventListener('click',()=>run(async()=>{const r=await api('/api/sites/domain-check',{brandId,domainId:b.dataset.domainCheck});await showSites();notice(r.status==='VERIFIED'?'Dominio verificado. Servirlo con HTTPS depende del alojamiento definitivo.':'Todavía no encontramos el registro. Los cambios de DNS pueden tardar.',r.status!=='VERIFIED');},b)));
+ document.querySelectorAll('[data-domain-remove]').forEach(b=>b.addEventListener('click',()=>run(async()=>{await api('/api/sites/domain-remove',{brandId,domainId:b.dataset.domainRemove});await showSites();notice('Dominio retirado: el sitio deja de servirse en él.');},b)));
 }
 /** ADR-0035 · Clientes: register and follow up real opportunities of the active brand (team only). */
 let clientFilter='all';

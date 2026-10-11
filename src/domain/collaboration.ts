@@ -6,7 +6,7 @@ import { AppError } from './contracts.js';
  * hash is stored), expiry, what can be shared and how comments are bounded. Persistence lives in the application.
  */
 export const INVITATION_DAYS = 7;
-export const SHARE_TARGETS = ['STRATEGY_SNAPSHOT', 'PLAN_SNAPSHOT', 'DELIVERABLE_VERSION', 'KIT_VERSION'] as const;
+export const SHARE_TARGETS = ['STRATEGY_SNAPSHOT', 'PLAN_SNAPSHOT', 'DELIVERABLE_VERSION', 'KIT_VERSION', 'SITE_VERSION'] as const;
 export type ShareTarget = typeof SHARE_TARGETS[number];
 export type ActorContext = 'TEAM' | 'GUEST';
 

@@ -22,6 +22,7 @@ import { IdentityDirectionsStore, directionValues, identityPacket, validIdentity
 import { MarketingAssistance, marketingPacket, proposalContent, type MarketingPacket } from '../domain/brando-marketing.js';
 import { DELIVERABLE_TYPES, type DeliverableType } from '../domain/deliverables.js';
 import { deliverableSource, guideSource } from './exports.js';
+import { addCustomDomain, checkDomain, createSite, decideSite, exchangePreviewCode, finishPublication, issuePreviewCode, newSiteDraft, previewAccess, proposeSite, readSites, removeDomain, renderPlan, resolvePublicHost, saveSiteDraft, startPublication, submitSite, type TxtResolver } from './sites.js';
 import { createForm, createOpportunity, createSegment, disableForm, publicForm, readClients, readResults, submitWebForm, updateOpportunity } from './clients.js';
 import { acceptInvitation, brandGuide, createInvitation, guestAsset, guestBrands, guestComment, guestDecide, readCollaboration, readPortal, resolveGuest, revokeGuest, revokeInvitation, shareToPortal, teamComment, withdrawShare, type GuestActor } from './collaboration.js';
 import { applyDirection, draftValueIds, adoptKitValues, decideKit, kitAsset, mergeKitCandidates, reusableDocument, publishKit, readKit, registerKitAsset, saveKitDraft, startKitDraft, submitKit } from './brand-kit.js';
@@ -155,6 +156,52 @@ export class Engine {
       if(!result.replayed)await this.audit(tx,actor,{operation:`COLLAB_${action.toUpperCase().replace(/-/g,'_')}`,idempotencyKey:String(input.idempotencyKey??randomUUID()),newVersion:String(result.invitationId??result.guestId??result.shareId??result.commentId??'')});
       return result;
     },true);
+  }
+  // ─── ADR-0032 · sites (team side: membership + brand scope; publishing and domains need PUBLISH_SITE) ───
+  async sites(token:string,brandId:string) {
+    return this.withBrandActor(token,brandId,(tx,actor)=>readSites(tx,actor));
+  }
+  async sitesCommand(token:string,action:'create'|'draft'|'propose'|'submit'|'decide'|'new-draft'|'domain-add'|'domain-check'|'domain-remove',input:Record<string,unknown>,resolveTxt?:TxtResolver) {
+    if(!input||typeof input!=='object'||Array.isArray(input))throw new AppError('INVALID','Invalid site request');
+    const run={create:createSite,draft:saveSiteDraft,propose:proposeSite,submit:submitSite,decide:decideSite,'new-draft':newSiteDraft,'domain-add':addCustomDomain,'domain-check':(tx:Transaction,a:BrandActor,i:Record<string,unknown>)=>checkDomain(tx,a,i,resolveTxt??(async()=>[])),'domain-remove':removeDomain}[action];
+    if(!run)throw new AppError('INVALID','Unknown site operation');
+    return this.withBrandActor(token,String(input.brandId??''),async(tx,actor)=>{
+      const result=await (run as (tx:Transaction,a:BrandActor,i:Record<string,unknown>)=>Promise<Record<string,unknown>>)(tx,actor,input);
+      // Asking for a proposal reads only; every change is audited with ids (never page text).
+      if(action!=='propose'&&!result.replayed)await this.audit(tx,actor,{operation:`SITE_${action.toUpperCase().replace(/-/g,'_')}`,idempotencyKey:typeof input.idempotencyKey==='string'?input.idempotencyKey:randomUUID(),newVersion:String(result.versionId??result.domainId??result.siteId??''),rationale:action==='decide'?String(input.criterion??''):undefined});
+      return result;
+    },true);
+  }
+  /** Publishes an exact version: phase 1 checks and records PENDING; the writer renders and writes the immutable
+   * snapshot outside the transaction; phase 2 moves the live pointer atomically (or records FAILED). */
+  async publishSite(token:string,input:Record<string,unknown>,write:(plan:{workspaceId:string;brandId:string;siteId:string;versionId:string;host:string})=>Promise<void>) {
+    if(!input||typeof input!=='object'||Array.isArray(input))throw new AppError('INVALID','Invalid publication');
+    const started=await this.withBrandActor(token,String(input.brandId??''),async(tx,actor)=>{
+      const r=await startPublication(tx,actor,input);
+      if(!r.replayed)await this.audit(tx,actor,{operation:'SITE_PUBLISH_START',idempotencyKey:String(input.idempotencyKey),newVersion:String(input.versionId??'')});
+      return {...r,scope:{workspaceId:actor.workspaceId,brandId:actor.brandId}};
+    },true);
+    if(started.replayed||!started.plan)return {publicationId:started.publicationId,status:started.status,replayed:true};
+    let ok=true,failure:string|undefined;
+    try{await write(started.plan);}catch{ok=false;failure='SNAPSHOT_WRITE_FAILED';}
+    return this.db.transaction(tx=>finishPublication(tx,started.scope,{publicationId:started.publicationId,ok,failure}));
+  }
+  async siteRenderPlan(scope:{workspaceId:string;brandId:string},versionId:string) {
+    return this.db.transaction(tx=>renderPlan(tx,scope,versionId));
+  }
+  async resolvePublicSite(host:string) {
+    return this.db.transaction(tx=>resolvePublicHost(tx,host));
+  }
+  /** Preview exchange (ADR-0032): the code is issued to the person's own session in the app ... */
+  async issueSitePreviewCode(token:string,input:Record<string,unknown>) {
+    return this.db.transaction(async tx=>issuePreviewCode(tx,await this.sessionUser(tx,token),input));
+  }
+  /** ... and redeemed once by the preview origin, which presents its state and verifier. */
+  async exchangeSitePreviewCode(input:Record<string,unknown>) {
+    return this.db.transaction(tx=>exchangePreviewCode(tx,input));
+  }
+  async sitePreviewAccess(token:unknown,versionId:string) {
+    return this.db.transaction(tx=>previewAccess(tx,token,versionId));
   }
   // ─── ADR-0030 · exports: read-only sources inside the brand scope (team only); exporting never changes the source ───
   async exportGuideSource(token:string,brandId:string) {
@@ -1253,7 +1300,7 @@ export class Engine {
         // before decisions; the self reference of versions is satisfied because the whole chain goes in one statement.
         // Phase 4 rows of this Brand (append-only tables allow it only inside this registered deletion). Workspace
         // connections are NOT deleted here: only this Brand's links to them (a credential may serve other brands).
-        for(const table of [t.clientOpportunityEvents,t.clientInteractions,t.clientOpportunities,t.leadForms,t.clientSegments,t.portalApprovals,t.portalComments,t.portalShares,t.brandGuests,t.brandInvitations,t.brandSetupDrafts,t.brandKitPublications,t.brandKitApprovals,t.brandKitVersions,t.brandKits,t.kitAssets,t.deliverablePublications,t.deliverableApprovals,t.deliverableVersions,t.deliverables,t.planProgressUpdates,t.planSnapshotApprovals,t.planSnapshots,t.planChanges,t.planActions,t.planObjectives,t.marketingPlans,t.offerApprovals,t.offerVersions,t.offers,t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
+        for(const table of [t.sitePreviewSessions,t.sitePreviewCodes,t.siteDomains,t.sitePublications,t.siteApprovals,t.siteVersions,t.sites,t.clientOpportunityEvents,t.clientInteractions,t.clientOpportunities,t.leadForms,t.clientSegments,t.portalApprovals,t.portalComments,t.portalShares,t.brandGuests,t.brandInvitations,t.brandSetupDrafts,t.brandKitPublications,t.brandKitApprovals,t.brandKitVersions,t.brandKits,t.kitAssets,t.deliverablePublications,t.deliverableApprovals,t.deliverableVersions,t.deliverables,t.planProgressUpdates,t.planSnapshotApprovals,t.planSnapshots,t.planChanges,t.planActions,t.planObjectives,t.marketingPlans,t.offerApprovals,t.offerVersions,t.offers,t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));
         for(const table of [t.audits,t.telemetry,t.idempotency,t.reviewReceipts,t.reviews,t.impacts,t.dependencies,t.learningSignals,t.signals,t.learnings,t.experiments,t.analyses,t.documentClaims,t.documentExtractions,t.sourceDocuments,t.versions,t.decisions,t.recommendations,t.questions,t.userInputs,t.evidence,t.hypotheses,t.openQuestions,t.brandProfiles,t.assignments] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));

@@ -17,6 +17,9 @@ export const runtimeAssets={
   '/formulario':['src/transport/public/lead-form.html','text/html; charset=utf-8'],
   '/lead-form.js':['src/transport/public/lead-form.js','text/javascript; charset=utf-8'],
   '/lead-form.css':['src/transport/public/lead-form.css','text/css; charset=utf-8'],
+  // ADR-0032 · step 2 of the site preview exchange (confirmation with the person's own app session).
+  '/preview/confirm':['src/transport/public/preview-confirm.html','text/html; charset=utf-8'],
+  '/preview-confirm.js':['src/transport/public/preview-confirm.js','text/javascript; charset=utf-8'],
   // Stylesheets in cascade order (linked directly from index.html; see design/brandopolis-ui/FRONTEND_ASSET_MAPPING.md).
   '/base.css':['src/transport/public/base.css','text/css; charset=utf-8'],
   '/public.css':['src/transport/public/public.css','text/css; charset=utf-8'],
