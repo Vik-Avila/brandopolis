@@ -66,5 +66,12 @@ percentage of changed pixels plus both sizes, with a red overlay of the changed 
   m1-needs-review-desktop, m1-workspace-desktop (compact navigation; Estrategia inner navigation). Kept pending a
   corrected comparison: blueprint-desktop, blueprint-mobile, m1-guided-review-mobile, m1-needs-review-mobile. The
   other seven are unchanged.
+- 2026-10-11 · human decision (owner approval of
+  `Brandopolis_Fase4_capturas_revision_unica_2026-10-11.zip`, SHA-256
+  `c32b8e581708a972ef9d70a58ad203e58c81d514097bf2a9e34dfb274ed3c970`, captured on `5cf0618`): nine files replaced by the
+  exact `-current.png` images of that ZIP — blueprint-desktop, blueprint-mobile, decision-card-desktop, history-desktop,
+  m1-guided-review-desktop, m1-guided-review-mobile, m1-needs-review-desktop, m1-needs-review-mobile,
+  m1-workspace-desktop (eight-area menu with Clientes and Resultados; Estrategia inner navigation). The other eight are
+  unchanged. The approval does not cover future visual differences.
 
 These screenshots define presentation only. Domain behavior remains owned by the Engineering Repository.

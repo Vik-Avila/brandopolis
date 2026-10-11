@@ -1,3 +1,7 @@
+## 2026-10-11 · Phase 4 — capturas canónicas aprobadas aplicadas (menú de ocho áreas)
+
+- Nueve capturas exactas del paquete de revisión única (SHA-256 c32b8e58…c970, sobre 5cf0618) sustituyen a sus canónicas; las otras ocho sin cambios; registro de hashes actualizado sólo para esas nueve y el README. Validador de UI PASS.
+
 ## 2026-10-11 · Phase 4 — Exportaciones: evaluación técnica (sin cambios de runtime)
 
 - Evaluación del generador PDF propio y de jszip frente a EXP-001…005; recomendación sin dependencia nueva: fuentes TrueType incrustadas con subconjunto y ToUnicode, PPTX/DOCX con jszip. Pendiente la aplicación de destino (EXT-REQ-12).

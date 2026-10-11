@@ -79,8 +79,8 @@
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/README.md",
-      "bytes": 4446,
-      "sha256": "52f89de59061705b48a30e8670d109d4711c1e3af9894dc4dd1971da88991d4d",
+      "bytes": 5100,
+      "sha256": "a73c18a972d3780bb628ef284a2c5d40eed879f16fb9c8d4b0f5d45764d7c819",
       "type": "md",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
@@ -103,40 +103,40 @@
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/m1-guided-review-desktop.png",
-      "bytes": 444152,
-      "sha256": "d460fc9a1bb325e8005d13481a386015772e7b780fd729c21f09828735940496",
+      "bytes": 442878,
+      "sha256": "c218cbf4c20c6f8f8329dfddf9e4c385c76d69f2248e527a2ad32b5937bc40a7",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/m1-guided-review-mobile.png",
-      "bytes": 170824,
-      "sha256": "a1bba488024998496b868119559efad50f769c5cfd4e972379d98481b22247d9",
+      "bytes": 294235,
+      "sha256": "d1891598d6c3dab6d457d49a82f2d600d35b9352354a9d995307138c22a76e67",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/m1-needs-review-desktop.png",
-      "bytes": 443559,
-      "sha256": "c17baf77cb86e1aa84f0af8d84a61f8d49b3e31dccde4412e029adc3529afd46",
+      "bytes": 442259,
+      "sha256": "884d511834f21febd4c9230fdb685cabe3e30c5116da62def1b02f22382be46b",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/m1-needs-review-mobile.png",
-      "bytes": 174794,
-      "sha256": "1d312a6759b0aabf1efc9549992817d1d877b7542c255f77bc19cb058c4a5f19",
+      "bytes": 268964,
+      "sha256": "49b68e8ef7a9ff56465eb25e03d934666a00592ba4bfb11e87f9f05b0c73bca7",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/m1-workspace-desktop.png",
-      "bytes": 328650,
-      "sha256": "2877a1459a9da01265c03b4ccb11285c2d782b0315c2aa3261a7509684646ffb",
+      "bytes": 327980,
+      "sha256": "8c390f2508f97942f6f9f4e029ec157c72f1299557d813fc4a1e011845dc2369",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
@@ -295,32 +295,32 @@
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/blueprint-desktop.png",
-      "bytes": 369803,
-      "sha256": "1a95b5c8112125ddb22120b9d6ddb1ff905527d24d4e3c36628599bbaf68c884",
+      "bytes": 426366,
+      "sha256": "9cb7155c1a60a059238f8be6e779b2f529975134c8f7db0aeb348baad158f352",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/blueprint-mobile.png",
-      "bytes": 170324,
-      "sha256": "2c7e4f83bc93546af4d0147b7eadb0e5bc7e98f78db4edc7a809a5090f6a218d",
+      "bytes": 301298,
+      "sha256": "1d7bf676aaa1b0366b1706fbff8d847bb2b325b7cee85fb611af0ea0a9f982ae",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/decision-card-desktop.png",
-      "bytes": 420254,
-      "sha256": "8ea2bd501a982a7500a732925807f65455fb3785844fd92f414a4aed366e3335",
+      "bytes": 418982,
+      "sha256": "d1e968b31f2b04afd04af65f33c82fba6ec8e5fb5e318fbde8e8a3e397f4740d",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/history-desktop.png",
-      "bytes": 427534,
-      "sha256": "79cae3b19f4f049a8167b18c934fda3d76c26d1633435c022d24d5b514af117f",
+      "bytes": 426406,
+      "sha256": "5ccb3d2f0bbe603058774d3ee1b1b236547de48db818944c4a42f2a6ba9fab68",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"

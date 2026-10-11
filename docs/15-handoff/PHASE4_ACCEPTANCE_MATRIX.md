@@ -379,7 +379,7 @@ comprueba un botón oculto no demuestra autorización del servidor.
 |---|---|---|---|
 | I10-UI-01 | F4 | Clientes ofrece registro y seguimiento reales; su apertura conserva selector de marca y contexto; ninguna maqueta acredita el criterio. | validado en DEMO: E `tests/browser/phase4-clients.spec.ts` (5 proyectos) |
 | I10-UI-02 | F4 | Propuesta de navegación probada a 1366×768, 1280×800 y 1440×900 sin scroll lateral a escala normal; zoom mantiene todos los controles accesibles. | parcial: sin desplazamiento del lateral a 1366×768, 1280×800 y 1440×900 (E `tests/browser/phase4-clients.spec.ts` (5 proyectos) y `micro-hotfix.spec.ts`); zoom sin prueba nueva |
-| I10-UI-03 | F4 | Teclado, foco, tablet y móvil funcionan; cambio de área cierra el menú móvil; revisar diferencias visuales de los archivos afectados. | parcial: tablet y móvil (E), el menú móvil se cierra al cambiar de área; teclado sin prueba nueva; diferencias visuales registradas sin aprobar |
+| I10-UI-03 | F4 | Teclado, foco, tablet y móvil funcionan; cambio de área cierra el menú móvil; revisar diferencias visuales de los archivos afectados. | validado en DEMO: tablet, móvil, cierre del menú móvil y teclado (E `tests/browser/phase4-clients.spec.ts`, 5 proyectos); capturas del menú de ocho áreas aprobadas por el propietario y aplicadas (revisión única, SHA-256 c32b8e58…c970) |
 
 ### Prueba técnica Chatwoot
 
@@ -546,3 +546,4 @@ como completado.
 | v15 | 2026-10-11 | Issue #10 (paquete revisión 3, plan v5): 94 criterios I10 añadidos sin renumerar (48 + 46), todos pendientes, y tabla de trazabilidad requisito → fase → contrato → aceptación → estado real |
 | v16 | 2026-10-11 | Clientes implementado (migración 0027, ADR-0035): estado por criterio I10 y trazabilidad actualizados con evidencia de DEMO; regresión completa pendiente |
 | v17 | 2026-10-11 | Verificación completa de Clientes y Resultados: CLI-10, SEC-05, SEC-08, UI-02, RES-02 y RES-04 validados en DEMO; UI-03 parcial (aprobación visual) |
+| v18 | 2026-10-11 | Capturas aprobadas aplicadas: I10-UI-03 validado en DEMO; aceptación visual del bloque Clientes y Resultados satisfecha (no cierra Fase 4) |

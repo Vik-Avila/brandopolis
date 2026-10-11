@@ -1,3 +1,21 @@
+## 2026-10-11 · PHASE 4 · capturas aprobadas (revisión única) aplicadas
+
+Decisión del propietario: aplicar nueve `-current.png` del ZIP `Brandopolis_Fase4_capturas_revision_unica_2026-10-11.zip`
+(SHA-256 `c32b8e581708a972ef9d70a58ad203e58c81d514097bf2a9e34dfb274ed3c970`, verificado), capturadas sobre `5cf0618`:
+blueprint-desktop, blueprint-mobile, decision-card-desktop, history-desktop, m1-guided-review-desktop,
+m1-guided-review-mobile, m1-needs-review-desktop, m1-needs-review-mobile y m1-workspace-desktop. Antes de copiar: hashes
+de imágenes iguales al inventario y cada canónica local igual a la «canónica» del paquete (ninguna ya aplicada ni con
+cambios posteriores). Copiados los archivos exactos sin regenerar; las otras ocho canónicas intactas. Registro
+`brand-assets.json`: sólo esas nueve y el README de capturas. Verificación: las nueve idénticas byte a byte a las
+aprobadas; validador de UI PASS; validador de marca PASS; `brand-runtime.test.ts` 5/5. La aprobación cubre esas
+imágenes (menú de ocho áreas y navegación interior de Estrategia), no diferencias futuras.
+
+**Clientes y Resultados (Fase 4, DEMO):** queda satisfecha la aceptación visual pendiente de este bloque. No es cierre de
+la Fase 4 ni validación con proveedores, IA o invitados PILOT reales. Evidencia separada: regresión completa sobre
+`ec31409` con registro temporal (295: 282 PASS · 13 SKIP · 0 FAIL) y pruebas de los cambios posteriores sobre el código
+final (`5cf0618`: unitarias 484, PILOT 10/10, Clientes E2E 5/5, visual estructural). El 503 de Validación
+(`phase3.spec.ts:58`) sigue en observación, con causa sin confirmar.
+
 ## 2026-10-11 · PHASE 4 · bloque 6 (exportaciones): evaluación del generador PDF propio y jszip
 
 Evaluación técnica sin cambios de runtime: `docs/15-handoff/PHASE4_EXPORTS_EVALUATION_2026-10-11.md`. El generador
