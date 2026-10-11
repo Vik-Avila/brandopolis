@@ -1,3 +1,40 @@
+## 2026-10-10 · PHASE 4 · bloque 3 · revisión de seguridad de ofertas y Plan de Marketing
+
+Sin commit todavía sobre `a34e950`; sin push ni deploy; producción sin cambios. Migraciones aditivas `0019` (plan) y
+`0020` (endurecimiento de ofertas) aplicadas sólo a la base de pruebas efímera y al perfil aislado `rc1-smoke`.
+
+**Revisión de seguridad de ofertas** (propia + revisión independiente de sólo lectura; sin BLOCKER ni HIGH). Corregido,
+con regresiones en `tests/offers-cases.ts`:
+- Revisión obligatoria en borrador, envío, nueva versión y retiro: omitirla ya no salta el 409 (INV-009).
+- Una oferta retirada no admite envío ni decisión; aprobar una versión anterior a la aprobada vigente → 409 (nunca dos
+  APPROVED ni retroceso del puntero).
+- Decisión idempotente (INV-010): clave obligatoria, registro append-only `offer_approvals` (versión, huella, actor,
+  resultado); un reintento devuelve lo registrado en lugar de 409. El frontend reutiliza la clave al reintentar.
+- Auditoría con la versión afectada y la reemplazada o de origen; `OFFER_APPROVE` / `OFFER_REQUEST_CHANGES`; el criterio
+  sólo se registra en una decisión y ya validado (antes cualquier operación copiaba texto del cliente).
+- Base de datos (`0020`): sólo transiciones hacia delante, decisión y envío registrados inmutables, identidad de la
+  versión inmutable. Creación concurrente con la misma clave → repetición, no error.
+- Comprobado sin cambios: alcance por workspace y marca, miembro no asignado o inactivo → 403, ids de otra marca → 404,
+  invitados sin acceso (no tienen membresía), escape de todo el contenido mostrado, límites de entrada.
+
+**Plan de Marketing** (Marketing → Plan de Marketing; PHASE4_SPEC §4.2): plan por marca y año con periodo de 90 días,
+objetivos del año y prioridades de 90 días (con cómo se miden), acciones con tipo comercial (exige una oferta activa de
+la marca) o institucional, responsable, fechas, presupuesto con moneda y certeza («estimado» visible), indicador y
+estados PLANNED → IN_PROGRESS → DONE / CANCELLED. Revisión numerada por registro (409), creación idempotente, registro
+de cambios append-only, auditoría `PLAN_*`, guía de «lo que falta» sin exigir la estrategia completa, vista por
+prioridad y por mes. La entrada lateral «Plan de marketing · Próximamente» pasa a «Marketing» (destino real); Redes
+sociales, Sitio web y Campañas digitales se nombran como próximos, sin botones. Inicio enlaza la prioridad «Organizar
+mi marketing». Pruebas de navegación unitarias y de navegador actualizadas a este estado aprobado.
+
+**Comprobado (salida real, ejecución secuencial con un worker):** typecheck PASS; lint PASS; Foundation 0 errores (34
+schemas); pnpm test 19 archivos / 407 PASS; E2E afectadas en los 5 proyectos: `phase4-plan` 5/5, `phase4-offers` +
+`phase4-priority` + `micro-hotfix` 45/45, navegación de `workspace.spec` 5/5; test:visual 10 PASS · 1 SKIP sin
+diferencias; UI validator PASS.
+
+**Pendiente:** instantánea compartida del plan y avance (`PlanSnapshot`, `PlanProgressUpdate`; PLN-001…003); vista de
+calendario; test:e2e completa y test:pilot:e2e sobre este código; entregables, navegación a siete entradas y Brando
+marketing.
+
 ## 2026-10-10 · PHASE 4 · bloque 3 · regresión completa sobre `25a763c`
 
 Ejecutada por separado y con un solo worker, sin otras comprobaciones pesadas simultáneas, contra el perfil aislado

@@ -19,7 +19,8 @@ export function offersCases(connection: () => ReturnType<typeof connect>) {
       await engine.prepareQuestion(who.token, brand.id, q.id, d?.activeVersionId ?? null);
       return engine.commitDecision(who.token, { brandId: brand.id, questionId: q.id, selectedOption: option, rationale: 'Criterio humano', expectedActiveVersion: d?.activeVersionId ?? null, sourceRecommendationId: null, idempotencyKey: randomUUID(), actorUserId: who.userId });
     };
-    const cmd = (action: Parameters<Engine['offerCommand']>[1], input: Record<string, unknown>, token = who.token) => engine.offerCommand(token, action, { brandId: brand.id, ...input });
+    // A decision needs its own idempotency key (INV-010); tests that do not exercise retries get a fresh one.
+    const cmd = (action: Parameters<Engine['offerCommand']>[1], input: Record<string, unknown>, token = who.token) => engine.offerCommand(token, action, { brandId: brand.id, ...(action === 'decide' ? { idempotencyKey: randomUUID() } : {}), ...input });
     const content = (extra: Record<string, unknown> = {}) => ({ name: 'Diagnóstico de marca', kind: 'SERVICE', audience: { customerDecisionVersionId: null, segment: 'Agencias pequeñas' }, need: 'Ordenar la estrategia', outcome: 'Estrategia aprobada', benefits: ['Menos retrabajo'], differentiators: [], conditions: '', proofIds: [], sourceDecisionVersionIds: [], hypothesisIds: [], price: null, ...extra });
     const list = async () => (await engine.offers(who.token, brand.id));
     return { db, engine, who, brand, commit, cmd, content, list };
@@ -97,6 +98,91 @@ export function offersCases(connection: () => ReturnType<typeof connect>) {
       await expect(x.engine.offers(stranger.token, x.brand.id)).rejects.toMatchObject({ code: 'NOT_FOUND' });
       expect(await x.engine.offers(x.who.token, other.id)).toEqual([]);
       await expect(x.engine.offerCommand(x.who.token, 'retire', { brandId: other.id, offerId: offer.id, expectedRevision: offer.revision })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    });
+
+    it('security review: brand permissions, required revision, retired offers, version order and concurrent decisions', async () => {
+      const x = await setup();
+      const approveAll = async (offerId: string, revision: number) => {
+        const v = await x.cmd('submit', { offerId, expectedRevision: revision });
+        return { v, decided: await x.cmd('decide', { offerId, versionId: v.versionId, fingerprint: v.fingerprint, decision: 'APPROVE', criterion: 'Revisada por el equipo' }) };
+      };
+      // A MEMBER of the workspace not assigned to the brand cannot read or change offers; once assigned, can approve (ADR-0033).
+      const member = await seedIdentity(x.db, 'MEMBER', x.who.workspaceId);
+      const created = await x.cmd('create', { content: x.content(), idempotencyKey: randomUUID() });
+      await expect(x.engine.offers(member.token, x.brand.id)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      await expect(x.cmd('submit', { offerId: created.offerId, expectedRevision: 0 }, member.token)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      await x.db.insert(t.assignments).values({ workspaceId: x.who.workspaceId, brandId: x.brand.id, userId: member.userId });
+      // INV-009: every revision-guarded operation requires the revision the client saw.
+      for (const action of ['draft', 'submit', 'new-draft', 'retire'] as const)
+        await expect(x.cmd(action, { offerId: created.offerId, content: x.content() })).rejects.toMatchObject({ code: 'INVALID' });
+      const v1 = await x.cmd('submit', { offerId: created.offerId, expectedRevision: 0 }, member.token);
+      // Concurrent approvals of the same version: exactly one wins, the other is a conflict without effects.
+      const both = await Promise.allSettled([1, 2].map(() => x.cmd('decide', { offerId: created.offerId, versionId: v1.versionId, fingerprint: v1.fingerprint, decision: 'APPROVE', criterion: 'Aprobada en paralelo' })));
+      expect(both.filter(r => r.status === 'fulfilled')).toHaveLength(1);
+      expect(both.find(r => r.status === 'rejected')).toMatchObject({ reason: { code: 'CONFLICT' } });
+      // Two versions in review: approving v3 first must not let the older v2 be approved afterwards (no going back, never two APPROVED).
+      let [offer] = await x.list();
+      await x.cmd('new-draft', { offerId: offer.id, expectedRevision: offer.revision });
+      [offer] = await x.list();
+      const v2 = await x.cmd('submit', { offerId: offer.id, expectedRevision: offer.revision });
+      [offer] = await x.list();
+      await x.cmd('new-draft', { offerId: offer.id, expectedRevision: offer.revision });
+      [offer] = await x.list();
+      await approveAll(offer.id, offer.revision);
+      await expect(x.cmd('decide', { offerId: offer.id, versionId: v2.versionId, fingerprint: v2.fingerprint, decision: 'APPROVE', criterion: 'Versión anterior' })).rejects.toMatchObject({ code: 'CONFLICT' });
+      [offer] = await x.list();
+      expect(offer.approved!.sequence).toBe(3);
+      expect(offer.history.filter(h => h.status === 'APPROVED')).toHaveLength(1);
+      // A retired offer is read-only: no review, no decision.
+      const other = await x.cmd('create', { content: x.content({ name: 'Retirada' }), idempotencyKey: randomUUID() });
+      const pending = await x.cmd('submit', { offerId: other.offerId, expectedRevision: 0 });
+      await x.cmd('retire', { offerId: other.offerId, expectedRevision: 1 });
+      await expect(x.cmd('decide', { offerId: other.offerId, versionId: pending.versionId, fingerprint: pending.fingerprint, decision: 'APPROVE', criterion: 'Después de retirar' })).rejects.toMatchObject({ code: 'CONFLICT' });
+      // Concurrent creation with the same key replays one offer (INV-010), never a database error.
+      const key = randomUUID();
+      const same = await Promise.all([1, 2].map(() => x.cmd('create', { content: x.content({ name: 'Idempotente' }), idempotencyKey: key })));
+      expect(new Set(same.map(r => r.offerId)).size).toBe(1);
+    });
+
+    it('security review II: decisions are idempotent and append-only, audited with their versions; foreign ids and inactive members are refused', async () => {
+      const x = await setup();
+      const created = await x.cmd('create', { content: x.content(), idempotencyKey: randomUUID() });
+      const v1 = await x.cmd('submit', { offerId: created.offerId, expectedRevision: 0 });
+      const decision = { offerId: created.offerId, versionId: v1.versionId, fingerprint: v1.fingerprint, decision: 'APPROVE', criterion: 'Revisada con el equipo', idempotencyKey: randomUUID() };
+      const first = await x.cmd('decide', decision);
+      // A retry after a timeout replays the recorded decision instead of failing with 409.
+      expect(await x.cmd('decide', decision)).toMatchObject({ versionId: v1.versionId, status: 'APPROVED', replayed: true });
+      await expect(x.cmd('decide', { ...decision, decision: 'REQUEST_CHANGES' })).rejects.toMatchObject({ code: 'CONFLICT' });
+      await expect(x.cmd('decide', { ...decision, idempotencyKey: undefined })).rejects.toMatchObject({ code: 'INVALID' });
+      expect(first).toMatchObject({ status: 'APPROVED' });
+      const approvals = await x.db.select().from(t.offerApprovals).where(eq(t.offerApprovals.offerId, String(created.offerId)));
+      expect(approvals).toHaveLength(1);
+      expect(approvals[0]).toMatchObject({ versionId: v1.versionId, fingerprint: v1.fingerprint, decision: 'APPROVE', actorId: x.who.userId });
+      expect(await databaseError(x.db.execute(sql`update offer_approvals set criterion='otro' where id=${approvals[0].id}`))).toMatch(/append-only/);
+      // The audit names the version acted on; the criterion appears only on the decision.
+      const audits = (await x.db.select().from(t.audits).where(eq(t.audits.brandId, x.brand.id))).filter(r => r.operation.startsWith('OFFER_'));
+      expect(audits.map(r => r.operation)).toEqual(expect.arrayContaining(['OFFER_CREATE', 'OFFER_SUBMIT', 'OFFER_APPROVE']));
+      expect(audits.find(r => r.operation === 'OFFER_APPROVE')).toMatchObject({ newVersion: v1.versionId, rationale: 'Revisada con el equipo' });
+      expect(audits.filter(r => r.operation !== 'OFFER_APPROVE').every(r => r.rationale === null)).toBe(true);
+      await x.cmd('retire', { offerId: created.offerId, expectedRevision: 2, criterion: 'Aprobado por dirección' });
+      expect((await x.db.select().from(t.audits).where(eq(t.audits.operation, 'OFFER_RETIRE'))).find(r => r.brandId === x.brand.id)).toMatchObject({ rationale: null, newVersion: v1.versionId });
+      // Database: an approved version cannot go back to DRAFT, and a recorded decision cannot be rewritten.
+      expect(await databaseError(x.db.execute(sql`update offer_versions set status='DRAFT' where id=${v1.versionId}`))).toMatch(/not allowed/);
+      expect(await databaseError(x.db.execute(sql`update offer_versions set "decisionCriterion"='otro' where id=${v1.versionId}`))).toMatch(/immutable/);
+      // Ids of another brand of the same workspace are not found from this brand.
+      const other = await x.engine.createBrand(x.who.token, 'Otra marca con ofertas');
+      const foreign = await x.engine.offerCommand(x.who.token, 'create', { brandId: other.id, content: x.content(), idempotencyKey: randomUUID() });
+      const foreignV = await x.engine.offerCommand(x.who.token, 'submit', { brandId: other.id, offerId: foreign.offerId, expectedRevision: 0 });
+      await expect(x.cmd('decide', { offerId: foreign.offerId, versionId: foreignV.versionId, fingerprint: foreignV.fingerprint, decision: 'APPROVE', criterion: 'Desde la marca equivocada' })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      const mine = await x.cmd('create', { content: x.content({ name: 'Propia' }), idempotencyKey: randomUUID() });
+      await x.cmd('submit', { offerId: mine.offerId, expectedRevision: 0 });
+      await expect(x.cmd('decide', { offerId: mine.offerId, versionId: foreignV.versionId, fingerprint: foreignV.fingerprint, decision: 'APPROVE', criterion: 'Versión de otra marca' })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      // An assigned member whose membership is deactivated loses access at once.
+      const member = await seedIdentity(x.db, 'MEMBER', x.who.workspaceId);
+      await x.db.insert(t.assignments).values({ workspaceId: x.who.workspaceId, brandId: x.brand.id, userId: member.userId });
+      expect(await x.engine.offers(member.token, x.brand.id)).toHaveLength(2);
+      await x.db.update(t.memberships).set({ active: false }).where(eq(t.memberships.userId, member.userId));
+      await expect(x.engine.offers(member.token, x.brand.id)).rejects.toMatchObject({ code: 'FORBIDDEN' });
     });
   });
 }

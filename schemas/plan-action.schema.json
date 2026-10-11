@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/plan-action.v1",
+  "title": "plan-action",
+  "x-version": "v1",
+  "description": "ADR-0030 / PHASE4_SPEC §4.2 · editable content of one action of the marketing plan. A COMMERCIAL action cites an offer of the brand; an INSTITUTIONAL action is about the brand. Owner, dates, budget (currency and certainty; an estimate is never shown as confirmed) and indicator are optional so a useful draft can exist before the strategy is complete. Status follows PLANNED -> IN_PROGRESS -> DONE; PLANNED/IN_PROGRESS -> CANCELLED.",
+  "properties": {
+    "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+    "kind": { "type": "string", "enum": ["COMMERCIAL", "INSTITUTIONAL"] },
+    "offerId": { "type": ["string", "null"], "maxLength": 200 },
+    "objectiveId": { "type": ["string", "null"], "maxLength": 200 },
+    "owner": { "type": "string", "maxLength": 160 },
+    "startDate": { "type": ["string", "null"], "format": "date" },
+    "dueDate": { "type": ["string", "null"], "format": "date" },
+    "budget": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "amountMinor": { "type": "integer", "minimum": 0 },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "certainty": { "type": "string", "enum": ["CONFIRMED", "ESTIMATED"] }
+      },
+      "required": ["amountMinor", "currency", "certainty"]
+    },
+    "indicator": { "type": "string", "maxLength": 500 },
+    "status": { "type": "string", "enum": ["PLANNED", "IN_PROGRESS", "DONE", "CANCELLED"] }
+  },
+  "required": ["title", "kind", "offerId", "objectiveId", "owner", "startDate", "dueDate", "budget", "indicator", "status"],
+  "examples": [
+    { "title": "Webinar para agencias", "kind": "COMMERCIAL", "offerId": "offer-1", "objectiveId": "objective-1", "owner": "Ana", "startDate": "2026-11-02", "dueDate": "2026-11-20", "budget": { "amountMinor": 500000, "currency": "MXN", "certainty": "ESTIMATED" }, "indicator": "Registros al webinar", "status": "PLANNED" }
+  ]
+}

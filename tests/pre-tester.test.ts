@@ -264,12 +264,12 @@ describe('production verification hotfix', () => {
       expect(app, stage).toContain(stage);
   });
 
-  it('keeps the owner-approved navigation: Inicio, nine decisions, Validación, Productos y servicios, «Próximamente» and secondary access (ADR-0027/0029/0030)', () => {
+  it('keeps the owner-approved navigation: Inicio, nine decisions, Validación, Productos y servicios, Marketing, «Próximamente» and secondary access (ADR-0027/0029/0030)', () => {
     // The public header has its own <nav>, so the closing tag must be found after this one opens.
     const navStart = html.indexOf('<nav id="journey"');
     const nav = html.slice(navStart, html.indexOf('</nav>', navStart));
     const labels = [...nav.matchAll(/<span class="nav-label">([^<]+)/g)].map(m => m[1]);
-    expect(labels).toEqual(['Inicio', 'Estrategia', 'Productos y servicios', 'Validación', 'Plan de marketing', 'Resultados', 'Mi aprendizaje', 'Mapa estratégico', 'Configuración de marca', 'Ayuda']);
+    expect(labels).toEqual(['Inicio', 'Estrategia', 'Productos y servicios', 'Validación', 'Marketing', 'Resultados', 'Mi aprendizaje', 'Mapa estratégico', 'Configuración de marca', 'Ayuda']);
     // The Decision Spine keeps exactly the nine journey sections, in canonical order, inside the Estrategia group.
     const group = nav.slice(nav.indexOf('id="strategy-list"'), nav.indexOf('</div></div>', nav.indexOf('id="strategy-list"')));
     expect([...group.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(['Strategic Objective', 'Market Arena', 'Primary Customer', 'Value Mechanism', 'Positioning', 'Brand Promise', 'Core Message', 'GTM Priority', 'Priority Experiment']);
@@ -278,12 +278,16 @@ describe('production verification hotfix', () => {
     // «Próximamente» destinations are announced and disabled, never a navigation target.
     const soon = [...nav.matchAll(/<button[^>]*data-soon="([^"]+)"[^>]*>/g)];
     // ADR-0030 (Phase 4, owner-approved 2026-10-10): «Productos y servicios» is a real destination, never a soon pill.
-    expect(soon.map(m => m[1])).toEqual(['marketing', 'results']);
+    // PHASE4_SPEC §4.2: Marketing (Plan de Marketing) is a real destination too; only Resultados stays announced.
+    expect(soon.map(m => m[1])).toEqual(['results']);
     for (const m of soon) { expect(m[0]).toContain('aria-disabled="true"'); expect(m[0]).not.toContain('data-module'); expect(m[0]).not.toMatch(/id="/); }
-    expect(nav.match(/Próximamente<\/span>/g)).toHaveLength(2);
+    expect(nav.match(/Próximamente<\/span>/g)).toHaveLength(1);
     const offers = nav.match(/<button[^>]*id="offers"[^>]*>/)?.[0] ?? '';
     expect(offers).not.toContain('aria-disabled');
     expect(offers).not.toContain('data-soon');
+    const marketing = nav.match(/<button[^>]*id="marketing"[^>]*>/)?.[0] ?? '';
+    expect(marketing).not.toContain('aria-disabled');
+    expect(marketing).not.toContain('data-soon');
     // Entorno competitivo and Contexto estratégico are preparation and context, never decisions: they live in the
     // rail's Contexto tool, with no number and no data-module.
     const rail = html.slice(html.indexOf('id="rail-panel"'), html.indexOf('</aside></div></section></main>'));

@@ -1,6 +1,6 @@
 import {createBrandoPresence} from './brando-presence.js';
 const $=s=>document.querySelector(s);
-import {offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
+import {planHtml,objectiveFormHtml,focusFormHtml,actionFormHtml,offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
 import {trapFocus,decisionTabs,viewTabs} from './product-interactions.js';
 import * as analytics from './analytics.js';
 import {PILOT_EVENTS} from './analytics.js';
@@ -1983,9 +1983,10 @@ async function showHome(){
  // ADR-0027 · Inicio: one next step from the real Brand state, a brief real progress and what needs attention.
  // The full Strategic Intelligence stays one click away in the rail (Atención); nothing here asks the AI.
  // Areas that already exist in this build; the others are named as not available yet (never a fake button).
- $('#decision').innerHTML=homeHtml(context,documentState,priority.current,{SELL_OFFER:true});
+ $('#decision').innerHTML=homeHtml(context,documentState,priority.current,{SELL_OFFER:true,MARKETING_PLAN:true});
  bindWorkPriorityForm();
  $('#decision').querySelector('[data-priority-area="SELL_OFFER"]')?.addEventListener('click',()=>run(showOffers));
+ $('#decision').querySelector('[data-priority-area="MARKETING_PLAN"]')?.addEventListener('click',()=>run(showMarketingPlan));
  bindAttentionActions($('#decision'));
  $('#next-step-brando')?.addEventListener('click',event=>{const module=event.currentTarget.dataset.module;openModule(module,false);$('#brando-section-explore')?.click();});
  $('#home-open-attention')?.addEventListener('click',event=>selectRailTool('attention',event.currentTarget));
@@ -2007,7 +2008,7 @@ async function showOffers(){
  $('#decision').querySelectorAll('[data-offer-submit]').forEach(b=>b.addEventListener('click',()=>{const o=byId(b.dataset.offerSubmit);command('submit',{offerId:o.id,expectedRevision:o.revision},'Versión enviada a revisión. Ya no se edita; una persona la aprueba o pide cambios.');}));
  $('#decision').querySelectorAll('[data-offer-new-draft]').forEach(b=>b.addEventListener('click',()=>{const o=byId(b.dataset.offerNewDraft);command('new-draft',{offerId:o.id,expectedRevision:o.revision},'Nueva versión en borrador. La versión aprobada sigue vigente mientras tanto.');}));
  $('#decision').querySelectorAll('[data-offer-retire]').forEach(b=>b.addEventListener('click',()=>{const o=byId(b.dataset.offerRetire);command('retire',{offerId:o.id,expectedRevision:o.revision},'Oferta retirada. Se conserva con su historial.');}));
- $('#decision').querySelectorAll('.offer-decide').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const criterion=form.querySelector('textarea').value.trim();if(criterion.length<10){form.querySelector('textarea').focus();notice('Escribe al menos diez caracteres para explicar tu decisión.',true);return;}const decision=event.submitter?.value;command('decide',{offerId:form.dataset.offer,versionId:form.dataset.version,fingerprint:form.dataset.fingerprint,decision,criterion},decision==='APPROVE'?'Versión aprobada. Es la que usarán materiales, sitio y campañas.':'Cambios solicitados. Se crean en una versión nueva.');}));
+ $('#decision').querySelectorAll('.offer-decide').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const criterion=form.querySelector('textarea').value.trim();if(criterion.length<10){form.querySelector('textarea').focus();notice('Escribe al menos diez caracteres para explicar tu decisión.',true);return;}const decision=event.submitter?.value;const keyName=`key${decision}`;form.dataset[keyName]??=crypto.randomUUID();command('decide',{offerId:form.dataset.offer,versionId:form.dataset.version,fingerprint:form.dataset.fingerprint,decision,criterion,idempotencyKey:form.dataset[keyName]},decision==='APPROVE'?'Versión aprobada. Es la que usarán materiales, sitio y campañas.':'Cambios solicitados. Se crean en una versión nueva.');}));
 }
 function openOfferEditor(offer){
  const host=$('#offer-editor');host.innerHTML=offerFormHtml(context,offer?.draft?.content??null,offer);
@@ -2026,6 +2027,48 @@ function openOfferEditor(offer){
    await showOffers();notice(offer?'Borrador guardado.':'Oferta creada en borrador. Complétala cuando quieras y envíala a revisión.');
   },event.submitter);
  });
+}
+/** PHASE4_SPEC §4.2 · Marketing → Plan de Marketing. Every write sends the revision it saw (409 when stale). */
+let planYear=new Date().getFullYear(),planMode='list',planData=null;
+async function showMarketingPlan(){
+ if(!enterView('#marketing','Plan de Marketing'))return;
+ planData=await api(`/api/plan?brandId=${encodeURIComponent(brandId)}&year=${planYear}`);
+ const root=$('#decision');root.innerHTML=planHtml(planData,planMode);
+ const command=(action,payload,message)=>run(async()=>{await api(`/api/plan/${action}`,{brandId,...payload});await showMarketingPlan();notice(message);});
+ root.querySelectorAll('[data-plan-year]').forEach(b=>b.addEventListener('click',()=>{planYear=Number(b.dataset.planYear);run(showMarketingPlan);}));
+ $('#plan-start')?.addEventListener('submit',event=>{event.preventDefault();command('create',{year:planYear,focusStart:$('#plan-focus-start').value||null},`Plan de ${planYear} creado. Empieza por un objetivo del año o una prioridad de 90 días.`);});
+ const p=planData.plan;if(!p)return;
+ const editor=$('#plan-editor');
+ const open=(html,focusId,onSubmit)=>{editor.innerHTML=html;const form=editor.querySelector('form');$(focusId).focus();form.querySelector('[data-editor-cancel]').addEventListener('click',()=>{editor.innerHTML='';});form.addEventListener('submit',event=>{event.preventDefault();onSubmit(form,event.submitter);});return form;};
+ root.querySelectorAll('[data-plan-mode]').forEach(b=>b.addEventListener('click',()=>{planMode=b.dataset.planMode;run(showMarketingPlan);}));
+ $('#plan-focus-edit').addEventListener('click',()=>open(focusFormHtml(p.focusStart),'#focus-start',()=>command('update',{planId:p.id,expectedRevision:p.revision,focusStart:$('#focus-start').value||null},'Periodo de 90 días actualizado.')));
+ const objectiveById=id=>p.objectives.find(o=>o.id===id);
+ const saveObjective=(horizon,o)=>()=>{const title=$('#objective-title').value.trim();if(!title){$('#objective-form-status').textContent='Escribe el objetivo.';$('#objective-title').focus();return;}const content={horizon,title,measure:$('#objective-measure').value,status:'ACTIVE'};if(o)command('update-objective',{objectiveId:o.id,expectedRevision:o.revision,content},'Objetivo guardado.');else command('add-objective',{planId:p.id,content,idempotencyKey:crypto.randomUUID()},'Objetivo añadido.');};
+ root.querySelectorAll('[data-objective-new]').forEach(b=>b.addEventListener('click',()=>{const horizon=b.dataset.objectiveNew;open(objectiveFormHtml(horizon),'#objective-title',saveObjective(horizon,null));}));
+ root.querySelectorAll('[data-objective-edit]').forEach(b=>b.addEventListener('click',()=>{const o=objectiveById(b.dataset.objectiveEdit);open(objectiveFormHtml(o.horizon,o),'#objective-title',saveObjective(o.horizon,o));}));
+ root.querySelectorAll('[data-objective-archive]').forEach(b=>b.addEventListener('click',()=>{const o=objectiveById(b.dataset.objectiveArchive);command('update-objective',{objectiveId:o.id,expectedRevision:o.revision,content:{horizon:o.horizon,title:o.title,measure:o.measure,status:'ARCHIVED'}},'Objetivo archivado. Sus acciones se conservan.');}));
+ const actionById=id=>p.actions.find(a=>a.id===id);
+ const openAction=a=>{
+  const form=open(actionFormHtml(planData,a),'#action-title',()=>{
+   const title=$('#action-title').value.trim(),kind=form.querySelector('input[name="action-kind"]:checked').value,offerId=$('#action-offer')?.value||null;
+   const amount=Number(String($('#action-amount').value).replace(',','.')),hasBudget=$('#action-has-budget').checked;
+   const status=$('#action-form-status');
+   if(!title){status.textContent='Escribe qué vas a hacer.';$('#action-title').focus();return;}
+   if(kind==='COMMERCIAL'&&!offerId){status.textContent='Elige la oferta que esta acción ayuda a vender.';($('#action-offer')??$('#action-title')).focus();return;}
+   if(hasBudget&&!($('#action-amount').value.trim()&&amount>=0)){status.textContent='Escribe el monto o desmarca el presupuesto.';$('#action-amount').focus();return;}
+   const start=$('#action-start').value||null,due=$('#action-due').value||null;
+   if(start&&due&&due<start){status.textContent='La fecha de término no puede ser anterior al inicio.';$('#action-due').focus();return;}
+   const content={title,kind,offerId:kind==='COMMERCIAL'?offerId:null,objectiveId:$('#action-objective').value||null,owner:$('#action-owner').value,startDate:start,dueDate:due,budget:hasBudget?{amountMinor:Math.round(amount*100),currency:$('#action-currency').value.trim().toUpperCase(),certainty:$('#action-certainty').value}:null,indicator:$('#action-indicator').value};
+   if(a)command('update-action',{actionId:a.id,expectedRevision:a.revision,content},'Acción guardada.');
+   else command('add-action',{planId:p.id,content,idempotencyKey:crypto.randomUUID()},'Acción añadida al plan.');
+  });
+  form.querySelectorAll('input[name="action-kind"]').forEach(r=>r.addEventListener('change',()=>{form.querySelector('.action-offer').hidden=form.querySelector('input[name="action-kind"]:checked').value!=='COMMERCIAL';}));
+  $('#action-has-budget').addEventListener('change',event=>{form.querySelector('.offer-price').hidden=!event.currentTarget.checked;});
+ };
+ $('#plan-action-new').addEventListener('click',()=>openAction(null));
+ root.querySelectorAll('[data-action-edit]').forEach(b=>b.addEventListener('click',()=>openAction(actionById(b.dataset.actionEdit))));
+ const statusWords={IN_PROGRESS:'Acción en curso.',DONE:'Acción marcada como hecha.',CANCELLED:'Acción cancelada. Se conserva en el historial.'};
+ root.querySelectorAll('[data-action-status]').forEach(b=>b.addEventListener('click',()=>{const a=actionById(b.dataset.action);command('action-status',{actionId:a.id,expectedRevision:a.revision,status:b.dataset.actionStatus},statusWords[b.dataset.actionStatus]);}));
 }
 /** Inicio · «Tu prioridad»: save a new priority (append-only) and re-render. Never changes decisions or permissions. */
 function bindWorkPriorityForm(){
@@ -2047,6 +2090,7 @@ function renderRailTool(){
 function mountLearningMoment(question){const m=user.learningMoments?.[question.module];if(m)$('#decision').insertAdjacentHTML('beforeend',`<details class="learning-moment"><summary>Qué estás aprendiendo aquí</summary><div class="learning-moment-body"><p class="eyebrow">${escape(capabilityLabel(m.capability))}</p><p>${escape(m.why)}</p><p><strong>Prueba esto:</strong> ${escape(m.apply)}</p><details><summary>Ver una pista más</summary><p><strong>Observa:</strong> ${escape(m.observe)}</p><p><strong>Cuidado:</strong> ${escape(m.caution)}</p></details></div></details>`);}
 $('#learning-loop').addEventListener('click',()=>run(showLearning));
 $('#offers').addEventListener('click',()=>run(showOffers));
+$('#marketing').addEventListener('click',()=>run(showMarketingPlan));
 // ADR-0026: the next Brando question may carry an interpretation scope; a valid answer returns a server proof.
 let brandoInterpretation=null,brandoAssistanceProof=null;
 const assistActive=()=>!!brandoAssistanceProof&&brandoAssistanceProof.brandId===brandId&&Date.parse(brandoAssistanceProof.expiresAt)>Date.now();

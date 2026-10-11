@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/plan-objective.v1",
+  "title": "plan-objective",
+  "x-version": "v1",
+  "description": "ADR-0030 / PHASE4_SPEC §4.2 · editable content of one objective of the marketing plan: an annual objective or a 90-day priority, with how it will be measured. Each change raises its revision and appends a change record.",
+  "properties": {
+    "horizon": { "type": "string", "enum": ["ANNUAL", "NINETY_DAYS"] },
+    "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+    "measure": { "type": "string", "maxLength": 500 },
+    "status": { "type": "string", "enum": ["ACTIVE", "ARCHIVED"] }
+  },
+  "required": ["horizon", "title", "measure", "status"],
+  "examples": [
+    { "horizon": "NINETY_DAYS", "title": "Conseguir los primeros diez clientes del diagnóstico", "measure": "Clientes firmados por mes", "status": "ACTIVE" }
+  ]
+}

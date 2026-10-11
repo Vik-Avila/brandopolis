@@ -349,7 +349,40 @@ body.left-collapsed #journey .nav-item[data-tip]:hover::after, body.left-collaps
 .priority-modules button { min-height: 44px; }
 .work-priority-change { margin-top: 14px; }
 .work-priority-change summary { cursor: pointer; font-weight: 650; color: var(--bp-brand-emerald); min-height: 44px; display: flex; align-items: center; }
-.work-priority-change form > button { margin-top: 12px; min-height: 44px; }/* PHASE4_SPEC §4.1 · Productos y servicios. */
+.work-priority-change form > button { margin-top: 12px; min-height: 44px; }/* PHASE4_SPEC §4.2 · Marketing → Plan de Marketing. */
+.plan-areas { margin: 4px 0 12px; }
+.plan-year { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 6px 0 16px; }
+.plan-year button, .plan-view button { min-height: 44px; }
+.plan-empty, .plan-block, .plan-gaps { margin-top: 16px; padding: 18px 20px; border: 1px solid var(--ws-line); border-radius: 18px; background: var(--surface-card); }
+.plan-gaps { background: var(--bp-warning-bg); }
+.plan-gaps p, .plan-gaps ul { margin: 0; }
+.plan-gaps ul { padding-left: 20px; margin-top: 6px; }
+.plan-block h3 { margin: 0 0 10px; font: 500 22px/1.25 var(--font-display); }
+.plan-inline-form { display: grid; gap: 8px; max-width: 420px; }
+.plan-inline-form button { min-height: 44px; justify-self: start; }
+.plan-objectives, .plan-actions { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 10px; }
+.plan-objective, .plan-action { padding: 12px 14px; border: 1px solid var(--ws-line); border-radius: 14px; }
+.plan-objective-title { margin: 0 0 4px; font-weight: 650; }
+.plan-objective .hint, .plan-action .hint { margin: 0; }
+.plan-focus { margin: 0 0 10px; color: var(--ws-ink-soft); }
+.plan-actions-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.plan-view { display: flex; gap: 8px; }
+.plan-view button[aria-pressed="true"] { border-color: currentColor; font-weight: 650; }
+#plan-action-new { min-height: 44px; margin: 4px 0 14px; }
+.plan-priority, .plan-month { margin-top: 12px; }
+.plan-priority h4, .plan-month h4 { margin: 0 0 8px; font-size: 16px; }
+.plan-action-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.plan-action-head h4 { margin: 0; font-size: 16px; }
+.plan-action .actions, .plan-objective .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.plan-action .actions button, .plan-objective .actions button { min-height: 44px; }
+.plan-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.plan-dates div { display: grid; gap: 6px; }
+.action-offer[hidden] { display: none; }
+.plan-cancelled, .plan-changes { margin-top: 14px; }
+.plan-changes { padding: 12px 16px; border: 1px solid var(--ws-line); border-radius: 14px; }
+.plan-changes ul { margin: 8px 0 0; padding-left: 18px; }
+@media (max-width: 640px) { .plan-dates { grid-template-columns: 1fr; } }
+/* PHASE4_SPEC §4.1 · Productos y servicios. */
 .offer-list { display: grid; gap: 16px; margin-top: 18px; }
 .offer-card { padding: 20px 22px; border: 1px solid var(--ws-line); border-radius: 18px; background: var(--surface-card); }
 .offer-card header h3 { margin: 0 0 6px; font: 500 24px/1.2 var(--font-display); }

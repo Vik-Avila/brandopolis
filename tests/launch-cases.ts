@@ -170,7 +170,7 @@ export function launchCases(connection:()=>ReturnType<typeof connect>){
    try{
     const status=(checks:Awaited<ReturnType<typeof preflight>>,name:string)=>checks.filter(c=>c.name===name).map(c=>c.status);
     let checks=await preflight(env(s.url),{discover:async()=>'https://login.provider.test/'});
-    expect(status(checks,'migrations')).toEqual(['FAIL']);expect(checks.find(c=>c.name==='migrations')!.detail).toMatch(/0\/19 applied, 19 pending/);
+    expect(status(checks,'migrations')).toEqual(['FAIL']);expect(checks.find(c=>c.name==='migrations')!.detail).toMatch(/0\/21 applied, 21 pending/);
     expect((await s.pool.query("select to_regclass('public.brands') as n")).rows[0].n).toBeNull();
     await migrateDatabase(s.db);
     checks=await preflight(env(s.url),{discover:async()=>'https://login.provider.test/'});
@@ -186,11 +186,11 @@ export function launchCases(connection:()=>ReturnType<typeof connect>){
   it('forward-only migration plan detects pending and diverged schemas; DEMO tooling detects PILOT data',async()=>{
    const s=await scratch();
    try{
-    expect(await migrationPlan(s.pool)).toEqual({applied:0,expected:19,pending:19,diverged:false});
-    await migrateDatabase(s.db);expect(await migrationPlan(s.pool)).toEqual({applied:19,expected:19,pending:0,diverged:false});
+    expect(await migrationPlan(s.pool)).toEqual({applied:0,expected:21,pending:21,diverged:false});
+    await migrateDatabase(s.db);expect(await migrationPlan(s.pool)).toEqual({applied:21,expected:21,pending:0,diverged:false});
     expect(await containsPilotData(s.pool)).toBe(false);await new PilotAccess(s.db,'https://issuer.example').provision('p','A');expect(await containsPilotData(s.pool)).toBe(true);
     await s.pool.query("insert into drizzle.__drizzle_migrations (hash, created_at) values ('future-migration', 99999999999999)");
-    expect(await migrationPlan(s.pool)).toMatchObject({applied:20,diverged:true,pending:0}); // 19 real + 1 unknown future migration
+    expect(await migrationPlan(s.pool)).toMatchObject({applied:22,diverged:true,pending:0}); // 21 real + 1 unknown future migration
     await s.pool.query("update drizzle.__drizzle_migrations set hash='edited' where created_at=(select min(created_at) from drizzle.__drizzle_migrations)");
     expect((await migrationPlan(s.pool)).diverged).toBe(true);
    }finally{await s.pool.end();}

@@ -1,3 +1,9 @@
+## 2026-10-10 · Phase 4 — bloque 3: seguridad de ofertas y Plan de Marketing
+
+- Ofertas: revisión obligatoria, ofertas retiradas de sólo lectura, sin aprobar versiones anteriores, decisión idempotente con registro append-only, auditoría con versiones, migración 0020 con transiciones sólo hacia delante.
+- Plan de Marketing en Marketing: objetivos del año, prioridades de 90 días, acciones con responsable, fechas, presupuesto y forma de medir; revisiones (409), registro de cambios; migración aditiva 0019; entrada «Marketing» habilitada.
+- Evidencia: pnpm test 407 PASS; E2E afectadas 55/55 (5 proyectos); visual sin diferencias; Foundation 0 errores. test:e2e completa pendiente.
+
 ## 2026-10-10 · Phase 4 — bloque 3: regresión completa sobre 25a763c
 
 - test:e2e 217 PASS · 13 SKIP · 0 FAIL (230, por proyecto, un worker); test:visual 10 PASS · 1 SKIP sin diferencias; test:pilot:e2e 10/10; UI validator PASS.

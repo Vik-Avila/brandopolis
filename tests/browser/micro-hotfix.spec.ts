@@ -98,7 +98,7 @@ test('navigation keeps every destination reachable at laptop height; preparation
   const menu = page.getByRole('button', { name: 'Abrir navegación', exact: true });
   if (await menu.isVisible()) await menu.click();
   const labels = await page.locator('#journey .nav-label').evaluateAll(nodes => nodes.map(n => (n.firstChild?.textContent ?? '').trim()));
-  expect(labels).toEqual(['Inicio', 'Estrategia', 'Productos y servicios', 'Validación', 'Plan de marketing', 'Resultados', 'Mi aprendizaje', 'Mapa estratégico', 'Configuración de marca', 'Ayuda']);
+  expect(labels).toEqual(['Inicio', 'Estrategia', 'Productos y servicios', 'Validación', 'Marketing', 'Resultados', 'Mi aprendizaje', 'Mapa estratégico', 'Configuración de marca', 'Ayuda']);
   await expect(page.locator('#journey [data-module]')).toHaveCount(9);
   await expect(page.locator('#journey #competitive-context')).toHaveCount(0);
   await expect(page.locator('#rail-panel #competitive-context')).not.toHaveAttribute('data-module');

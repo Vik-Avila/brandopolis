@@ -19,6 +19,8 @@ Depends on: Master Context v1.0 + hardening brief 2026-09-24
 | ReviewItem | OPEN / REVIEW_SUGGESTED / COMPLETED | HARD → OPEN y Decision NEEDS_REVIEW; SOFT puede sugerir; revisión humana completa |
 | Learning | CANDIDATE → REVIEWED → ACCEPTED / REJECTED | sólo humano convierte interpretación en aprendizaje |
 | EditorialVersion | DRAFT → IN_REVIEW → CHANGES_REQUESTED / APPROVED; APPROVED → SUPERSEDED | ADR-0030 · versión inmutable al salir de DRAFT; SUPERSEDED sólo cuando otra versión posterior es aprobada; punteros borrador/aprobada/publicada separados |
+| PlanAction | PLANNED → IN_PROGRESS → DONE; PLANNED / IN_PROGRESS → CANCELLED | ADR-0030 / PHASE4_SPEC §4.2 · editar no cambia el estado; hecha o cancelada es de sólo lectura; cada cambio sube la revisión del registro y añade una entrada a `plan_changes` (append-only) |
+| PlanObjective | ACTIVE → ARCHIVED (por edición con revisión) | horizonte ANNUAL o NINETY_DAYS; archivar conserva las acciones vinculadas |
 | OperationAuthorization | PENDING → AUTHORIZED → RESERVED → CONSUMED; PENDING / AUTHORIZED / RESERVED → CANCELLED / EXPIRED | ADR-0031 · humano con AUTHORIZE_SPEND confirma; un solo trabajo la reserva; la reserva no amplía el plazo |
 | ExternalJob | QUEUED → CLAIMED → RUNNING → SUCCEEDED / FAILED / NEEDS_CHECK / PARTIAL / EXPIRED; QUEUED / CLAIMED → CANCELLED | ADR-0031 · worker con concesión persistida; incierto nunca se reenvía solo |
 | ExternalStep | PENDING → DISPATCHING → SUCCEEDED / REJECTED / NEEDS_CHECK; NEEDS_CHECK → SUCCEEDED / NOT_CREATED; REJECTED / NOT_CREATED → DISPATCHING | ADR-0031 C1 · DISPATCHING confirmado es el inicio del intento; NOT_CREATED sólo con evidencia remota tras evidencia de que el intento no puede emitir; repetición humana con autorización vigente |

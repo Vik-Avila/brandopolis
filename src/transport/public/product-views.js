@@ -23,6 +23,9 @@ export function stateBadge(version,review){return `<span class="badge ${review?'
 // schemas/editorial-version; this is the only place that turns them into words. Never colour alone: always a word.
 const EDITORIAL_WORDS={DRAFT:'Borrador',IN_REVIEW:'En revisión',CHANGES_REQUESTED:'Cambios solicitados',APPROVED:'Aprobada',SUPERSEDED:'Reemplazada'};
 export function editorialStateBadge(status,sequence){const word=EDITORIAL_WORDS[status]??'';return `<span class="badge ${status==='CHANGES_REQUESTED'?'warn':''}">${escape(word)}${sequence?` · v${sequence}`:''}</span>`;}
+// PHASE4_SPEC §4.2 · PlanAction status words (canonical values in schemas/plan-action).
+const ACTION_WORDS={PLANNED:'Planeada',IN_PROGRESS:'En curso',DONE:'Hecha',CANCELLED:'Cancelada'};
+export function planActionBadge(status){return `<span class="badge">${escape(ACTION_WORDS[status]??'')}</span>`;}
 // Display names for the canonical capability keys of the strategic method (config/strategic-method/learning-moments.v5.json).
 const capabilityLabels={'Market Reasoning':'Razonamiento de mercado','Brand Thinking':'Pensamiento de marca','GTM Prioritization':'Priorización del lanzamiento','Experimentation & Learning':'Experimentación y aprendizaje','Customer Understanding':'Comprensión del cliente','Business Model Thinking':'Modelo de negocio','Strategic Differentiation':'Diferenciación estratégica','Message Prioritization':'Priorización del mensaje','Problem Framing':'Encuadre del problema'};
 export const capabilityLabel=key=>capabilityLabels[key]??key;
@@ -565,4 +568,86 @@ export function offerFormHtml(c,content=null,offer=null){
  <fieldset><legend>Precio <span class="hint">opcional</span></legend><label class="check-option"><input type="checkbox" id="offer-has-price"${p?' checked':''}> <span>Registrar un precio</span></label><div class="offer-price"${p?'':' hidden'}><label for="offer-amount">Monto</label><input id="offer-amount" inputmode="decimal" value="${p?(p.amountMinor/100).toFixed(2):''}"><label for="offer-currency">Moneda</label><input id="offer-currency" maxlength="3" value="${escape(p?.currency??'MXN')}"><label for="offer-valid-from">Vigente desde</label><input id="offer-valid-from" type="date" value="${escape(p?.validFrom??'')}"><label for="offer-valid-until">Vigente hasta</label><input id="offer-valid-until" type="date" value="${escape(p?.validUntil??'')}"><label for="offer-certainty">¿Qué tan seguro es?</label><select id="offer-certainty"><option value="ESTIMATED"${p?.certainty!=='CONFIRMED'?' selected':''}>Estimado</option><option value="CONFIRMED"${p?.certainty==='CONFIRMED'?' selected':''}>Confirmado</option></select></div></fieldset>
  <p id="offer-form-status" role="status" aria-live="polite"></p>
  <div class="actions"><button type="submit">${offer?'Guardar borrador':'Crear borrador'}</button><button type="button" class="secondary" id="offer-cancel">Cancelar</button></div></form>`;
+}
+
+// ─── PHASE4_SPEC §4.2 · Marketing → Plan de Marketing (pure projections; operations live in app.js) ───
+const PLAN_GAP_WORDS={ANNUAL_OBJECTIVE:'un objetivo para el año',NINETY_DAY_PRIORITY:'al menos una prioridad para los próximos 90 días',ACTIONS:'acciones concretas',OWNER:'quién es responsable de cada acción',DATES:'fechas para cada acción',INDICATOR:'cómo sabrás si cada acción funcionó',MEASURE:'cómo medirás cada objetivo'};
+const MONTHS=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const dayText=iso=>{if(!iso)return '';const [y,m,d]=iso.split('-').map(Number);return `${d} de ${MONTHS[m-1]} de ${y}`;};
+export function moneyText(budget){
+ if(!budget)return '';
+ let amount;try{amount=new Intl.NumberFormat('es-MX',{style:'currency',currency:budget.currency}).format(budget.amountMinor/100);}catch{amount=`${(budget.amountMinor/100).toFixed(2)} ${budget.currency}`;}
+ return `${amount} · ${budget.certainty==='ESTIMATED'?'estimado':'confirmado'}`;
+}
+const NEXT_STATUS={PLANNED:[['IN_PROGRESS','Empezar'],['CANCELLED','Cancelar']],IN_PROGRESS:[['DONE','Marcar como hecha'],['CANCELLED','Cancelar']],DONE:[],CANCELLED:[]};
+function actionHtml(a,offers){
+ const offer=a.offerId?offers.find(o=>o.id===a.offerId):null;
+ const facts=[['Tipo',a.kind==='COMMERCIAL'?`Comercial${offer?` · ${offer.name}`:''}`:'Institucional (marca)'],['Responsable',a.owner],['Fechas',a.startDate||a.dueDate?`${a.startDate?dayText(a.startDate):'—'} a ${a.dueDate?dayText(a.dueDate):'sin fecha final'}`:''],['Presupuesto',moneyText(a.budget)],['Cómo se mide',a.indicator]].filter(([,v])=>v);
+ const open=a.status==='PLANNED'||a.status==='IN_PROGRESS';
+ return `<li class="plan-action" data-action-id="${escape(a.id)}"><div class="plan-action-head">${planActionBadge(a.status)}<h4>${escape(a.title)}</h4></div>
+ <dl class="offer-facts">${facts.map(([k,v])=>`<div><dt>${escape(k)}</dt><dd>${escape(v)}</dd></div>`).join('')}</dl>
+ ${open?`<div class="actions">${NEXT_STATUS[a.status].map(([to,label])=>`<button type="button" class="${to==='CANCELLED'?'link-action':'secondary'}" data-action-status="${to}" data-action="${escape(a.id)}">${escape(label)}</button>`).join('')}<button type="button" class="secondary" data-action-edit="${escape(a.id)}">Editar</button></div>`:''}</li>`;
+}
+function actionsByMonth(actions,offers){
+ const groups=new Map();
+ for(const a of actions){const k=a.dueDate?a.dueDate.slice(0,7):'';if(!groups.has(k))groups.set(k,[]);groups.get(k).push(a);}
+ const keys=[...groups.keys()].sort((x,y)=>x===''?1:y===''?-1:x.localeCompare(y));
+ return keys.map(k=>`<section class="plan-month"><h4>${k?`${MONTHS[Number(k.slice(5,7))-1]} ${k.slice(0,4)}`:'Sin fecha'}</h4><ul class="plan-actions">${groups.get(k).map(a=>actionHtml(a,offers)).join('')}</ul></section>`).join('')||'<p class="hint">Aún no hay acciones.</p>';
+}
+/** Plan de Marketing: annual objectives, 90-day priorities with their actions, other actions, list or month view. */
+export function planHtml(data,mode='list'){
+ const head=`<div class="ws-hero"><p class="eyebrow">Marketing</p><h2>Plan de Marketing</h2><p class="ws-lead">Tu año en objetivos claros, con foco en los próximos 90 días: qué harás, quién se encarga, cuándo, cuánto cuesta y cómo sabrás si funcionó.</p></div>
+ <p class="hint plan-areas">Redes sociales, Sitio web y Campañas digitales se sumarán a Marketing más adelante.</p>
+ <div class="plan-year" role="group" aria-label="Año del plan"><button type="button" class="secondary" data-plan-year="${data.year-1}" aria-label="Ver el plan de ${data.year-1}">‹ ${data.year-1}</button><strong>Plan ${data.year}</strong><button type="button" class="secondary" data-plan-year="${data.year+1}" aria-label="Ver el plan de ${data.year+1}">${data.year+1} ›</button></div>`;
+ if(!data.plan)return `${head}<div class="plan-empty"><p>Aún no hay plan para ${data.year}. Puedes empezarlo aunque tu estrategia no esté completa; te diremos qué falta.</p>
+ <form id="plan-start" class="plan-inline-form"><label for="plan-focus-start">¿Desde qué día cuentan tus próximos 90 días? <span class="hint">opcional</span></label><input id="plan-focus-start" type="date"><button type="submit">Empezar el plan de ${data.year}</button></form></div>`;
+ const p=data.plan;
+ const active=p.objectives.filter(o=>o.status==='ACTIVE');
+ const annual=active.filter(o=>o.horizon==='ANNUAL'),priorities=active.filter(o=>o.horizon==='NINETY_DAYS');
+ const objective=o=>`<li class="plan-objective" data-objective-id="${escape(o.id)}"><p class="plan-objective-title">${escape(o.title)}</p>${o.measure?`<p class="hint">Cómo se mide: ${escape(o.measure)}</p>`:'<p class="hint">Falta decir cómo se medirá.</p>'}<div class="actions"><button type="button" class="secondary" data-objective-edit="${escape(o.id)}">Editar</button><button type="button" class="link-action" data-objective-archive="${escape(o.id)}">Archivar</button></div></li>`;
+ const visible=p.actions.filter(a=>a.status!=='CANCELLED');
+ const cancelled=p.actions.filter(a=>a.status==='CANCELLED');
+ const priorityIds=new Set(priorities.map(o=>o.id));
+ const others=visible.filter(a=>!priorityIds.has(a.objectiveId));
+ const focus=p.focus?`Del ${dayText(p.focus.start)} al ${dayText(p.focus.end)}.`:'Aún no elegiste desde qué día cuentan los 90 días.';
+ const list=`${priorities.map(o=>`<section class="plan-priority"><h4>${escape(o.title)}</h4><ul class="plan-actions">${visible.filter(a=>a.objectiveId===o.id).map(a=>actionHtml(a,data.offers)).join('')||'<li class="hint">Sin acciones todavía.</li>'}</ul></section>`).join('')}
+ <section class="plan-priority"><h4>Otras acciones del año</h4><ul class="plan-actions">${others.map(a=>actionHtml(a,data.offers)).join('')||'<li class="hint">Sin otras acciones.</li>'}</ul></section>`;
+ return `${head}
+ ${p.gaps.length?`<div class="plan-gaps" role="note"><p><strong>Para que el plan sea útil, aún falta:</strong></p><ul>${p.gaps.map(g=>`<li>${escape(PLAN_GAP_WORDS[g])}</li>`).join('')}</ul></div>`:''}
+ <section class="plan-block" aria-labelledby="plan-annual-title"><h3 id="plan-annual-title">Objetivos del año</h3><ul class="plan-objectives">${annual.map(objective).join('')||'<li class="hint">Aún no hay objetivos para el año.</li>'}</ul><button type="button" class="secondary" data-objective-new="ANNUAL">Añadir objetivo del año</button></section>
+ <section class="plan-block" aria-labelledby="plan-focus-title"><h3 id="plan-focus-title">Prioridades de los próximos 90 días</h3><p class="plan-focus">${escape(focus)} <button type="button" class="link-action" id="plan-focus-edit">Cambiar</button></p><ul class="plan-objectives">${priorities.map(objective).join('')||'<li class="hint">Aún no hay prioridades para estos 90 días.</li>'}</ul><button type="button" class="secondary" data-objective-new="NINETY_DAYS">Añadir prioridad de 90 días</button></section>
+ <div id="plan-editor"></div>
+ <section class="plan-block" aria-labelledby="plan-actions-title"><div class="plan-actions-head"><h3 id="plan-actions-title">Acciones</h3><div class="plan-view" role="group" aria-label="Ver acciones"><button type="button" class="secondary" data-plan-mode="list" aria-pressed="${mode==='list'}">Por prioridad</button><button type="button" class="secondary" data-plan-mode="month" aria-pressed="${mode==='month'}">Por mes</button></div></div>
+ <button type="button" id="plan-action-new">Añadir acción</button>
+ ${mode==='month'?actionsByMonth(visible,data.offers):list}
+ ${cancelled.length?`<details class="plan-cancelled"><summary>Acciones canceladas (${cancelled.length})</summary><ul class="plan-actions">${cancelled.map(a=>actionHtml(a,data.offers)).join('')}</ul></details>`:''}</section>
+ <details class="plan-changes"><summary>Cambios recientes</summary><ul>${p.changes.map(c=>`<li>${escape(fmt(c.createdAt))} · ${escape({CREATE:'Creado',UPDATE:'Editado',STATUS:'Cambio de estado'}[c.operation]??'')} · ${escape(c.title)} <span class="hint">(revisión ${c.revision})</span></li>`).join('')}</ul></details>`;
+}
+/** Objective form (annual objective or 90-day priority). */
+export function objectiveFormHtml(horizon,o=null){
+ return `<form id="objective-form" class="offer-form" novalidate><h3>${o?'Editar':'Añadir'} ${horizon==='ANNUAL'?'objetivo del año':'prioridad de 90 días'}</h3>
+ <label for="objective-title">${horizon==='ANNUAL'?'¿Qué quieres lograr este año?':'¿Qué es lo más importante en estos 90 días?'}</label><input id="objective-title" maxlength="300" required value="${escape(o?.title??'')}">
+ <label for="objective-measure">¿Cómo sabrás que lo lograste?</label><input id="objective-measure" maxlength="500" value="${escape(o?.measure??'')}" placeholder="Ej. clientes nuevos por mes">
+ <p id="objective-form-status" role="status" aria-live="polite"></p><div class="actions"><button type="submit">Guardar</button><button type="button" class="secondary" data-editor-cancel>Cancelar</button></div></form>`;
+}
+/** 90-day window form. */
+export function focusFormHtml(focusStart){
+ return `<form id="focus-form" class="offer-form" novalidate><h3>Tus próximos 90 días</h3><label for="focus-start">¿Desde qué día cuentan?</label><input id="focus-start" type="date" value="${escape(focusStart??'')}"><p id="focus-form-status" role="status" aria-live="polite"></p><div class="actions"><button type="submit">Guardar</button><button type="button" class="secondary" data-editor-cancel>Cancelar</button></div></form>`;
+}
+/** Action form. A commercial action cites one of this brand's offers (the server checks it again). */
+export function actionFormHtml(data,a=null){
+ const p=data.plan,v=a??{title:'',kind:'INSTITUTIONAL',offerId:null,objectiveId:null,owner:'',startDate:null,dueDate:null,budget:null,indicator:''};
+ const objectives=p.objectives.filter(o=>o.status==='ACTIVE'||o.id===v.objectiveId);
+ const offers=data.offers.filter(o=>o.status==='ACTIVE'||o.id===v.offerId);
+ const b=v.budget;
+ return `<form id="action-form" class="offer-form" novalidate><h3>${a?'Editar acción':'Añadir acción'}</h3>
+ <label for="action-title">¿Qué vas a hacer?</label><input id="action-title" maxlength="300" required value="${escape(v.title)}">
+ <fieldset><legend>¿Sobre qué es?</legend><label class="check-option"><input type="radio" name="action-kind" value="INSTITUTIONAL"${v.kind!=='COMMERCIAL'?' checked':''}> <span>Sobre la marca en general</span></label><label class="check-option"><input type="radio" name="action-kind" value="COMMERCIAL"${v.kind==='COMMERCIAL'?' checked':''}> <span>Para vender una oferta</span></label>
+ <div class="action-offer"${v.kind==='COMMERCIAL'?'':' hidden'}>${offers.length?`<label for="action-offer">Oferta</label><select id="action-offer"><option value="">Elige una oferta</option>${offers.map(o=>`<option value="${escape(o.id)}"${o.id===v.offerId?' selected':''}>${escape(o.name)}${o.approved?'':' (sin aprobar)'}</option>`).join('')}</select>`:'<p class="hint">Aún no hay ofertas. Créalas en Productos y servicios.</p>'}</div></fieldset>
+ <label for="action-objective">¿A qué objetivo o prioridad ayuda?</label><select id="action-objective"><option value="">A ninguno en particular</option>${objectives.map(o=>`<option value="${escape(o.id)}"${o.id===v.objectiveId?' selected':''}>${o.horizon==='ANNUAL'?'Año':'90 días'} · ${escape(o.title)}</option>`).join('')}</select>
+ <label for="action-owner">Responsable</label><input id="action-owner" maxlength="160" value="${escape(v.owner)}" placeholder="Nombre de quien se encarga">
+ <div class="plan-dates"><div><label for="action-start">Empieza</label><input id="action-start" type="date" value="${escape(v.startDate??'')}"></div><div><label for="action-due">Termina</label><input id="action-due" type="date" value="${escape(v.dueDate??'')}"></div></div>
+ <fieldset><legend>Presupuesto <span class="hint">opcional</span></legend><label class="check-option"><input type="checkbox" id="action-has-budget"${b?' checked':''}> <span>Registrar un presupuesto</span></label><div class="offer-price"${b?'':' hidden'}><label for="action-amount">Monto</label><input id="action-amount" inputmode="decimal" value="${b?(b.amountMinor/100).toFixed(2):''}"><label for="action-currency">Moneda</label><input id="action-currency" maxlength="3" value="${escape(b?.currency??'MXN')}"><label for="action-certainty">¿Qué tan seguro es?</label><select id="action-certainty"><option value="ESTIMATED"${b?.certainty!=='CONFIRMED'?' selected':''}>Estimado</option><option value="CONFIRMED"${b?.certainty==='CONFIRMED'?' selected':''}>Confirmado</option></select></div></fieldset>
+ <label for="action-indicator">¿Cómo sabrás si funcionó?</label><input id="action-indicator" maxlength="500" value="${escape(v.indicator)}" placeholder="Ej. registros al webinar">
+ <p id="action-form-status" role="status" aria-live="polite"></p><div class="actions"><button type="submit">Guardar acción</button><button type="button" class="secondary" data-editor-cancel>Cancelar</button></div></form>`;
 }

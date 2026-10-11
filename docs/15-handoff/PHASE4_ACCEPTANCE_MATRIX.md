@@ -258,6 +258,13 @@ Sobre el código del commit de resguardo `25a763c`. Regresión completa ejecutad
 | Parcial | MKT-002 (sólo ofertas citando decisiones; la prueba vive en `tests/offers-cases.ts`, no en el archivo previsto), INT-005 (el área de identidad aún no existe: se nombra sin botón), INT-006 (orientación determinista probada; falta el recorrido completo sin IA), INT-008 (prioridad sin efecto en permisos; invitados y telemetría aún no existen), VER-003 (sin selección explícita de versión anterior en ofertas) |
 | Pendiente | INT-004, plan, entregables, navegación de siete entradas, Brando marketing y los demás bloques |
 
+## Estado de implementación · bloque 3 (seguridad de ofertas y plan, 2026-10-10)
+
+| Estado | Criterios |
+|---|---|
+| Implementado · verificado en DEMO | Ofertas reforzadas: MKT-004 sin atajo por revisión omitida, MKT-005 en la decisión, APR-001/002 con registro append-only y repetición idempotente (U `tests/offers-cases.ts`). Plan: MKT-001, MKT-004 y MKT-005 para plan, objetivos y acciones; estados de PlanAction (U `tests/plan-cases.ts`, `tests/plan-views.test.ts`; E `tests/browser/phase4-plan.spec.ts`); INT-004 en su parte «Organizar mi marketing abre el plan anual con prioridades de 90 días» (enlace desde Inicio, U) |
+| Pendiente | PLN-001…003 (instantánea compartida y avance), vista de calendario, resto de INT-004 (campañas) |
+
 ## Gates por bloque
 
 Matriz de brandopolis-review según archivos tocados: typecheck, lint, `pnpm test` (incluye INV-001..010, VAL, WS,
@@ -277,3 +284,4 @@ Ninguna prueba se debilita para pasar.
 | v5 | 2026-10-10 | Aprobación del propietario: ONB-005…012 obligatorios; EXT-018 ajustado al C1 final; EXT-020 (suspensión tras la última comprobación del plazo) y EXT-021 (sin atajo por otro trabajo); DOM-001…006, CNS-001…004 e IVT-001…005 nuevos; todas las pruebas siguen pendientes |
 | v6 | 2026-10-10 | Bloque 2: EXT-022…026 y DEL-006 (correcciones de la revisión de seguridad) y sección «Estado de implementación»; el resto sigue pendiente |
 | v7 | 2026-10-10 | Bloque 3 (avance): prioridad de trabajo y ofertas; sección «Estado de implementación · bloque 3» |
+| v8 | 2026-10-10 | Bloque 3: revisión de seguridad de ofertas y Plan de Marketing; sección de estado correspondiente |
