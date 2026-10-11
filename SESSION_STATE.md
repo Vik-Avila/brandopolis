@@ -43,8 +43,13 @@ Lo que sigue valiendo de la regresión: todos los recorridos salvo Resultados (r
 cambio) y el formulario en PILOT (cubierto por la prueba unitaria y por PILOT 10/10). No se repitió la regresión
 completa tras estos cambios, que sólo tocan Resultados, el formulario en PILOT y pruebas.
 
-**Capturas:** un único paquete de revisión con las 9 diferencias (4 pendientes de v5 y 5+1 por el menú de ocho
-áreas); ninguna canónica sustituida.
+**Capturas:** paquete único `Brandopolis_Fase4_capturas_revision_unica_2026-10-11.zip` (Descargas; SHA-256
+`c32b8e581708a972ef9d70a58ad203e58c81d514097bf2a9e34dfb274ed3c970`), generado con `test:visual` sobre el árbol limpio de
+`5cf0618` (repetido porque la ejecución PILOT vacía `test-results/`; mismos resultados). 17 canónicas: 8 idénticas y 9
+distintas, todas cambios previstos: 4 pendientes de v5 (las tres móviles idénticas a la «actual» del ZIP v5;
+blueprint-desktop añade el menú, 0,42 %) y 5 de escritorio sólo por el menú de ocho áreas (0,29–0,53 %, diferencias
+confinadas a x 24–242, y 367–708). Sin variaciones de datos ni defectos. Ninguna canónica sustituida: aprobar exige
+nombrar los `-current.png`.
 
 **Estado:** Clientes y Resultados de Fase 4 verificados en DEMO; pendiente sólo la aprobación visual del propietario y
 las decisiones abiertas (compartir, proveedor de correo, aviso definitivo). Chatwoot sin prueba (sin entorno); ADR-0035
