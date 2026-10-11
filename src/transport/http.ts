@@ -9,9 +9,11 @@ import type { PilotBoundary } from './pilot-auth.js';
 import type { CompetitiveResearchService } from './competitive-research.js';
 import type { DocumentClaimsService } from './document-claims.js';
 import { randomUUID,createHash } from 'node:crypto';
-import { open,mkdir,rename,rm } from 'node:fs/promises';
-import { relative,resolve,sep } from 'node:path';
+import { open,mkdir,rename,rm,readFile,writeFile } from 'node:fs/promises';
+import { dirname,relative,resolve,sep } from 'node:path';
 import { extractDocument } from '../documents/extractor.js';
+import { inspectKitAsset,KIT_ASSET_MAX_BYTES } from '../domain/kit-assets.js';
+import { kitCandidatesFromText } from '../domain/brand-kit.js';
 
 async function body(req:IncomingMessage):Promise<Record<string,unknown>> {
   if(!req.headers['content-type']?.startsWith('application/json')) throw new AppError('INVALID','JSON required');
@@ -283,6 +285,26 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           return send(res,result.reused?200:201,result);
         }
 
+        // ADR-0034 · kit files: raw body, format decided by signature, private original under <root>/<ws>/<brand>.
+        if(req.method==='POST'&&path==='/api/brand-kit/assets'){
+          const brandId=string(requestHeader(req,'x-brand-id'));
+          const originalName=sourceFileName(requestHeader(req,'x-file-name'));
+          const role=string(requestHeader(req,'x-asset-role'));
+          const declared=Number(requestHeader(req,'content-length')??0);
+          if(declared&&(!Number.isSafeInteger(declared)||declared<=0||declared>KIT_ASSET_MAX_BYTES))throw new AppError('INVALID','Invalid file size');
+          const scope=await engine.kitUploadScope(token,brandId);
+          const chunks:Buffer[]=[];let size=0;
+          for await(const chunk of req){size+=(chunk as Buffer).length;if(size>KIT_ASSET_MAX_BYTES)throw new AppError('INVALID','File too large');chunks.push(chunk as Buffer);}
+          const data=Buffer.concat(chunks);
+          const info=inspectKitAsset(new Uint8Array(data));
+          const assetId=randomUUID(),storageKey=`${scope.workspaceId}/${scope.brandId}/kit-${assetId}/original`;
+          const target=resolveDocumentStoragePath(storageKey);
+          await mkdir(dirname(target),{recursive:true});
+          await writeFile(target,data,{flag:'wx'});
+          const result=await engine.registerKitAsset(token,brandId,{id:assetId,role,originalName,info,bytes:data.length,sha256:createHash('sha256').update(data).digest('hex'),storageKey});
+          if(result.reused)await rm(dirname(target),{recursive:true,force:true});
+          return send(res,result.reused?200:201,{...result,format:info.format,width:info.width,height:info.height,alpha:info.alpha});
+        }
         if(path==='/api/documents'){
           const brandId=string(requestHeader(req,'x-brand-id'));
           const originalName=sourceFileName(requestHeader(req,'x-file-name'));
@@ -386,6 +408,14 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         // PHASE4_SPEC §4.9 · work priority (append-only) and ADR-0033 per-brand capabilities: authorization in the engine.
         if(path==='/api/brands/work-priority') return send(res,201,await engine.setWorkPriority(token,{brandId:input.brandId,intent:input.intent,note:input.note,idempotencyKey:input.idempotencyKey}));
         // PHASE4_SPEC §4.1 · offers: one path per operation; authorization, concurrency and audit in the engine.
+        // ADR-0034 · candidates from a brand manual (PDF) through the existing extractor; DECLARED, never adopted.
+        if(path==='/api/brand-kit/extract'){
+          const asset=await engine.kitAssetFile(token,string(input.brandId),input.assetId);
+          if(asset.format!=='PDF')throw new AppError('INVALID','Choose the brand manual (PDF)');
+          const extracted=await extractDocument({filePath:resolveDocumentStoragePath(asset.storageKey),mediaType:'application/pdf',originalName:asset.originalName});
+          return send(res,200,await engine.mergeKitCandidates(token,string(input.brandId),input.expectedRevision,kitCandidatesFromText(extracted.segments.map(s=>({index:s.index,text:s.text})),asset.id)));
+        }
+        if(path.startsWith('/api/brand-kit/')){const action=path.slice('/api/brand-kit/'.length);if(['start','draft','adopt','submit','decide','publish'].includes(action))return send(res,action==='start'?201:200,await engine.kitCommand(token,action as 'start',input));}
         // PHASE4_SPEC §4.4 · deliverables: one path per operation; authorization, revision and audit in the engine.
         if(path.startsWith('/api/deliverables/')){const action=path.slice('/api/deliverables/'.length);if(['create','draft','submit','decide','new-draft','retire','publication'].includes(action))return send(res,action==='create'||action==='publication'?201:200,await engine.deliverableCommand(token,action as 'create',input));}
         // PHASE4_SPEC §4.2 · marketing plan: one path per operation; authorization, revision and audit in the engine.
@@ -652,6 +682,15 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         }
         if(path==='/api/offers') return send(res,200,await engine.offers(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/plan') return send(res,200,await engine.marketingPlan(token,string(url.searchParams.get('brandId')),Number(url.searchParams.get('year'))));
+        if(path==='/api/brand-kit') return send(res,200,await engine.brandKit(token,string(url.searchParams.get('brandId'))));
+        // ADR-0034 · preview of a raster kit file only (never SVG, PDF or fonts), authorized on every request.
+        if(path==='/api/brand-kit/assets/preview'){
+          const asset=await engine.kitAssetFile(token,string(url.searchParams.get('brandId')),url.searchParams.get('assetId'));
+          if(!['PNG','JPEG','WEBP'].includes(asset.format))throw new AppError('NOT_FOUND','Preview not available');
+          const data=await readFile(resolveDocumentStoragePath(asset.storageKey));
+          res.writeHead(200,{'Content-Type':asset.mediaType,'Content-Length':data.length,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox",'Content-Disposition':'inline'});
+          return res.end(data);
+        }
         if(path==='/api/deliverables') return send(res,200,await engine.deliverables(token,string(url.searchParams.get('brandId')),url.searchParams.get('types')?.split(',').filter(Boolean).slice(0,5)??null));
         if(path==='/api/plan/shared') return send(res,200,await engine.sharedPlan(token,string(url.searchParams.get('brandId')),Number(url.searchParams.get('year'))));
         if(path==='/api/brands/work-priority') return send(res,200,await engine.workPriority(token,string(url.searchParams.get('brandId'))));

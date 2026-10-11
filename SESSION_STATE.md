@@ -1,3 +1,69 @@
+## 2026-10-10 · PHASE 4 · bloque 4 (identidad visual) en curso · base del kit de marca
+
+Sin commit todavía sobre `05cc07f`; sin push ni deploy; producción sin cambios. Migración aditiva `0023` sólo en la
+base de pruebas efímera y en el perfil aislado `rc1-smoke`.
+
+**Hecho (ADR-0034):**
+- Kit de marca, modelo único: `brand_kits` (punteros borrador / aprobada / publicada), `brand_kit_versions`
+  (contenido `brand-kit-version` v1, huella, adopciones registradas), `brand_kit_approvals` y
+  `brand_kit_publications` append-only, `kit_assets` (originales privados, append-only). Triggers: versiones sólo
+  hacia delante e inmutables fuera de DRAFT.
+- Certeza por valor (DECLARED, ESTIMATED, PROPOSED, CONFIRMED) con origen; **IDN-003**: guardar nunca confirma, sólo
+  la adopción explícita, con quién y cuándo. Contraste WCAG por cada pareja usada; faltantes según los canales que usa
+  la marca; diferencias valor a valor al completar; aviso de resolución insuficiente del logotipo.
+- Tres entradas: incorporar (archivos + candidatos del manual PDF con su página, extraídos con el extractor existente
+  `pdfjs-dist`, sin dependencias nuevas), completar (desde la aprobada, que sigue vigente) y crear (borrador manual;
+  las direcciones visuales de Brando quedan pendientes en este bloque).
+- Archivos: formato por firma (PNG, JPEG, WebP con dimensiones y transparencia real; SVG guardado pero nunca servido;
+  PDF sólo para extraer; fuentes), SHA-256, almacenamiento confinado en `<raíz>/<workspace>/<marca>/kit-<id>` (purga
+  de ADR-0029), vista previa sólo raster con `nosniff` y CSP `sandbox`.
+- Aprobación por huella con criterio e idempotencia; aprobar no publica; publicar exige `PUBLISH_BRAND_KIT`.
+  Materiales: el manifiesto de origen registra la versión aprobada del kit y «Origen actualizado» (`KIT`) cuando se
+  aprueba otra; vista de impacto en el kit. Nada cambia en cascada.
+- Interfaz: «Marca y recursos» pasa a destino real con la pestaña Identidad visual (Guía de marca, Biblioteca y
+  Plantillas «llegarán más adelante»). Pruebas de navegación actualizadas (Colaboración y Resultados siguen
+  «Próximamente»).
+- Defecto corregido por las pruebas: una referencia Pantone se asignaba a dos colores vecinos.
+
+**Comprobado (salida real, secuencial):** typecheck PASS; lint PASS; Foundation 0 errores (38 schemas); pnpm test 21
+archivos / 447 PASS; E2E en los 5 proyectos con trazas retenidas: `phase4-identity` 5/5, navegación de
+`workspace.spec` 5/5 y de `micro-hotfix` 5/5, `phase4-deliverables` 15/15.
+
+**Pendiente:** test:e2e completa, visual y PILOT sobre este código (la E2E completa anterior se detuvo en la prueba
+138/255, todas en verde hasta ahí, al caer la base aislada por memoria baja del equipo); direcciones visuales de
+Brando para «Quiero crearla»; canales consumidores del kit en sitio y campañas (bloques 7–8); intermitencia de
+`m1.spec` pendiente de diagnóstico; decisión sobre las 7 capturas canónicas.
+
+## 2026-10-10 · PHASE 4 · correcciones del propietario: exportaciones, intermitencia y datos de prueba visuales
+
+**Exportaciones (corrige «requieren ADR para una librería nueva» de la entrada anterior y del commit `214f884`):**
+ADR-0030 ya decide el camino: primero comprobar el generador PDF propio (hoy fuentes estándar WinAnsi, que no
+respetan tipografías ni todos los caracteres; ampliarlo con TrueType incrustadas y Unicode) y `jszip` (ya instalado)
+para el empaquetado OOXML/ZIP, con los criterios EXP-001…005. No está demostrado que haga falta una librería nueva;
+sólo si la comprobación lo exige se presentará su ADR para aprobación. Las exportaciones siguen comprometidas para
+el bloque 6; copiar o descargar texto no completa ese alcance.
+
+**Intermitencia `m1.spec.ts` «human connected proof…»:** abierta. Estado correcto: **última ejecución aprobada,
+intermitencia pendiente de diagnóstico**. Haber pasado después no identifica su causa. Evidencia conservada (salida
+del fallo en `wide`: tras «Guardar contexto», `#decision` mostraba la decisión 01 en lugar de Contexto estratégico).
+Se investiga sin esperas arbitrarias ni debilitar la prueba.
+Diagnóstico hasta ahora: 3/3 aislada y 20/20 con `--repeat-each=10` en wide y desktop con trazas retenidas; no se
+reproduce fuera de la suite completa (posible dependencia de carga/tiempos). Lectura de código: (1) `run()` descarta
+en silencio una acción si otra sigue en curso, y los botones pintados durante esa acción no quedan deshabilitados;
+(2) `refresh()`/`render()` pintan la decisión al resolver sin comprobar si la vista activa cambió. Ambas pueden dar
+el síntoma observado, pero ninguna está confirmada como causa, por eso no se cambian a ciegas. A partir de ahora
+las E2E completas se ejecutan con `--trace=retain-on-failure` para capturar la próxima aparición.
+
+**Datos de prueba de las capturas (`tests/visual/canonical.spec.ts`):** nombre de marca fijo («Marca Demo 2026»);
+sólo en esa prueba, las fechas se muestran en America/Mexico_City con el instante de la evidencia canónica (9 oct
+2026, 2:49 p. m.) sin tocar la aplicación. Además, la lista «Depende de / Afecta a» se ordenaba por identificadores
+aleatorios: ahora sigue el orden del recorrido (01–09), cambio sólo de presentación en `app.js`. Resultado en dos
+ejecuciones consecutivas: 10 capturas idénticas píxel a píxel (las 7 que ya coincidían y las 3 móviles que sólo
+diferían por datos) y 7 candidatas a revisión (m1-workspace-desktop/mobile, blueprint-desktop,
+decision-card-desktop, history-desktop, m1-guided-review-desktop, m1-needs-review-desktop). Comparación entregada
+en `Brandopolis_Fase4_capturas_canonicas_comparacion_v2_2026-10-10.zip` (SHA-256
+`334d8df3366bb6389f86a18c76a5d372059ceb45caca227ca126e182db6ed98f`). Ningún archivo canónico modificado.
+
 ## 2026-10-10 · PHASE 4 · bloque 3 · entregables, Brando para marketing y regresión completa
 
 Sobre `214f884` más cambios del árbol probado `1f374eb2ddb99d061e1a77aba148dc19a2e1f08a` (`git write-tree` sobre

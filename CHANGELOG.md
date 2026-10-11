@@ -1,3 +1,15 @@
+## 2026-10-10 · Phase 4 — bloque 4 en curso: base del kit de marca
+
+- Kit de marca versionado con certeza por valor, adopción explícita, contraste por pareja, faltantes por canal, archivos validados por firma y publicación con permiso propio; migración aditiva 0023.
+- «Marca y recursos» → Identidad visual habilitado; materiales enlazados a la versión aprobada del kit.
+- Evidencia: pnpm test 447 PASS; E2E de identidad, navegación y entregables en verde (5 proyectos). Regresión completa pendiente.
+
+## 2026-10-10 · Phase 4 — correcciones: exportaciones, intermitencia y datos visuales fijos
+
+- Exportaciones: se comprobará primero el generador PDF propio (TrueType/Unicode) y `jszip` según ADR-0030; una librería nueva sólo con ADR y aprobación. Descargar texto no completa el bloque 6.
+- `m1.spec.ts`: última ejecución aprobada, intermitencia pendiente de diagnóstico.
+- Capturas: nombre y fecha fijos en la prueba visual y dependencias en orden del recorrido; 10 idénticas, 7 candidatas a revisión (sin actualizar).
+
 ## 2026-10-10 · Phase 4 — bloque 3: entregables y Brando para marketing
 
 - Cinco tipos de entregable con versiones, aprobación por huella, decisión idempotente, manifiesto de origen y registro manual de publicación; migración aditiva 0022; pestañas de área accesibles.

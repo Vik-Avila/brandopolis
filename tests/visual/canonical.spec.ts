@@ -7,7 +7,8 @@ const session=()=>JSON.parse(readFileSync(process.env.BRANDOPOLIS_SESSION_FILE??
 async function seed(request:APIRequestContext) {
   const {token,userId}=session(),auth={Authorization:`Bearer ${token}`};
   const post=async(path:string,data:unknown)=>{const r=await request.post(path,{headers:auth,data});expect(r.ok(),path).toBe(true);return r.json();};
-  const brand=await post('/api/brands',{name:`Marca Demo ${Date.now()}`,initialContext:'Plataforma que ayuda a equipos a tomar mejores decisiones estratégicas de marca.'});
+  // Fixed test data: a constant brand name keeps canonical screenshots free of run-to-run noise.
+  const brand=await post('/api/brands',{name:'Marca Demo 2026',initialContext:'Plataforma que ayuda a equipos a tomar mejores decisiones estratégicas de marca.'});
   const ctx=await (await request.get(`/api/context?brandId=${brand.id}`,{headers:auth})).json(),q=(m:string)=>ctx.questions.find((x:{module:string})=>x.module===m).id;
   const commit=async(module:string,option:string,rationale:string,expected:string|null,reviewToken?:string)=>{await post('/api/questions/prepare',{brandId:brand.id,questionId:q(module),expectedActiveVersion:expected});return post('/api/decisions/commit',{command:{brandId:brand.id,questionId:q(module),selectedOption:option,rationale,expectedActiveVersion:expected,actorUserId:userId,sourceRecommendationId:null,idempotencyKey:crypto.randomUUID()},reviewToken});};
   const c1=await commit('Primary Customer','Agencias con varias marcas','Gestionan varias marcas y necesitan continuidad de criterio.',null);
@@ -35,6 +36,15 @@ async function sound(page:Page,label:string) {
   const broken=await page.evaluate(()=>[...document.images].filter(i=>i.checkVisibility()&&(!i.complete||i.naturalWidth===0)).map(i=>i.currentSrc));
   expect(broken,`${label} broken images`).toEqual([]);
 }
+/**
+ * Canonical screenshots show timestamps created by the server at seeding time. Only in this test, the browser shows
+ * every date as the fixed instant of the existing canonical evidence (9 Oct 2026, 2:49 p. m., America/Mexico_City),
+ * so a new run does not differ just because it ran on another day. The application code is not changed.
+ */
+const FROZEN_INSTANT='2026-10-09T20:49:00.000Z';
+async function freezeDates(context:import('@playwright/test').BrowserContext){
+  await context.addInitScript(instant=>{const show=Date.prototype.toLocaleString;Date.prototype.toLocaleString=function(locales?:Intl.LocalesArgument,options?:Intl.DateTimeFormatOptions){return show.call(new Date(instant),locales,options);};},FROZEN_INSTANT);
+}
 async function shot(page:Page,name:string){await page.evaluate(async()=>{await document.fonts.ready;scrollTo(0,0);});await page.screenshot({path:`${shots}/${name}.png`,fullPage:true});}
 const viewports={wide:{width:1600,height:1000},desktop:{width:1440,height:900},compact:{width:1280,height:800},tablet:{width:768,height:1024},mobile:{width:390,height:844}};
 test.describe.configure({mode:'serial'});
@@ -55,7 +65,7 @@ for(const [name,viewport] of Object.entries(viewports)){
 }
 test('canonical screenshots (desktop 1440×900, mobile 390×844)',async({browser})=>{
   for(const [suffix,viewport] of [['desktop',viewports.desktop],['mobile',viewports.mobile]] as const){
-    const context=await browser.newContext({viewport,...(suffix==='mobile'?{isMobile:true,hasTouch:true}:{}),reducedMotion:'reduce'}),page=await context.newPage();
+    const context=await browser.newContext({viewport,...(suffix==='mobile'?{isMobile:true,hasTouch:true}:{}),reducedMotion:'reduce',locale:'es-MX',timezoneId:'America/Mexico_City'});await freezeDates(context);const page=await context.newPage();
     await page.goto('/');await page.waitForLoadState('networkidle');await shot(page,`public-gateway-${suffix}`);
     await page.goto('/login');await page.waitForLoadState('networkidle');await shot(page,`login-${suffix}`);
     await page.goto('/request-access');await page.waitForLoadState('networkidle');await shot(page,`request-access-${suffix}`);

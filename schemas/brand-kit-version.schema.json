@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/brand-kit-version.v1",
+  "title": "brand-kit-version",
+  "x-version": "v1",
+  "description": "ADR-0034 · content of one version of the brand kit (the single identity model): channels the brand uses, logos (exact asset id + fingerprint, format detected from the file), palette with roles, typography with known permissions and reviewed channel alternatives, style, verbal identity and the text/background pairs actually used. Every value carries its certainty (DECLARED, ESTIMATED, PROPOSED, CONFIRMED) and origin; CONFIRMED only through an explicit human adoption. Immutable once it leaves DRAFT.",
+  "$defs": {
+    "certainty": { "type": "string", "enum": ["DECLARED", "ESTIMATED", "PROPOSED", "CONFIRMED"] },
+    "origin": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "kind": { "type": "string", "enum": ["DOCUMENT", "IMAGE", "PERSON", "BRANDO", "DESIGNER"] },
+        "assetId": { "type": ["string", "null"], "maxLength": 200 },
+        "page": { "type": ["integer", "null"], "minimum": 1 },
+        "note": { "type": "string", "maxLength": 300 }
+      },
+      "required": ["kind", "assetId", "page", "note"]
+    },
+    "id": { "type": "string", "pattern": "^[a-z0-9-]{1,40}$" }
+  },
+  "properties": {
+    "channels": { "type": "array", "maxItems": 6, "uniqueItems": true, "items": { "type": "string", "enum": ["SOCIAL", "WEBSITE", "ADS", "PRESENTATION", "PRINT", "CANVA"] } },
+    "logos": {
+      "type": "array", "maxItems": 12,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "variant": { "type": "string", "enum": ["PRIMARY", "ON_DARK", "MONOCHROME", "SYMBOL", "FAVICON", "OTHER"] },
+          "assetId": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "fingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "minWidthPx": { "type": ["integer", "null"], "minimum": 8, "maximum": 4000 },
+          "usage": { "type": "string", "maxLength": 500 },
+          "certainty": { "$ref": "#/$defs/certainty" },
+          "origin": { "$ref": "#/$defs/origin" }
+        },
+        "required": ["id", "variant", "assetId", "fingerprint", "minWidthPx", "usage", "certainty", "origin"]
+      }
+    },
+    "palette": {
+      "type": "array", "maxItems": 16,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "hex": { "type": "string", "pattern": "^#[0-9A-F]{6}$" },
+          "role": { "type": "string", "enum": ["PRIMARY", "ACCENT", "BACKGROUND", "TEXT", "SUPPORT"] },
+          "reference": { "type": "string", "maxLength": 80 },
+          "certainty": { "$ref": "#/$defs/certainty" },
+          "origin": { "$ref": "#/$defs/origin" }
+        },
+        "required": ["id", "name", "hex", "role", "reference", "certainty", "origin"]
+      }
+    },
+    "typography": {
+      "type": "array", "maxItems": 8,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "family": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "use": { "type": "string", "enum": ["HEADINGS", "BODY", "ACCENT"] },
+          "weights": { "type": "array", "maxItems": 9, "items": { "type": "integer", "enum": [100, 200, 300, 400, 500, 600, 700, 800, 900] } },
+          "source": { "type": "string", "maxLength": 200 },
+          "webEmbedding": { "type": "string", "enum": ["ALLOWED", "NOT_ALLOWED", "UNKNOWN"] },
+          "documentEmbedding": { "type": "string", "enum": ["ALLOWED", "NOT_ALLOWED", "UNKNOWN"] },
+          "alternatives": {
+            "type": "array", "maxItems": 4,
+            "items": { "type": "object", "additionalProperties": false, "properties": { "channel": { "type": "string", "enum": ["SOCIAL", "WEBSITE", "ADS", "PRESENTATION", "PRINT", "CANVA"] }, "family": { "type": "string", "minLength": 1, "maxLength": 80 }, "reviewed": { "type": "boolean" } }, "required": ["channel", "family", "reviewed"] }
+          },
+          "certainty": { "$ref": "#/$defs/certainty" },
+          "origin": { "$ref": "#/$defs/origin" }
+        },
+        "required": ["id", "family", "use", "weights", "source", "webEmbedding", "documentEmbedding", "alternatives", "certainty", "origin"]
+      }
+    },
+    "pairs": {
+      "type": "array", "maxItems": 20,
+      "items": { "type": "object", "additionalProperties": false, "properties": { "text": { "$ref": "#/$defs/id" }, "background": { "$ref": "#/$defs/id" }, "use": { "type": "string", "maxLength": 120 } }, "required": ["text", "background", "use"] }
+    },
+    "style": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "photography": { "type": "string", "maxLength": 1000 },
+        "illustration": { "type": "string", "maxLength": 1000 },
+        "icons": { "type": "string", "maxLength": 500 },
+        "composition": { "type": "string", "maxLength": 1000 },
+        "do": { "type": "array", "maxItems": 10, "items": { "type": "string", "minLength": 1, "maxLength": 300 } },
+        "dont": { "type": "array", "maxItems": 10, "items": { "type": "string", "minLength": 1, "maxLength": 300 } }
+      },
+      "required": ["photography", "illustration", "icons", "composition", "do", "dont"]
+    },
+    "verbal": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "tone": { "type": "string", "maxLength": 500 },
+        "messages": { "type": "array", "maxItems": 8, "items": { "type": "string", "minLength": 1, "maxLength": 300 } },
+        "examples": { "type": "array", "maxItems": 8, "items": { "type": "string", "minLength": 1, "maxLength": 500 } }
+      },
+      "required": ["tone", "messages", "examples"]
+    },
+    "rights": { "type": "string", "enum": ["UNKNOWN", "DECLARED_OWNED", "LICENSED"] }
+  },
+  "required": ["channels", "logos", "palette", "typography", "pairs", "style", "verbal", "rights"],
+  "examples": [
+    { "channels": ["SOCIAL"], "logos": [], "palette": [{ "id": "c1", "name": "Rojo", "hex": "#C8102E", "role": "PRIMARY", "reference": "Pantone 186 C", "certainty": "DECLARED", "origin": { "kind": "DOCUMENT", "assetId": "a1", "page": 12, "note": "" } }], "typography": [], "pairs": [], "style": { "photography": "", "illustration": "", "icons": "", "composition": "", "do": [], "dont": [] }, "verbal": { "tone": "", "messages": [], "examples": [] }, "rights": "UNKNOWN" }
+  ]
+}

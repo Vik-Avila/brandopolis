@@ -431,6 +431,30 @@ body.left-collapsed #journey .nav-item[data-tip]:hover::after, body.left-collaps
 .brando-proposal-text { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; margin: 6px 0; padding: 10px 12px; border-radius: 10px; background: var(--surface-card); border: 1px solid var(--ws-line); }
 .brando-list-title { margin: 8px 0 2px; font-weight: 650; }
 .brando-proposal ul { margin: 0; padding-left: 18px; }
+/* ADR-0034 · Identidad visual. */
+.kit-entries { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 16px 0; }
+.kit-entry { padding: 18px 20px; border: 1px solid var(--ws-line); border-radius: 18px; background: var(--surface-card); display: grid; gap: 8px; align-content: start; }
+.kit-entry h3 { margin: 0; font: 500 22px/1.25 var(--font-display); }
+.kit-entry p { margin: 0; }
+.kit-entry button, .kit-upload button, #kit-publish, #kit-submit, #kit-edit, #kit-extract { min-height: 44px; justify-self: start; }
+.kit-upload { display: grid; gap: 6px; max-width: 480px; margin: 8px 0 12px; }
+.kit-assets, .kit-values ul, .kit-contrast { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 8px; }
+.kit-asset { display: grid; grid-template-columns: 96px 1fr; gap: 12px; align-items: center; padding: 10px; border: 1px solid var(--ws-line); border-radius: 12px; }
+.kit-asset-preview { width: 96px; height: 72px; display: grid; place-items: center; background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0 / 16px 16px; border-radius: 8px; overflow: hidden; }
+.kit-asset-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.kit-asset-preview .hint { font-size: 12px; text-align: center; padding: 4px; background: var(--surface-card); }
+.kit-asset-name { margin: 0; font-weight: 650; overflow-wrap: anywhere; }
+.kit-asset .hint { margin: 2px 0 0; }
+.kit-values h4 { margin: 12px 0 6px; font-size: 16px; }
+.kit-value { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border: 1px solid var(--ws-line); border-radius: 12px; }
+.kit-value > div { flex: 1; min-width: 0; }
+.kit-value p { margin: 0; overflow-wrap: anywhere; }
+.kit-swatch { width: 36px; height: 36px; flex: 0 0 36px; border-radius: 8px; border: 1px solid var(--ws-line); }
+.kit-adopt { min-height: 44px; margin: 0; }
+.kit-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+.kit-row label { display: grid; gap: 4px; }
+.kit-pair { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 6px; }
+@media (max-width: 640px) { .kit-asset { grid-template-columns: 72px 1fr; } .kit-asset-preview { width: 72px; height: 56px; } }
 /* PHASE4_SPEC §4.1 · Productos y servicios. */
 .offer-list { display: grid; gap: 16px; margin-top: 18px; }
 .offer-card { padding: 20px 22px; border: 1px solid var(--ws-line); border-radius: 18px; background: var(--surface-card); }

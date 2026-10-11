@@ -13,7 +13,7 @@ import type { BrandActor } from './brand-access.js';
  * mandatory revision (409), idempotent creation and decisions, append-only approvals, versions frozen out of DRAFT by
  * the database. Each version stores an origin manifest and its provenance, both decided by the server.
  */
-type Manifest = { decisionVersionIds: string[]; offerVersionId: string | null; kitVersionId: null };
+type Manifest = { decisionVersionIds: string[]; offerVersionId: string | null; kitVersionId: string | null };
 const byBrand = (table: { workspaceId: AnyPgColumn; brandId: AnyPgColumn }, a: BrandActor) => and(eq(table.workspaceId, a.workspaceId), eq(table.brandId, a.brandId));
 const key = (value: unknown) => { if (typeof value !== 'string' || !value.trim() || value.length > 200) throw new AppError('INVALID', 'Invalid idempotency key'); return value; };
 const revisionOf = (value: unknown) => { if (!Number.isInteger(value) || (value as number) < 0) throw new AppError('INVALID', 'Expected revision required'); return value as number; };
@@ -31,7 +31,9 @@ async function manifestFor(tx: Transaction, a: BrandActor, c: DeliverableContent
     if (!offer) throw new AppError('INVALID', 'Unknown offer for this brand');
     offerVersionId = offer.approvedVersionId;
   }
-  return { decisionVersionIds: c.sourceDecisionVersionIds, offerVersionId, kitVersionId: null };
+  // ADR-0034 · the approved kit version at this moment (null while the brand has none).
+  const [kit] = await tx.select({ approvedVersionId: t.brandKits.approvedVersionId }).from(t.brandKits).where(byBrand(t.brandKits, a));
+  return { decisionVersionIds: c.sourceDecisionVersionIds, offerVersionId, kitVersionId: kit?.approvedVersionId ?? null };
 }
 
 async function lockDeliverable(tx: Transaction, a: BrandActor, id: unknown, expected: unknown) {
@@ -56,10 +58,12 @@ export async function listDeliverables(tx: Transaction, a: BrandActor, types: re
   const decisions = await tx.select({ id: t.decisions.id, activeVersionId: t.decisions.activeVersionId }).from(t.decisions).where(byBrand(t.decisions, a));
   const decisionVersions = await tx.select({ id: t.versions.id, decisionId: t.versions.decisionId }).from(t.versions).where(byBrand(t.versions, a));
   const offers = await tx.select({ id: t.offers.id, approvedVersionId: t.offers.approvedVersionId }).from(t.offers).where(byBrand(t.offers, a));
+  const [kit] = await tx.select({ approvedVersionId: t.brandKits.approvedVersionId }).from(t.brandKits).where(byBrand(t.brandKits, a));
   const activeOf = new Map(decisions.map(d => [d.id, d.activeVersionId])), decisionOf = new Map(decisionVersions.map(v => [v.id, v.decisionId]));
   const outdated = (content: DeliverableContent, m: Manifest) => [
     ...m.decisionVersionIds.filter(v => decisionOf.has(v) && activeOf.get(decisionOf.get(v)!) !== v).map(() => 'DECISION'),
-    ...(content.offerId && offers.find(o => o.id === content.offerId)?.approvedVersionId !== m.offerVersionId ? ['OFFER'] : [])
+    ...(content.offerId && offers.find(o => o.id === content.offerId)?.approvedVersionId !== m.offerVersionId ? ['OFFER'] : []),
+    ...(m.kitVersionId && kit?.approvedVersionId && kit.approvedVersionId !== m.kitVersionId ? ['KIT'] : [])
   ];
   return rows.map(d => {
     const own = versions.filter(v => v.deliverableId === d.id);

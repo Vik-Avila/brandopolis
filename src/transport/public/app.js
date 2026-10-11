@@ -1,6 +1,6 @@
 import {createBrandoPresence} from './brando-presence.js';
 const $=s=>document.querySelector(s);
-import {brandoProposalHtml,areaTabsHtml,deliverablesHtml,deliverableFormHtml,deliverableText,AREA_TYPES,planHtml,sharedPlanHtml,objectiveFormHtml,focusFormHtml,actionFormHtml,offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
+import {identityHtml,kitFormHtml,brandoProposalHtml,areaTabsHtml,deliverablesHtml,deliverableFormHtml,deliverableText,AREA_TYPES,planHtml,sharedPlanHtml,objectiveFormHtml,focusFormHtml,actionFormHtml,offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
 import {trapFocus,decisionTabs,viewTabs} from './product-interactions.js';
 import * as analytics from './analytics.js';
 import {PILOT_EVENTS} from './analytics.js';
@@ -2084,7 +2084,7 @@ const showOffersArea=()=>offersTab==='offers'?showOffers():showDeliverables('mat
 function mountAreaTabs(area,active){
  const hero=$('#decision .ws-hero');if(!hero)return;
  hero.insertAdjacentHTML('afterend',areaTabsHtml(area,active));
- const go=key=>{if(area==='marketing'){marketingTab=key;return run(async()=>{await showMarketing();$(`[data-area-tab="${key}"]`)?.focus();});}offersTab=key;return run(async()=>{await showOffersArea();$(`[data-area-tab="${key}"]`)?.focus();});};
+ const go=key=>{if(area==='brand')return run(showIdentity);if(area==='marketing'){marketingTab=key;return run(async()=>{await showMarketing();$(`[data-area-tab="${key}"]`)?.focus();});}offersTab=key;return run(async()=>{await showOffersArea();$(`[data-area-tab="${key}"]`)?.focus();});};
  const tabs=[...document.querySelectorAll('[data-area-tab]')];
  tabs.forEach(tab=>tab.addEventListener('click',()=>{if(tab.getAttribute('aria-selected')!=='true')go(tab.dataset.areaTab);}));
  $('.area-tabs').addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const i=tabs.indexOf(document.activeElement),n=event.key==='Home'?0:event.key==='End'?tabs.length-1:(i+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;go(tabs[n].dataset.areaTab);});
@@ -2159,6 +2159,50 @@ function fillDeliverableForm(c){
  if(c.type==='DESIGN_BRIEF'){set('#dl-for',b.for);set('#dl-piece',b.piece);set('#dl-format-size',b.format);set('#dl-brief-audience',b.audience);set('#dl-message',b.message);set('#dl-must',b.mustInclude);set('#dl-avoid',b.avoid);set('#dl-due',b.dueDate);}
  for(const box of document.querySelectorAll('input[name="dl-source"]'))box.checked=c.sourceDecisionVersionIds.includes(box.value);
 }
+/** ADR-0034 · Marca y recursos → Identidad visual. Files are validated by the server; values are adopted explicitly. */
+let kitData=null;
+async function showIdentity(){
+ if(!enterView('#brand-resources','Identidad visual'))return;
+ const [data,caps]=await Promise.all([api(`/api/brand-kit?brandId=${encodeURIComponent(brandId)}`),api(`/api/brands/capabilities?brandId=${encodeURIComponent(brandId)}`)]);
+ kitData=data;
+ const root=$('#decision');root.innerHTML=identityHtml(data,brandId,(caps.mine??[]).includes('PUBLISH_BRAND_KIT'));mountAreaTabs('brand','identity');
+ root.querySelectorAll('.kit-swatch').forEach(el=>{el.style.backgroundColor=el.dataset.hex;});
+ const k=data.kit;
+ const command=(action,payload,message)=>run(async()=>{await api(`/api/brand-kit/${action}`,{brandId,...payload});await showIdentity();notice(message);});
+ root.querySelectorAll('[data-kit-start]').forEach(b=>b.addEventListener('click',()=>command('start',{entry:b.dataset.kitStart,expectedRevision:k?.revision??0},'Borrador del kit listo. Revisa cada valor y adopta los correctos.')));
+ $('#kit-upload')?.addEventListener('submit',event=>{event.preventDefault();const file=$('#kit-file').files[0];if(!file){$('#kit-file').focus();notice('Elige un archivo.',true);return;}
+  run(async()=>{const r=await fetch('/api/brand-kit/assets',{method:'POST',headers:{'Content-Type':'application/octet-stream','X-Brand-Id':brandId,'X-File-Name':encodeURIComponent(file.name),'X-Asset-Role':$('#kit-file-role').value},body:file,credentials:'same-origin'});const body=await r.json().catch(()=>({}));if(!r.ok){const error=new Error(body.message??'No se pudo subir el archivo');error.code=body.code;throw error;}await showIdentity();notice(body.reused?'Ese archivo ya estaba guardado.':'Archivo guardado sin modificar.');},event.submitter);});
+ $('#kit-adopt-form')?.addEventListener('submit',event=>{event.preventDefault();const ids=[...event.currentTarget.querySelectorAll('input[name="kit-adopt"]:checked')].map(i=>i.value);if(!ids.length){notice('Marca los valores que quieres adoptar.',true);return;}command('adopt',{expectedRevision:k.revision,valueIds:ids},'Valores adoptados: ahora constan como confirmados por ti.');});
+ $('#kit-extract')?.addEventListener('click',event=>run(async()=>{const r=await api('/api/brand-kit/extract',{brandId,assetId:event.currentTarget.dataset.asset,expectedRevision:k.revision});await showIdentity();notice(`Encontramos ${r.added.palette} color(es) y ${r.added.typography} tipografía(s) en el manual. Revísalos y adopta los correctos.`);},event.currentTarget));
+ $('#kit-submit')?.addEventListener('click',()=>command('submit',{expectedRevision:k.revision},'Versión enviada a revisión. Ya no se edita.'));
+ $('#kit-edit')?.addEventListener('click',()=>openKitEditor());
+ root.querySelectorAll('.kit-decide').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const criterion=form.querySelector('textarea').value.trim();if(criterion.length<10){form.querySelector('textarea').focus();notice('Escribe al menos diez caracteres para explicar tu decisión.',true);return;}const decision=event.submitter?.value;const keyName=`key${decision}`;form.dataset[keyName]??=crypto.randomUUID();command('decide',{versionId:form.dataset.version,fingerprint:form.dataset.fingerprint,decision,criterion,idempotencyKey:form.dataset[keyName]},decision==='APPROVE'?'Kit aprobado. Publicarlo es un paso aparte.':'Cambios solicitados.');}));
+ $('#kit-publish')?.addEventListener('click',event=>{const b=event.currentTarget;b.dataset.key??=crypto.randomUUID();command('publish',{versionId:b.dataset.version,fingerprint:b.dataset.fingerprint,idempotencyKey:b.dataset.key},'Kit publicado: guía y recursos usarán esta versión.');});
+}
+function openKitEditor(){
+ const k=kitData.kit,c=k.draft.content,host=$('#kit-editor');host.innerHTML=kitFormHtml(c,kitData.assets);
+ const form=$('#kit-form');form.querySelector('input,select')?.focus();
+ form.querySelector('[data-editor-cancel]').addEventListener('click',()=>{host.innerHTML='';});
+ form.querySelectorAll('[data-kit-add]').forEach(b=>b.addEventListener('click',()=>{const kind=b.dataset.kitAdd;if(kind==='pair'){const opts=c.palette.map(x=>`<option value="${escape(x.id)}">${escape(x.name)}</option>`).join('');$('#kit-pairs').insertAdjacentHTML('beforeend',`<div class="kit-pair"><select name="pair-text">${opts}</select> sobre <select name="pair-background">${opts}</select><input name="pair-use" maxlength="120" aria-label="Uso"></div>`);return;}const target={color:'#kit-colors',font:'#kit-fonts',logo:'#kit-logos'}[kind];$(target).insertAdjacentHTML('beforeend',$(`#kit-row-${kind}`).innerHTML);$(target).lastElementChild.querySelector('input,select')?.focus();}));
+ form.addEventListener('submit',event=>{event.preventDefault();
+  const used=new Set([...c.palette,...c.typography,...c.logos].map(v=>v.id));
+  const fresh=prefix=>{let i=1;while(used.has(`${prefix}-${i}`))i++;used.add(`${prefix}-${i}`);return `${prefix}-${i}`;};
+  const prev=id=>[...c.palette,...c.typography,...c.logos].find(v=>v.id===id);
+  const rows=kind=>[...form.querySelectorAll(`.kit-row[data-kind="${kind}"]`)];
+  const field=(row,name)=>row.querySelector(`[name="${name}"]`)?.value??'';
+  const keep=(row,value)=>{const old=prev(row.dataset.id);const certainty=row.dataset.confirmed==='true'?'CONFIRMED':field(row,'certainty')||old?.certainty||'PROPOSED';return {...value,id:row.dataset.id||fresh(value.idPrefix),certainty,origin:old?.origin??{kind:'PERSON',assetId:null,page:null,note:''}};};
+  const strip=({idPrefix:_p,...v})=>v;
+  try{
+   const palette=rows('color').filter(r=>field(r,'name').trim()||field(r,'hex').trim()).map(r=>strip(keep(r,{idPrefix:'c',name:field(r,'name').trim(),hex:field(r,'hex').trim().toUpperCase(),role:field(r,'role'),reference:field(r,'reference').trim()})));
+   const typography=rows('font').filter(r=>field(r,'family').trim()).map(r=>{const old=prev(r.dataset.id);return strip(keep(r,{idPrefix:'f',family:field(r,'family').trim(),use:field(r,'use'),weights:old?.weights??[],source:field(r,'source').trim(),webEmbedding:field(r,'webEmbedding'),documentEmbedding:field(r,'documentEmbedding'),alternatives:old?.alternatives??[]}));});
+   const logos=rows('logo').filter(r=>field(r,'assetId')).map(r=>{const option=r.querySelector('[name="assetId"]').selectedOptions[0];const min=Number(field(r,'minWidthPx'));return strip(keep(r,{idPrefix:'l',variant:field(r,'variant'),assetId:field(r,'assetId'),fingerprint:option.dataset.sha,minWidthPx:Number.isInteger(min)&&min>=8?min:null,usage:prev(r.dataset.id)?.usage??''}));});
+   if(palette.some(p=>!/^#[0-9A-F]{6}$/.test(p.hex))){$('#kit-form-status').textContent='Escribe cada color como #RRGGBB, por ejemplo #C8102E.';return;}
+   const pairs=[...form.querySelectorAll('.kit-pair')].map(p=>({text:p.querySelector('[name="pair-text"]').value,background:p.querySelector('[name="pair-background"]').value,use:p.querySelector('[name="pair-use"]').value.trim()})).filter(p=>palette.some(x=>x.id===p.text)&&palette.some(x=>x.id===p.background));
+   const content={...c,channels:[...form.querySelectorAll('input[name="kit-channel"]:checked')].map(i=>i.value),logos,palette,typography,pairs,verbal:{...c.verbal,tone:$('#kit-tone').value},rights:$('#kit-rights').value};
+   run(async()=>{await api('/api/brand-kit/draft',{brandId,expectedRevision:k.revision,content});await showIdentity();notice('Borrador del kit guardado. Los valores nuevos o cambiados quedan sin confirmar hasta que los adoptes.');},event.submitter);
+  }catch(error){$('#kit-form-status').textContent=error.message;}
+ });
+}
 /** PLN-001…003 · what the client receives: approved version and shared progress (read only). */
 async function showSharedPlan(){
  if(!enterView('#marketing','Plan de Marketing · Lo que recibe el cliente'))return;
@@ -2187,6 +2231,7 @@ function mountLearningMoment(question){const m=user.learningMoments?.[question.m
 $('#learning-loop').addEventListener('click',()=>run(showLearning));
 $('#offers').addEventListener('click',()=>run(showOffersArea));
 $('#marketing').addEventListener('click',()=>run(showMarketing));
+$('#brand-resources').addEventListener('click',()=>run(showIdentity));
 // ADR-0026: the next Brando question may carry an interpretation scope; a valid answer returns a server proof.
 let brandoInterpretation=null,brandoAssistanceProof=null;
 const assistActive=()=>!!brandoAssistanceProof&&brandoAssistanceProof.brandId===brandId&&Date.parse(brandoAssistanceProof.expiresAt)>Date.now();
@@ -2379,7 +2424,9 @@ function composeDecision(q,d,v,reviews){
    // 1 decision under review (its current content) · 2 why · 3 which decision caused it · 4 what you can do.
    if(form){hero.after(form);if(v){form.insertAdjacentHTML('afterbegin',reviewBriefHtml(q,v,reviews));human?.remove();}}
  }
- const related=context.dependencies.filter(link=>link.upstreamDecisionId===d?.id||link.downstreamDecisionId===d?.id);
+ // Stable order: connected decisions follow the journey order (01–09), never the order of their random ids.
+ const journeyRank=link=>{const other=link.upstreamDecisionId===d?.id?link.downstreamDecisionId:link.upstreamDecisionId;return Object.keys(labels).indexOf(context.questions.find(q=>q.id===context.decisions.find(x=>x.id===other)?.questionId)?.module);};
+ const related=context.dependencies.filter(link=>link.upstreamDecisionId===d?.id||link.downstreamDecisionId===d?.id).sort((x,y)=>journeyRank(x)-journeyRank(y));
  if(related.length){const connections=document.createElement('div');connections.className='decision-connections';const chip=link=>{const other=link.upstreamDecisionId===d.id?link.downstreamDecisionId:link.upstreamDecisionId,otherDecision=context.decisions.find(d=>d.id===other),question=context.questions.find(q=>q.id===otherDecision?.questionId),review=needsReview(context,otherDecision);return `<span class="connection${review?' is-review':''}">${escape(labels[question?.module]??'Decisión')} <small>· ${link.kind==='HARD'?'estricta':link.kind==='SOFT'?'sugerida':'informativa'}${review?' · requiere revisión':''}</small></span>`;},dependsOn=related.filter(link=>link.downstreamDecisionId===d.id),affects=related.filter(link=>link.upstreamDecisionId===d.id);
   connections.innerHTML=(dependsOn.length?`<span class="label">Depende de</span>${dependsOn.map(chip).join('')}`:'')+(affects.length?`<span class="label">Afecta a</span>${affects.map(chip).join('')}`:'');surface.append(connections);}
  if(reviews.length)surface.classList.add('under-review');else surface.classList.remove('under-review');

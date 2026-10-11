@@ -281,7 +281,7 @@ Evidencia sobre el árbol `1f374eb2…` (ver SESSION_STATE): test:e2e 242 PASS �
 | Estado | Criterios |
 |---|---|
 | Implementado · verificado en DEMO | Navegación de siete entradas (§3); entregables §4.4 con MKT-001/003/004/005, VER-001/002 y APR-001/002 aplicados (U `tests/deliverables-cases.ts`, E `tests/browser/phase4-deliverables.spec.ts`); BRN-001 y BRN-002 para la superficie de marketing (U `tests/brando-marketing-cases.ts`, evals `evals/brando-marketing.json`; DEMO, sin Live AI) |
-| Parcial | Exportaciones: sólo texto (EXP-001…005 pendientes); revisión de entregables por invitado (ADR-0033) hasta Colaboración |
+| Parcial | Exportaciones: sólo copiar/descargar texto; EXP-001…005 pendientes para el bloque 6, empezando por comprobar el generador PDF propio y `jszip` (ADR-0030); revisión de entregables por invitado (ADR-0033) hasta Colaboración |
 | Pendiente | CNV-001/002 (Canva), marca y recursos, colaboración, resultados |
 
 ## Gates por bloque

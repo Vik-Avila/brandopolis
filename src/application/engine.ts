@@ -18,6 +18,9 @@ import { ExternalOperations } from './external-operations.js';
 import { actionStatus, addAction, addObjective, createPlan, createSnapshot, decideSnapshot, readPlan, readSharedPlan, updateAction, updateObjective, updatePlan } from './marketing-plan.js';
 import { MarketingAssistance, marketingPacket, proposalContent, type MarketingPacket } from '../domain/brando-marketing.js';
 import { DELIVERABLE_TYPES, type DeliverableType } from '../domain/deliverables.js';
+import { adoptKitValues, decideKit, kitAsset, mergeKitCandidates, publishKit, readKit, registerKitAsset, saveKitDraft, startKitDraft, submitKit } from './brand-kit.js';
+import type { KitAssetInfo } from '../domain/kit-assets.js';
+import type { KitContent } from '../domain/brand-kit.js';
 import { createDeliverable, decideDeliverable, listDeliverables, newDeliverableDraft, recordPublication, retireDeliverable, saveDeliverableDraft, submitDeliverable } from './deliverables.js';
 import { createOffer, decideOffer, listOffers, newOfferDraft, retireOffer, saveOfferDraft, submitOffer } from './offers.js';
 
@@ -111,6 +114,45 @@ export class Engine {
       // its validated criterion. A decision is recorded as OFFER_APPROVE or OFFER_REQUEST_CHANGES.
       const operation=action==='decide'?(result.status==='APPROVED'?'OFFER_APPROVE':'OFFER_REQUEST_CHANGES'):`OFFER_${action.toUpperCase().replace('-','_')}`;
       if(!result.replayed)await this.audit(tx,{...actor},{operation,idempotencyKey:typeof input.idempotencyKey==='string'?input.idempotencyKey:randomUUID(),newVersion:(result.versionId as string|null)??null,previousVersion:((result.superseded??result.previousVersionId) as string|null|undefined)??null,rationale:action==='decide'?result.criterion as string:undefined});
+      return result;
+    },true);
+  }
+  /** ADR-0034 · brand kit of a brand: versions, files, channel needs, contrast, differences and impact. */
+  async brandKit(token:string,brandId:string) {
+    return this.withBrandActor(token,brandId,(tx,actor)=>readKit(tx,actor));
+  }
+  /** ADR-0034 · one kit operation (scope, revision 409, idempotency, audit with the exact version). */
+  async kitCommand(token:string,action:'start'|'draft'|'adopt'|'submit'|'decide'|'publish',input:Record<string,unknown>) {
+    if(!input||typeof input!=='object'||Array.isArray(input))throw new AppError('INVALID','Invalid kit request');
+    const run={start:startKitDraft,draft:saveKitDraft,adopt:adoptKitValues,submit:submitKit,decide:decideKit,publish:publishKit}[action];
+    if(!run)throw new AppError('INVALID','Unknown kit operation');
+    return this.withBrandActor(token,input.brandId as string,async(tx,actor)=>{
+      const result:Record<string,unknown>=await (run as (tx:Transaction,a:BrandActor,i:Record<string,unknown>)=>Promise<Record<string,unknown>>)(tx,actor,input);
+      const operation=action==='decide'?(result.status==='APPROVED'?'KIT_APPROVE':'KIT_REQUEST_CHANGES'):`KIT_${action.toUpperCase()}`;
+      if(!result.replayed)await this.audit(tx,{...actor},{operation,idempotencyKey:typeof input.idempotencyKey==='string'?input.idempotencyKey:randomUUID(),newVersion:(result.versionId as string|null)??null,previousVersion:((result.superseded??result.previousVersionId) as string|null|undefined)??null,rationale:action==='decide'?result.criterion as string:undefined});
+      return result;
+    },true);
+  }
+  /** Scope for a kit file upload (the transport validates and stores the bytes privately). */
+  async kitUploadScope(token:string,brandId:string) {
+    return this.withBrandActor(token,brandId,async(_tx,actor)=>({workspaceId:actor.workspaceId,brandId:actor.brandId}));
+  }
+  async registerKitAsset(token:string,brandId:string,input:{id:string;role:string;originalName:string;info:KitAssetInfo;bytes:number;sha256:string;storageKey:string}) {
+    return this.withBrandActor(token,brandId,async(tx,actor)=>{
+      const result=await registerKitAsset(tx,actor,input);
+      if(!result.reused)await this.audit(tx,{...actor},{operation:'KIT_ASSET_UPLOAD',idempotencyKey:input.sha256,newVersion:result.assetId});
+      return result;
+    },true);
+  }
+  /** A kit file of this brand (authorization on every read; the transport decides what may be previewed). */
+  async kitAssetFile(token:string,brandId:string,assetId:unknown) {
+    return this.withBrandActor(token,brandId,(tx,actor)=>kitAsset(tx,actor,assetId));
+  }
+  /** Merges candidates extracted from a brand manual into the draft as DECLARED values. */
+  async mergeKitCandidates(token:string,brandId:string,expectedRevision:unknown,candidates:Pick<KitContent,'palette'|'typography'>) {
+    return this.withBrandActor(token,brandId,async(tx,actor)=>{
+      const result=await mergeKitCandidates(tx,actor,{expectedRevision},candidates);
+      await this.audit(tx,{...actor},{operation:'KIT_EXTRACT',idempotencyKey:randomUUID(),newVersion:result.versionId});
       return result;
     },true);
   }
@@ -904,7 +946,7 @@ export class Engine {
         // before decisions; the self reference of versions is satisfied because the whole chain goes in one statement.
         // Phase 4 rows of this Brand (append-only tables allow it only inside this registered deletion). Workspace
         // connections are NOT deleted here: only this Brand's links to them (a credential may serve other brands).
-        for(const table of [t.deliverablePublications,t.deliverableApprovals,t.deliverableVersions,t.deliverables,t.planProgressUpdates,t.planSnapshotApprovals,t.planSnapshots,t.planChanges,t.planActions,t.planObjectives,t.marketingPlans,t.offerApprovals,t.offerVersions,t.offers,t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
+        for(const table of [t.brandKitPublications,t.brandKitApprovals,t.brandKitVersions,t.brandKits,t.kitAssets,t.deliverablePublications,t.deliverableApprovals,t.deliverableVersions,t.deliverables,t.planProgressUpdates,t.planSnapshotApprovals,t.planSnapshots,t.planChanges,t.planActions,t.planObjectives,t.marketingPlans,t.offerApprovals,t.offerVersions,t.offers,t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));
         for(const table of [t.audits,t.telemetry,t.idempotency,t.reviewReceipts,t.reviews,t.impacts,t.dependencies,t.learningSignals,t.signals,t.learnings,t.experiments,t.analyses,t.documentClaims,t.documentExtractions,t.sourceDocuments,t.versions,t.decisions,t.recommendations,t.questions,t.userInputs,t.evidence,t.hypotheses,t.openQuestions,t.brandProfiles,t.assignments] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));
