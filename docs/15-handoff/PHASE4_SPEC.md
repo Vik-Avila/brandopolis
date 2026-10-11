@@ -587,7 +587,9 @@ cliente** (hoy comparte cualquier miembro con acceso a la marca; invitar exige `
 qué recursos aprueba un invitado: la implementación vigente sólo admite aprobar materiales y versiones del kit;
 estrategia y plan compartidos se leen y comentan.
 
-**Propuesta para decidir (2026-10-11; no aplicada, sin cambio de código ni de permisos):**
+**Decisión del propietario (2026-10-11): opción A adoptada** — compartir y dejar de compartir exigen `MANAGE_GUESTS` en
+esa marca (comprobado en servidor, también al repetir con la misma clave); lo que aprueba el invitado se mantiene. Tabla
+de la propuesta, conservada como registro:
 
 | Tema | Hoy (implementado) | Contraste con ADR aceptados | Propuesta |
 |---|---|---|---|
@@ -595,7 +597,7 @@ estrategia y plan compartidos se leen y comentan.
 | Qué aprueba el invitado | Versiones exactas de entregables y del kit (propuestas de identidad); estrategia y plan compartidos sólo lectura y comentarios | Coincide con la tabla de capacidades de ADR-0033 («entregables y propuestas de identidad compartidas») | **Mantener** lo actual. Aprobar sigue sin conceder publicar ni gastar (ADR-0030/0031); aprobar la estrategia o el plan seguiría siendo decisión del equipo (autoridad humana del dueño de la marca) |
 | Clientes y Resultados | El invitado no accede (404) | ADR-0035 (propuesto) y nota v4 de ADR-0033 | **Mantener**: un invitado de marketing no es vendedor |
 
-Ninguna de estas decisiones bloquea las pruebas locales; hasta que el propietario elija, sigue lo implementado.
+Implementado tras la decisión: `shareToPortal` y `withdrawShare` exigen la capacidad; la vista de Colaboración no ofrece compartir ni dejar de compartir sin ella.
 
 ### 12.6 Flujo comercial y Brando (plan v5 §11)
 

@@ -193,6 +193,40 @@ export function collaborationCases(connection: () => ReturnType<typeof connect>)
       await expect(x.cmd('invite', { email: 'e@f.mx', idempotencyKey: key })).rejects.toMatchObject({ code: 'CONFLICT' });
     });
 
+    it('PHASE4_SPEC §12.5 option A: sharing and withdrawing need MANAGE_GUESTS for this brand; member without it, other brand, guest and revoked permission are refused; comments stay open to the team', async () => {
+      const x = await setup();
+      const kit = await x.kitInReview();
+      const member = await seedIdentity(x.db, 'MEMBER', x.team.workspaceId);
+      await x.db.insert(t.assignments).values({ workspaceId: x.team.workspaceId, brandId: x.brand.id, userId: member.userId });
+      const share = (token: string, idempotencyKey = randomUUID(), brandId = x.brand.id) => x.engine.collaborationCommand(token, 'share', { brandId, targetType: 'KIT_VERSION', targetId: kit.versionId, idempotencyKey });
+      // A member with the brand assigned but without the permission cannot share nor withdraw; the view says so.
+      await expect(share(member.token)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      expect((await x.engine.collaboration(member.token, x.brand.id)).canManageGuests).toBe(false);
+      const shared = (await share(x.team.token)) as { shareId: string };
+      await expect(x.cmd('withdraw', { shareId: shared.shareId }, member.token)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      // Commenting is not sharing: the member still comments (internal or for the client).
+      expect(await x.cmd('comment', { shareId: shared.shareId, body: 'Nota del equipo', visibility: 'INTERNAL' }, member.token)).toMatchObject({ replayed: false });
+      // With the permission for this brand the member shares; the permission does not reach another brand.
+      await x.engine.changeBrandCapability(x.team.token, { brandId: x.brand.id, userId: member.userId, capability: 'MANAGE_GUESTS', grant: true });
+      await x.cmd('withdraw', { shareId: shared.shareId }, member.token);
+      const key = randomUUID();
+      expect(await share(member.token, key)).toMatchObject({ replayed: false });
+      await x.db.insert(t.assignments).values({ workspaceId: x.team.workspaceId, brandId: x.otherBrand.id, userId: member.userId });
+      await expect(x.engine.collaborationCommand(member.token, 'share', { brandId: x.otherBrand.id, targetType: 'STRATEGY_SNAPSHOT', idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      // Withdrawing the permission applies on the next operation, also to a replay of an earlier share.
+      await x.engine.changeBrandCapability(x.team.token, { brandId: x.brand.id, userId: member.userId, capability: 'MANAGE_GUESTS', grant: false });
+      await expect(share(member.token, key)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      const active = (await x.engine.collaboration(x.team.token, x.brand.id)).shares.find(s => !s.withdrawnAt)!;
+      await expect(x.cmd('withdraw', { shareId: active.id }, member.token)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      // A client guest never reaches the team operations (no membership): not found, whatever they try.
+      const inv = await x.invite();
+      await x.engine.acceptInvitation(x.guest.token, { token: inv.token });
+      await expect(share(x.guest.token)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      await expect(x.cmd('withdraw', { shareId: active.id }, x.guest.token)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      // Approving on the portal is still a separate act, limited to the exact shared version (ADR-0033).
+      expect(await x.engine.portalDecide(x.guest.token, { brandId: x.brand.id, shareId: active.id, fingerprint: active.fingerprint, decision: 'APPROVE', comment: '', idempotencyKey: randomUUID() })).toMatchObject({ decision: 'APPROVE' });
+    });
+
     it('database: invitations close once, guests only by revocation, shares only by withdrawal, comments and approvals append-only', async () => {
       const x = await setup();
       const inv = await x.invite();

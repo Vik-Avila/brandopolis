@@ -23,6 +23,10 @@ const byBrand = (table: { workspaceId: AnyPgColumn; brandId: AnyPgColumn }, a: S
 const key = (v: unknown) => { if (typeof v !== 'string' || !v.trim() || v.length > 200) throw new AppError('INVALID', 'Invalid idempotency key'); return v; };
 const idOf = (v: unknown, what: string) => { if (typeof v !== 'string' || !v || v.length > 200) throw new AppError('INVALID', `${what} required`); return v; };
 const needsGuestsCapability = (a: BrandActor) => { if (!a.capabilities.includes('MANAGE_GUESTS')) throw new AppError('FORBIDDEN', 'Managing guests needs its own permission'); };
+// PHASE4_SPEC §12.5 option A (owner decision 2026-10-11): what the client sees is decided by whoever may decide who
+// the client is. Sharing and withdrawing need MANAGE_GUESTS for this brand; commenting, approving, publishing and
+// authorizing spend stay separate.
+const needsShareCapability = (a: BrandActor) => { if (!a.capabilities.includes('MANAGE_GUESTS')) throw new AppError('FORBIDDEN', 'Sharing with the client needs the «Gestionar invitados» permission'); };
 
 // ─── Team side ───────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -95,6 +99,7 @@ async function shareable(tx: Transaction, a: Scoped, type: ShareTarget, targetId
  * withdraws the previous strategy share (the portal shows one strategy). Idempotent per author and key.
  */
 export async function shareToPortal(tx: Transaction, a: BrandActor, input: { targetType?: unknown; targetId?: unknown; idempotencyKey?: unknown }) {
+  needsShareCapability(a);
   if (!isShareTarget(input.targetType)) throw new AppError('INVALID', 'Unknown share target');
   const type = input.targetType, idempotencyKey = key(input.idempotencyKey);
   const [prior] = await tx.select().from(t.portalShares).where(and(byBrand(t.portalShares, a), eq(t.portalShares.sharedBy, a.userId), eq(t.portalShares.idempotencyKey, idempotencyKey)));
@@ -120,6 +125,7 @@ export async function shareToPortal(tx: Transaction, a: BrandActor, input: { tar
 }
 
 export async function withdrawShare(tx: Transaction, a: BrandActor, input: { shareId?: unknown }) {
+  needsShareCapability(a);
   const [row] = await tx.select().from(t.portalShares).where(and(byBrand(t.portalShares, a), eq(t.portalShares.id, idOf(input.shareId, 'Share')))).for('update');
   if (!row) throw new AppError('NOT_FOUND', 'Share not available');
   if (row.withdrawnAt) throw new AppError('CONFLICT', 'This share was already withdrawn');
