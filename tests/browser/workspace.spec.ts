@@ -72,7 +72,13 @@ test('Navigation: Estrategia inner navigation, Mercado objetivo, Productos y ser
  await expect(page.locator('#decision')).toContainText('ámbito geográfico');
  await navigate(page,'Mapa estratégico');
  await expect(page.locator('.map-cell')).toHaveCount(9);
+ // Outside a decision no step is marked as the current page (only the Mapa tab is); status markers remain.
+ await expect(page.locator('#blueprint')).toHaveAttribute('aria-current','page');
+ await expect(page.locator('#strategy-list [data-module][aria-current]')).toHaveCount(0);
  await expect(page.locator('.map-cell').nth(1)).toContainText('Mercado objetivo');
+ await navigate(page,'02 Mercado objetivo');
+ await expect(page.locator('#strategy-list [data-module][aria-current]')).toHaveCount(1);
+ await expect(page.locator('#strategy-list [data-module][aria-current]')).toHaveText('02 Mercado objetivo');
  await navigate(page,'Marca y recursos');
  await expect(page.locator('#brand-resources')).toHaveAttribute('aria-current','page');
  await expect(page.locator('#decision h2').first()).toHaveText('Identidad visual');

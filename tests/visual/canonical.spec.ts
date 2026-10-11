@@ -45,7 +45,10 @@ const FROZEN_INSTANT='2026-10-09T20:49:00.000Z';
 async function freezeDates(context:import('@playwright/test').BrowserContext){
   await context.addInitScript(instant=>{const show=Date.prototype.toLocaleString;Date.prototype.toLocaleString=function(locales?:Intl.LocalesArgument,options?:Intl.DateTimeFormatOptions){return show.call(new Date(instant),locales,options);};},FROZEN_INSTANT);
 }
-async function shot(page:Page,name:string){await page.evaluate(async()=>{await document.fonts.ready;scrollTo(0,0);});await page.screenshot({path:`${shots}/${name}.png`,fullPage:true});}
+// The pointer stays where the last click happened; during a capture it can leave a hover look on whatever lies
+// under it (verified 2026-10-11: moving it away removes the artefact). Parking it in a corner keeps captures stable
+// without touching product styles, focus or interaction states.
+async function shot(page:Page,name:string){await page.mouse.move(1,1);await page.evaluate(async()=>{await document.fonts.ready;scrollTo(0,0);});await page.screenshot({path:`${shots}/${name}.png`,fullPage:true});}
 const viewports={wide:{width:1600,height:1000},desktop:{width:1440,height:900},compact:{width:1280,height:800},tablet:{width:768,height:1024},mobile:{width:390,height:844}};
 test.describe.configure({mode:'serial'});
 let seeded:{brand:{id:string};token:string};

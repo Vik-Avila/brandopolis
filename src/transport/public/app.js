@@ -2442,6 +2442,8 @@ function setNavActive(selector){
  $('#decision').dataset.view=selector?.slice(1)??'decision';
  document.querySelectorAll('#journey [aria-current],#strategy-nav .strategy-tab[aria-current]').forEach(b=>b.removeAttribute('aria-current'));
  if(selector)$(selector).setAttribute('aria-current','page');
+ // Outside a decision (Mapa estratégico, Validación, other areas) no step is the current page; their status markers stay.
+ if(selector)document.querySelectorAll('#strategy-list [data-module][aria-current]').forEach(b=>b.removeAttribute('aria-current'));
  const inStrategy=!selector||STRATEGY_VIEWS.has(selector);
  // Inside Estrategia the area keeps its own navigation (sections and the nine steps); outside it disappears.
  $('#strategy-toggle')?.classList.toggle('contains-current',inStrategy);
