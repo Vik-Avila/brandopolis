@@ -1,3 +1,10 @@
+## 2026-10-11 · Phase 4 — reconciliación documental del issue #10 (Clientes y Resultados, plan v5)
+
+- Alcance aprobado incorporado: Clientes con captura manual/web persistente en Fase 4; Resultados con marketing, operación comercial y ventas; núcleo comercial, Brando asistente interno, atribución/ROAS, asesores, metas, históricos y forecast en Fase 5; atención automática y conectores ampliados en Fase 6.
+- PHASE4_SPEC v6 §12, matriz v15 con 94 criterios I10 (48 + 46, pendientes) y trazabilidad, requisitos externos I10-EXT-01…14, scope-mvp/non-goals/registro diferido, ADR-0030 v5, ADR-0033 v4 y ADR-0035 (propuesto).
+- Herramientas del archivo 07 evaluadas con commit fijo y sin ejecutar: criterios de claude-seo-ai y claude-webkit añadidos a `brandopolis-marketing` con procedencia; whatsapp-agentkit y auto-crm sólo como referencia.
+- Sin cambios de runtime, migraciones, capturas, push ni despliegue en esta entrada.
+
 ## 2026-10-11 · Phase 4 — Colaboración, portal del invitado y guía viva (migración aditiva 0026)
 
 - Colaboración deja de ser «Próximamente»: invitar a un cliente por enlace de un solo uso (el correo aún no está configurado y la interfaz lo dice), invitaciones y personas invitadas, retirar invitación o acceso, compartir la versión exacta (estrategia congelada, copia aprobada del plan, material o versión del kit), comentarios internos o compartidos y las decisiones del cliente.

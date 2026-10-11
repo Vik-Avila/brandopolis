@@ -28,9 +28,9 @@ AI» y «Web Builder» no se pudieron identificar con certeza; ver §5.
 | Base principal de SEO | La misma (seo-audit, schema, ai-seo, site-architecture) | MIT | Solo instrucciones, sin dependencias. | **Base principal**, en `references/site-and-seo.md`. |
 | Claude SEO | github.com/AgriciDaniel/claude-seo · 2.4.2 · `4b99de2` | MIT | 26 skills, 19 subagentes y 187 scripts Python (requests, playwright, weasyprint, google-ads y otros). Un hook `PostToolUse` ejecuta Python en cada Edit/Write, y los instaladores escriben en el perfil del usuario. | **Solo comprobaciones distintas:** calidad del sitemap, tipos de datos estructurados retirados y coherencia de nombre, dirección y teléfono en negocios locales. Se rechazan el plugin, el hook y los scripts. |
 | Claude Ads | github.com/AgriciDaniel/claude-ads · 2.0.2 · `ac21644` | MIT | 32 skills con un plano de control en Python, adaptadores que pueden cambiar cuentas publicitarias (`ads-launch --apply`) y generación de imágenes con proveedores externos (Gemini, OpenAI, Stability, Replicate). Su política de primero borrador, aprobación del plan exacto y verificación remota es compatible con ADR-0031. | **Adaptar** solo los criterios de planificación y revisión para Google y Meta, y la continuidad con la página de destino. Se rechazan los adaptadores, la aplicación de cambios y la generación de imágenes. Prevalecen las dos autorizaciones y C1. |
-| Web Builder | No identificado (§5) | — | — | Como referencia de creación guiada se usan site-architecture y cro de Marketing Skills, en `site-and-seo.md`. |
+| Web Builder | Identificado después como Hainrixz/claude-webkit (§6) | MIT | — | Ver §6. Se conservan site-architecture y cro como base. |
 | Scrapling | github.com/D4Vinci/Scrapling · `7a68493` | BSD-3-Clause | Framework de scraping (Python). | **No se incorpora.** No hay ninguna necesidad documentada: Firecrawl, WebFetch y Playwright cubren la lectura de sitios que necesita Claude. El producto no extrae datos de sitios en la Fase 4, y la investigación competitiva ya usa las herramientas web del proveedor detrás de sus controles. |
-| WhatsApp y Auto-CRM | No identificados (§5) | — | — | **Solo propuesta** (§4). No entran en el alcance. |
+| WhatsApp y Auto-CRM | Identificados después como Hainrixz/whatsapp-agentkit y Hainrixz/auto-crm (§6) | MIT | — | **Solo referencia** (§6). La captura de Clientes sí entra en la Fase 4 por el issue #10 (§4, nota). |
 
 **Forma de incorporación:** una sexta skill del proyecto, `.agents/skills/brandopolis-marketing/`, con el mismo
 mecanismo de sincronización y las mismas comprobaciones (`tests/skill-pack.test.ts`, Foundation). Su procedencia,
@@ -72,8 +72,13 @@ Colaboración y Resultados.
   oportunidades por marca; y permisos para invitados (que no verían conversaciones).
 - **Riesgos:** datos personales de terceros, mensajería automática que podría hablar por la marca (en tensión con
   INV-006 si respondiera sin persona), coste variable y dependencia de las políticas de Meta.
-- **Recomendación:** dejarlo para después de la Fase 4. Como primer paso sin integración, se podría añadir un enlace
+- **Recomendación (texto original del 2026-10-11, conservado):** dejarlo para después de la Fase 4. Como primer paso sin integración, se podría añadir un enlace
   de clic a WhatsApp con medición del destino en Sitios y Campañas.
+
+**Nota posterior del mismo día (issue #10):** la frase anterior se precisa. Las integraciones completas de WhatsApp
+y de un CRM externo no se añaden por instalar una skill, pero **Clientes y la captura inicial persistente sí están
+en la Fase 4** por decisión del propietario (PHASE4_SPEC §12); la mensajería real es Fase 5 y la atención
+automatizada, Fase 6.
 
 ## 5. Pendientes de esta evaluación
 
@@ -83,3 +88,28 @@ Colaboración y Resultados.
 - Las fechas de las reglas de búsqueda (por ejemplo, la retirada de resultados enriquecidos) proceden de las fuentes
   revisadas y deben verificarse con la documentación vigente del buscador antes de convertirlas en comportamiento o
   en pruebas.
+
+## 6. Evaluación completada de las cuatro herramientas no identificadas (2026-10-11, paquete 07)
+
+El paquete de reconciliación del issue #10 (archivo 07) aportó las URLs. Cada repositorio se descargó con commit
+fijo en un directorio aislado y se leyó como texto; **nada se instaló ni se ejecutó** (ni hooks, ni scripts, ni
+instaladores). La revisión la hizo un subagente y el agente principal comprobó las licencias, los commits y los
+hallazgos de riesgo principales en los archivos descargados.
+
+| Nombre pedido | Repositorio · commit | Licencia | Componentes de riesgo encontrados | Decisión |
+|---|---|---|---|---|
+| Claude SEO AI | Hainrixz/claude-seo-ai · `cabd607` (2026-09-07; plugin 0.2.0) | MIT | Hooks `PreToolUse` que ejecutan Node en cada Write/Edit/Bash; 10 tokens de CMS en la configuración; adaptadores que escriben en CMS en vivo; GitHub Action; ejemplo MCP con `npx …@latest` sin fijar | **Adaptar criterios puntuales:** elegibilidad para funciones de IA de Google (indexable y con fragmento), tokens de rastreadores de entrenamiento frente a búsqueda, robots frente a `noindex`, `llms.txt` sin efecto documentado, pasajes con respuesta directa, hallazgos de IA como direccionales y sin puntuación. En `site-and-seo.md`, con fecha de la fuente |
+| Claude Web Builder | Hainrixz/claude-webkit · `1bd88c3` (2026-08-21) | MIT (incluye skills de terceros con sus licencias) | `settings.local.json` con permisos amplios (`rm`, `curl`, `npm install`…); `deploy.sh` sube el proyecto a un endpoint de terceros sin cuenta; crédito en el pie de los sitios; instrucciones de «no preguntar» y de ignorar otras skills; testimonios de relleno por defecto; stack Next.js/shadcn/Vercel obligatorio | **Adaptar criterios puntuales:** preguntas por rondas sólo sobre lo que falta, «tú decide» con razón y como máximo dos opciones, orden de secciones por tipo de negocio sin pruebas inventadas, orden de revisión de la vista previa. En `site-and-seo.md`. Se rechaza todo lo demás |
+| WhatsApp AI agent | Hainrixz/whatsapp-agentkit · `ad278b7` (2026-08-19) | MIT | **Pide la clave de Anthropic y los tokens de Meta/Zernio por chat** (CLAUDE.md, preguntas 8 y 10); permisos amplios; intermediario Zernio y despliegue en Railway; sin opt-in, aviso ni retención; el traspaso humano es sólo un texto (función comentada) | **Solo referencia, sin adaptar.** Puntos para la Fase 5–6: ventana de 24 h y plantillas, firma del webhook, responder 2xx y procesar después, deduplicar por evento, bloqueo por contacto, mensaje fuera de horario, traspaso humano real. Ningún segundo bot paralelo a Brando |
+| Auto-CRM | Hainrixz/auto-crm · `0aef51a` (2026-04-07) | MIT | Rutas API sin autenticación y Docker en `0.0.0.0`; secreto de webhook opcional; extracción de leads desde Gmail por MCP; herramientas MCP de escritura; app local de un usuario con SQLite | **Solo referencia, sin adaptar.** Útil como experiencia: etapas con ganada/perdida explícitas, actividades tipificadas con programada/completada (próximo paso y vencidos), resumen diario. Clientes nativo (ADR-0035) conserva el expediente |
+
+Beneficio para el cliente de lo adaptado: sitios que responden de forma directa y citable sin promesas de
+posicionamiento, decisiones de rastreo explicadas, y una creación guiada que no vuelve a preguntar lo confirmado ni
+rellena con testimonios inventados. Coste: unas diez líneas de criterio y dos filas de procedencia. Separación
+mantenida: son herramientas del desarrollador; no son capacidades de Brando ni integraciones del producto, y no
+declaran conectados WhatsApp, SEO, Ads ni un CRM. Las reglas de buscadores se verifican con la documentación
+vigente antes de convertirse en comportamiento.
+
+No verificado: que estos cuatro sean exactamente los del análisis original que no llegó (coinciden con los nombres
+y las URLs del archivo 07), las afirmaciones de rastreadores y funciones de IA contra la documentación viva de cada
+buscador, y el comportamiento en ejecución de scripts y hooks (no se ejecutaron).

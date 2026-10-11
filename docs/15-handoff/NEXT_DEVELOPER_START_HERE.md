@@ -303,8 +303,12 @@ Supplied separately, never committed: hosting account, PILOT `DATABASE_URL`, OID
 
 ## First recommended next task
 
-Current (2026-10-10): continue Phase 4 from [PHASE4_SPEC](PHASE4_SPEC.md) and its
-[acceptance matrix](PHASE4_ACCEPTANCE_MATRIX.md). The paragraph below is the 2026-09-25 recommendation, kept as
+Current (2026-10-11): continue Phase 4 from [PHASE4_SPEC](PHASE4_SPEC.md) and its
+[acceptance matrix](PHASE4_ACCEPTANCE_MATRIX.md). Priority of the iteration (issue #10): **Clientes** capture
+(manual + web form, persistent, origin/UTM evidence, owner or queue, known segment, follow-up) and expanded
+**Resultados**, per PHASE4_SPEC §12 and [ADR-0035](../14-decisions/ADR-0035.md); then exports (own PDF generator
+and `jszip` first) and the remaining blocks. F4/F5/F6 split and traceability: matrix «Clientes y Resultados».
+Handoff of the iteration: [PHASE4_HANDOFF](PHASE4_HANDOFF.md) §«Iteración Clientes». The paragraph below is the 2026-09-25 recommendation, kept as
 history.
 
 Run the founder visual acceptance on the local DEMO (the only pending gate that is not external), record the verdict in `SESSION_STATE.md`, and then execute [LIVE_PILOT_LAUNCH_CHECKLIST](LIVE_PILOT_LAUNCH_CHECKLIST.md) step 1 (choose hosting + OIDC provider) — no feature work until real pilot evidence exists.

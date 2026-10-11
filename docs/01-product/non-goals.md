@@ -16,3 +16,8 @@ humana ([scope-mvp · Resolución 2026-10-10](scope-mvp.md), [ADR-0030](../14-de
 [ADR-0034](../14-decisions/ADR-0034.md)). Brandopolis sigue sin ser un generador propio de logotipos o imágenes:
 los recursos se obtienen por diseñador, integración creativa o carga. El resto de esta lista sigue vigente como no
 objetivo.
+
+Nota 2026-10-11: por el issue #10, el «CRM» de esta lista deja de excluir **Clientes** con captura inicial
+persistente (Fase 4) ni el núcleo comercial planificado (Fase 5) y su atención automatizada autorizada (Fase 6)
+([scope-mvp · Resolución 2026-10-11](scope-mvp.md)). Sigue sin ser objetivo un CRM genérico desconectado de la
+estrategia, un chatbot generalista o un bot autónomo sin política por marca/canal ni traspaso humano.

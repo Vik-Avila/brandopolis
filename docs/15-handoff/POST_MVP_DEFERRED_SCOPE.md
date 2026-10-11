@@ -41,3 +41,11 @@ servicios, Plan de marketing, Resultados esenciales, comentarios, exportaciones,
 cliente, sitios multipágina, Google Ads, Meta Ads, Canva e identidad visual de cada marca
 ([ADR-0034](../14-decisions/ADR-0034.md)). Siguen diferidos: CRM, billing, colaboración en
 tiempo real, API pública, búsqueda global, notificaciones, analítica avanzada (Fase 5) y el resto de la tabla.
+
+## 2026-10-11 · Clientes sale del registro (issue #10)
+
+«CRM» deja de estar diferido como bloque: **captura inicial de Clientes en Fase 4 — confirmada, pendiente de
+implementar** (no «CRM descartado»). Núcleo comercial y mensajería inicial: Fase 5. Conectores ampliados y
+automatizaciones: Fase 6. Cada canal conserva sus dependencias de acceso (cuentas, aprobaciones, ventanas de
+mensajes); adoptar Chatwoot no las elimina. Siguen diferidos: billing, colaboración en tiempo real, API pública,
+búsqueda global, notificaciones y el resto de la tabla. Detalle: [PHASE4_SPEC §12](PHASE4_SPEC.md).

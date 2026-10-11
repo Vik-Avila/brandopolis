@@ -1,7 +1,7 @@
 Status: derived
 Owner: Product / Engineering
 Canonical: no
-Last reviewed: 2026-10-09
+Last reviewed: 2026-10-11
 Related: docs/15-handoff/PHASE3_LOCAL_CANDIDATE_2026-10-08.md, docs/14-decisions/ADR-0026.md, docs/14-decisions/ADR-0027.md, docs/14-decisions/ADR-0028.md, docs/14-decisions/ADR-0029.md, SESSION_STATE.md
 Depends on: Fase 3 integrada en `main` (ver SESSION_STATE para el SHA exacto y el estado de los gates)
 
@@ -90,3 +90,34 @@ versión registrada en SESSION_STATE y no incluye las Fases 1–3).
 2. ADR de Activación antes de cualquier código; contratos v1 nuevos en `schemas/` y pruebas de autoridad humana
    (ninguna activación sin decisión aprobada; sin cascada automática).
 3. Mantener la Jury Production Freeze: cualquier despliegue requiere autorización explícita separada.
+
+## Iteración Clientes · issue #10 (2026-10-11)
+
+Registro vigente del traspaso; lo anterior se conserva como historia.
+
+**Roadmap de seis macrofases (actualizado).** 1–3 completas. **4 · Activation & Orchestration**: en curso en
+`feat/phase4-marketing-web-collaboration` (marketing, identidad, inicio guiado, colaboración y portal
+implementados y validados en DEMO; ver SESSION_STATE), más el adelanto aprobado de **Clientes** y **Resultados**
+ampliados. **5 · Measurement & Intelligence**: medición prevista + núcleo comercial, mensajería inicial, Brando
+asistente interno, cierre humano, atribución/ROAS, asesores/partidas, metas, históricos y forecast de ganados.
+**6 · Agentic Scale**: conectores ampliados, atención automática de Brando por marca/canal con traspaso humano.
+
+**Fuentes.** Issue #10 (2026-10-11T17:16:28Z, sin comentarios) y plan v5 (§§11–13), paquete de reconciliación
+revisión 3. GitHub `main` sigue en `1f1cece` (Fase 3) y no contiene la Fase 4 local; no se usa para sobrescribirla.
+
+**Evidencia previa, sin trasladarla a código nuevo.** Sobre `1ef95bd`: 475 unitarias, PILOT 10/10, E2E 277 PASS +
+13 SKIP con cuatro intermitencias sin diagnóstico (`phase3.spec.ts:110`, `micro-hotfix.spec.ts:27`,
+`phase4-plan.spec.ts:77`, `m1.spec`): una repetición verde no las diagnostica. Cuatro capturas v5 y cinco nuevas
+del menú siguen pendientes de decisión del propietario.
+
+**Orden del bloque.** 1) Reconciliación documental (PHASE4_SPEC §12, matriz I10 con trazabilidad, requisitos
+I10-EXT, alcance, ADR-0030/0033 v-notas, ADR-0035 propuesto). 2) Captura nativa con migración aditiva `0027`
+(ADR-0035). 3) Formulario de desarrollo, evidencia de origen, segmentos, aislamiento y fallos. 4) Navegación de
+ocho áreas y Resultados con resúmenes reales. 5) Prueba acotada de Chatwoot sólo con entorno aislado y accesos (no
+junto a las E2E en el equipo de 8 GB). 6) Exportaciones y el resto de bloques.
+
+**Pendientes conservados.** Invitado PILOT real con correo verificado y envío por correo; PRT-006; búsqueda del
+portal y PDF de la guía; ONB-009 con proveedor real; IA real; permiso propio para compartir y recursos aprobables por
+un invitado (decisión del propietario); dominios, consentimiento y medición; integraciones Canva/Google/Meta;
+Atomic/Chatwoot sin seleccionar. Distinguir siempre documentado, implementado, validado en DEMO, validado con
+proveedor o identidad real y desplegado. No se autoriza push, despliegue, compras ni mensajes a clientes.

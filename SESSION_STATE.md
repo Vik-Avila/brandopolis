@@ -1,3 +1,28 @@
+## 2026-10-11 · PHASE 4 · reconciliación del issue #10 (Clientes y Resultados, plan v5) · documental
+
+- **Fuentes verificadas:** paquete `Brandopolis_Fase4_Issue10_Clientes_Resultados_2026-10-11 (1).zip` (en la carpeta
+  Fase 4 del propietario; no estaba en Descargas) con `INVENTORY.json` `package_revision` 3 y `source_plan_version` 5;
+  el ZIP sin sufijo es la revisión anterior y no se aplicó. Issue #10 leído por la API pública: actualizado
+  2026-10-11T17:16:28Z, 0 comentarios, cuerpo idéntico a la copia del paquete salvo líneas en blanco. Plan v5 leído
+  íntegro (525 líneas, §§11–13). Checkout: rama `feat/phase4-marketing-web-collaboration`, `1ef95bd`, árbol limpio.
+  Siguiente ADR libre 0035 y migración libre 0027 comprobados.
+- **Documentos actualizados (sin efecto en runtime):** PHASE4_SPEC v6 (§1 resolución, §3 ocho áreas propuestas, §10,
+  §12 nuevo); PHASE4_ACCEPTANCE_MATRIX v15 (94 criterios I10 sin renumerar —48 + 46—, todos pendientes, y tabla de
+  trazabilidad requisito → fase → contrato → aceptación → estado real); PHASE4_EXTERNAL_REQUIREMENTS v5 (Atomic/
+  Chatwoot, canales, coste total, I10-EXT-01…14); scope-mvp (resolución y roadmap de seis macrofases), non-goals,
+  POST_MVP_DEFERRED_SCOPE; ADR-0030 v5 y ADR-0033 v4 (notas fechadas); **ADR-0035 propuesto** (modelo de captura,
+  formulario, permisos, contratos F5/F6); PHASE4_HANDOFF y NEXT_DEVELOPER_START_HERE.
+- **Herramientas (archivo 07):** evaluadas con commit fijo y sin ejecutar nada claude-seo-ai `cabd607`,
+  claude-webkit `1bd88c3`, whatsapp-agentkit `ad278b7` y auto-crm `0aef51a` (todas MIT). Se adaptan criterios
+  puntuales de las dos primeras en `brandopolis-marketing/references/site-and-seo.md` con procedencia y aviso MIT;
+  las otras dos quedan como referencia (whatsapp-agentkit pide claves por chat; auto-crm expone una API sin
+  autenticación). `PHASE4_AGENT_TOOLING_REVIEW_2026-10-11.md` §6. Se conserva todo lo adaptado en `acc9f19`.
+- **Decisiones que no se atribuyen al propietario:** permiso propio para compartir con cliente y recursos
+  aprobables por un invitado siguen pendientes; ocho áreas, Chatwoot desacoplado, cuenta por marca y Atomic son
+  recomendaciones por validar. Ninguna dependencia adoptada; ningún mensaje, compra, push ni despliegue.
+- **Pendientes conservados:** capturas v5 (4) y del menú (5), correo, PRT-006, búsqueda/PDF del portal, ONB-009,
+  IA y proveedores reales, dominios y consentimiento, cuatro intermitencias sin diagnóstico.
+
 ## 2026-10-11 · PHASE 4 · bloque 5: colaboración, portal del invitado y guía viva
 
 - **Datos (migración aditiva `0026_brand_collaboration`):** `brand_invitations` (email normalizado, hash del token de un

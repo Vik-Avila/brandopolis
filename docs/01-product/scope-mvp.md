@@ -99,3 +99,29 @@ en bases aisladas de desarrollo o ensayo**: es la decisión humana nueva que exi
 publicación pública, campañas reales, gasto, compras ni DNS; commit, push y merge siguen las reglas del repositorio.
 Pendientes que no bloquean: nombre del dominio de publicación, proveedor de email, textos finales de consentimiento
 y accesos de Google, Meta y Canva.
+
+## Resolución · 2026-10-11 · Clientes y Resultados ampliados (issue #10)
+
+Por el [issue #10](https://github.com/Vik-Avila/brandopolis/issues/10) y el plan de Clientes y Resultados
+(versión 5), la exclusión histórica de «CRM general» **deja de excluir la captura inicial de oportunidades**. El
+propietario aprueba en la Fase 4 **Clientes** como área propia, con registro manual y formulario web persistentes
+(origen, fecha, responsable o cola, siguiente seguimiento, segmento conocido y evidencia de campaña disponible), y
+**Resultados** con marketing, operación comercial y ventas. El núcleo comercial completo, la mensajería inicial,
+Brando como asistente interno del vendedor, atribución/ROAS, asesores y partidas, metas mensuales/trimestrales/
+anuales, históricos y forecast de ganados son **Fase 5**; conectores ampliados y la atención automática de Brando
+por marca/canal, **Fase 6**. Las frases anteriores que excluían el CRM se conservan como registro de su momento.
+Esta resolución no autoriza desplegar, contratar proveedores, adoptar código de terceros (Atomic, Chatwoot), enviar
+mensajes a clientes ni gastar. Detalle: [PHASE4_SPEC §12](../15-handoff/PHASE4_SPEC.md).
+
+Precisión sobre el informe de herramientas del 2026-10-11 («WhatsApp y Auto-CRM quedan fuera de Fase 4»): sus
+integraciones completas no se añaden por instalar una skill, pero Clientes y la captura inicial **sí** están en la
+Fase 4 por decisión del issue #10.
+
+### Roadmap de seis macrofases (sin séptima fase)
+
+| Macrofase | Tratamiento tras el issue #10 |
+|---|---|
+| 1–3 | Alcance, decisiones e historial vigentes (no se reabren) |
+| 4 · Activation & Orchestration | Alcance aprobado el 2026-10-10 + captura inicial de Clientes, Resultados ampliados y prueba acotada de Chatwoot. En la interfaz el área sigue llamándose Marketing |
+| 5 · Measurement & Intelligence | Medición prevista + núcleo comercial/Kanban, mensajería inicial, Brando asistente interno, cierre humano, aprendizaje en Validación, atribución/gasto/ROAS, asesores/segmentos/partidas, metas, históricos y forecast de ganados |
+| 6 · Agentic Scale | Alcance previo + conectores y conciliación ampliados, atención automática de Brando por marca/canal, seguimiento autorizado, traspaso humano, observabilidad y límites |

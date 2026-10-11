@@ -44,3 +44,5 @@ ACCEPTED: 0001 monolito modular, 0002 PostgreSQL, 0003 Drizzle, 0005 arquitectur
 - [ADR-0033 · Permisos por marca, invitados, contexto activo, portal y aprobación por versión](ADR-0033.md) (accepted 2026-10-10)
 
 - [ADR-0034 · Identidad visual y kit de marca](ADR-0034.md) (accepted 2026-10-10)
+
+- [ADR-0035 · Clientes: captura comercial nativa, evidencia de origen y contratos de Fases 5–6](ADR-0035.md) (proposed 2026-10-11; alcance de producto aprobado en el issue #10)

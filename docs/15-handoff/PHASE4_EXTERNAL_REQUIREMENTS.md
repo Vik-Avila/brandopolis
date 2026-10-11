@@ -1,11 +1,11 @@
 Status: accepted
 Owner: Product owner / Engineering
 Canonical: no
-Last reviewed: 2026-10-10
+Last reviewed: 2026-10-11
 Related: docs/14-decisions/ADR-0031.md, docs/14-decisions/ADR-0032.md, docs/14-decisions/ADR-0034.md, docs/15-handoff/PHASE4_SPEC.md
 Depends on: owner decisions 2C and 3C (2026-10-10); revisión R09 del 2026-10-10
 
-# Fase 4 · registro de requisitos externos (v3)
+# Fase 4 · registro de requisitos externos (v5)
 
 Pasos que sólo puede dar el propietario ante terceros. **Nunca se piden claves, tokens ni secretos por chat**: un
 valor necesario se introduce en el gestor de secretos del entorno o, en local, en la memoria del proceso (como la
@@ -87,6 +87,92 @@ La prueba con cuentas propias y la habilitación para cuentas de clientes son ac
 | EXT-REQ-13 | Política y texto de consentimiento para etiquetas de medición (alcance por país) | propietario (asesoría legal si procede) | captación medida por etiquetas | decidir la política | aviso de consentimiento aprobado |
 | EXT-REQ-14 | Alojamiento con certificados por dominio verificado (dominio propio del cliente, incluido el 2026-10-10) | propietario | servir dominios propios con HTTPS fuera de local | elegir alojamiento compatible antes del despliegue público | dominio de prueba verificado y servido con HTTPS |
 
+## Clientes, conversaciones y canales · issue #10 (2026-10-11)
+
+Evaluación documental del paquete de reconciliación (revisión 3, fuentes oficiales consultadas el 2026-10-11 por
+el revisor del propietario; no repetida ni probada por el agente). **Ningún candidato queda instalado, seleccionado
+ni probado.** La captura nativa de Clientes (PHASE4_SPEC §12.2) no depende de ninguno de estos requisitos.
+
+**Dictamen de uso.** Atomic CRM (`marmelab/atomic-crm`, React + shadcn-admin-kit + Supabase, licencia MIT):
+patrones y, si compensa, código seleccionado conservando avisos; también evaluable como núcleo adaptado mediante
+ADR. No se importa su aplicación, autenticación ni backend; su demo usa una API simulada que reinicia datos.
+Chatwoot: candidato a servicio de conversaciones desacoplado detrás de un adaptador de Brandopolis; Clientes
+conserva el expediente comercial. Un fork o iframe exige justificación y pruebas propias.
+
+| Componente | Hallazgo | Condición para incorporarlo |
+|---|---|---|
+| Atomic | MIT | Fijar commit, conservar avisos, revisar terceros; la licencia no aporta aislamiento |
+| Chatwoot Community | MIT fuera de `enterprise/` y de excepciones de terceros | Inventario de archivos usados y avisos; términos de servicios conectados y marcas |
+| Chatwoot Enterprise | Licencia separada | Contrato para uso productivo, usuarios, integración y distribución; no copiar capacidades Enterprise como MIT |
+| Tabla self-hosted publicada | Community $0, Premium Support $19, Enterprise $99 por agente/mes (a reconfirmar al cotizar) | Captain AI, voz, marca configurable, capacidad de agentes y permisos avanzados en planes de pago; SAML y SLA en Enterprise |
+
+**Autoridad de datos.** Brandopolis gobierna espacio, marca, permisos, oportunidad y seguimiento; Chatwoot, si se
+adopta, conversación, mensaje, entrega y adjunto; el adaptador mantiene la correspondencia de identidades externas
+(sin fusionar por similitud ni por coincidir teléfono/correo); los campos compartidos necesitan autoridad y política
+de conflicto (nunca dos expedientes maestros editables); Resultados gobierna los indicadores. Application APIs para
+agentes, Client APIs para el cliente final (no sustituyen una bandeja), Platform APIs para aprovisionar con las
+restricciones del token. Tokens sólo en servidor; cada operación autoriza actor, espacio, marca y recurso externo.
+**Una cuenta por marca es una hipótesis y un inbox no demuestra aislamiento.**
+
+**Eventos.** La documentación vigente describe firma HMAC-SHA256 sobre timestamp, punto y cuerpo original
+(`X-Chatwoot-Timestamp`, `X-Chatwoot-Signature`, `X-Chatwoot-Delivery` si existe). Confirmarlo sobre la versión
+desplegada; registro durable de recepción y deduplicación; duplicados, fuera de orden, huecos y conciliación;
+entrante/saliente/nota privada/entrega separados; un envío incierto nunca se repite a ciegas (ADR-0031).
+
+**Arquitectura y coste.** Chatwoot añade aplicación web, workers, PostgreSQL, Redis, correo y almacenamiento; no
+obliga a sustituir la cola PostgreSQL de Brandopolis. No se instala junto a las E2E en el equipo de 8 GB: simulador
+para el contrato y entorno aislado medido para la integración. Coste total = licencias + servidores/DB/Redis +
+archivos y transferencia + respaldos + correo + cargos por canal + IA + soporte/mantenimiento + amortización del
+desarrollo, para una marca piloto, una agencia con varias marcas y un escenario de crecimiento.
+
+| Fuente | Captura de oportunidad | Conversación | Estado en Brandopolis |
+|---|---|---|---|
+| Registro manual | Nativa | No aplica | En implementación (F4) |
+| Formulario web | Nativa, persistente | No equivale a chat | En implementación con página de desarrollo; publicación real depende de sitios, dominio y consentimiento |
+| Chat web Chatwoot | Por adaptador | Candidato | Prueba técnica pendiente; no conectado |
+| Correo | Ingesta futura si se aprueba | Candidato | No confundir con el correo de invitaciones (EXT-REQ-08); no conectado |
+| Meta | Lead Ads exige su integración | Facebook/Instagram/WhatsApp según cuenta | Ads de Fase 4 no habilita mensajería ni Lead Ads; no verificado |
+| TikTok | Lead forms aparte | Business Messaging documentado por Chatwoot | Elegibilidad, región y aprobación pendientes |
+| LinkedIn | Lead Sync con acceso aprobado | No acreditado | Lead Sync no da mensajes privados; Marketing API 202510 se retira el 2026-10-15, no fijarla |
+| Google Ads | Fuente de campaña/atribución | No es bandeja | Pendiente de accesos y pruebas |
+
+| ID | Requisito | Responsable | Estado |
+|---|---|---|---|
+| I10-EXT-01 | Atomic: commit elegido, licencia principal y de terceros, coste de adaptación | agente + propietario | pendiente |
+| I10-EXT-02 | Chatwoot: edición/versión, derechos de uso y contrato si corresponde | propietario | pendiente |
+| I10-EXT-03 | Entorno aislado para la prueba, recursos medidos, respaldo y coste de operación | propietario | pendiente |
+| I10-EXT-04 | Cobertura real de Application/Platform APIs y aprovisionamiento autorizado | agente (con entorno) | pendiente |
+| I10-EXT-05 | Secreto y firma de webhooks, rotación, conciliación y recuperación | agente (con entorno) | pendiente |
+| I10-EXT-06 | Matriz de canales y elegibilidad; permisos mínimos de cuentas reales | propietario | pendiente |
+| I10-EXT-07 | Privacidad, retención, exportación y borrado de conversaciones y adjuntos | propietario (asesoría si procede) | pendiente |
+| I10-EXT-08 | Cotización total y decisión de arquitectura (ADR) antes de cualquier adopción | propietario | pendiente |
+| I10-EXT-09 | Agent Bots: versión, API, token/firmas y estados; traspaso humano, bucles, fallo; gateway de Brando; consumo por marca | agente (con entorno) | pendiente |
+| I10-EXT-10 | Origen de campañas: UTM, identificadores de clic/anuncio y resolución anuncio → grupo → campaña por fuente; referencia por mensaje en la API/evento real (PR #14681 cubre Click-to-WhatsApp en `develop`, no otros canales) | agente + propietario (cuentas) | pendiente |
+| I10-EXT-11 | Gasto, impresiones y clics por API o importación verificable, sin duplicar costes | propietario (accesos) | pendiente (F5) |
+| I10-EXT-12 | Ingresos y monedas: base (confirmado, facturado, cobrado), ajustes y conversión trazable; el forecast básico no exige procesador de pagos | propietario | pendiente (F5) |
+| I10-EXT-13 | Agentes comerciales externos: política por marca/canal, ventanas, información publicable, costes, traspaso; ningún envío autorizado todavía | propietario | pendiente (F6) |
+| I10-EXT-14 | Históricos y forecast: calendario/zona horaria, cortes, retención/exportación, roles de equipo, fuentes de facturas y pagos | propietario | pendiente (F5) |
+
+Fuentes del paquete (páginas vivas): [Atomic CRM](https://github.com/marmelab/atomic-crm) ·
+[licencia](https://github.com/marmelab/atomic-crm/blob/main/LICENSE.md) ·
+[Chatwoot LICENSE](https://github.com/chatwoot/chatwoot/blob/develop/LICENSE) ·
+[Enterprise LICENSE](https://github.com/chatwoot/chatwoot/blob/develop/enterprise/LICENSE) ·
+[planes self-hosted](https://www.chatwoot.com/pricing/self-hosted-plans) ·
+[FAQ](https://developers.chatwoot.com/self-hosted/faq) ·
+[APIs](https://developers.chatwoot.com/api-reference/introduction) ·
+[webhooks](https://developers.chatwoot.com/api-reference/webhooks/add-a-webhook) ·
+[arquitectura](https://developers.chatwoot.com/self-hosted/deployment/architecture) ·
+[requisitos](https://developers.chatwoot.com/self-hosted/deployment/requirements) ·
+[canales](https://developers.chatwoot.com/self-hosted/supported-features) ·
+[TikTok](https://developers.chatwoot.com/self-hosted/configuration/features/integrations/tiktok) ·
+[LinkedIn Lead Sync](https://learn.microsoft.com/en-us/linkedin/marketing/lead-sync/leadsync-overview) ·
+[Agent Bots](https://www.chatwoot.com/features/chatbots) ·
+[guía de Agent Bots](https://app.chatwoot.com/hc/user-guide/articles/1677497472-how-to-use-agent-bots) ·
+[API de Agent Bots](https://developers.chatwoot.com/api-reference/account-agentbots/create-an-agent-bot) ·
+[PR #14681](https://github.com/chatwoot/chatwoot/pull/14681) ·
+[GA4 UTM](https://support.google.com/analytics/answer/10917952) ·
+[GA4 importación de costes](https://support.google.com/analytics/answer/10071305).
+
 ## Orden recomendado
 
 Registrar ya Google, Meta y Canva (etapas 1–2), porque sus revisiones pueden tardar y no conviene descubrir
@@ -102,3 +188,4 @@ correspondiente.
 | v2 | 2026-10-10 | R09: etapas por proveedor, operación y permiso mínimo, modalidad, evidencia y aceptación por fila; integración ≠ conector del asistente; Meta sin permisos de negocio por defecto; Canva por distribución y plan; medición en destino, fuentes, aplicación de verificación de exportaciones, consentimiento y dominio propio |
 | v3 | 2026-10-10 | Dictamen v2 §4: guía oficial de developer tokens como fuente primaria de Google; cambio de plataforma documentado frente a acceso del proyecto de Brandopolis pendiente de verificar; paso de revisión de responsables del proyecto |
 | v4 | 2026-10-10 | Aprobación del propietario: dominio propio incluido (EXT-REQ-14 deja de ser condicional); invitaciones por email con enlace alternativo y controles de consentimiento aprobados (EXT-REQ-08/13: falta elegir proveedor y texto final) |
+| v5 | 2026-10-11 | Issue #10: sección «Clientes, conversaciones y canales» con la evaluación documental de Atomic y Chatwoot (licencias, autoridad de datos, eventos, coste total, canales) e I10-EXT-01…14, todos pendientes |

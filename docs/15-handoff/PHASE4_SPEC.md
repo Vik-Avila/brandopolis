@@ -1,11 +1,11 @@
 Status: accepted
 Owner: Product / Engineering
 Canonical: no
-Last reviewed: 2026-10-10
-Related: docs/14-decisions/ADR-0030.md, docs/14-decisions/ADR-0031.md, docs/14-decisions/ADR-0032.md, docs/14-decisions/ADR-0033.md, docs/14-decisions/ADR-0034.md, docs/15-handoff/PHASE4_ACCEPTANCE_MATRIX.md, docs/15-handoff/PHASE4_EXTERNAL_REQUIREMENTS.md, docs/15-handoff/PHASE4_HANDOFF.md
+Last reviewed: 2026-10-11
+Related: docs/14-decisions/ADR-0030.md, docs/14-decisions/ADR-0031.md, docs/14-decisions/ADR-0032.md, docs/14-decisions/ADR-0033.md, docs/14-decisions/ADR-0034.md, docs/14-decisions/ADR-0035.md, docs/15-handoff/PHASE4_ACCEPTANCE_MATRIX.md, docs/15-handoff/PHASE4_EXTERNAL_REQUIREMENTS.md, docs/15-handoff/PHASE4_HANDOFF.md
 Depends on: owner brief 2026-10-10 (decisiones 1A, 2C, 3C) y su actualización del mismo día (identidad visual, revisión R01–R10); Fases 1–3 integradas en `main`
 
-# Fase 4 · Marketing, sitios web y colaboración · especificación (v5 · aprobada)
+# Fase 4 · Marketing, sitios web y colaboración · especificación (v6 · aprobada, con Clientes del issue #10)
 
 Especificación previa al código de producto. No describe nada implementado. Decisiones de arquitectura:
 [ADR-0030](../14-decisions/ADR-0030.md) (alcance, dominio, versiones, autoridad, exportaciones),
@@ -66,6 +66,15 @@ funciona también con el formulario actual.
 Una aprobación de alcance no autoriza campañas reales, gasto, compras, DNS ni despliegues. Cada operación externa
 concreta se presenta (destino, contenido, efecto) para su autorización.
 
+**Resolución del 2026-10-11 · [issue #10](https://github.com/Vik-Avila/brandopolis/issues/10) (plan de Clientes y
+Resultados, versión 5).** La exclusión «CRM general» de la lista anterior se conserva como registro histórico, pero
+ya no excluye la **captura inicial de oportunidades**: el propietario aprueba **Clientes** como área propia, con
+registro manual y formulario web persistentes, y **Resultados** ampliado a marketing, operación comercial y ventas.
+Es un adelanto acotado dentro de esta fase; el núcleo comercial completo y la mensajería inicial son Fase 5 y la
+atención automática y los conectores ampliados, Fase 6. Detalle, reparto y trazabilidad: §12. La aprobación no
+selecciona Chatwoot, Atomic, un proveedor, un framework ni precios, y no autoriza mensajes a clientes, compras ni
+producción.
+
 ## 2. Reutilización (auditoría del código real)
 
 | Necesidad | Se reutiliza | Se crea |
@@ -90,6 +99,10 @@ descarga de archivos subidos.
 - **Lateral principal (siete filas):** Inicio · Estrategia · Productos y servicios · Marketing · Marca y recursos ·
   Colaboración · Resultados. Filas orientativas de 44–48 px, sin huecos decorativos. Al pie, compactos: Mi
   aprendizaje, Configuración, Ayuda.
+  **Reconciliación del 2026-10-11 (issue #10):** Clientes es un destino aprobado; la regla de siete filas no puede
+  ocultarlo. Propuesta en validación visual (no aprobada como diseño exacto): **ocho áreas compactas** — Inicio ·
+  Estrategia · Productos y servicios · Marketing · Clientes · Marca y recursos · Colaboración · Resultados —, sin
+  desplazamiento del lateral en 1366×768, 1280×800 y 1440×900 a escala normal (§12.3).
 - **Encabezado:** selector de marca y búsqueda compacta (sólo información permitida de la marca activa, agrupada
   por estrategia, oferta, recurso o entregable). **Panel derecho:** Brando más visible y contextual; Contexto,
   Atención e Historial se conservan.
@@ -428,6 +441,8 @@ Texto anterior conservado en el historial (v4). Estado vigente:
 | Invitaciones | **Aprobado:** email como vía principal y enlace de un solo uso como alternativa, misma comprobación de destinatario; proveedor de email pendiente en su bloque |
 | Consentimiento | **Controles aprobados:** etiquetas opcionales desactivadas hasta aceptar, aceptar/rechazar claramente, cambiar la elección; texto final y configuración por mercado pendientes antes de medición real |
 | Dominio de sitios publicados | Separado del de la app; nombre, contratación y DNS pendientes antes del despliegue público (no bloquean trabajo local) |
+| Clientes y Resultados ampliados (issue #10, 2026-10-11) | **Aprobado:** área Clientes, captura manual/web persistente como prioridad de la iteración, Resultados con marketing, operación comercial y ventas, aislamiento por espacio/marca y reparto F4/F5/F6 (§12) |
+| Ocho áreas compactas, Clientes nativo + Chatwoot desacoplado, cuenta Chatwoot por marca, componentes de Atomic, vista conversacional nativa, permiso propio para compartir con clientes | **Recomendaciones por validar** (§12.9); ninguna dependencia queda adoptada |
 
 ## 11. Aprobación del propietario · 2026-10-10 14:49 (America/Mexico_City)
 
@@ -439,6 +454,207 @@ reglas del repositorio. Referencia de planificación con ambas ampliaciones: **5
 equivalentes) y **52–76 totales**; se recalibra con el trabajo real. La prueba del contrato C1 (EXT-015…021) es
 condición para habilitar reintentos y operaciones reales.
 
+## 12. Clientes y Resultados ampliados · issue #10 (2026-10-11)
+
+Fuentes: [issue #10](https://github.com/Vik-Avila/brandopolis/issues/10) (actualizado 2026-10-11T17:16:28Z, sin
+comentarios) y el plan «Brandopolis · Clientes y Resultados comerciales», **versión 5** (525 líneas; §§11–13:
+flujo comercial inteligente, trazabilidad campaña–venta, asesores, metas, históricos y forecast), recibidos en el
+paquete de reconciliación revisión 3 (`INVENTORY.json`: `package_revision` 3, `source_plan_version` 5; el plan
+tiene SHA-256 `3bfd61c1…593216ce`). La copia del issue del paquete coincide con el issue publicado salvo líneas en
+blanco. Esta sección fusiona la adenda de especificación y su ampliación v5; los criterios están en la matriz
+(I10-…) y los requisitos externos en [PHASE4_EXTERNAL_REQUIREMENTS](PHASE4_EXTERNAL_REQUIREMENTS.md) (I10-EXT-…).
+Arquitectura de la captura: [ADR-0035](../14-decisions/ADR-0035.md) (propuesto).
+
+Cuatro estados distintos para cada requisito: **documentado**, **implementado**, **validado en DEMO** y
+**validado con proveedor o identidad real** (más «desplegado», que exige su autorización propia).
+
+### 12.1 Objetivo y encaje
+
+Brandopolis conserva las oportunidades que llegan a cada marca y permite atenderlas. El adelanto se añade a la Fase
+4 sin cancelar identidad, colaboración, exportaciones, sitios, dominios, consentimiento, Canva ni Ads. No convierte
+la Fase 4 en un CRM. El recorrido objetivo aprobado (Fases 4–6) es: canal habilitado → contacto/prospecto →
+oportunidad → seguimiento y negociación → cierre humano ganado o perdido → Resultados → propuesta de aprendizaje →
+revisión humana en Validación. WhatsApp es un ejemplo del flujo multicanal, no la única fuente.
+
+### 12.2 Captura inicial · alcance de Fase 4 (prioridad de la iteración)
+
+1. Clientes se abre dentro de una marca autorizada y conserva el selector de marca y la navegación.
+2. Registro manual de una oportunidad: nombre o referencia, necesidad breve y un medio de contacto cuando se
+   conoce. No se exige ficha comercial completa.
+3. Se guardan origen y fecha de recepción; empieza como **Nueva**; se asigna a una persona autorizada o queda
+   explícitamente **Por asignar**.
+4. Siguiente seguimiento (acción y fecha). Si falta: **Sin seguimiento**, pendiente accionable. Si su fecha pasó:
+   **Seguimiento vencido**.
+5. Persistencia tras recargar o con una sesión nueva; filtros de pendientes que abren el expediente correcto (sin
+   Kanban completo).
+6. Un formulario web habilitado en desarrollo crea el mismo registro; reintentar el mismo envío devuelve la
+   referencia original.
+7. Clientes no se muestra activo con datos de ejemplo ni «Próximamente». La DEMO se identifica como tal; una prueba
+   de formulario en entorno aislado no acredita un sitio público conectado ni un proveedor real.
+
+**Datos mínimos y procedencia** (contrato en ADR-0035):
+
+| Dato | Regla |
+|---|---|
+| Espacio y marca | Obligatorios; resueltos y autorizados en servidor (nunca desde el navegador) |
+| Identificador y revisión | Persistentes; una revisión antigua se rechaza con 409 sin perder el cambio vigente |
+| Persona y contacto | Referencia mínima; correo/teléfono opcionales en registro manual; el formulario exige al menos uno |
+| Necesidad | Texto declarado, con límites |
+| Origen | Manual o formulario (con el formulario concreto); fecha de recepción del servidor y, aparte, fecha declarada del evento externo si existe |
+| Estado | Nueva / En seguimiento; no implica venta, conversión de un proveedor ni aprobación estratégica |
+| Responsable | Miembro activo con acceso a esa marca, o cola «Por asignar» |
+| Segmento conocido | Opcional; identificador estable de un segmento **de esa marca**, con procedencia; nunca inventado |
+| Evidencia de adquisición | Por interacción: canal de atención, plataforma/cuenta declarada o capturada, UTM (fuente, medio, campaña, id, contenido, término), identificadores de clic, página de entrada y dominio de referencia depurados, identificador del envío y fechas. Estado de campaña **Campaña no identificada** (con causa) o **Capturada sin verificar**; «verificada» sólo existirá con un conector o catálogo de la cuenta (Fase 5) |
+| Origen declarado | Lo que dice la persona se guarda como declarado, separado de la evidencia técnica |
+| Oferta relacionada | Opcional; sólo ofertas de esa marca. Público y campaña estructurados quedan para cuando existan sus entidades (no se usa texto libre como identificador de confianza) |
+| Consentimiento del formulario | Finalidad del contacto aceptada y versión del aviso; publicidad o etiquetas de seguimiento **opcionales y separadas**, desactivadas por defecto |
+| Evidencia de captura | Identificador del envío/evento, huella del contenido y procedencia para reintentar y conciliar |
+
+No son obligatorios en el adelanto: empresas, etapas configurables, probabilidad, importes, metas, cotizaciones,
+facturas, cobros, Kanban, mensajería ni automatizaciones.
+
+**Persistencia, reintentos y fallos.** Confirmar la recepción sólo después de que el registro y su deduplicación
+estén guardados en la misma transacción. La clave de reintento queda ligada a espacio, marca, origen (persona o
+formulario) y envío; reutilizarla con contenido distinto es un conflicto, nunca una actualización silenciosa. Dos
+consultas con distinto envío y el mismo correo/teléfono se conservan; no se fusionan identidades. Una caída antes
+del commit o después del commit pero antes de responder deja exactamente un registro por envío al reintentar. Si la
+base falla, se dice que no se pudo confirmar y se permite reintentar con la misma referencia; un correo o registro
+temporal no sustituye el expediente. La ruta manual/web no depende de Chatwoot, de la IA ni de cuentas
+publicitarias. Reasignar exige pertenencia vigente; los cambios simultáneos no pisan un seguimiento. Borrado y
+cierre de marca alcanzan estos datos.
+
+**Formulario web.** El servidor resuelve la marca a partir del identificador público del formulario, nunca de un
+dato del navegador. Sólo los campos necesarios, con límites de tamaño, límite de solicitudes y validación; sin
+adjuntos en este mínimo. Crear o desactivar un formulario (abrir una entrada pública) exige la capacidad
+`PUBLISH_SITE` de la marca. La entrega inicial se verifica en una página de formulario de desarrollo servida por
+Brandopolis; la publicación en un sitio real depende del bloque de sitios, dominio y consentimiento. El contenido
+del formulario no va a telemetría ni a logs y no es una instrucción para Brando.
+
+### 12.3 Navegación y lenguaje
+
+Clientes es destino propio; dentro de Clientes sólo se muestran funciones disponibles (conversaciones, empresas o
+Kanban no añaden entradas al lateral). Colaboración sigue siendo compartir y aprobar con clientes invitados; un
+invitado no se convierte en vendedor. Conservar selector de marca, navegación contextual, Brando visible y lenguaje
+cotidiano. Validar el lateral sin desplazamiento en 1366×768, 1280×800 y 1440×900; con zoom o poca altura todo
+sigue accesible; cambiar de área cierra el menú móvil. Las capturas canónicas sólo cambian con la autorización
+específica del propietario.
+
+### 12.4 Resultados ampliados
+
+| Dimensión | Lectura | Momento y límites |
+|---|---|---|
+| Marketing | Lo que llega desde sitio, campañas y otros canales; gasto y conversiones cuando estén conectados y comprobados | En F4: solicitudes del formulario propio y cobertura de campaña (capturada / no identificada) con datos reales; sitio, campañas y gasto «Sin conectar» |
+| Operación comercial | Nuevas, por asignar, sin seguimiento, seguimientos vencidos | F4 con los datos nativos; primera respuesta, carga por responsable y tiempo entre etapas cuando existan sus eventos (F5) |
+| Ventas | Ganadas/perdidas, importe, ciclo, motivos, metas, forecast | Contrato F5; en F4 «Sin datos» con explicación, nunca un embudo inventado |
+
+Cada cifra declara definición, fuente, ámbito, periodo, zona horaria y actualización (moneda cuando haya importes).
+Cero = medición disponible sin eventos; «Sin datos» o «Sin conectar» = falta la fuente o la capacidad. No se suman
+conversiones de proveedores como personas o ventas; una conversación resuelta no cierra una oportunidad; ganada no
+prueba facturación ni cobro; una previsión es estimación. Los agregados se calculan en servidor con el ámbito del
+usuario (nunca se filtra un total global en el navegador).
+
+### 12.5 Permisos y autoridad
+
+Capturar, leer y dar seguimiento en Clientes: el equipo de la marca según la regla vigente de membresía y
+asignación (ADMIN del espacio o MEMBER asignado). El invitado de marketing (ADR-0033) no accede a Clientes ni a sus
+endpoints, tampoco por ser invitado en otra marca. Responsable: sólo miembros activos con acceso a la marca; una
+baja o revocación se comprueba en la siguiente operación. Abrir un formulario público: capacidad `PUBLISH_SITE`.
+Los roles comerciales finos (asesor, líder de equipo, capacidades de metas, crédito y ajustes históricos) son
+contrato de Fase 5 (§12.7); el adelanto no crea capacidades nuevas ni amplía las existentes. Notas internas
+internas; Mi aprendizaje privado. Brando no lee datos de Clientes en Fase 4 y no cambia estrategia, identidad,
+plan, oportunidades, permisos ni acciones externas por inferencia.
+
+Pendiente de resolver por el propietario (sin atribuirle una política): la **capacidad propia para compartir con
+cliente** (hoy comparte cualquier miembro con acceso a la marca; invitar exige `MANAGE_GUESTS`) y la revisión de
+qué recursos aprueba un invitado: la implementación vigente sólo admite aprobar materiales y versiones del kit;
+estrategia y plan compartidos se leen y comentan.
+
+### 12.6 Flujo comercial y Brando (plan v5 §11)
+
+Contacto, conversación, interacción y oportunidad son entidades separadas: una consulta de soporte no crea una
+oportunidad por defecto, un contacto puede tener varias oportunidades y conversaciones, no se crea un contacto por
+mensaje ni se fusionan identidades no verificadas, y el silencio no confirma una pérdida. Ganada exige importe,
+moneda, fecha y actor; perdida conserva motivo declarado o desconocido (una sugerencia de Brando no es un motivo
+confirmado).
+
+| Modo de Brando | Fase | Autoridad |
+|---|---|---|
+| Asistente interno del vendedor (calificación propuesta, resúmenes, borradores de respuesta, preguntas, tareas, ayuda al cierre) | F5 | El vendedor revisa y actúa; contexto autorizado de su rol y marca; un borrador no se envía al generarlo |
+| Agente externo de atención (preguntas permitidas, recopilación comercial) | F6 | Política explícita por marca/canal, contexto publicable, límites, traspaso humano; nunca habilitado globalmente por esta aprobación |
+| Análisis y aprendizaje (patrones de ganadas/perdidas, objeciones) | F5 (ampliación F6) | Evidencia y cobertura visibles; revisión humana en Validación; no reescribe estrategia |
+
+Mismo gateway de modelos; ni Captain AI ni otro proveedor por inferencia. La toma humana suspende respuestas
+automáticas y descarta envíos no iniciados; volver al bot exige una transición auditada; la autoridad se comprueba
+justo antes de enviar y un envío ya iniciado se concilia sin repetición ciega (regla de ADR-0031). Se evitan bucles
+por mensajes salientes del bot, reintentos o sincronización. Si canal o IA fallan, el expediente se conserva y la
+atención humana queda visible. Consumo y límites por marca.
+
+### 12.7 Atribución, ROAS, asesores, metas, históricos y forecast (plan v5 §§12–13)
+
+- **Evidencia de origen desde F4** (§12.2): plataforma/cuenta separada del canal de atención («WhatsApp» no
+  identifica campaña); UTM e identificadores depurados con lista de campos permitidos; un id de campaña del
+  navegador es dato capturado, no verificado; sin evidencia, «Campaña no identificada» con causa; Brando no
+  inventa atribución.
+- **Historia y atribución (F5):** primer origen conservado e interacciones posteriores añadidas; atribución por
+  oportunidad/venta además del contacto; modelo, versión y ventana declarados; una venta no se imputa íntegra a
+  varias campañas en una vista aditiva; cobertura atribuida/declarada/sin atribución.
+- **ROAS (F5):** ingreso elegible atribuido / gasto publicitario real de la misma marca, cuenta, moneda y periodo.
+  MXN 5,000 / MXN 1,000 = 5x. Sin gasto: no calculable; gasto cero: no aplicable; presupuesto u oportunidades
+  abiertas no sustituyen datos reales; importación y sincronización superpuestas no duplican costes; base de
+  ingreso explícita (confirmado, facturado o cobrado).
+- **Asesores, equipos, segmentos y partidas (contrato F4; F5):** responsable principal, colaboradores y cambios
+  con actor y fecha; crédito explícito que suma 100 % (MXN 100,000 al 60/40 → 60,000 y 40,000 por asesor, 100,000
+  global); responsable actual distinto del crédito histórico al cierre; segmento principal con id estable y
+  etiquetas como filtros; partidas de productos y servicios desde el catálogo de ofertas (MXN 60,000 + 40,000 =
+  100,000); renombrar o desactivar no reescribe históricos; liderar un equipo no da acceso a todas las marcas.
+- **Metas (F5):** global, segmento, producto, servicio, asesor y equipo; mensual, trimestral y anual; calendario
+  natural por defecto y calendario comercial por marca; versión, autor, base y moneda; meta, real, cumplimiento y
+  brecha (80,000 / 100,000 → 80 %, brecha 20,000); dimensiones de las mismas ventas no se suman entre sí; Brando
+  propone, la persona decide. Este calendario no sustituye el del Plan de Marketing.
+- **Históricos (F5):** cortes y versiones conservados; mes, trimestre, año, mismo periodo del año anterior y
+  acumulado; periodos parciales al mismo avance; base anterior cero → porcentaje no aplicable; ausencia de datos
+  ≠ cero; catálogos y asesores inactivos consultables.
+- **Forecast de ganados (F5):** sólo negocios ganados; programación comercial, facturación prevista y cobros
+  previstos separados de lo realizado (ganado 100,000, cobrado 20,000, previstos 40,000 + 40,000 → 80,000 por
+  cobrar); sin calendario → «Pendiente de programación»; abiertos fuera; anticipos, parciales, etapas y
+  recurrencias con compromiso explícito; cortes conservados.
+
+Preparar estos contratos en F4 no obliga a crear sus tablas ni habilita funciones sin construir, y no permite
+diferir metas, históricos, forecast básico ni el asistente interno a la Fase 6. El modelo de captura de F4 ya separa
+oportunidad, interacción (evidencia por interacción) y eventos auditados, y referencia segmentos y ofertas por id
+estable, para que F5 añada contactos, conversaciones, partidas, crédito y cortes con migraciones aditivas.
+
+### 12.8 Reparto obligatorio
+
+| Fase | Incorporación |
+|---|---|
+| 4 · este bloque | Documentación y contratos; captura manual/web persistente con origen/UTM/evidencia o estado desconocido, responsable/cola, segmento conocido y seguimiento; resúmenes operativos reales en Resultados; navegación de Clientes; prueba acotada Chatwoot/Brando independiente |
+| 5 · Measurement & Intelligence | Núcleo comercial y Kanban, mensajería inicial con el canal real que se habilite, Brando asistente interno, cierre humano, atribución y gasto verificable, asesores/partidas, metas, históricos, forecast de ganados y aprendizaje revisado en Validación |
+| 6 · Agentic Scale | Ampliación de canales y conciliación, agente externo de Brando por marca/canal, seguimiento automatizado autorizado, traspaso, observabilidad y límites de consumo |
+
+Se conserva el resto del alcance original de cada macrofase; no hay séptima fase.
+
+### 12.9 Atomic, Chatwoot y prueba acotada
+
+Dirección recomendada por validar: Clientes nativo + Chatwoot desacoplado para conversaciones (Application APIs,
+eventos firmados, toma humana; Agent Bots como ruta para Brando con su gateway) + patrones o código seleccionado de
+Atomic (también evaluable como núcleo adaptado mediante ADR). **Nada queda adoptado.** La prueba acotada (mensaje
+web → contacto → oportunidad/seguimiento persistentes, deduplicación, dos marcas y dos espacios, roles, toma
+humana, firma de webhooks, fallo y recuperación, costes) se hace en un entorno aislado apropiado, nunca instalando
+la pila completa de Chatwoot junto a las E2E en el equipo de 8 GB; un simulador no acredita la integración.
+Licencias (Community MIT frente a Enterprise), costes totales, aislamiento por cuenta/marca y canales:
+PHASE4_EXTERNAL_REQUIREMENTS «Clientes, conversaciones y canales».
+
+### 12.10 Orden de trabajo y estimación
+
+1. Reconciliación documental (este cambio). 2. Modelo mínimo, permisos, reintentos y registro manual. 3. Formulario
+web de desarrollo, asignación/seguimiento, segmento conocido, evidencia de origen, fallos y aislamiento. 4.
+Navegación de Clientes y Resultados con resúmenes reales; diferencias visuales registradas sin autoaprobarlas. 5.
+Prueba acotada de Chatwoot cuando haya entorno y accesos. 6. Exportaciones (primero el generador PDF propio y
+`jszip`) y el resto de bloques. Las estimaciones históricas (45–65 / 52–76 sesiones) describían otro alcance y no
+se reutilizan como plazo: el bloque Clientes se estima por tareas (captura y resúmenes F4: 2–3 sesiones de 3–4 h,
+supuesto a recalibrar con el tiempo real informado en SESSION_STATE).
+
 ## Historial de revisiones
 
 | Versión | Fecha | Cambio |
@@ -448,3 +664,4 @@ condición para habilitar reintentos y operaciones reales.
 | v3 | 2026-10-10 | Dictamen v2: C1–C4 resueltos (tabla en §9), estados de paso remoto y de medición, suma de sesiones corregida, inicio guiado con la pregunta «¿Qué quieres lograr?» como propuesta pendiente (§4.9) y su estimación separada |
 | v4 | 2026-10-10 | Dictamen v3: precisiones C1 (envío tardío tras `DISPATCHING`) y C3 (compatibilidad de publicación); la pregunta de prioridad pasa a requisito confirmado de alcance base (§4.9) separada del inicio guiado completo propuesto (§4.10); escenarios de estimación y asignación al bloque 3 sin doble cómputo |
 | v5 · aprobada | 2026-10-10 | Aprobación del propietario (14:49): ADR aceptados con C1; inicio guiado completo, dominio propio, invitaciones y controles de consentimiento incluidos; §10 actualizado y §11 nuevo; desarrollo autorizado fuera de producción |
+| v6 | 2026-10-11 | Issue #10 y plan de Clientes/Resultados v5 (paquete de reconciliación revisión 3): resolución en §1, ocho áreas propuestas en §3, filas nuevas en §10 y §12 nuevo (captura F4, Resultados ampliados, permisos, flujo y Brando, atribución/ROAS/asesores/metas/históricos/forecast, reparto F4/F5/F6, Atomic/Chatwoot, orden de trabajo). El resto de la especificación no cambia |
