@@ -719,7 +719,7 @@ export function actionFormHtml(data,a=null){
 const AREA_TABS={
  marketing:{label:'Marketing',tabs:[['plan','Plan de Marketing'],['social','Redes sociales'],['ads','Campañas digitales']],later:'Sitio web llegará más adelante.'},
  offers:{label:'Productos y servicios',tabs:[['offers','Ofertas'],['materials','Materiales de venta']],later:''},
- brand:{label:'Marca y recursos',tabs:[['identity','Identidad visual']],later:'Guía de marca, Biblioteca y Plantillas llegarán más adelante.'}
+ brand:{label:'Marca y recursos',tabs:[['identity','Identidad visual'],['guide','Guía de marca']],later:'Biblioteca y Plantillas llegarán más adelante.'}
 };
 export function areaTabsHtml(area,active){
  const a=AREA_TABS[area];
@@ -962,4 +962,75 @@ export function setupHtml(draft,brandName,mode,documents=[]){
   :draft.step===3?`${setupIdentityHtml(draft,documents)}<div class="actions"><button type="button" class="secondary" id="setup-back" data-step="2">Volver</button><button type="button" id="setup-next" data-step="4">Continuar</button></div>`
   :`${setupSummaryHtml(draft)}<div class="actions"><button type="button" class="secondary" id="setup-back" data-step="3">Volver</button></div>`;
  return `<p class="eyebrow">Preparar tu marca</p><h2>${escape(brandName)}</h2>${setupStagesHtml(draft.step)}<div class="setup-modes" role="group" aria-label="Forma de completar"><button type="button" class="secondary" data-setup-mode="guide" aria-pressed="${mode!=='ficha'}">Guía</button><button type="button" class="secondary" data-setup-mode="ficha" aria-pressed="${mode==='ficha'}">Ficha completa</button></div><div class="setup-body">${body}</div><div class="setup-footer actions"><button type="button" class="secondary" id="setup-leave">Guardar y salir</button><button type="button" class="secondary" id="setup-abandon">Descartar borrador</button></div><p id="setup-status" class="hint" role="status" aria-live="polite"></p>`;
+}
+
+// ─── ADR-0033 · living guide, Colaboración and the guest portal (pure projections; operations live in app.js) ───
+/** Living guide from the published kit version only: logos, colours with their role, type, contrast and tone. */
+export function guideBodyHtml(guide,previewUrl){
+ const c=guide.content,file=id=>guide.files.find(f=>f.id===id);
+ const logos=c.logos.map(l=>{const f=file(l.assetId);return `<li class="guide-logo">${f?.previewable?`<img src="${previewUrl(l.assetId)}" alt="Logotipo ${escape(VARIANT_WORDS[l.variant]??'')}" loading="lazy">`:'<span class="hint">Archivo sin vista previa</span>'}<p><strong>${escape(VARIANT_WORDS[l.variant]??'')}</strong>${l.minWidthPx?` · ancho mínimo ${l.minWidthPx} px`:''}</p>${l.usage?`<p class="hint">${escape(l.usage)}</p>`:''}</li>`;}).join('');
+ const colors=c.palette.map(p=>`<li class="guide-color"><span class="kit-swatch" data-hex="${escape(p.hex)}" aria-hidden="true"></span><div><p><strong>${escape(p.name)}</strong></p><p class="hint">${escape(ROLE_WORDS[p.role])} · ${escape(p.hex)}${p.reference?` · ${escape(p.reference)}`:''}</p></div></li>`).join('');
+ const fonts=c.typography.map(f=>`<li><strong>${escape(f.family)}</strong> · ${escape(USE_WORDS[f.use]??'')}${f.alternatives.filter(a=>a.reviewed).length?`<p class="hint">Alternativas: ${f.alternatives.filter(a=>a.reviewed).map(a=>`${escape(CHANNEL_WORDS2[a.channel])}: ${escape(a.family)}`).join('; ')}</p>`:''}</li>`).join('');
+ const list=(title,items)=>items.length?`<h4>${escape(title)}</h4><ul>${items.map(i=>`<li>${escape(i)}</li>`).join('')}</ul>`:'';
+ return `<div class="guide">${logos?`<section class="plan-block"><h3>Logotipos</h3><ul class="guide-logos">${logos}</ul></section>`:''}
+ ${colors?`<section class="plan-block"><h3>Colores</h3><ul class="guide-colors">${colors}</ul>${contrastHtml(guide.contrast,c.palette)}</section>`:''}
+ ${fonts?`<section class="plan-block"><h3>Tipografías</h3><ul class="guide-fonts">${fonts}</ul></section>`:''}
+ ${c.verbal.tone||c.verbal.messages.length?`<section class="plan-block"><h3>Cómo habla la marca</h3>${c.verbal.tone?`<p>${escape(c.verbal.tone)}</p>`:''}${list('Mensajes',c.verbal.messages)}${list('Ejemplos',c.verbal.examples)}</section>`:''}
+ ${c.style.do.length||c.style.dont.length?`<section class="plan-block"><h3>Usos</h3>${list('Sí',c.style.do)}${list('No',c.style.dont)}</section>`:''}</div>`;
+}
+export function guideHtml(guide,brandIdValue){
+ const head=`<div class="ws-hero"><p class="eyebrow">Marca y recursos</p><h2>Guía de marca</h2><p class="ws-lead">La guía se genera de la versión publicada de tu kit. Cambia cuando publicas otra versión; los borradores no aparecen aquí.</p></div>`;
+ if(!guide)return `${head}<p>Aún no hay una versión publicada del kit. Aprueba y publica tu kit en Identidad visual para tener tu guía.</p>`;
+ return `${head}<p class="hint">Versión ${guide.sequence} del kit, publicada.</p>${guideBodyHtml(guide,id=>`/api/brand-kit/assets/preview?brandId=${encodeURIComponent(brandIdValue)}&amp;assetId=${encodeURIComponent(id)}`)}`;
+}
+const SHARE_WORDS={STRATEGY_SNAPSHOT:'Estrategia',PLAN_SNAPSHOT:'Plan de Marketing',DELIVERABLE_VERSION:'Material',KIT_VERSION:'Identidad visual'};
+const INVITATION_WORDS={PENDING:'Pendiente',ACCEPTED:'Aceptada',REVOKED:'Retirada',EXPIRED:'Vencida'};
+const DECISION_WORDS={APPROVE:'Aprobó esta versión',REQUEST_CHANGES:'Pidió cambios'};
+const commentsHtml=comments=>comments.length?`<ul class="share-comments">${comments.map(c=>`<li><p><strong>${escape(c.author)}</strong>${c.context==='GUEST'?' <span class="badge">Cliente</span>':''}${c.visibility==='INTERNAL'?' <span class="badge warn">Interno</span>':''} · <span class="hint">${escape(fmt(c.createdAt))}</span></p><p>${escape(c.body)}</p></li>`).join('')}</ul>`:'<p class="hint">Sin comentarios.</p>';
+const approvalsHtml=approvals=>approvals.length?`<ul class="share-approvals">${approvals.map(x=>`<li><span class="badge ${x.decision==='APPROVE'?'':'warn'}">${escape(DECISION_WORDS[x.decision])}</span> ${escape(x.actor)} · <span class="hint">${escape(fmt(x.createdAt))}</span>${x.comment?`<p>${escape(x.comment)}</p>`:''}</li>`).join('')}</ul>`:'';
+/** Colaboración (team): invite by link (email delivery not configured), guests, and what the client sees. */
+export function collaborationHtml(d){
+ const head=`<div class="ws-hero"><p class="eyebrow">Colaboración</p><h2>Trabaja con tu cliente</h2><p class="ws-lead">Invita a tu cliente a esta marca. Sólo verá lo que compartas, puede comentar y aprobar la versión exacta; nunca edita, publica ni autoriza gasto.</p></div>`;
+ const invite=d.canManageGuests?`<form id="invite-form" class="offer-form" novalidate><label for="invite-email">Correo de tu cliente</label><input id="invite-email" type="email" maxlength="254" autocomplete="off" required placeholder="cliente@empresa.com"><p class="hint">${d.emailDelivery?'Le enviaremos la invitación por correo.':'El envío por correo aún no está configurado. Te daremos un enlace de un solo uso para que se lo envíes tú.'} Sólo podrá aceptarla quien inicie sesión con ese correo. Vence en 7 días.</p><p id="invite-status" role="status" aria-live="polite"></p><div class="actions"><button type="submit">Crear invitación</button></div></form><div id="invite-link"></div>`:'<p class="hint">Invitar o retirar invitados necesita el permiso «Gestionar invitados» en esta marca.</p>';
+ const invitations=d.invitations.length?`<ul class="collab-list">${d.invitations.map(i=>`<li><span>${escape(i.email)}</span><span class="badge ${i.state==='PENDING'?'':'warn'}">${escape(INVITATION_WORDS[i.state])}</span><span class="hint">vence ${escape(fmt(i.expiresAt))}</span>${d.canManageGuests&&i.state==='PENDING'?`<button type="button" class="tertiary" data-revoke-invitation="${escape(i.id)}">Retirar invitación</button>`:''}</li>`).join('')}</ul>`:'<p class="hint">Aún no has invitado a nadie.</p>';
+ const guests=d.guests.length?`<ul class="collab-list">${d.guests.map(g=>`<li><span>${escape(g.name)}${g.email&&g.email!==g.name?` · ${escape(g.email)}`:''}</span><span class="badge ${g.status==='ACTIVE'?'':'warn'}">${g.status==='ACTIVE'?'Con acceso':'Acceso retirado'}</span>${d.canManageGuests&&g.status==='ACTIVE'?`<button type="button" class="tertiary" data-revoke-guest="${escape(g.id)}">Retirar acceso</button>`:''}</li>`).join('')}</ul>`:'<p class="hint">Nadie ha aceptado todavía.</p>';
+ const s=d.shareable,option=(type,id,title)=>`<option value="${escape(type)}:${escape(id)}">${escape(title)}</option>`;
+ const options=[s.strategy.decisions?option('STRATEGY_SNAPSHOT','strategy',`Estrategia: ${s.strategy.decisions} decisión(es) aprobada(s), tal como están hoy`):'',...s.planSnapshots.map(p=>option('PLAN_SNAPSHOT',p.id,p.title)),...s.deliverables.map(v=>option('DELIVERABLE_VERSION',v.id,`${v.title}${v.status==='IN_REVIEW'?' (en revisión)':''}`)),...s.kitVersions.map(v=>option('KIT_VERSION',v.id,`${v.title}${v.status==='IN_REVIEW'?' (en revisión)':''}`))].join('');
+ const share=options?`<form id="share-form" class="offer-form" novalidate><label for="share-target">¿Qué quieres compartir?</label><select id="share-target">${options}</select><p class="hint">Se comparte esa versión exacta. Si después cambia, tu cliente sigue viendo la que compartiste hasta que compartas otra.</p><div class="actions"><button type="submit">Compartir con el cliente</button></div></form>`:`<p class="hint">${d.shares.some(x=>!x.withdrawnAt)?'No hay versiones nuevas para compartir.':'Aún no hay nada que se pueda compartir: aprueba decisiones, una copia del plan, un material o una versión del kit.'}</p>`;
+ const shares=d.shares.length?d.shares.map(x=>`<article class="share-card${x.withdrawnAt?' is-withdrawn':''}"><div class="share-head"><p class="eyebrow">${escape(SHARE_WORDS[x.targetType])}</p><h4>${escape(x.title)}</h4><p class="hint">${x.withdrawnAt?`Compartido el ${escape(fmt(x.sharedAt))} · retirado el ${escape(fmt(x.withdrawnAt))}`:`Compartido el ${escape(fmt(x.sharedAt))}`}</p></div>${approvalsHtml(x.approvals)}${commentsHtml(x.comments)}${x.withdrawnAt?'':`<form class="share-comment" data-share="${escape(x.id)}"><label for="comment-${escape(x.id)}">Comentario</label><textarea id="comment-${escape(x.id)}" maxlength="2000" rows="2"></textarea><label for="visibility-${escape(x.id)}">¿Quién lo ve?</label><select id="visibility-${escape(x.id)}"><option value="SHARED">Tu cliente y tu equipo</option><option value="INTERNAL">Sólo tu equipo</option></select><div class="actions"><button type="submit" class="secondary">Comentar</button><button type="button" class="tertiary" data-withdraw="${escape(x.id)}">Dejar de compartir</button></div></form>`}</article>`).join(''):'<p class="hint">Todavía no compartes nada.</p>';
+ return `${head}<section class="plan-block" aria-labelledby="collab-invite-title"><h3 id="collab-invite-title">Invitar a tu cliente</h3>${invite}<h4>Invitaciones</h4>${invitations}<h4>Personas invitadas</h4>${guests}</section>
+ <section class="plan-block" aria-labelledby="collab-share-title"><h3 id="collab-share-title">Lo que ve tu cliente</h3>${share}<div class="share-cards">${shares}</div></section>`;
+}
+/** The single-use link, shown once right after creating the invitation. */
+export function invitationLinkHtml(link){
+ return `<div class="invite-link" role="note"><p><strong>Enlace de un solo uso</strong> (sólo se muestra ahora):</p><input id="invite-link-value" readonly value="${escape(link)}" aria-label="Enlace de invitación"><div class="actions"><button type="button" class="secondary" id="invite-copy">Copiar enlace</button></div><p class="hint">Envíaselo a tu cliente. Si lo pierdes, retira la invitación y crea otra.</p></div>`;
+}
+function planBodyHtml(s){
+ const c=s.content,progress=new Map(s.progress.map(x=>[x.actionId,x]));
+ const objectives=h=>c.objectives.filter(o=>o.horizon===h);
+ const objectiveList=list=>list.length?`<ul class="plan-objectives">${list.map(o=>`<li class="plan-objective"><p class="plan-objective-title">${escape(o.title)}</p>${o.measure?`<p class="hint">Cómo se mide: ${escape(o.measure)}</p>`:''}</li>`).join('')}</ul>`:'<p class="hint">Sin elementos.</p>';
+ const action=a=>{const pr=progress.get(a.id);return `<li class="plan-action"><div class="plan-action-head">${planActionBadge(pr?.status??a.status)}<h4>${escape(a.title)}</h4></div>${factsHtml(actionFacts(a,a.offerName))}${pr?.note||pr?.date?`<p class="hint">Avance${pr.date?` del ${escape(dayText(pr.date))}`:''}${pr.note?`: ${escape(pr.note)}`:''}</p>`:''}</li>`;};
+ return `${c.focus?`<p class="plan-focus">Próximos 90 días: del ${escape(dayText(c.focus.start))} al ${escape(dayText(c.focus.end))}.</p>`:''}<h5>Objetivos del año</h5>${objectiveList(objectives('ANNUAL'))}<h5>Prioridades de los próximos 90 días</h5>${objectiveList(objectives('NINETY_DAYS'))}<h5>Acciones y avance</h5><ul class="plan-actions">${c.actions.map(action).join('')||'<li class="hint">Sin acciones.</li>'}</ul>`;
+}
+function portalBodyHtml(x,brandIdValue){
+ const b=x.body;
+ if(!b)return '<p class="hint">Este contenido ya no está disponible.</p>';
+ if(x.targetType==='STRATEGY_SNAPSHOT')return `<dl class="portal-strategy">${b.decisions.map(d=>`<dt>${escape(labels[d.module]??d.module)}</dt><dd>${escape(d.selectedOption)}</dd>`).join('')}</dl>`;
+ if(x.targetType==='PLAN_SNAPSHOT')return planBodyHtml(b);
+ if(x.targetType==='DELIVERABLE_VERSION')return `<p class="hint">${escape(TYPE_WORDS[b.type]??'Material')} · versión ${b.sequence}</p><pre class="brando-proposal-text">${escape(deliverableText(b.content))}</pre>`;
+ return guideBodyHtml(b,id=>`/api/portal/asset?brandId=${encodeURIComponent(brandIdValue)}&amp;assetId=${encodeURIComponent(id)}`);
+}
+/** Guest portal: only what was shared, the published guide, shared comments and decisions on the exact version. */
+export function portalHtml(p){
+ const approvable=x=>x.targetType==='DELIVERABLE_VERSION'||x.targetType==='KIT_VERSION';
+ const card=x=>`<article class="share-card" id="share-${escape(x.id)}"><div class="share-head"><p class="eyebrow">${escape(SHARE_WORDS[x.targetType])}</p><h3>${escape(x.title)}</h3><p class="hint">Compartido el ${escape(fmt(x.sharedAt))}</p></div>${portalBodyHtml(x,p.brand.id)}${approvalsHtml(x.approvals)}<h4>Comentarios</h4>${commentsHtml(x.comments)}
+  <form class="portal-comment" data-share="${escape(x.id)}"><label for="portal-comment-${escape(x.id)}">Tu comentario</label><textarea id="portal-comment-${escape(x.id)}" maxlength="2000" rows="2"></textarea><div class="actions"><button type="submit" class="secondary">Comentar</button></div></form>
+  ${approvable(x)?`<form class="portal-decide" data-share="${escape(x.id)}" data-fingerprint="${escape(x.fingerprint)}"><label for="portal-decide-${escape(x.id)}">Comentario de tu decisión <span class="hint">obligatorio si pides cambios</span></label><textarea id="portal-decide-${escape(x.id)}" maxlength="2000" rows="2"></textarea><div class="actions"><button type="submit" value="APPROVE">Aprobar esta versión</button><button type="submit" value="REQUEST_CHANGES" class="secondary">Pedir cambios</button></div><p class="hint">Tu aprobación vale sólo para esta versión. No publica nada ni autoriza gasto.</p></form>`:''}</article>`;
+ const groups=[['Marca',x=>x.targetType==='STRATEGY_SNAPSHOT'||x.targetType==='KIT_VERSION'],['Marketing',x=>x.targetType==='PLAN_SNAPSHOT'],['Entregables',x=>x.targetType==='DELIVERABLE_VERSION']];
+ const sections=groups.map(([title,match])=>{const items=p.shares.filter(match);return items.length?`<section class="portal-section" aria-label="${escape(title)}"><h2 class="portal-section-title">${escape(title)}</h2>${items.map(card).join('')}</section>`:'';}).join('');
+ const pending=p.shares.filter(x=>approvable(x)&&!x.approvals.some(a=>a.actor==='Tú')).length;
+ return `<div class="ws-hero"><p class="eyebrow">Portal del cliente</p><h2>${escape(p.brand.name)}</h2><p class="ws-lead">Aquí ves lo que el equipo compartió contigo. Puedes comentar y aprobar o pedir cambios; no puedes editar ni publicar.</p></div>
+ <section class="plan-block portal-summary" aria-label="Resumen"><p>${p.shares.length} elemento(s) compartido(s)${pending?` · ${pending} esperando tu revisión`:''}.</p></section>
+ ${p.guide?`<section class="portal-section" aria-label="Guía de marca"><h2 class="portal-section-title">Guía de marca</h2><p class="hint">Versión ${p.guide.sequence} del kit, publicada.</p>${guideBodyHtml(p.guide,id=>`/api/portal/asset?brandId=${encodeURIComponent(p.brand.id)}&amp;assetId=${encodeURIComponent(id)}`)}</section>`:''}
+ ${sections||'<p>El equipo todavía no ha compartido nada contigo.</p>'}`;
 }

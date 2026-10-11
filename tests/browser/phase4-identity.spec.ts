@@ -25,7 +25,7 @@ test('identity: upload files, ingest, adopt, contrast, approve and publish the k
   await page.locator('#brand-resources').click();
   const view = page.locator('#decision');
   await expect(view.locator('h2').first()).toHaveText('Identidad visual');
-  await expect(view).toContainText('Guía de marca, Biblioteca y Plantillas llegarán más adelante.');
+  await expect(view).toContainText('Biblioteca y Plantillas llegarán más adelante.');
   await expect(view.getByRole('heading', { name: 'Ya tengo identidad' })).toBeVisible();
   await expect(view.locator('.kit-entry').nth(1).getByRole('button', { name: 'Empezar con lo que tengo' })).toBeVisible(); // partial identity (ONB-007)
 
@@ -78,6 +78,14 @@ test('identity: upload files, ingest, adopt, contrast, approve and publish the k
   await expect(view).toContainText('Aún no publicado. Publicar es un paso aparte de aprobar.');
   await view.getByRole('button', { name: 'Publicar esta versión' }).click();
   await expect(view).toContainText('Publicado: versión 1 (la misma).');
+  // ADR-0033 · living guide: built from the published version only (tabs on wide screens, a selector on narrow ones).
+  const guideTab = view.getByRole('tab', { name: 'Guía de marca' });
+  if (await guideTab.isVisible()) await guideTab.click(); else await view.locator('#area-select').selectOption('guide');
+  await expect(view.locator('h2').first()).toHaveText('Guía de marca');
+  await expect(view).toContainText('Versión 1 del kit, publicada.');
+  await expect(view.locator('.guide-color').filter({ hasText: 'Tinta' })).toContainText('Texto · #111111');
+  await expect(view).toContainText('Cercano y claro');
+  await expect(view).toContainText('normal cumple AA');
   expect(dialogs, 'no script from an uploaded SVG ever runs').toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });

@@ -53,3 +53,27 @@ stateDiagram-v2
  IN_PROGRESS --> CONFIRMED: la persona confirma la ficha (requiere marca)
  IN_PROGRESS --> ABANDONED: la persona descarta el borrador
 ```
+
+## BrandInvitation, BrandGuest y PortalShare (ADR-0033 · colaboración)
+
+Una invitación a una sola marca, con token de un solo uso guardado como hash y caducidad de 7 días (`EXPIRED` se
+deriva de la fecha; nunca se guarda). La entrega es por enlace mientras no haya proveedor de email. Un invitado lo es
+de una sola marca. Lo compartido apunta a una versión exacta (huella); sólo cambia por su retirada. Comentarios y
+aprobaciones del portal son append-only. Las transiciones están protegidas por triggers (migración 0026).
+
+```mermaid
+stateDiagram-v2
+ state BrandInvitation {
+  [*] --> PENDING
+  PENDING --> ACCEPTED: el destinatario la acepta con su identidad
+  PENDING --> REVOKED: el equipo la retira
+ }
+ state BrandGuest {
+  [*] --> ACTIVE
+  ACTIVE --> REVOKED: el equipo retira el acceso
+ }
+ state PortalShare {
+  [*] --> Compartido
+  Compartido --> Retirado: dejar de compartir o nueva estrategia compartida
+ }
+```

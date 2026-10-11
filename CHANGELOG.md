@@ -1,3 +1,11 @@
+## 2026-10-11 · Phase 4 — Colaboración, portal del invitado y guía viva (migración aditiva 0026)
+
+- Colaboración deja de ser «Próximamente»: invitar a un cliente por enlace de un solo uso (el correo aún no está configurado y la interfaz lo dice), invitaciones y personas invitadas, retirar invitación o acceso, compartir la versión exacta (estrategia congelada, copia aprobada del plan, material o versión del kit), comentarios internos o compartidos y las decisiones del cliente.
+- Portal del invitado: sólo su marca y lo compartido activo, la guía publicada, comentarios compartidos; aprobar o pedir cambios sobre la versión exacta (huella; 409 si cambió); nunca edita, publica ni autoriza gasto. Retirar el acceso surte efecto en su siguiente acción.
+- Marca y recursos › Guía de marca: guía viva generada de la versión publicada del kit.
+- Datos: `brand_invitations`, `brand_guests`, `portal_shares`, `portal_comments`, `portal_approvals` con triggers de estado e inmutabilidad; incluidas en el borrado registrado de marca.
+- Evidencia: pnpm test 475 PASS; E2E 290 pruebas (277 PASS y 13 SKIP tras corregir un desbordamiento del portal a 1280 px; 4 fallos intermitentes en Validación, apertura de sesión y plan que pasan al repetirlos); PILOT 10/10; test:visual estructura PASS; píxeles: 5 capturas de escritorio cambian sólo por el menú (Colaboración sin «Próximamente»), sin actualizar las canónicas.
+
 ## 2026-10-11 · Phase 4 — ONB-006 y ONB-007 (identidad en el inicio guiado)
 
 - ONB-006: los PDF aportados al preparar la marca aparecen en Identidad visual («Archivos que ya cargaste») y se usan como manual sin volver a subirlos (`/api/brand-kit/reuse-document`: misma marca, firma y huella comprobadas, mismo contenido = mismo archivo del kit).

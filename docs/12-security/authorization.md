@@ -38,10 +38,23 @@ Fase 4 · bloque 2 (2026-10-10, [ADR-0033](../14-decisions/ADR-0033.md), [ADR-00
 | Conceder o retirar capacidades por Brand (`/api/brands/capabilities`) | sí, sólo a un MEMBER asignado | no (403) | no | no |
 | Gestionar conexiones de proveedor y vincular cuentas | sí | sólo con `MANAGE_CONNECTIONS` | no | no |
 | Autorizar, encolar o reintentar una operación con gasto | sí | sólo con `AUTHORIZE_SPEND` | no | **no** |
+| Invitar a un cliente a una Brand, retirar una invitación o retirar el acceso de un invitado (`/api/collaboration/{invite,revoke-invitation,revoke-guest}`); el token de un solo uso sólo se muestra al crearla y se guarda como hash | sí | sólo con `MANAGE_GUESTS` | no | no |
+| Leer Colaboración, compartir una versión exacta (estrategia congelada, copia aprobada del plan, versión de material o de kit en revisión o aprobada; nunca un borrador), dejar de compartir y comentar interno o compartido (`/api/collaboration`, `/api/collaboration/{share,withdraw,comment}`) | sí | sí | no | no |
+| Leer la guía viva del kit publicado (`/api/brand-guide`) | sí | sí | en su portal | no |
+| Aceptar una invitación (`/api/invitations/accept`): sesión válida; email verificado igual al invitado (una identidad DEMO sin cuenta sólo en marcas DEMO); un miembro del workspace no pasa a invitado | — | — | sí | no |
+| Portal (`/api/portal/brands`, `/api/portal`): sólo con un `BrandGuest` ACTIVE de esa marca exacta; lee lo compartido activo, la guía publicada y comentarios compartidos; nunca comentarios internos, borradores, plan vivo, ofertas, Brando ni conexiones | no (su vista es la de equipo) | no | sí | no |
+| Comentar en lo compartido y aprobar o pedir cambios sobre la versión exacta compartida (`/api/portal/{comment,decide}`: huella exacta, 409 si cambió; clave de idempotencia; materiales y kit, no estrategia ni plan); nunca concede publicar ni gastar | — | — | sí | no |
+| Vista previa de un archivo para el invitado (`/api/portal/asset`): sólo PNG, JPEG o WebP citados por la guía publicada o por una versión de kit compartida activa; autorizado en cada petición | — | — | sí | no |
 
 El actor y sus capacidades se resuelven en servidor (`Engine.withBrandActor`: sesión, membresía activa, Brand bajo
 Workspace y asignación). Otra organización → 404; un MEMBER sin asignación → 403. Ejecutar un paso externo revalida
 en el worker la capacidad del actor que autorizó. Las credenciales se cifran en servidor y nunca salen en
-respuestas. Los invitados (ADR-0033) se implementan en un bloque posterior.
+respuestas. Los invitados (ADR-0033) se resuelven aparte (`Engine.withGuest`: sesión válida y `BrandGuest` ACTIVE de esa
+marca exacta, sin depender de la membresía); un invitado nunca llega a los endpoints de equipo, porque su sesión
+pertenece a su propio workspace (404). Retirar el acceso surte efecto en la siguiente petición. Las acciones del
+invitado quedan en sus propias filas (aceptación de la invitación, `BrandGuest`, comentarios y aprobaciones
+append-only con actor y fecha); la auditoría estratégica sólo admite miembros del workspace. El portal y la
+aceptación no exigen el perfil de Estratega de Marca del PILOT. Compartir no tiene capacidad propia en ADR-0033: lo
+hace cualquier miembro del equipo con la marca asignada (decisión pendiente si se quiere restringir).
 
 Operador PILOT (2026-10-04, [ADR-0016](../14-decisions/ADR-0016.md)): la superficie `/admin` es independiente de esta matriz. Exige sesión PILOT viva, email verificado y pertenencia a `BRANDOPOLIS_ADMIN_EMAILS`, comprobados en cada endpoint; sólo ve metadatos operativos, evidencia agregada y los comentarios de feedback, puede suspender o reactivar el acceso de un participante, y no tiene ningún permiso estratégico (no lee contenido ni hace commit). El autoaprovisionamiento crea un Workspace propio por identidad y no concede permisos fuera de él.

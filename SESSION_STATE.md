@@ -1,3 +1,37 @@
+## 2026-10-11 · PHASE 4 · bloque 5: colaboración, portal del invitado y guía viva
+
+- **Datos (migración aditiva `0026_brand_collaboration`):** `brand_invitations` (email normalizado, hash del token de un
+  solo uso, caducidad 7 días, entrega `LINK`/`EMAIL`), `brand_guests` (una marca), `portal_shares` (versión exacta y
+  huella; la estrategia se congela en la fila), `portal_comments` (`SHARED`/`INTERNAL`; el invitado sólo `SHARED`) y
+  `portal_approvals` (append-only, contexto `GUEST`). Triggers: invitación PENDING → ACCEPTED/REVOKED una vez, invitado
+  ACTIVE → REVOKED, share sólo se retira, comentarios y aprobaciones append-only; borrado sólo en el borrado registrado
+  de la marca (añadidas a la lista de `deleteBrand`).
+- **Motor:** `src/domain/collaboration.ts` (normalización, token, caducidad derivada) y
+  `src/application/collaboration.ts`. Equipo por `withBrandActor` (invitar/retirar con `MANAGE_GUESTS`); portal por
+  `withGuest` (sesión válida + `BrandGuest` ACTIVE de esa marca; 404 si no). Destinatario: email verificado igual al
+  invitado; identidad DEMO sin cuenta sólo en marcas DEMO; un miembro del workspace no pasa a invitado. Las acciones
+  del invitado quedan en sus filas (la auditoría estratégica exige membresía).
+- **Rutas:** `/api/collaboration`, `/api/collaboration/{invite,revoke-invitation,revoke-guest,share,withdraw,comment}`,
+  `/api/brand-guide`, `/api/invitations/accept`, `/api/portal/brands`, `/api/portal`, `/api/portal/{comment,decide}`,
+  `/api/portal/asset`. El portal y la aceptación no exigen el perfil de Estratega de Marca del PILOT.
+- **Interfaz:** Colaboración es destino real (deja «Próximamente»); Guía de marca en Marca y recursos; el enlace
+  `/#invitacion=…` se guarda hasta iniciar sesión y se acepta una vez; botón «Compartido contigo» / «Portal» en el
+  encabezado sólo para quien es invitado; portal con Resumen, Guía de marca, Marca, Marketing y Entregables.
+- **Pruebas:** `tests/collaboration-cases.ts` (8), `tests/browser/phase4-collaboration.spec.ts` (dos identidades reales;
+  `tests/browser/demo-identity.ts` crea la segunda en la base DEMO local), guía viva añadida a
+  `tests/browser/phase4-identity.spec.ts`; `workspace.spec` y `pre-tester.test.ts` esperan un solo «Próximamente»
+  (Resultados); recuentos de migraciones a 27.
+- **Resultados:** typecheck, lint, Foundation 0; validador de UI PASS; `pnpm test` 475 PASS; test:e2e 290 pruebas, 277
+  PASS · 13 SKIP al cierre. Primera pasada: 5 fallos. Uno era un defecto de este cambio: desbordamiento horizontal del
+  portal a 1280 px, porque el botón nuevo empujaba la tarjeta de Brando; ahora la etiqueta corta se usa por debajo de
+  1600 px y la prueba pasa en wide, desktop y compact. Los otros 4 son intermitentes y pasaron al repetirlos solos:
+  `phase3.spec.ts:110` en wide y tablet, `micro-hotfix.spec.ts:27` en tablet y `phase4-plan.spec.ts:77` en compact;
+  sus trazas están en `test-results/e2e-*`. test:pilot:e2e 10/10. test:visual: estructura 10 PASS · 1 SKIP. Píxeles:
+  las 4 de v5 siguen pendientes con el mismo tamaño, y 5 capturas de escritorio (decision-card, history,
+  m1-guided-review, m1-needs-review, m1-workspace) cambian 0,24–0,44 % sólo en el menú. Las canónicas no se tocaron.
+- **Pendiente:** email de invitaciones (proveedor), prueba con identidad PILOT/OIDC real, cambio de workspace activo
+  (PRT-006), búsqueda del portal, PDF de la guía, Biblioteca y Plantillas; decidir si compartir requiere capacidad propia.
+
 ## 2026-10-11 · PHASE 4 · inicio guiado: ONB-006 y ONB-007
 
 - **ONB-006:** `readKit` devuelve `reusable` (PDF de la marca que aún no son archivos del kit, por huella);

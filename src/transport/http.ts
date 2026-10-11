@@ -239,7 +239,8 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(req.method==='POST'&&path==='/api/reflections'&&limited('reflections:'+subject,pilotLimits.reflections))return;
         // Required intake is enforced server-side, not by hiding a screen. Only the endpoints needed to
         // complete it, read identity or leave stay open until the profile exists.
-        const intakeOpen=['/api/participant','/api/logout','/api/me','/api/session-state','/api/mode'];
+        // ADR-0033 · a client guest is not an Estratega de Marca: the portal and invitation acceptance do not need the intake.
+        const intakeOpen=['/api/participant','/api/logout','/api/me','/api/session-state','/api/mode','/api/invitations/accept','/api/portal','/api/portal/brands','/api/portal/comment','/api/portal/decide','/api/portal/asset'];
         if(path.startsWith('/api/admin/'))intakeOpen.push(path);
         if(!intakeOpen.includes(path)&&await pilot.intakeRequired?.(token))
           return send(res,403,{code:'INTAKE_REQUIRED',message:'Completa tu perfil de Estratega de Marca para continuar.'});
@@ -443,6 +444,12 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           if(result.reused)await rm(dirname(target),{recursive:true,force:true});
           return send(res,result.reused?200:201,result);
         }
+        // ADR-0033 · collaboration. Team routes go through membership + brand scope; portal routes through the guest
+        // context of that exact brand. Neither path reads the other's data.
+        if(path.startsWith('/api/collaboration/')){const action=path.slice('/api/collaboration/'.length);if(['invite','revoke-invitation','revoke-guest','share','withdraw','comment'].includes(action))return send(res,action==='invite'||action==='share'?201:200,await engine.collaborationCommand(token,action as 'invite',input));}
+        if(path==='/api/invitations/accept') return send(res,200,await engine.acceptInvitation(token,{token:input.token}));
+        if(path==='/api/portal/comment') return send(res,201,await engine.portalComment(token,{brandId:input.brandId,shareId:input.shareId,body:input.body,idempotencyKey:input.idempotencyKey}));
+        if(path==='/api/portal/decide') return send(res,200,await engine.portalDecide(token,{brandId:input.brandId,shareId:input.shareId,fingerprint:input.fingerprint,decision:input.decision,comment:input.comment,idempotencyKey:input.idempotencyKey}));
         if(path==='/api/brand-kit/apply-direction') return send(res,200,await engine.applyIdentityDirection(token,input));
         if(path.startsWith('/api/brand-kit/')){const action=path.slice('/api/brand-kit/'.length);if(['start','draft','adopt','submit','decide','publish'].includes(action))return send(res,action==='start'?201:200,await engine.kitCommand(token,action as 'start',input));}
         // PHASE4_SPEC §4.4 · deliverables: one path per operation; authorization, revision and audit in the engine.
@@ -713,6 +720,19 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         }
         if(path==='/api/offers') return send(res,200,await engine.offers(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/plan') return send(res,200,await engine.marketingPlan(token,string(url.searchParams.get('brandId')),Number(url.searchParams.get('year'))));
+        if(path==='/api/collaboration') return send(res,200,await engine.collaboration(token,string(url.searchParams.get('brandId'))));
+        if(path==='/api/brand-guide') return send(res,200,await engine.brandGuide(token,string(url.searchParams.get('brandId'))));
+        if(path==='/api/portal/brands') return send(res,200,await engine.portalBrands(token));
+        if(path==='/api/portal') return send(res,200,await engine.portal(token,url.searchParams.get('brandId')));
+        // ADR-0033 · a guest previews only raster files cited by the published guide or an active shared kit version;
+        // checked on every request, so a withdrawn access stops here too.
+        if(path==='/api/portal/asset'){
+          const asset=await engine.portalAssetFile(token,url.searchParams.get('brandId'),url.searchParams.get('assetId'));
+          if(!['PNG','JPEG','WEBP'].includes(asset.format))throw new AppError('NOT_FOUND','Preview not available');
+          const data=await readFile(resolveDocumentStoragePath(asset.storageKey));
+          res.writeHead(200,{'Content-Type':asset.mediaType,'Content-Length':data.length,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox",'Content-Disposition':'inline'});
+          return res.end(data);
+        }
         if(path==='/api/brand-kit') return send(res,200,await engine.brandKit(token,string(url.searchParams.get('brandId'))));
         // ADR-0034 · preview of a raster kit file only (never SVG, PDF or fonts), authorized on every request.
         if(path==='/api/brand-kit/assets/preview'){

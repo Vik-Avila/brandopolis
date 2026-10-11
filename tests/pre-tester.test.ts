@@ -287,10 +287,10 @@ describe('production verification hotfix', () => {
     // ADR-0030 (Phase 4, owner-approved 2026-10-10): «Productos y servicios» is a real destination, never a soon pill.
     // PHASE4_SPEC §4.2: Marketing (Plan de Marketing) is a real destination too. Marca y recursos, Colaboración and
     // Resultados are announced until their blocks exist (never a fake destination).
-    // ADR-0034: Marca y recursos (Identidad visual) is a real destination too.
-    expect(soon.map(m => m[1])).toEqual(['collaboration', 'results']);
+    // ADR-0034: Marca y recursos (Identidad visual) is a real destination too. ADR-0033: Colaboración as well.
+    expect(soon.map(m => m[1])).toEqual(['results']);
     for (const m of soon) { expect(m[0]).toContain('aria-disabled="true"'); expect(m[0]).not.toContain('data-module'); expect(m[0]).not.toMatch(/id="/); }
-    expect(nav.match(/Próximamente<\/span>/g)).toHaveLength(2);
+    expect(nav.match(/Próximamente<\/span>/g)).toHaveLength(1);
     expect(nav.match(/<button[^>]*id="brand-resources"[^>]*>/)?.[0] ?? '').not.toContain('aria-disabled');
     const offers = nav.match(/<button[^>]*id="offers"[^>]*>/)?.[0] ?? '';
     expect(offers).not.toContain('aria-disabled');

@@ -42,7 +42,7 @@ test('Inicio: one next step, real 9-segment progress and decision vs observation
  expect(await noOverflow(page)).toBe(true);
 });
 
-test('Navigation: Estrategia inner navigation, Mercado objetivo, Productos y servicios, Marketing, Marca y recursos, two «Próximamente» non-destinations, Mi aprendizaje, Mapa and Ayuda',async({page},info)=>{
+test('Navigation: Estrategia inner navigation, Mercado objetivo, Productos y servicios, Marketing, Marca y recursos, Colaboración, one «Próximamente» non-destination, Mi aprendizaje, Mapa and Ayuda',async({page},info)=>{
  await signIn(page,`Menu ${info.project.name} ${Date.now()}`);
  const menu=page.getByRole('button',{name:'Abrir navegación',exact:true});
  if(await menu.isVisible())await menu.click();
@@ -56,7 +56,8 @@ test('Navigation: Estrategia inner navigation, Mercado objetivo, Productos y ser
  await expect(nav.locator('[data-soon]',{hasText:'Productos y servicios'})).toHaveCount(0);
  await expect(nav.locator('[data-soon]',{hasText:'Marketing'})).toHaveCount(0);
  await expect(nav.locator('[data-soon]',{hasText:'Marca y recursos'})).toHaveCount(0);
- for(const name of ['Colaboración','Resultados']){
+ await expect(nav.locator('[data-soon]',{hasText:'Colaboración'})).toHaveCount(0); // ADR-0033: a real destination
+ for(const name of ['Resultados']){
   const item=nav.locator('[data-soon]',{hasText:name});
   await expect(item).toHaveAttribute('aria-disabled','true');
   await expect(item).toContainText('Próximamente');

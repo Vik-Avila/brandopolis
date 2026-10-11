@@ -21,6 +21,7 @@ import { actionStatus, addAction, addObjective, createPlan, createSnapshot, deci
 import { IdentityDirectionsStore, directionValues, identityPacket, validIdentityProposal } from '../domain/brando-identity.js';
 import { MarketingAssistance, marketingPacket, proposalContent, type MarketingPacket } from '../domain/brando-marketing.js';
 import { DELIVERABLE_TYPES, type DeliverableType } from '../domain/deliverables.js';
+import { acceptInvitation, brandGuide, createInvitation, guestAsset, guestBrands, guestComment, guestDecide, readCollaboration, readPortal, resolveGuest, revokeGuest, revokeInvitation, shareToPortal, teamComment, withdrawShare, type GuestActor } from './collaboration.js';
 import { applyDirection, draftValueIds, adoptKitValues, decideKit, kitAsset, mergeKitCandidates, reusableDocument, publishKit, readKit, registerKitAsset, saveKitDraft, startKitDraft, submitKit } from './brand-kit.js';
 import type { KitAssetInfo } from '../domain/kit-assets.js';
 import type { KitContent } from '../domain/brand-kit.js';
@@ -138,6 +139,54 @@ export class Engine {
     },true);
   }
   /** Scope for a kit file upload (the transport validates and stores the bytes privately). */
+  // ─── ADR-0033 · collaboration (team side: membership + brand scope; capability checks in collaboration.ts) ───
+  async collaboration(token:string,brandId:string) {
+    return this.withBrandActor(token,brandId,(tx,actor)=>readCollaboration(tx,actor));
+  }
+  async brandGuide(token:string,brandId:string) {
+    return this.withBrandActor(token,brandId,(tx,actor)=>brandGuide(tx,actor));
+  }
+  async collaborationCommand(token:string,action:'invite'|'revoke-invitation'|'revoke-guest'|'share'|'withdraw'|'comment',input:Record<string,unknown>) {
+    return this.withBrandActor(token,String(input.brandId??''),async(tx,actor)=>{
+      const run={invite:createInvitation,'revoke-invitation':revokeInvitation,'revoke-guest':revokeGuest,share:shareToPortal,withdraw:withdrawShare,comment:teamComment}[action];
+      const result=await run(tx,actor,input) as Record<string,unknown>;
+      if(!result.replayed)await this.audit(tx,actor,{operation:`COLLAB_${action.toUpperCase().replace(/-/g,'_')}`,idempotencyKey:String(input.idempotencyKey??randomUUID()),newVersion:String(result.invitationId??result.guestId??result.shareId??result.commentId??'')});
+      return result;
+    },true);
+  }
+  // ─── ADR-0033 · portal (guest side: a valid session plus an ACTIVE BrandGuest of that exact brand; never membership) ───
+  private async sessionUser(tx:Transaction,token:string) {
+    if (!token || token.length>256) throw new AppError('UNAUTHORIZED','Human session required');
+    const [session]=await tx.select().from(t.sessions).where(eq(t.sessions.tokenHash,hash(token)));
+    if (!session || session.expiresAt<=new Date()) throw new AppError('UNAUTHORIZED','Session expired or invalid');
+    return session.userId;
+  }
+  private async withGuest<T>(token:string,brandId:unknown,run:(tx:Transaction,guest:GuestActor)=>Promise<T>):Promise<T> {
+    return this.db.transaction(async tx=>run(tx,await resolveGuest(tx,await this.sessionUser(tx,token),brandId)));
+  }
+  async acceptInvitation(token:string,input:{token?:unknown}) {
+    return this.db.transaction(async tx=>{
+      const userId=await this.sessionUser(tx,token);
+      // Guest actions are recorded in their own rows (invitation acceptance, BrandGuest, append-only comments and
+      // approvals with actor and time); the strategic audit only admits members of the workspace.
+      return acceptInvitation(tx,userId,input);
+    });
+  }
+  async portalBrands(token:string) {
+    return this.db.transaction(async tx=>guestBrands(tx,await this.sessionUser(tx,token)));
+  }
+  async portal(token:string,brandId:unknown) {
+    return this.withGuest(token,brandId,(tx,g)=>readPortal(tx,g));
+  }
+  async portalComment(token:string,input:{brandId?:unknown;shareId?:unknown;body?:unknown;idempotencyKey?:unknown}) {
+    return this.withGuest(token,input.brandId,(tx,g)=>guestComment(tx,g,input));
+  }
+  async portalDecide(token:string,input:{brandId?:unknown;shareId?:unknown;fingerprint?:unknown;decision?:unknown;comment?:unknown;idempotencyKey?:unknown}) {
+    return this.withGuest(token,input.brandId,(tx,g)=>guestDecide(tx,g,input));
+  }
+  async portalAssetFile(token:string,brandId:unknown,assetId:unknown) {
+    return this.withGuest(token,brandId,(tx,g)=>guestAsset(tx,g,assetId));
+  }
   async kitUploadScope(token:string,brandId:string) {
     return this.withBrandActor(token,brandId,async(_tx,actor)=>({workspaceId:actor.workspaceId,brandId:actor.brandId}));
   }
@@ -1168,7 +1217,7 @@ export class Engine {
         // before decisions; the self reference of versions is satisfied because the whole chain goes in one statement.
         // Phase 4 rows of this Brand (append-only tables allow it only inside this registered deletion). Workspace
         // connections are NOT deleted here: only this Brand's links to them (a credential may serve other brands).
-        for(const table of [t.brandSetupDrafts,t.brandKitPublications,t.brandKitApprovals,t.brandKitVersions,t.brandKits,t.kitAssets,t.deliverablePublications,t.deliverableApprovals,t.deliverableVersions,t.deliverables,t.planProgressUpdates,t.planSnapshotApprovals,t.planSnapshots,t.planChanges,t.planActions,t.planObjectives,t.marketingPlans,t.offerApprovals,t.offerVersions,t.offers,t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
+        for(const table of [t.portalApprovals,t.portalComments,t.portalShares,t.brandGuests,t.brandInvitations,t.brandSetupDrafts,t.brandKitPublications,t.brandKitApprovals,t.brandKitVersions,t.brandKits,t.kitAssets,t.deliverablePublications,t.deliverableApprovals,t.deliverableVersions,t.deliverables,t.planProgressUpdates,t.planSnapshotApprovals,t.planSnapshots,t.planChanges,t.planActions,t.planObjectives,t.marketingPlans,t.offerApprovals,t.offerVersions,t.offers,t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));
         for(const table of [t.audits,t.telemetry,t.idempotency,t.reviewReceipts,t.reviews,t.impacts,t.dependencies,t.learningSignals,t.signals,t.learnings,t.experiments,t.analyses,t.documentClaims,t.documentExtractions,t.sourceDocuments,t.versions,t.decisions,t.recommendations,t.questions,t.userInputs,t.evidence,t.hypotheses,t.openQuestions,t.brandProfiles,t.assignments] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));

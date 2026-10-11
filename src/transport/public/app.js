@@ -1,6 +1,6 @@
 import {createBrandoPresence} from './brando-presence.js';
 const $=s=>document.querySelector(s);
-import {setupHtml,SETUP_LABELS,SETUP_STAGES,identityDirectionsHtml,identityHtml,kitFormHtml,brandoProposalHtml,areaTabsHtml,deliverablesHtml,deliverableFormHtml,deliverableText,AREA_TYPES,planHtml,sharedPlanHtml,objectiveFormHtml,focusFormHtml,actionFormHtml,offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
+import {guideHtml,collaborationHtml,invitationLinkHtml,portalHtml,setupHtml,SETUP_LABELS,SETUP_STAGES,identityDirectionsHtml,identityHtml,kitFormHtml,brandoProposalHtml,areaTabsHtml,deliverablesHtml,deliverableFormHtml,deliverableText,AREA_TYPES,planHtml,sharedPlanHtml,objectiveFormHtml,focusFormHtml,actionFormHtml,offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
 import {trapFocus,decisionTabs,viewTabs} from './product-interactions.js';
 import * as analytics from './analytics.js';
 import {PILOT_EVENTS} from './analytics.js';
@@ -888,7 +888,7 @@ async function showIntake(){
   $('#intake').hidden=true;await authenticated();
  },event.submitter));
 }
-async function authenticated() {const directModule=new URL(location.href).searchParams.has('module');document.body.classList.add('app');for(const id of ['#gateway','#request-access-view'])$(id).hidden=true;$('#login').hidden=true;document.body.classList.remove('booting');user=await api('/api/me');$('#workspace').hidden=false;$('#logout').hidden=false;$('#menu').hidden=false;$('#new-brand').hidden=false;$('#mode-badge').hidden=false;await loadBrands(new URL(location.href).searchParams.get('brand'));if(!directModule&&context)await showHome();}
+async function authenticated() {const directModule=new URL(location.href).searchParams.has('module');document.body.classList.add('app');for(const id of ['#gateway','#request-access-view'])$(id).hidden=true;$('#login').hidden=true;document.body.classList.remove('booting');user=await api('/api/me');$('#workspace').hidden=false;$('#logout').hidden=false;$('#menu').hidden=false;$('#new-brand').hidden=false;$('#mode-badge').hidden=false;await loadBrands(new URL(location.href).searchParams.get('brand'));if(await acceptPendingInvitation())return;await refreshPortalEntry();if(!directModule&&context)await showHome();}
 /**
  * Reloads the brand context and repaints. Deliberately ONE request: this runs after every mutation,
  * so anything added here delays the whole workspace. Market status is auxiliary rail information and
@@ -2180,7 +2180,7 @@ const showOffersArea=()=>offersTab==='offers'?showOffers():showDeliverables('mat
 function mountAreaTabs(area,active){
  const hero=$('#decision .ws-hero');if(!hero)return;
  hero.insertAdjacentHTML('afterend',areaTabsHtml(area,active));
- const go=key=>{if(area==='brand')return run(showIdentity);if(area==='marketing'){marketingTab=key;return run(async()=>{await showMarketing();$(`[data-area-tab="${key}"]`)?.focus();});}offersTab=key;return run(async()=>{await showOffersArea();$(`[data-area-tab="${key}"]`)?.focus();});};
+ const go=key=>{if(area==='brand')return run(key==='guide'?showGuide:showIdentity);if(area==='marketing'){marketingTab=key;return run(async()=>{await showMarketing();$(`[data-area-tab="${key}"]`)?.focus();});}offersTab=key;return run(async()=>{await showOffersArea();$(`[data-area-tab="${key}"]`)?.focus();});};
  const tabs=[...document.querySelectorAll('[data-area-tab]')];
  tabs.forEach(tab=>tab.addEventListener('click',()=>{if(tab.getAttribute('aria-selected')!=='true')go(tab.dataset.areaTab);}));
  $('.area-tabs').addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const i=tabs.indexOf(document.activeElement),n=event.key==='Home'?0:event.key==='End'?tabs.length-1:(i+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;go(tabs[n].dataset.areaTab);});
@@ -2307,6 +2307,60 @@ function openKitEditor(){
   }catch(error){$('#kit-form-status').textContent=error.message;}
  });
 }
+/** ADR-0033 · Marca y recursos → Guía de marca: the living guide of the published kit version (never a draft). */
+async function showGuide(){
+ if(!enterView('#brand-resources','Guía de marca'))return;
+ const guide=await api(`/api/brand-guide?brandId=${encodeURIComponent(brandId)}`);
+ const root=$('#decision');root.innerHTML=guideHtml(guide,brandId);mountAreaTabs('brand','guide');
+ root.querySelectorAll('.kit-swatch').forEach(el=>{el.style.backgroundColor=el.dataset.hex;});
+}
+/** ADR-0033 · Colaboración: invitations by single-use link, guests, shares, comments and the client's decisions. */
+async function showCollaboration(link){
+ if(!enterView('#collaboration','Colaboración'))return;
+ const data=await api(`/api/collaboration?brandId=${encodeURIComponent(brandId)}`);
+ const root=$('#decision');root.innerHTML=collaborationHtml(data);
+ if(link){$('#invite-link').innerHTML=invitationLinkHtml(link);$('#invite-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(link);notice('Enlace copiado.');}catch{$('#invite-link-value').select();notice('Selecciona el enlace y cópialo.');}});}
+ const command=(action,payload,message,after)=>run(async()=>{const r=await api(`/api/collaboration/${action}`,{brandId,...payload});await showCollaboration(after?.(r));notice(message);});
+ $('#invite-form')?.addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget,email=$('#invite-email').value.trim();if(!email){$('#invite-status').textContent='Escribe el correo de tu cliente.';$('#invite-email').focus();return;}form.dataset.key??=crypto.randomUUID();command('invite',{email,idempotencyKey:form.dataset.key},'Invitación creada. Copia el enlace y envíaselo a tu cliente.',r=>r.token?`${location.origin}/#invitacion=${r.token}`:undefined);});
+ root.querySelectorAll('[data-revoke-invitation]').forEach(b=>b.addEventListener('click',()=>command('revoke-invitation',{invitationId:b.dataset.revokeInvitation},'Invitación retirada: ese enlace ya no sirve.')));
+ root.querySelectorAll('[data-revoke-guest]').forEach(b=>b.addEventListener('click',()=>command('revoke-guest',{guestId:b.dataset.revokeGuest},'Acceso retirado. Surte efecto en su siguiente acción; lo que ya descargó fuera de Brandopolis no se puede retirar.')));
+ $('#share-form')?.addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget,[targetType,targetId]=$('#share-target').value.split(':');form.dataset.key??=crypto.randomUUID();command('share',{targetType,targetId,idempotencyKey:form.dataset.key},'Compartido. Tu cliente verá esta versión exacta en su portal.');});
+ root.querySelectorAll('.share-comment').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const text=form.querySelector('textarea'),body=text.value.trim();if(!body){text.focus();notice('Escribe tu comentario.',true);return;}form.dataset.key??=crypto.randomUUID();command('comment',{shareId:form.dataset.share,body,visibility:form.querySelector('select').value,idempotencyKey:form.dataset.key},'Comentario publicado.');}));
+ root.querySelectorAll('[data-withdraw]').forEach(b=>b.addEventListener('click',()=>command('withdraw',{shareId:b.dataset.withdraw},'Dejaste de compartirlo. Tu cliente ya no lo verá.')));
+}
+/** ADR-0033 · an invitation link opens the app with #invitacion=…; it is kept until a session exists, then accepted once. */
+const INVITATION_KEY='brandopolis.invitation';
+(()=>{const m=location.hash.match(/^#invitacion=([A-Za-z0-9_-]{43})$/);if(!m)return;try{sessionStorage.setItem(INVITATION_KEY,m[1]);}catch{/* storage unavailable: the hash stays */}history.replaceState(null,'',location.pathname+location.search);window.__pendingInvitation=m[1];})();
+async function acceptPendingInvitation(){
+ let token=window.__pendingInvitation;try{token=sessionStorage.getItem(INVITATION_KEY)??token;}catch{/* ignore */}
+ if(!token)return false;
+ try{sessionStorage.removeItem(INVITATION_KEY);}catch{/* ignore */}window.__pendingInvitation=null;
+ try{const r=await api('/api/invitations/accept',{token});await refreshPortalEntry();await showPortal(r.brandId);notice('Invitación aceptada. Aquí verás lo que el equipo comparta contigo.');return true;}
+ catch(error){notice(error.code==='FORBIDDEN'?'Esta invitación es para otro correo. Inicia sesión con el correo que recibió la invitación.':error.code==='CONFLICT'?'Esta invitación venció, fue retirada o ya se usó. Pide una nueva al equipo.':'No encontramos esa invitación. Pide un enlace nuevo al equipo.',true);return false;}
+}
+let portalBrandList=[];
+async function refreshPortalEntry(){
+ try{portalBrandList=await api('/api/portal/brands');}catch{portalBrandList=[];}
+ $('#portal-entry').hidden=!portalBrandList.length;
+}
+/** Guest portal of one brand. Not a team view: it never uses the active brand, Brando or team endpoints. */
+let portalBrandId=null;
+async function showPortal(id=portalBrandId??portalBrandList[0]?.brandId){
+ if(!id)return;
+ closeRailDrawer(false);closeMenu(false);preserveDraft();draft=null;setTitle('Portal del cliente');$('#decision').dataset.view='portal';document.querySelectorAll('#journey [aria-current],#strategy-nav .strategy-tab[aria-current]').forEach(b=>b.removeAttribute('aria-current'));$('#strategy-toggle')?.classList.remove('contains-current');$('#strategy-nav').hidden=true;
+ let data;
+ try{data=await api(`/api/portal?brandId=${encodeURIComponent(id)}`);}
+ catch(error){if(error.code==='NOT_FOUND'){portalBrandId=null;await refreshPortalEntry();$('#decision').innerHTML='<div class="ws-hero"><p class="eyebrow">Portal del cliente</p><h2>Ya no tienes acceso</h2><p class="ws-lead">El equipo retiró tu acceso a esta marca o el enlace ya no es válido.</p></div>';return;}throw error;}
+ portalBrandId=id;
+ const root=$('#decision');
+ root.innerHTML=`${portalBrandList.length>1?`<label for="portal-brand">Marca compartida contigo</label><select id="portal-brand">${portalBrandList.map(b=>`<option value="${escape(b.brandId)}"${b.brandId===id?' selected':''}>${escape(b.name)}</option>`).join('')}</select>`:''}${portalHtml(data)}`;
+ root.querySelectorAll('.kit-swatch').forEach(el=>{el.style.backgroundColor=el.dataset.hex;});
+ $('#portal-brand')?.addEventListener('change',event=>run(()=>showPortal(event.currentTarget.value)));
+ const post=(path,payload,message)=>run(async()=>{await api(path,{brandId:id,...payload});await showPortal(id);notice(message);});
+ root.querySelectorAll('.portal-comment').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const text=form.querySelector('textarea'),body=text.value.trim();if(!body){text.focus();notice('Escribe tu comentario.',true);return;}form.dataset.key??=crypto.randomUUID();post('/api/portal/comment',{shareId:form.dataset.share,body,idempotencyKey:form.dataset.key},'Comentario enviado al equipo.');}));
+ root.querySelectorAll('.portal-decide').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const decision=event.submitter?.value,comment=form.querySelector('textarea').value.trim();if(decision==='REQUEST_CHANGES'&&!comment){form.querySelector('textarea').focus();notice('Cuéntale al equipo qué debería cambiar.',true);return;}const keyName=`key${decision}`;form.dataset[keyName]??=crypto.randomUUID();post('/api/portal/decide',{shareId:form.dataset.share,fingerprint:form.dataset.fingerprint,decision,comment,idempotencyKey:form.dataset[keyName]},decision==='APPROVE'?'Aprobaste esta versión. El equipo lo verá; tu aprobación no publica nada.':'Pediste cambios. El equipo verá tu comentario.');}));
+ root.querySelector('h2')?.setAttribute('tabindex','-1');root.querySelector('h2')?.focus();
+}
 /** PLN-001…003 · what the client receives: approved version and shared progress (read only). */
 async function showSharedPlan(){
  if(!enterView('#marketing','Plan de Marketing · Lo que recibe el cliente'))return;
@@ -2336,6 +2390,8 @@ $('#learning-loop').addEventListener('click',()=>run(showLearning));
 $('#offers').addEventListener('click',()=>run(showOffersArea));
 $('#marketing').addEventListener('click',()=>run(showMarketing));
 $('#brand-resources').addEventListener('click',()=>run(showIdentity));
+$('#collaboration').addEventListener('click',()=>run(()=>showCollaboration()));
+$('#portal-entry').addEventListener('click',()=>run(()=>showPortal()));
 // ADR-0026: the next Brando question may carry an interpretation scope; a valid answer returns a server proof.
 let brandoInterpretation=null,brandoAssistanceProof=null;
 const assistActive=()=>!!brandoAssistanceProof&&brandoAssistanceProof.brandId===brandId&&Date.parse(brandoAssistanceProof.expiresAt)>Date.now();

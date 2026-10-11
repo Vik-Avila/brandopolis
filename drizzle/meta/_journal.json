@@ -183,6 +183,13 @@
       "when": 1791708257483,
       "tag": "0025_brand_setup_drafts",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791729110732,
+      "tag": "0026_brand_collaboration",
+      "breakpoints": true
     }
   ]
 }
