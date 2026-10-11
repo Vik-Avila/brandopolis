@@ -34,6 +34,7 @@ import { brandDeletionCases } from './brand-deletion-cases.js';
 import { phase4Cases } from './phase4-cases.js';
 import { offersCases } from './offers-cases.js';
 import { planCases } from './plan-cases.js';
+import { deliverablesCases } from './deliverables-cases.js';
 let local:Awaited<ReturnType<typeof startLocalDb>>,connection:ReturnType<typeof connect>,engine:Engine;
 brandoCases(()=>connection);
 pilotCases(()=>connection);
@@ -52,6 +53,7 @@ brandDeletionCases(()=>connection);
 phase4Cases(()=>connection);
 offersCases(()=>connection);
 planCases(()=>connection);
+deliverablesCases(()=>connection);
 beforeAll(async()=>{
   local=await startLocalDb(true);
   const name=`m1_${randomUUID().replaceAll('-','')}`;
@@ -402,7 +404,7 @@ describe('PostgreSQL M1',()=>{
     const ctx=await s.context();expect(ctx.versions).toHaveLength(3);expect(ctx.reviews[0].status).toBe('OPEN');
   });
   it('M1 migrations have applied exactly once',async()=>{
-    const result=await connection.pool.query('select count(*)::int as n from drizzle.__drizzle_migrations');expect(result.rows[0].n).toBe(22); // ADR-0027: additive; Phase 4 adds 0016-0021 (ADR-0030/0031/0033) personal_reflections; ADR-0029: brand_deletions
+    const result=await connection.pool.query('select count(*)::int as n from drizzle.__drizzle_migrations');expect(result.rows[0].n).toBe(23); // ADR-0027: additive; Phase 4 adds 0016-0022 (ADR-0030/0031/0033) personal_reflections; ADR-0029: brand_deletions
     const server=await connection.pool.query('show server_version');expect(server.rows[0].server_version).toMatch(/^17\./);
   });
   it('superseding without a new current version is rejected by PostgreSQL',async()=>{

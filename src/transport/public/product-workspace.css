@@ -412,6 +412,18 @@ body.left-collapsed #journey .nav-item[data-tip]:hover::after, body.left-collaps
 .plan-agenda-day { margin: 0 0 4px; font-weight: 650; }
 .plan-agenda .plan-chip { min-height: 44px; font-size: 14px; }
 @media (max-width: 760px) { .plan-calendar-grid { display: none; } .plan-agenda { display: block; } }
+/* PHASE4_SPEC §3/§4.4 · area tabs (selector on narrow screens) and deliverables. */
+.area-nav { margin: 0 0 14px; }
+.area-tabs { margin-bottom: 6px; }
+.area-nav .area-select-label, .area-nav .area-select { display: none; }
+.area-later { margin: 0; }
+@media (max-width: 640px) { .area-nav .area-tabs { display: none; } .area-nav .area-select-label { display: block; font-weight: 650; } .area-nav .area-select { display: block; width: 100%; min-height: 44px; margin: 4px 0 8px; } }
+.deliverable-new { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 4px; }
+.deliverable-new button, .deliverable-export button, .publication-form button { min-height: 44px; }
+.deliverable-publications { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--ws-line); }
+.deliverable-publications h4 { margin: 0 0 6px; font-size: 16px; }
+.deliverable-publications ul { margin: 0 0 8px; padding-left: 18px; }
+.publication-form { display: grid; gap: 6px; max-width: 560px; }
 /* PHASE4_SPEC §4.1 · Productos y servicios. */
 .offer-list { display: grid; gap: 16px; margin-top: 18px; }
 .offer-card { padding: 20px 22px; border: 1px solid var(--ws-line); border-radius: 18px; background: var(--surface-card); }

@@ -1,6 +1,6 @@
 import {createBrandoPresence} from './brando-presence.js';
 const $=s=>document.querySelector(s);
-import {planHtml,sharedPlanHtml,objectiveFormHtml,focusFormHtml,actionFormHtml,offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
+import {areaTabsHtml,deliverablesHtml,deliverableFormHtml,deliverableText,AREA_TYPES,planHtml,sharedPlanHtml,objectiveFormHtml,focusFormHtml,actionFormHtml,offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
 import {trapFocus,decisionTabs,viewTabs} from './product-interactions.js';
 import * as analytics from './analytics.js';
 import {PILOT_EVENTS} from './analytics.js';
@@ -1983,10 +1983,12 @@ async function showHome(){
  // ADR-0027 · Inicio: one next step from the real Brand state, a brief real progress and what needs attention.
  // The full Strategic Intelligence stays one click away in the rail (Atención); nothing here asks the AI.
  // Areas that already exist in this build; the others are named as not available yet (never a fake button).
- $('#decision').innerHTML=homeHtml(context,documentState,priority.current,{SELL_OFFER:true,MARKETING_PLAN:true});
+ $('#decision').innerHTML=homeHtml(context,documentState,priority.current,{SELL_OFFER:true,MARKETING_PLAN:true,CONTENT:true,CAMPAIGN:true});
  bindWorkPriorityForm();
  $('#decision').querySelector('[data-priority-area="SELL_OFFER"]')?.addEventListener('click',()=>run(showOffers));
- $('#decision').querySelector('[data-priority-area="MARKETING_PLAN"]')?.addEventListener('click',()=>run(showMarketingPlan));
+ $('#decision').querySelector('[data-priority-area="MARKETING_PLAN"]')?.addEventListener('click',()=>{marketingTab='plan';run(showMarketing);});
+ $('#decision').querySelector('[data-priority-area="CONTENT"]')?.addEventListener('click',()=>{marketingTab='social';run(showMarketing);});
+ $('#decision').querySelector('[data-priority-area="CAMPAIGN"]')?.addEventListener('click',()=>{marketingTab='ads';run(showMarketing);});
  bindAttentionActions($('#decision'));
  $('#next-step-brando')?.addEventListener('click',event=>{const module=event.currentTarget.dataset.module;openModule(module,false);$('#brando-section-explore')?.click();});
  $('#home-open-attention')?.addEventListener('click',event=>selectRailTool('attention',event.currentTarget));
@@ -2000,7 +2002,7 @@ async function showOffers(){
  if(!enterView('#offers','Productos y servicios'))return;
  const [nextContext,offers]=await Promise.all([api(`/api/context?brandId=${encodeURIComponent(brandId)}`),api(`/api/offers?brandId=${encodeURIComponent(brandId)}`)]);
  context=nextContext;offersCache=offers;renderContext();
- $('#decision').innerHTML=offersHtml(offers);
+ $('#decision').innerHTML=offersHtml(offers);offersTab='offers';mountAreaTabs('offers','offers');
  $('#offer-new').addEventListener('click',()=>openOfferEditor(null));
  const byId=id=>offersCache.find(o=>o.id===id);
  $('#decision').querySelectorAll('[data-offer-edit]').forEach(b=>b.addEventListener('click',()=>openOfferEditor(byId(b.dataset.offerEdit))));
@@ -2033,7 +2035,7 @@ let planYear=new Date().getFullYear(),planMode='list',planMonth=null,planData=nu
 async function showMarketingPlan(){
  if(!enterView('#marketing','Plan de Marketing'))return;
  planData=await api(`/api/plan?brandId=${encodeURIComponent(brandId)}&year=${planYear}`);
- const root=$('#decision');root.innerHTML=planHtml(planData,planMode,planMonth);
+ const root=$('#decision');root.innerHTML=planHtml(planData,planMode,planMonth);marketingTab='plan';mountAreaTabs('marketing','plan');
  const command=(action,payload,message)=>run(async()=>{await api(`/api/plan/${action}`,{brandId,...payload});await showMarketingPlan();notice(message);});
  root.querySelectorAll('[data-plan-year]').forEach(b=>b.addEventListener('click',()=>{planYear=Number(b.dataset.planYear);planMonth=null;run(showMarketingPlan);}));
  $('#plan-start')?.addEventListener('submit',event=>{event.preventDefault();command('create',{year:planYear,focusStart:$('#plan-focus-start').value||null},`Plan de ${planYear} creado. Empieza por un objetivo del año o una prioridad de 90 días.`);});
@@ -2075,6 +2077,71 @@ async function showMarketingPlan(){
  const statusWords={IN_PROGRESS:'Acción en curso.',DONE:'Acción marcada como hecha.',CANCELLED:'Acción cancelada. Se conserva en el historial.'};
  root.querySelectorAll('[data-action-status]').forEach(b=>b.addEventListener('click',()=>{const a=actionById(b.dataset.action);const note=root.querySelector(`[data-note-for="${CSS.escape(a.id)}"]`)?.value.trim()||null;command('action-status',{actionId:a.id,expectedRevision:a.revision,status:b.dataset.actionStatus,note},statusWords[b.dataset.actionStatus]);}));
 }
+/** PHASE4_SPEC §3 · area sections: accessible tabs (arrows, Home/End, roving focus) or a selector on narrow screens. */
+let marketingTab='plan',offersTab='offers';
+const showMarketing=()=>marketingTab==='plan'?showMarketingPlan():showDeliverables(marketingTab);
+const showOffersArea=()=>offersTab==='offers'?showOffers():showDeliverables('materials');
+function mountAreaTabs(area,active){
+ const hero=$('#decision .ws-hero');if(!hero)return;
+ hero.insertAdjacentHTML('afterend',areaTabsHtml(area,active));
+ const go=key=>{if(area==='marketing'){marketingTab=key;return run(async()=>{await showMarketing();$(`[data-area-tab="${key}"]`)?.focus();});}offersTab=key;return run(async()=>{await showOffersArea();$(`[data-area-tab="${key}"]`)?.focus();});};
+ const tabs=[...document.querySelectorAll('[data-area-tab]')];
+ tabs.forEach(tab=>tab.addEventListener('click',()=>{if(tab.getAttribute('aria-selected')!=='true')go(tab.dataset.areaTab);}));
+ $('.area-tabs').addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const i=tabs.indexOf(document.activeElement),n=event.key==='Home'?0:event.key==='End'?tabs.length-1:(i+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;go(tabs[n].dataset.areaTab);});
+ $('#area-select').addEventListener('change',event=>go(event.currentTarget.value));
+}
+/** PHASE4_SPEC §4.4 · materials of an area (sales materials, social posts, ads). Every change goes through the engine. */
+let deliverableCache=[],deliverableOffers=[];
+async function showDeliverables(area){
+ const inMarketing=area!=='materials';
+ if(!enterView(inMarketing?'#marketing':'#offers',inMarketing?(area==='social'?'Redes sociales':'Campañas digitales'):'Materiales de venta'))return;
+ const [nextContext,list,offers]=await Promise.all([api(`/api/context?brandId=${encodeURIComponent(brandId)}`),api(`/api/deliverables?brandId=${encodeURIComponent(brandId)}&types=${AREA_TYPES[area].join(',')}`),api(`/api/offers?brandId=${encodeURIComponent(brandId)}`)]);
+ context=nextContext;deliverableCache=list;renderContext();
+ deliverableOffers=offers.map(o=>({id:o.id,status:o.status,approved:Boolean(o.approved),name:(o.approved??o.draft??o.inReview[0])?.content.name??'Oferta'}));
+ const root=$('#decision');root.innerHTML=deliverablesHtml(area,list,deliverableOffers);
+ if(inMarketing){marketingTab=area;mountAreaTabs('marketing',area);}else{offersTab='materials';mountAreaTabs('offers','materials');}
+ const byId=id=>deliverableCache.find(d=>d.id===id);
+ const versionById=id=>deliverableCache.flatMap(d=>[d.approved,d.draft,...d.inReview]).find(v=>v?.id===id);
+ const reload=message=>async()=>{await showDeliverables(area);notice(message);};
+ const command=(action,payload,message)=>run(async()=>{await api(`/api/deliverables/${action}`,{brandId,...payload});await reload(message)();});
+ root.querySelectorAll('[data-deliverable-new]').forEach(b=>b.addEventListener('click',()=>openDeliverableEditor(area,b.dataset.deliverableNew,null)));
+ root.querySelectorAll('[data-deliverable-edit]').forEach(b=>b.addEventListener('click',()=>{const d=byId(b.dataset.deliverableEdit);openDeliverableEditor(area,d.type,d);}));
+ root.querySelectorAll('[data-deliverable-submit]').forEach(b=>b.addEventListener('click',()=>{const d=byId(b.dataset.deliverableSubmit);command('submit',{deliverableId:d.id,expectedRevision:d.revision},'Versión enviada a revisión. Ya no se edita; una persona la aprueba o pide cambios.');}));
+ root.querySelectorAll('[data-deliverable-new-draft]').forEach(b=>b.addEventListener('click',()=>{const d=byId(b.dataset.deliverableNewDraft);command('new-draft',{deliverableId:d.id,expectedRevision:d.revision},'Nueva versión en borrador. La aprobada sigue vigente mientras tanto.');}));
+ root.querySelectorAll('[data-deliverable-retire]').forEach(b=>b.addEventListener('click',()=>{const d=byId(b.dataset.deliverableRetire);command('retire',{deliverableId:d.id,expectedRevision:d.revision},'Retirado. Se conserva con su historial.');}));
+ root.querySelectorAll('.deliverable-decide').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const criterion=form.querySelector('textarea').value.trim();if(criterion.length<10){form.querySelector('textarea').focus();notice('Escribe al menos diez caracteres para explicar tu decisión.',true);return;}const decision=event.submitter?.value;const keyName=`key${decision}`;form.dataset[keyName]??=crypto.randomUUID();command('decide',{deliverableId:form.dataset.deliverable,versionId:form.dataset.version,fingerprint:form.dataset.fingerprint,decision,criterion,idempotencyKey:form.dataset[keyName]},decision==='APPROVE'?'Versión aprobada.':'Cambios solicitados. Se hacen en una versión nueva.');}));
+ root.querySelectorAll('.publication-form').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const date=form.querySelector('input[type="date"]'),url=form.querySelector('input[type="url"]');if(!date.value){date.focus();notice('Indica la fecha en que la publicaste.',true);return;}if(url.value&&!url.value.startsWith('https://')){url.focus();notice('El enlace debe empezar por https://',true);return;}form.dataset.key??=crypto.randomUUID();command('publication',{deliverableId:form.dataset.deliverable,versionId:form.dataset.version,publishedOn:date.value,url:url.value||null,note:form.querySelector('input:not([type])').value||null,idempotencyKey:form.dataset.key},'Publicación registrada. Brandopolis no publica por ti; sólo guarda este registro.');}));
+ root.querySelectorAll('[data-copy-version]').forEach(b=>b.addEventListener('click',async()=>{const v=versionById(b.dataset.copyVersion);try{await navigator.clipboard.writeText(deliverableText(v.content));notice('Texto copiado.');}catch{notice('No se pudo copiar automáticamente. Usa «Descargar .txt».',true);}}));
+ root.querySelectorAll('[data-download-version]').forEach(b=>b.addEventListener('click',()=>{const v=versionById(b.dataset.downloadVersion);const blob=new Blob([deliverableText(v.content)],{type:'text/plain;charset=utf-8'});const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`${v.content.name.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'').toLowerCase()||'material'}-v${v.sequence}.txt`;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(link.href),1000);}));
+}
+function openDeliverableEditor(area,type,d){
+ const host=$('#deliverable-editor');host.innerHTML=deliverableFormHtml(type,context,deliverableOffers,d?.draft?.content??null,d);
+ const form=$('#deliverable-form');$('#dl-name').focus();
+ form.querySelector('[data-editor-cancel]').addEventListener('click',()=>{host.innerHTML='';});
+ form.addEventListener('submit',event=>{event.preventDefault();
+  const v=id=>$(id)?.value??'',lines=id=>v(id).split('\n').map(x=>x.trim()).filter(Boolean),status=$('#deliverable-form-status');
+  if(!v('#dl-name').trim()){status.textContent='Escribe un nombre.';$('#dl-name').focus();return;}
+  if(type==='OFFER_COPY'&&!v('#dl-offer')){status.textContent='Elige la oferta de estos textos.';($('#dl-offer')??$('#dl-name')).focus();return;}
+  const bodies={
+   SALES_PRESENTATION:()=>({audience:v('#dl-audience'),slides:v('#dl-slides').split(/\n\s*\n/).map(block=>{const [title,...rest]=block.trim().split('\n');return {title:(title??'').trim(),text:rest.join('\n').trim()};}).filter(sl=>sl.title)}),
+   OFFER_COPY:()=>({headline:v('#dl-headline'),short:v('#dl-short'),long:v('#dl-long'),callToAction:v('#dl-cta')}),
+   SOCIAL_POST:()=>({network:v('#dl-network'),format:v('#dl-format'),objective:v('#dl-objective'),scheduledDate:v('#dl-date')||null,text:v('#dl-text'),hashtags:v('#dl-hashtags').split(/[\s,]+/).filter(Boolean),materials:v('#dl-materials')}),
+   AD:()=>({channel:v('#dl-channel'),objective:v('#dl-ad-objective'),headlines:lines('#dl-headlines'),descriptions:lines('#dl-descriptions'),callToAction:v('#dl-ad-cta'),landingUrl:v('#dl-landing')||null}),
+   DESIGN_BRIEF:()=>({for:v('#dl-for'),piece:v('#dl-piece'),format:v('#dl-format-size'),audience:v('#dl-brief-audience'),message:v('#dl-message'),mustInclude:v('#dl-must'),avoid:v('#dl-avoid'),dueDate:v('#dl-due')||null})
+  };
+  const body=bodies[type]();
+  if(type==='SALES_PRESENTATION'&&!body.slides.length){status.textContent='Escribe al menos una diapositiva: el título en la primera línea.';$('#dl-slides').focus();return;}
+  if(type==='AD'&&!body.headlines.length){status.textContent='Escribe al menos un título del anuncio.';$('#dl-headlines').focus();return;}
+  if(type==='AD'&&body.landingUrl&&!body.landingUrl.startsWith('https://')){status.textContent='La página debe empezar por https://';$('#dl-landing').focus();return;}
+  if(type==='DESIGN_BRIEF'&&!body.piece.trim()){status.textContent='Describe la pieza que necesitas.';$('#dl-piece').focus();return;}
+  const content={type,name:v('#dl-name'),offerId:v('#dl-offer')||null,sourceDecisionVersionIds:[...form.querySelectorAll('input[name="dl-source"]:checked')].map(i=>i.value),body};
+  run(async()=>{
+   if(d)await api('/api/deliverables/draft',{brandId,deliverableId:d.id,expectedRevision:d.revision,content});
+   else await api('/api/deliverables/create',{brandId,content,idempotencyKey:crypto.randomUUID()});
+   await showDeliverables(area);notice(d?'Borrador guardado.':'Borrador creado. Complétalo y envíalo a revisión cuando esté listo.');
+  },event.submitter);
+ });
+}
 /** PLN-001…003 · what the client receives: approved version and shared progress (read only). */
 async function showSharedPlan(){
  if(!enterView('#marketing','Plan de Marketing · Lo que recibe el cliente'))return;
@@ -2101,8 +2168,8 @@ function renderRailTool(){
 }
 function mountLearningMoment(question){const m=user.learningMoments?.[question.module];if(m)$('#decision').insertAdjacentHTML('beforeend',`<details class="learning-moment"><summary>Qué estás aprendiendo aquí</summary><div class="learning-moment-body"><p class="eyebrow">${escape(capabilityLabel(m.capability))}</p><p>${escape(m.why)}</p><p><strong>Prueba esto:</strong> ${escape(m.apply)}</p><details><summary>Ver una pista más</summary><p><strong>Observa:</strong> ${escape(m.observe)}</p><p><strong>Cuidado:</strong> ${escape(m.caution)}</p></details></div></details>`);}
 $('#learning-loop').addEventListener('click',()=>run(showLearning));
-$('#offers').addEventListener('click',()=>run(showOffers));
-$('#marketing').addEventListener('click',()=>run(showMarketingPlan));
+$('#offers').addEventListener('click',()=>run(showOffersArea));
+$('#marketing').addEventListener('click',()=>run(showMarketing));
 // ADR-0026: the next Brando question may carry an interpretation scope; a valid answer returns a server proof.
 let brandoInterpretation=null,brandoAssistanceProof=null;
 const assistActive=()=>!!brandoAssistanceProof&&brandoAssistanceProof.brandId===brandId&&Date.parse(brandoAssistanceProof.expiresAt)>Date.now();

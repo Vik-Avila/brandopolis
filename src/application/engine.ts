@@ -16,6 +16,7 @@ import { effectiveCapabilities } from '../domain/brand-capabilities.js';
 import { changeCapability, grantedCapabilities, listCapabilityGrants, readWorkPriority, recordWorkPriority, type BrandActor } from './brand-access.js';
 import { ExternalOperations } from './external-operations.js';
 import { actionStatus, addAction, addObjective, createPlan, createSnapshot, decideSnapshot, readPlan, readSharedPlan, updateAction, updateObjective, updatePlan } from './marketing-plan.js';
+import { createDeliverable, decideDeliverable, listDeliverables, newDeliverableDraft, recordPublication, retireDeliverable, saveDeliverableDraft, submitDeliverable } from './deliverables.js';
 import { createOffer, decideOffer, listOffers, newOfferDraft, retireOffer, saveOfferDraft, submitOffer } from './offers.js';
 
 const id=()=>randomUUID();
@@ -106,6 +107,22 @@ export class Engine {
       // Audit names the exact version acted on (and the one it superseded or started from); only a decision carries
       // its validated criterion. A decision is recorded as OFFER_APPROVE or OFFER_REQUEST_CHANGES.
       const operation=action==='decide'?(result.status==='APPROVED'?'OFFER_APPROVE':'OFFER_REQUEST_CHANGES'):`OFFER_${action.toUpperCase().replace('-','_')}`;
+      if(!result.replayed)await this.audit(tx,{...actor},{operation,idempotencyKey:typeof input.idempotencyKey==='string'?input.idempotencyKey:randomUUID(),newVersion:(result.versionId as string|null)??null,previousVersion:((result.superseded??result.previousVersionId) as string|null|undefined)??null,rationale:action==='decide'?result.criterion as string:undefined});
+      return result;
+    },true);
+  }
+  /** PHASE4_SPEC §4.4 · deliverables of a brand, optionally of some types. Reading never writes. */
+  async deliverables(token:string,brandId:string,types:string[]|null) {
+    return this.withBrandActor(token,brandId,(tx,actor)=>listDeliverables(tx,actor,types));
+  }
+  /** PHASE4_SPEC §4.4 · one deliverable operation (scope, revision 409, idempotency, audit with the exact version). */
+  async deliverableCommand(token:string,action:'create'|'draft'|'submit'|'decide'|'new-draft'|'retire'|'publication',input:Record<string,unknown>) {
+    if(!input||typeof input!=='object'||Array.isArray(input))throw new AppError('INVALID','Invalid deliverable request');
+    const run={create:createDeliverable,draft:saveDeliverableDraft,submit:submitDeliverable,decide:decideDeliverable,'new-draft':newDeliverableDraft,retire:retireDeliverable,publication:recordPublication}[action];
+    if(!run)throw new AppError('INVALID','Unknown deliverable operation');
+    return this.withBrandActor(token,input.brandId as string,async(tx,actor)=>{
+      const result=await (run as (tx:Transaction,a:BrandActor,i:Record<string,unknown>)=>Promise<Record<string,unknown>>)(tx,actor,input);
+      const operation=action==='decide'?(result.status==='APPROVED'?'DELIVERABLE_APPROVE':'DELIVERABLE_REQUEST_CHANGES'):`DELIVERABLE_${action.toUpperCase().replace('-','_')}`;
       if(!result.replayed)await this.audit(tx,{...actor},{operation,idempotencyKey:typeof input.idempotencyKey==='string'?input.idempotencyKey:randomUUID(),newVersion:(result.versionId as string|null)??null,previousVersion:((result.superseded??result.previousVersionId) as string|null|undefined)??null,rationale:action==='decide'?result.criterion as string:undefined});
       return result;
     },true);
@@ -827,7 +844,7 @@ export class Engine {
         // before decisions; the self reference of versions is satisfied because the whole chain goes in one statement.
         // Phase 4 rows of this Brand (append-only tables allow it only inside this registered deletion). Workspace
         // connections are NOT deleted here: only this Brand's links to them (a credential may serve other brands).
-        for(const table of [t.planProgressUpdates,t.planSnapshotApprovals,t.planSnapshots,t.planChanges,t.planActions,t.planObjectives,t.marketingPlans,t.offerApprovals,t.offerVersions,t.offers,t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
+        for(const table of [t.deliverablePublications,t.deliverableApprovals,t.deliverableVersions,t.deliverables,t.planProgressUpdates,t.planSnapshotApprovals,t.planSnapshots,t.planChanges,t.planActions,t.planObjectives,t.marketingPlans,t.offerApprovals,t.offerVersions,t.offers,t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));
         for(const table of [t.audits,t.telemetry,t.idempotency,t.reviewReceipts,t.reviews,t.impacts,t.dependencies,t.learningSignals,t.signals,t.learnings,t.experiments,t.analyses,t.documentClaims,t.documentExtractions,t.sourceDocuments,t.versions,t.decisions,t.recommendations,t.questions,t.userInputs,t.evidence,t.hypotheses,t.openQuestions,t.brandProfiles,t.assignments] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));

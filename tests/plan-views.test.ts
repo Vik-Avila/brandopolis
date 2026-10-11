@@ -18,9 +18,8 @@ describe('PHASE4_SPEC §4.2 · plan views', () => {
     expect(html).toContain('<p class="eyebrow">Marketing</p><h2>Plan de Marketing</h2>');
     expect(html).toContain('Empezar el plan de 2027');
     expect(html).toContain('aunque tu estrategia no esté completa');
-    // Other Marketing areas are named as not available yet, never as a button.
-    expect(html).toContain('Redes sociales, Sitio web y Campañas digitales se sumarán');
-    expect(html).not.toMatch(/<button[^>]*>[^<]*(Redes sociales|Sitio web|Campañas digitales)/);
+    // The Marketing sections (tabs) are added by the area navigation; the plan itself never fakes a section.
+    expect(html).not.toMatch(/<button[^>]*>[^<]*(Sitio web)/);
   });
 
   it('shows what is missing in plain words, the 90-day window and each action with owner, dates, budget certainty and indicator', () => {
@@ -114,5 +113,50 @@ describe('PLN-001…003 · sharing and calendar views', () => {
     expect(html).toContain('Avance del 14 de enero de 2027: Asistieron &lt;40&gt;');
     expect(html).not.toMatch(/data-action-(edit|status)|Añadir|Editar/);
     expect(views.sharedPlanHtml({ year: 2027, shared: null })).toContain('Aún no hay una versión aprobada');
+  });
+});
+
+describe('PHASE4_SPEC §3/§4.4 · area tabs and deliverable views', () => {
+  const v = runInNewContext(source + '\n({areaTabsHtml,deliverablesHtml,deliverableFormHtml,deliverableText,AREA_TYPES});') as {
+    areaTabsHtml: (a: string, k: string) => string; deliverablesHtml: (a: string, l: unknown[], o: unknown[]) => string;
+    deliverableFormHtml: (t: string, c: unknown, o: unknown[], content?: unknown, d?: unknown) => string; deliverableText: (c: unknown) => string; AREA_TYPES: Record<string, string[]>;
+  };
+  it('Marketing tabs: Plan, Redes sociales, Campañas digitales; Sitio web named as later, never a tab; a selector mirrors the tabs', () => {
+    const html = v.areaTabsHtml('marketing', 'social');
+    expect([...html.matchAll(/role="tab"[^>]*>([^<]+)</g)].map(m => m[1])).toEqual(['Plan de Marketing', 'Redes sociales', 'Campañas digitales']);
+    expect(html).toContain('id="area-tab-social" data-area-tab="social" aria-selected="true" tabindex="0"');
+    expect(html).toContain('aria-selected="false" tabindex="-1"');
+    expect(html).toContain('<option value="social" selected>Redes sociales</option>');
+    expect(html).toContain('Sitio web llegará más adelante.');
+    expect(html).not.toContain('data-area-tab="web"');
+  });
+  const post = (extra: Record<string, unknown> = {}) => ({ id: 'd1', type: 'SOCIAL_POST', status: 'ACTIVE', revision: 2, history: [], publications: [], inReview: [], draft: null,
+    approved: { id: 'v1', sequence: 1, status: 'APPROVED', fingerprint: 'f'.repeat(64), provenance: 'MANUAL', originOutdated: [], manifest: {}, content: { type: 'SOCIAL_POST', name: 'Lanzamiento <b>', offerId: null, sourceDecisionVersionIds: [], body: { network: 'LINKEDIN', format: 'POST', objective: 'Dar a conocer', scheduledDate: '2026-11-03', text: 'Hola', hashtags: ['#marca'], materials: '' } } }, ...extra });
+  it('social posts are grouped by planned month; approved posts offer copy, download and the manual publication record', () => {
+    const html = v.deliverablesHtml('social', [post()], []);
+    expect(html).toContain('<h2>Redes sociales</h2>');
+    expect(html).toContain('noviembre 2026');
+    expect(html).toContain('Lanzamiento &lt;b&gt;');
+    expect(html).toContain('Copiar texto');
+    expect(html).toContain('Descargar .txt');
+    expect(html).toContain('Brandopolis no publica por ti');
+    expect(html).toContain('Registrar publicación');
+    expect(html).toContain('Escrito por una persona');
+    expect(html).toContain('Presentación en PowerPoint o PDF y documento de Word llegarán más adelante.');
+    const published = v.deliverablesHtml('social', [post({ publications: [{ versionId: 'v1', publishedOn: '2026-11-04', url: 'https://example.com/p', note: null }] })], []);
+    expect(published).toContain('Publicada el 4 de noviembre de 2026');
+    expect(published).toContain('rel="noopener noreferrer"');
+  });
+  it('the plain text export carries the content of each type; ads say publication and spend come later', () => {
+    expect(v.deliverableText(post().approved.content)).toBe('Lanzamiento <b>\n\nLinkedIn · Publicación · 2026-11-03\n\nHola\n\n#marca\n');
+    expect(v.deliverablesHtml('ads', [], [])).toContain('La publicación y el gasto en anuncios llegarán con las conexiones');
+    expect(v.AREA_TYPES.materials).toEqual(['SALES_PRESENTATION', 'OFFER_COPY', 'DESIGN_BRIEF']);
+  });
+  it('an offer copy form requires an offer and only offers active offers of the brand', () => {
+    const ctx = { questions: [], decisions: [], versions: [] };
+    expect(v.deliverableFormHtml('OFFER_COPY', ctx, [])).toContain('Necesitas una oferta: créala primero en Productos y servicios.');
+    const html = v.deliverableFormHtml('OFFER_COPY', ctx, [{ id: 'o1', status: 'ACTIVE', approved: true, name: 'Diagnóstico' }, { id: 'o2', status: 'RETIRED', approved: true, name: 'Retirada' }]);
+    expect(html).toContain('Diagnóstico');
+    expect(html).not.toContain('Retirada');
   });
 });
