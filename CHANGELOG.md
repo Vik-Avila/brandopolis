@@ -1,3 +1,10 @@
+## 2026-10-11 · Phase 4 — Clientes y Resultados verificados y estabilizados
+
+- Resultados: tipo de fuente y limitaciones por indicador; presupuesto planificado del Plan por moneda, separado del gasto real (sin conectar); ventas «Sin datos» hasta Fase 5.
+- El formulario de desarrollo y su aviso provisional sólo funcionan en DEMO; en PILOT responden 404.
+- Pruebas nuevas de base caída, límite de solicitudes, mismo origen, texto con instrucciones, texto ampliado y teclado.
+- Evidencia: E2E 295 (282 PASS · 13 SKIP · 0 FAIL) en 5 proyectos; unitarias 484; PILOT 10/10; visual estructural PASS; validadores PASS. `phase3.spec.ts:58` (503 en la creación del experimento durante la presión de memoria) no se reprodujo; causa no confirmada.
+
 ## 2026-10-11 · Phase 4 — Clientes: captura persistente manual/web y Resultados ampliados (migración aditiva 0027)
 
 - Clientes es un área real: registrar oportunidades (persona, contacto opcional, necesidad, canal, origen declarado, responsable o «Por asignar», segmento, oferta y siguiente seguimiento), filtros «Por asignar», «Sin seguimiento» y «Seguimiento vencido», seguimiento con revisión (409 si alguien lo cambió) e historial.

@@ -121,3 +121,10 @@ portal y PDF de la guía; ONB-009 con proveedor real; IA real; permiso propio pa
 un invitado (decisión del propietario); dominios, consentimiento y medición; integraciones Canva/Google/Meta;
 Atomic/Chatwoot sin seleccionar. Distinguir siempre documentado, implementado, validado en DEMO, validado con
 proveedor o identidad real y desplegado. No se autoriza push, despliegue, compras ni mensajes a clientes.
+
+**Actualización · verificación (2026-10-11).** Clientes y Resultados de Fase 4 verificados en DEMO sobre el árbol del
+commit de verificación (detalle y árbol de cada prueba en SESSION_STATE): E2E 295 (282 PASS · 13 SKIP · 0 FAIL),
+unitarias 484, PILOT 10/10. Queda la aprobación visual del paquete único de capturas, la propuesta de permisos
+(PHASE4_SPEC §12.5: opción A recomendada, compartir con `MANAGE_GUESTS`), proveedor de correo y aviso definitivo.
+`phase3.spec.ts:58` queda como fallo observado una vez (503 durante presión de memoria), no reproducido. Siguiente
+trabajo: exportaciones.

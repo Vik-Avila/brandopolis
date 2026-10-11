@@ -227,9 +227,10 @@ export async function submitWebForm(tx: Transaction, input: Record<string, unkno
 // ─── Resultados ──────────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Results of one brand, computed on the server within the caller's scope. Each figure says what it counts, from
- * where, for which period and timezone, and when it was computed. A zero is a measured zero; a dimension without a
- * source says so instead of showing a number.
+ * Results of one brand, computed on the server within the caller's scope. Each figure says what kind of source it
+ * comes from (internal operational record, planned budget or provider data), what it counts, for which period and
+ * timezone, its limitations and when it was computed. A zero is a measured zero; a dimension without a source says
+ * so instead of showing a number. A budget is never spend; an opportunity is never a sale.
  */
 export async function readResults(tx: Transaction, a: BrandActor, now = new Date()) {
   const day = today(now), since = new Date(now.getTime() - 30 * 86400000);
@@ -238,30 +239,55 @@ export async function readResults(tx: Transaction, a: BrandActor, now = new Date
   const firsts = new Map<string, string>();
   if (recent.length) for (const i of await tx.select({ opportunityId: t.clientInteractions.opportunityId, campaignStatus: t.clientInteractions.campaignStatus }).from(t.clientInteractions).where(and(byBrand(t.clientInteractions, a), inArray(t.clientInteractions.opportunityId, recent.map(r => r.id)))).orderBy(asc(t.clientInteractions.receivedAt))) if (!firsts.has(i.opportunityId)) firsts.set(i.opportunityId, i.campaignStatus);
   const forms = await tx.select({ id: t.leadForms.id }).from(t.leadForms).where(byBrand(t.leadForms, a));
+  const year = Number(day.slice(0, 4));
+  const [plan] = await tx.select({ id: t.marketingPlans.id }).from(t.marketingPlans).where(and(byBrand(t.marketingPlans, a), eq(t.marketingPlans.year, year)));
+  const actions = plan ? await tx.select({ content: t.planActions.content }).from(t.planActions).where(and(byBrand(t.planActions, a), eq(t.planActions.planId, plan.id))) : [];
+  const budgets = new Map<string, { minor: number; estimated: boolean; count: number }>();
+  for (const { content } of actions) {
+    const c = content as { status?: string; budget?: { amountMinor: number; currency: string; certainty: string } | null };
+    if (!c.budget || c.status === 'CANCELLED') continue;
+    const b = budgets.get(c.budget.currency) ?? { minor: 0, estimated: false, count: 0 };
+    b.minor += c.budget.amountMinor; b.estimated ||= c.budget.certainty !== 'CONFIRMED'; b.count++; budgets.set(c.budget.currency, b);
+  }
   const pending = rows.map(r => attention(r, day));
-  const computedAt = now.toISOString(), last30 = { label: 'Últimos 30 días', from: since.toISOString(), to: computedAt }, current = { label: 'Estado actual', from: null, to: computedAt };
-  const source = 'Clientes · oportunidades guardadas de esta marca';
-  const metric = (id: string, label: string, value: number, definition: string, period: { label: string; from: string | null; to: string }) => ({ id, label, value, available: true, definition, source, scope: 'Marca activa', period, timezone: RESULTS_TIMEZONE, computedAt });
-  const missing = (id: string, label: string, reason: string, state: 'NOT_CONNECTED' | 'NO_DATA') => ({ id, label, value: null, available: false, state, reason, scope: 'Marca activa', timezone: RESULTS_TIMEZONE, computedAt });
+  const computedAt = now.toISOString();
+  const last30 = { label: 'Últimos 30 días', from: since.toISOString(), to: computedAt }, current = { label: 'Estado actual', from: null, to: computedAt }, planYear = { label: `Plan de Marketing ${year}`, from: null, to: computedAt };
+  const clients = 'Clientes · oportunidades guardadas de esta marca';
+  type Period = { label: string; from: string | null; to: string };
+  type Kind = 'INTERNAL_RECORD' | 'PLANNED_BUDGET' | 'PROVIDER';
+  const metric = (id: string, label: string, value: number, definition: string, period: Period, limitations: string, kind: Kind = 'INTERNAL_RECORD', source = clients, extra: Record<string, unknown> = {}) =>
+    ({ id, label, value, available: true, kind, definition, source, limitations, scope: 'Marca activa', period, timezone: RESULTS_TIMEZONE, computedAt, ...extra });
+  const missing = (id: string, label: string, reason: string, state: 'NOT_CONNECTED' | 'NO_DATA', kind: Kind) =>
+    ({ id, label, value: null, available: false, state, kind, reason, scope: 'Marca activa', timezone: RESULTS_TIMEZONE, computedAt });
   const web = recent.filter(r => r.source === 'WEB_FORM');
+  const budgetMetrics = budgets.size
+    ? [...budgets.entries()].map(([currency, b]) => metric(`planned_budget_${currency}`, `Presupuesto planificado (${currency})`, b.minor / 100,
+      `Suma de los presupuestos registrados en ${b.count} acción(es) no canceladas del Plan de Marketing ${year}.`, planYear,
+      `Es un presupuesto previsto${b.estimated ? ', con importes estimados' : ''}, no gasto real ni inversión ejecutada. Cada moneda se muestra aparte, sin conversión.`,
+      'PLANNED_BUDGET', `Plan de Marketing ${year} · acciones de esta marca`, { currency }))
+    : [missing('planned_budget', 'Presupuesto planificado', `Sin datos: el Plan de Marketing ${year} no tiene acciones con presupuesto.`, 'NO_DATA', 'PLANNED_BUDGET')];
   return {
     computedAt, timezone: RESULTS_TIMEZONE,
     marketing: [
-      forms.length ? metric('web_requests', 'Solicitudes del formulario web', web.length, 'Oportunidades recibidas por un formulario web de la marca. Son solicitudes, no conversiones de un proveedor.', last30) : missing('web_requests', 'Solicitudes del formulario web', 'La marca aún no tiene un formulario web.', 'NOT_CONNECTED'),
-      metric('campaign_captured', 'Con referencia de campaña (sin verificar)', recent.filter(r => firsts.get(r.id) === 'CAPTURED_UNVERIFIED').length, 'Oportunidades cuyo primer origen trae UTM o un identificador de clic. Nadie lo ha comprobado contra la cuenta publicitaria.', last30),
-      metric('campaign_unidentified', 'Campaña no identificada', recent.filter(r => firsts.get(r.id) !== 'CAPTURED_UNVERIFIED').length, 'Oportunidades sin referencia de campaña (sólo origen declarado o ninguno).', last30),
-      missing('site_campaigns_spend', 'Sitio, campañas e inversión', 'Sin conectar: la medición del sitio y las cuentas de Google y Meta todavía no están conectadas.', 'NOT_CONNECTED'),
+      forms.length
+        ? metric('web_requests', 'Solicitudes del formulario web', web.length, 'Oportunidades recibidas por un formulario web de la marca.', last30, 'Son solicitudes guardadas en Brandopolis, no conversiones de Google, Meta u otro proveedor. Por ahora el formulario es la página de desarrollo.')
+        : missing('web_requests', 'Solicitudes del formulario web', 'Sin conectar: la marca aún no tiene un formulario web.', 'NOT_CONNECTED', 'INTERNAL_RECORD'),
+      metric('campaign_captured', 'Con referencia de campaña (sin verificar)', recent.filter(r => firsts.get(r.id) === 'CAPTURED_UNVERIFIED').length, 'Oportunidades cuyo primer origen trae UTM o un identificador de clic.', last30, 'La referencia llegó con la visita; nadie la ha comprobado contra la cuenta publicitaria. No es atribución ni prueba de que la campaña causara la solicitud.'),
+      metric('campaign_unidentified', 'Campaña no identificada', recent.filter(r => firsts.get(r.id) !== 'CAPTURED_UNVERIFIED').length, 'Oportunidades sin referencia de campaña (sólo origen declarado o ninguno).', last30, 'Incluye registros manuales: lo que dice la persona se guarda como origen declarado, no como campaña.'),
+      ...budgetMetrics,
+      missing('ad_spend', 'Gasto real en anuncios', 'Sin conectar: el gasto real llega de las cuentas de Google y Meta, que todavía no están conectadas. El presupuesto del plan no lo sustituye.', 'NOT_CONNECTED', 'PROVIDER'),
+      missing('site_campaigns', 'Visitas al sitio y resultados de campañas', 'Sin conectar: la medición del sitio y las cuentas publicitarias todavía no están conectadas.', 'NOT_CONNECTED', 'PROVIDER'),
     ],
     operations: [
-      metric('new_opportunities', 'Oportunidades nuevas', recent.length, 'Oportunidades registradas a mano o por formulario en el periodo.', last30),
-      metric('unassigned', 'Por asignar', pending.filter(p => p.includes('UNASSIGNED')).length, 'Oportunidades sin responsable.', current),
-      metric('no_follow_up', 'Sin seguimiento', pending.filter(p => p.includes('NO_FOLLOW_UP')).length, 'Oportunidades sin fecha de siguiente seguimiento.', current),
-      metric('overdue', 'Seguimiento vencido', pending.filter(p => p.includes('OVERDUE')).length, `Oportunidades cuya fecha de seguimiento es anterior a hoy (${day}).`, current),
-      missing('response_time', 'Primera respuesta y carga por responsable', 'Sin datos: se medirán cuando existan conversaciones y tareas (Fase 5).', 'NO_DATA'),
+      metric('new_opportunities', 'Oportunidades nuevas', recent.length, 'Oportunidades registradas a mano o por formulario en el periodo.', last30, 'Cuenta registros, no personas: dos solicitudes de la misma persona son dos oportunidades.'),
+      metric('unassigned', 'Por asignar', pending.filter(p => p.includes('UNASSIGNED')).length, 'Oportunidades sin responsable.', current, 'Foto del momento del cálculo; todavía no se conservan cortes históricos (Fase 5).'),
+      metric('no_follow_up', 'Sin seguimiento', pending.filter(p => p.includes('NO_FOLLOW_UP')).length, 'Oportunidades sin fecha de siguiente seguimiento.', current, 'Foto del momento del cálculo.'),
+      metric('overdue', 'Seguimiento vencido', pending.filter(p => p.includes('OVERDUE')).length, `Oportunidades cuya fecha de seguimiento es anterior a hoy (${day}).`, current, `«Hoy» se calcula en ${RESULTS_TIMEZONE} mientras las marcas no tengan zona horaria propia.`),
+      missing('response_time', 'Primera respuesta y carga por responsable', 'Sin datos: se medirán cuando existan conversaciones y tareas (Fase 5).', 'NO_DATA', 'INTERNAL_RECORD'),
     ],
     sales: [
-      missing('won_lost', 'Ganadas, perdidas e importes', 'Sin datos: el cierre ganado o perdido llega con el núcleo comercial de la Fase 5. Una oportunidad nueva no es una venta.', 'NO_DATA'),
-      missing('goals_forecast', 'Metas y forecast de ganados', 'Sin datos: metas, históricos y forecast de negocios ganados se implementan en la Fase 5.', 'NO_DATA'),
+      missing('won_lost', 'Ganadas, perdidas e importes', 'Sin datos: el cierre ganado o perdido llega con el núcleo comercial de la Fase 5. Una oportunidad nueva no es una venta.', 'NO_DATA', 'INTERNAL_RECORD'),
+      missing('goals_forecast', 'Metas y forecast de ganados', 'Sin datos: metas, históricos y forecast de negocios ganados se implementan en la Fase 5. Nada previsto se muestra como venta realizada.', 'NO_DATA', 'INTERNAL_RECORD'),
     ],
   };
 }

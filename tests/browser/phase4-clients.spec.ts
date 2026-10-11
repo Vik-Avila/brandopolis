@@ -33,7 +33,21 @@ test('ADR-0035: manual and web capture persist, retries keep one opportunity, fo
       await expect(page.locator('#clients')).toBeInViewport();
       await expect(page.locator('#results')).toBeInViewport();
     }
+    // Enlarged text (200 %): the sidebar may scroll, but every destination stays reachable and no label is clipped.
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
+    for (const id of ['#home', '#strategy-toggle', '#offers', '#marketing', '#clients', '#brand-resources', '#collaboration', '#results', '#practice', '#brand-settings', '#help']) {
+      await page.locator(id).scrollIntoViewIfNeeded();
+      await expect(page.locator(id), `${id} reachable with enlarged text`).toBeInViewport();
+      expect(await page.locator(`${id} .nav-label`).evaluate(n => n.scrollWidth <= n.clientWidth + 1), `${id} label not clipped`).toBe(true);
+    }
+    await page.evaluate(() => { document.documentElement.style.fontSize = ''; });
     await page.setViewportSize(info.project.use.viewport!);
+    // Keyboard: Clientes is a focusable button that opens with Enter.
+    await page.locator('#clients').focus();
+    await page.keyboard.press('Enter');
+    await expect(view.locator('h2').first()).toHaveText('Oportunidades de tu marca');
+    await expect(page.locator('#clients')).toHaveAttribute('aria-current', 'page');
   }
 
   // Manual entry: queue «Por asignar» and «Sin seguimiento» until someone takes it (I10-CLI-01/03/08).
@@ -135,7 +149,9 @@ test('ADR-0035: manual and web capture persist, retries keep one opportunity, fo
   await expect(view.locator('[data-metric="unassigned"] .result-value')).toHaveText('1');
   await expect(view.locator('[data-metric="web_requests"] .result-value')).toHaveText('1');
   await expect(view.locator('[data-metric="campaign_captured"] .result-value')).toHaveText('1');
-  await expect(view.locator('[data-metric="site_campaigns_spend"]')).toContainText('Sin conectar');
+  await expect(view.locator('[data-metric="ad_spend"]')).toContainText('Sin conectar');
+  await expect(view.locator('[data-metric="ad_spend"]')).toContainText('Dato de proveedor');
+  await expect(view.locator('[data-metric="planned_budget"]')).toContainText('Presupuesto planificado (no es gasto)');
   await expect(view.locator('[data-metric="won_lost"]')).toContainText('Sin datos');
   await expect(view).toContainText('America/Mexico_City');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);

@@ -547,6 +547,24 @@ específica del propietario.
 | Operación comercial | Nuevas, por asignar, sin seguimiento, seguimientos vencidos | F4 con los datos nativos; primera respuesta, carga por responsable y tiempo entre etapas cuando existan sus eventos (F5) |
 | Ventas | Ganadas/perdidas, importe, ciclo, motivos, metas, forecast | Contrato F5; en F4 «Sin datos» con explicación, nunca un embudo inventado |
 
+**Indicadores implementados en Fase 4** (ADR-0035; `readResults`). Tipo de fuente: **registro interno** (lo que
+el equipo o el formulario guardan en Brandopolis), **presupuesto planificado** (Plan de Marketing; nunca gasto) o
+**dato de proveedor** (Google, Meta, analítica del sitio; hoy ninguno conectado). Zona horaria `America/Mexico_City`
+hasta que las marcas tengan la suya.
+
+| Indicador | Tipo | Definición | Fuente | Periodo | Limitaciones |
+|---|---|---|---|---|---|
+| Solicitudes del formulario web | registro interno | Oportunidades recibidas por un formulario web de la marca | Clientes | Últimos 30 días | Son solicitudes, no conversiones de proveedores; hoy sólo la página de desarrollo. «Sin conectar» si la marca no tiene formulario |
+| Con referencia de campaña (sin verificar) | registro interno | Oportunidades cuyo primer origen trae UTM o identificador de clic | Clientes (interacciones) | Últimos 30 días | La referencia no se ha comprobado contra la cuenta; no es atribución ni causalidad |
+| Campaña no identificada | registro interno | Oportunidades sin referencia de campaña | Clientes (interacciones) | Últimos 30 días | Incluye registros manuales; el origen declarado no se convierte en campaña |
+| Presupuesto planificado (por moneda) | presupuesto | Suma de presupuestos de acciones no canceladas del Plan del año | Plan de Marketing | Año del plan | No es gasto real ni inversión ejecutada; monedas separadas sin conversión; «Sin datos» si no hay presupuestos |
+| Gasto real en anuncios | proveedor | Gasto informado por las cuentas publicitarias | Google Ads / Meta Ads | — | **Sin conectar**; el presupuesto no lo sustituye |
+| Visitas al sitio y resultados de campañas | proveedor | Medición del sitio y de las campañas | Analítica / cuentas | — | **Sin conectar** |
+| Oportunidades nuevas | registro interno | Oportunidades registradas en el periodo | Clientes | Últimos 30 días | Cuenta registros, no personas |
+| Por asignar · Sin seguimiento · Seguimiento vencido | registro interno | Oportunidades sin responsable, sin fecha de seguimiento o con fecha anterior a hoy | Clientes | Estado actual | Foto del momento; sin cortes históricos hasta F5 |
+| Primera respuesta y carga por responsable | registro interno | — | — | — | **Sin datos** hasta conversaciones y tareas (F5) |
+| Ganadas, perdidas e importes · Metas y forecast | registro interno | — | — | — | **Sin datos** hasta el núcleo comercial (F5); nada previsto se muestra como venta |
+
 Cada cifra declara definición, fuente, ámbito, periodo, zona horaria y actualización (moneda cuando haya importes).
 Cero = medición disponible sin eventos; «Sin datos» o «Sin conectar» = falta la fuente o la capacidad. No se suman
 conversiones de proveedores como personas o ventas; una conversación resuelta no cierra una oportunidad; ganada no
@@ -568,6 +586,16 @@ Pendiente de resolver por el propietario (sin atribuirle una política): la **ca
 cliente** (hoy comparte cualquier miembro con acceso a la marca; invitar exige `MANAGE_GUESTS`) y la revisión de
 qué recursos aprueba un invitado: la implementación vigente sólo admite aprobar materiales y versiones del kit;
 estrategia y plan compartidos se leen y comentan.
+
+**Propuesta para decidir (2026-10-11; no aplicada, sin cambio de código ni de permisos):**
+
+| Tema | Hoy (implementado) | Contraste con ADR aceptados | Propuesta |
+|---|---|---|---|
+| Quién comparte con el cliente | Cualquier miembro con acceso a la marca; invitar y retirar exige `MANAGE_GUESTS` | ADR-0033 no define capacidad para compartir; separa leer, editar, comentar, aprobar, publicar y gastar | **Opción A (recomendada):** compartir y dejar de compartir exigen `MANAGE_GUESTS`, la misma capacidad que decide quién es el cliente; sin migración (la capacidad existe), un ADMIN la tiene siempre. **Opción B:** capacidad nueva `SHARE_WITH_CLIENT` separada de invitar (requiere ampliar el contrato de capacidades y una migración aditiva). **Opción C:** mantener lo actual |
+| Qué aprueba el invitado | Versiones exactas de entregables y del kit (propuestas de identidad); estrategia y plan compartidos sólo lectura y comentarios | Coincide con la tabla de capacidades de ADR-0033 («entregables y propuestas de identidad compartidas») | **Mantener** lo actual. Aprobar sigue sin conceder publicar ni gastar (ADR-0030/0031); aprobar la estrategia o el plan seguiría siendo decisión del equipo (autoridad humana del dueño de la marca) |
+| Clientes y Resultados | El invitado no accede (404) | ADR-0035 (propuesto) y nota v4 de ADR-0033 | **Mantener**: un invitado de marketing no es vendedor |
+
+Ninguna de estas decisiones bloquea las pruebas locales; hasta que el propietario elija, sigue lo implementado.
 
 ### 12.6 Flujo comercial y Brando (plan v5 §11)
 

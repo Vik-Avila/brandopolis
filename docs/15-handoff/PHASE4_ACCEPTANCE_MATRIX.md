@@ -1,4 +1,4 @@
-Status: accepted
+validado en DEMO en su parte F4: presupuesto planificado separado del gasto real (sin conectar) y referencias de campaña «sin verificar»; no hay conversiones de proveedores (U)
 Owner: Product / Engineering
 Canonical: no
 Last reviewed: 2026-10-11
@@ -545,3 +545,4 @@ como completado.
 | v14 | 2026-10-11 | Colaboración y guía viva: invitaciones por enlace, invitados, portal, comentarios y aprobación por versión (migración 0026); sección de estado correspondiente |
 | v15 | 2026-10-11 | Issue #10 (paquete revisión 3, plan v5): 94 criterios I10 añadidos sin renumerar (48 + 46), todos pendientes, y tabla de trazabilidad requisito → fase → contrato → aceptación → estado real |
 | v16 | 2026-10-11 | Clientes implementado (migración 0027, ADR-0035): estado por criterio I10 y trazabilidad actualizados con evidencia de DEMO; regresión completa pendiente |
+| v17 | 2026-10-11 | Verificación completa de Clientes y Resultados: CLI-10, SEC-05, SEC-08, UI-02, RES-02 y RES-04 validados en DEMO; UI-03 parcial (aprobación visual) |

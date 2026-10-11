@@ -1,3 +1,55 @@
+## 2026-10-11 · PHASE 4 · Clientes y Resultados: verificación completa y estabilización
+
+Punto de partida comprobado: rama `feat/phase4-marketing-web-collaboration`, HEAD `ec31409` (después de `6d1e55c`),
+árbol limpio. Antes de arrancar servicios: 764 MB libres de 7,86 GB y 15,2 GB comprometidos de 32,4 GB; Chrome del
+propietario ~1,6 GB (no se tocó). Se detuvieron seis procesos huérfanos propios `scripts/local-db.ts` (sin base
+escuchando). Una suite y un worker a la vez; sólo la base aislada de la DEMO (55434) y la de pruebas (55432).
+
+**Diagnóstico de `phase3.spec.ts:58` (fallo de `wide-a` sobre `ec31409`).** La traza muestra que `.plan-quality` no
+apareció porque `POST /api/learning/create` (crear el experimento) respondió **503** a los 9 s y la página avisó «La
+demo local no está disponible…»: el servidor capturó una excepción que no es de dominio. La DEMO no registra esas
+excepciones, así que se añadió un registro temporal en el `catch` de `http.ts` (nunca commiteado; retirado antes de
+las ejecuciones finales). Con ese registro: el caso pasó 3/3 aislado y toda la regresión E2E (10 tramos) terminó sin
+ninguna excepción registrada. **Causa no confirmada:** no se reprodujo; el 503 coincidió en el tiempo con la presión de
+memoria y con dos fallos 0xC0000142 (fallo de inicialización de procesos durante esa presión), coincidencia que no
+demuestra la causa. No hay relación de código con Clientes (la ruta es de Validación). Se conserva como fallo
+observado sin diagnóstico; no se cambió la prueba ni se añadieron esperas.
+
+**Cambios de código de esta entrada (tras la regresión):**
+- Resultados: cada indicador declara tipo de fuente (registro interno, presupuesto planificado o dato de proveedor) y
+  limitaciones; nuevo indicador de presupuesto planificado del Plan por moneda (nunca gasto); «Gasto real en anuncios»
+  y «Visitas al sitio y resultados de campañas» siguen «Sin conectar»; ventas «Sin datos». Tabla de indicadores en
+  PHASE4_SPEC §12.4.
+- El formulario de desarrollo (página y endpoints) sólo se sirve en DEMO; en PILOT responde 404 hasta que exista el
+  aviso de privacidad definitivo.
+- Pruebas nuevas: base caída sin confirmación falsa y reintento con la misma referencia, mismo origen, cuerpo
+  malformado, límite de solicitudes (429 sin guardar), texto con instrucciones que no cambia estrategia ni contexto,
+  formulario sólo en DEMO, presupuesto frente a gasto; E2E con texto ampliado al 200 % y teclado.
+
+**Evidencia y árbol al que pertenece:**
+
+| Comprobación | Árbol | Resultado |
+|---|---|---|
+| `test:e2e` completo, 15/15 archivos, 10 tramos (5 proyectos × 2) | `ec31409` + registro temporal de errores (sólo logging) | **295 pruebas: 282 PASS · 13 SKIP · 0 FAIL**, sin reintentos (la configuración no reintenta) y sin excepciones del servidor. wide 31+27 (1 SKIP), desktop 31+27 (1), compact 31+27 (1), tablet 29+25 (5), mobile 29+25 (5) |
+| `phase3.spec.ts:58` aislado | ídem | 3/3 PASS |
+| `phase4-clients.spec.ts` | árbol final salvo el cierre del formulario en PILOT (que no afecta a DEMO) | 5/5 proyectos |
+| `pnpm test` | árbol final | **484 PASS** (21 archivos; Clientes 9) |
+| `test:pilot:e2e` | árbol final | **10/10** (también 10/10 sobre `ec31409`) |
+| `test:visual` estructural | árbol final salvo el cierre PILOT | 10 PASS · 1 SKIP |
+| Píxeles (umbral RGB > 48/765) | ídem | 8 idénticas; 9 distintas (ver revisión de capturas) |
+| typecheck, lint, Foundation, validador de UI, validador de marca | árbol final | 0 errores · PASS · PASS |
+
+Lo que sigue valiendo de la regresión: todos los recorridos salvo Resultados (repetido en `phase4-clients` tras el
+cambio) y el formulario en PILOT (cubierto por la prueba unitaria y por PILOT 10/10). No se repitió la regresión
+completa tras estos cambios, que sólo tocan Resultados, el formulario en PILOT y pruebas.
+
+**Capturas:** un único paquete de revisión con las 9 diferencias (4 pendientes de v5 y 5+1 por el menú de ocho
+áreas); ninguna canónica sustituida.
+
+**Estado:** Clientes y Resultados de Fase 4 verificados en DEMO; pendiente sólo la aprobación visual del propietario y
+las decisiones abiertas (compartir, proveedor de correo, aviso definitivo). Chatwoot sin prueba (sin entorno); ADR-0035
+propuesto; Atomic y Chatwoot no adoptados. Siguiente: exportaciones (generador PDF propio y `jszip`).
+
 ## 2026-10-11 · PHASE 4 · Clientes: captura persistente manual/web y Resultados ampliados (issue #10)
 
 - **Datos (migración aditiva `0027_client_capture`, ADR-0035 propuesto):** `client_segments` (id estable por marca;
@@ -27,14 +79,16 @@
   se repitió después de esa corrección.** E2E nueva `phase4-clients.spec.ts`: PASS en wide, desktop, compact, tablet y
   móvil (con un invitado real de la DEMO y la respuesta perdida tras el commit). Defecto propio corregido: la octava
   área desplazaba el lateral a 1366×768 (32 px); ahora las filas miden 42 px sólo con altura ≤ 820 px.
-- **Regresión E2E completa: NO terminada.** Claude Code detuvo por falta de memoria del equipo la ejecución secuencial
-  (`wide-a` sí terminó: 24 PASS · 3 FAIL —dos «worker process exited unexpectedly» con código 0xC0000142 durante la falta
-  de memoria y `phase3.spec.ts:58` (Validación, `.plan-quality` no apareció), sin diagnóstico y sin relación conocida
-  con Clientes—), el servidor aislado y la base de pruebas; los procesos que quedaron (servidor 3001 y PostgreSQL 55434,
-  propios del repositorio) se detuvieron después, sin reiniciar nada. Pendientes antes de dar el bloque por cerrado:
-  `pnpm test` completo, `test:e2e` en los 5 proyectos (incluidas `workspace.spec` y `micro-hotfix.spec` actualizadas),
-  `test:pilot:e2e`, `test:visual` y comparación de píxeles (cambian el menú de ocho áreas y su altura en pantallas
-  bajas; ninguna canónica tocada). Estado: **not release-ready**.
+- **Regresión E2E completa: NO terminada** (sobre `ec31409`). Claude Code detuvo por falta de memoria del equipo la
+  ejecución secuencial, el servidor aislado y la base de pruebas.
+  - Sólo terminó la mitad `wide-a`: **24 PASS · 3 FAIL**. Dos fallos son «worker process exited unexpectedly» con
+    código 0xC0000142 (fallo de inicialización de proceso ocurrido durante la presión de memoria; la coincidencia no
+    demuestra la causa). El tercero es `phase3.spec.ts:58` (Validación: `.plan-quality` no apareció).
+  - Los procesos que quedaron (servidor 3001 y PostgreSQL 55434, propios del repositorio) se detuvieron después, sin
+    reiniciar nada.
+  - Corrección de esta redacción (2026-10-11): la versión anterior unía en un solo paréntesis el recuento de `wide-a`
+    y la lista de procesos detenidos; el contenido no cambia. La verificación se completó en la entrada siguiente.
+  - Estado en ese momento: **not release-ready**.
 
 ## 2026-10-11 · PHASE 4 · reconciliación del issue #10 (Clientes y Resultados, plan v5) · documental
 

@@ -158,7 +158,8 @@ export class RateLimiter implements Limiter {
     return ++entry.count<=limit;
   }
 }
-// ADR-0035 · public web form: reads of the form, submissions per client and per form.
+// ADR-0035 · public web form: reads of the form, submissions per client and per form; development only.
+const LEAD_FORM_PATHS=new Set(['/formulario','/lead-form.js','/lead-form.css']);
 export const leadFormLimits={read:[60,60000],submit:[10,600000],perForm:[200,3600000]} as const;
 export const pilotLimits={all:[600,60000],auth:[20,60000],ai:[20,600000],feedback:[20,600000],reflections:[30,600000]} as const;
 export function createApp(engine:Engine,assets?:(path:string)=>{content:string|Buffer;type:string;etag?:string}|undefined,health?:()=>Promise<string>,pilot?:PilotBoundary,competitiveResearch?:CompetitiveResearchService,documentClaims?:DocumentClaimsService,options?:{brandFilePurge?:BrandFilePurge}) {
@@ -194,6 +195,9 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
       }
       // ADR-0035 · the brand's web form: the only entry without a session. Same origin, bounded body, per-client and
       // per-form limits; the brand comes from the active form. Contents never reach logs or telemetry.
+      // The provisional privacy notice is limited to development: PILOT (and any non-DEMO deployment) does not serve the
+      // form page or its endpoints until the final notice is approved (PHASE4_SPEC §12.2, EXT-REQ-13).
+      if(pilot&&(LEAD_FORM_PATHS.has(path)||path==='/api/forms/public'||path==='/api/forms/submit'))return send(res,404,{code:'NOT_FOUND'});
       if(path==='/api/forms/public'||path==='/api/forms/submit'){
         const forwarded=pilot?.trustProxy?String(req.headers['x-forwarded-for']??'').split(',').map(v=>v.trim()).filter(Boolean).at(-1):undefined;
         const client=forwarded??req.socket.remoteAddress??'unknown';

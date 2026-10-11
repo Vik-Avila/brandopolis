@@ -1096,9 +1096,13 @@ export function clientsHtml(d,filter='all'){
  ${create}<section class="plan-block" aria-labelledby="client-list-title"><h3 id="client-list-title">Oportunidades</h3>${filters}${list}</section>${forms}${segments}`;
 }
 const periodText=m=>m.period?`${m.period.label}${m.period.from?` (desde ${fmt(m.period.from)})`:''}`:'';
+// Kind of source behind each figure: an internal record of Brandopolis, a planned budget or data from a provider.
+const KIND_WORDS={INTERNAL_RECORD:'Registro interno de Brandopolis',PLANNED_BUDGET:'Presupuesto planificado (no es gasto)',PROVIDER:'Dato de proveedor'};
+const metricValue=m=>m.currency?new Intl.NumberFormat('es-MX',{style:'currency',currency:m.currency}).format(m.value):String(m.value);
 function metricHtml(m){
- if(!m.available)return `<li class="result-card is-missing" data-metric="${escape(m.id)}"><p class="result-label">${escape(m.label)}</p><p class="result-value">${m.state==='NOT_CONNECTED'?'Sin conectar':'Sin datos'}</p><p class="hint">${escape(m.reason)}</p></li>`;
- return `<li class="result-card" data-metric="${escape(m.id)}"><p class="result-label">${escape(m.label)}</p><p class="result-value">${escape(String(m.value))}</p><details><summary>Cómo se calcula</summary><p class="hint">${escape(m.definition)}</p><p class="hint">Fuente: ${escape(m.source)} · Ámbito: ${escape(m.scope)} · Periodo: ${escape(periodText(m))} · Zona horaria: ${escape(m.timezone)} · Calculado: ${escape(fmt(m.computedAt))}</p></details></li>`;
+ const kind=`<p class="result-kind">${escape(KIND_WORDS[m.kind]??'')}</p>`;
+ if(!m.available)return `<li class="result-card is-missing" data-metric="${escape(m.id)}" data-kind="${escape(m.kind)}"><p class="result-label">${escape(m.label)}</p><p class="result-value">${m.state==='NOT_CONNECTED'?'Sin conectar':'Sin datos'}</p>${kind}<p class="hint">${escape(m.reason)}</p></li>`;
+ return `<li class="result-card" data-metric="${escape(m.id)}" data-kind="${escape(m.kind)}"><p class="result-label">${escape(m.label)}</p><p class="result-value">${escape(metricValue(m))}</p>${kind}<details><summary>Cómo se calcula y sus límites</summary><p class="hint">${escape(m.definition)}</p><p class="hint"><strong>Límites:</strong> ${escape(m.limitations)}</p><p class="hint">Fuente: ${escape(m.source)} · Ámbito: ${escape(m.scope)} · Periodo: ${escape(periodText(m))} · Zona horaria: ${escape(m.timezone)} · Calculado: ${escape(fmt(m.computedAt))}</p></details></li>`;
 }
 /** Resultados: marketing, commercial operation and sales, each with its real availability. */
 export function resultsHtml(r){

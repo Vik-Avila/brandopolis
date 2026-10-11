@@ -992,3 +992,4 @@ button.danger:disabled { background: #E8D5D2; border-color: #E8D5D2; color: #6E5
   #journey .nav-item, #journey #home.nav-item, #journey #practice.nav-item { min-height: 42px; padding-top: 6px; padding-bottom: 6px; }
   #journey .nav-head { padding-bottom: 6px; }
 }
+.result-kind { margin: 0; font-size: .85rem; color: var(--ws-ink-soft); }
