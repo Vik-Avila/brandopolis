@@ -42,18 +42,16 @@ test('Inicio: one next step, real 9-segment progress and decision vs observation
  expect(await noOverflow(page)).toBe(true);
 });
 
-test('Navigation: Estrategia group, Mercado objetivo, Productos y servicios, Marketing, Marca y recursos, two «Próximamente» non-destinations, Mi aprendizaje, Mapa and Ayuda',async({page},info)=>{
+test('Navigation: Estrategia inner navigation, Mercado objetivo, Productos y servicios, Marketing, Marca y recursos, two «Próximamente» non-destinations, Mi aprendizaje, Mapa and Ayuda',async({page},info)=>{
  await signIn(page,`Menu ${info.project.name} ${Date.now()}`);
  const menu=page.getByRole('button',{name:'Abrir navegación',exact:true});
  if(await menu.isVisible())await menu.click();
  const nav=page.locator('#journey');
- await expect(nav.locator('#strategy-toggle')).toHaveAttribute('aria-expanded','true');
- await expect(nav.locator('[data-module]')).toHaveText(['01 Objetivo estratégico','02 Mercado objetivo','03 Cliente principal','04 Modelo de valor','05 Posicionamiento','06 Promesa de marca','07 Mensaje principal','08 Prioridad de lanzamiento','09 Experimento prioritario']);
- await nav.locator('#strategy-toggle').click();
- await expect(nav.locator('#strategy-list')).toBeHidden();
- await expect(nav.locator('#strategy-toggle')).toHaveAttribute('aria-expanded','false');
- await nav.locator('#strategy-toggle').click();
- await expect(nav.locator('#strategy-list')).toBeVisible();
+ // PHASE4_SPEC §3: the nine steps live in Estrategia's inner navigation (canonical order and names), not in the sidebar.
+ await expect(nav.locator('[data-module]')).toHaveCount(0);
+ const steps=page.locator('#strategy-list [data-module]');
+ await expect(steps).toHaveText(['01 Objetivo estratégico','02 Mercado objetivo','03 Cliente principal','04 Modelo de valor','05 Posicionamiento','06 Promesa de marca','07 Mensaje principal','08 Prioridad de lanzamiento','09 Experimento prioritario']);
+ await expect(page.locator('#strategy-toggle')).toHaveClass(/contains-current/);
  // ADR-0030 (Phase 4, owner-approved 2026-10-10): Productos y servicios is a real destination; the other two stay announced.
  await expect(nav.locator('[data-soon]',{hasText:'Productos y servicios'})).toHaveCount(0);
  await expect(nav.locator('[data-soon]',{hasText:'Marketing'})).toHaveCount(0);
@@ -95,7 +93,7 @@ test('Mercado objetivo: plain question, declared geography as context only, inte
  await expect(page.locator('#decision .declared-context')).toContainText('no tu Mercado objetivo');
  await expect(page.locator('#decision')).toContainText('Por decidir');
  await expect(page).toHaveURL(/module=Market%20Arena/);
- await expect(page.locator('#journey [data-module="Market Arena"]')).toHaveAttribute('aria-current','page');
+ await expect(page.locator('#strategy-list [data-module="Market Arena"]')).toHaveAttribute('aria-current','page');
  await navigate(page,'03 Cliente principal');
  await expect(page.locator('#decision .decision-question')).toHaveText('Dentro de ese mercado, ¿a qué tipo de cliente atenderás primero?');
 });
@@ -230,7 +228,7 @@ test('Mobile: navigation and tools are drawers with focus, Escape and focus retu
  await expect(page.locator('#rail-panel')).toBeHidden();
  await expect(opener).toBeFocused();
  await page.getByRole('button',{name:'Abrir navegación',exact:true}).click();
- await expect(page.locator('#journey [data-module]')).toHaveCount(9);
+ await expect(page.locator('#strategy-list [data-module]')).toHaveCount(9);
  await page.keyboard.press('Escape');
  expect(await noOverflow(page)).toBe(true);
 });
@@ -262,17 +260,18 @@ test('Every decision reads title · question · main card · compact Brando card
  expect(calls).toEqual([]);
 });
 
-test('The nine strategy nodes are joined by one fine vertical line with decided and current states',async({page},info)=>{
+test('The nine strategy nodes are joined by one fine line with decided and current states',async({page},info)=>{
  desktopOnly(info.project.name);
  await signIn(page,`Línea ${info.project.name} ${Date.now()}`);
  await decide(page,'01 Objetivo estratégico','Objetivo para la línea');
  await navigate(page,'02 Mercado objetivo');
- const line=await page.locator('#journey .strategy-list').evaluate(list=>{const s=getComputedStyle(list,'::before');return {content:s.content,width:s.width,position:s.position};});
+ // PHASE4_SPEC §3: in the inner navigation of Estrategia the line runs horizontally across the nine steps (1px high).
+ const line=await page.locator('#strategy-nav .strategy-list').evaluate(list=>{const s=getComputedStyle(list,'::before');return {content:s.content,height:s.height,position:s.position};});
  expect(line.content).not.toBe('none');
- expect(line.width).toBe('1px');
- await expect(page.locator('#journey .strategy-list button[data-module]')).toHaveCount(9);
- await expect(page.locator('#journey .strategy-list button[data-module].is-decided')).toHaveCount(1);
- await expect(page.locator('#journey .strategy-list button[data-module][aria-current]')).toHaveCount(1);
+ expect(line.height).toBe('1px');
+ await expect(page.locator('#strategy-nav .strategy-list button[data-module]')).toHaveCount(9);
+ await expect(page.locator('#strategy-nav .strategy-list button[data-module].is-decided')).toHaveCount(1);
+ await expect(page.locator('#strategy-nav .strategy-list button[data-module][aria-current]')).toHaveCount(1);
 });
 
 test('Mapa estratégico offers two documents with their purpose; the Brand Book downloads as a real PDF',async({page},info)=>{

@@ -18,7 +18,7 @@ const activeBrandIsDemo=()=>demoBrandIds.has(brandId);
  *  journey is complete. Dependencies are untouched: this only navigates, it never skips a decision. */
 function nextPhase(){
  if(!context)return null;
- const order=[...document.querySelectorAll('#journey [data-module]')].map(b=>b.dataset.module);
+ const order=[...document.querySelectorAll('#strategy-list [data-module]')].map(b=>b.dataset.module);
  for(const module of order){
   const q=context.questions.find(x=>x.module===module);if(!q)continue;
   const d=context.decisions.find(x=>x.questionId===q.id);
@@ -54,8 +54,7 @@ function applyPanels(){
  if(left){left.setAttribute('aria-expanded',String(!panels.left));const label=panels.left?'Expandir navegación':'Contraer navegación';left.setAttribute('aria-label',label);left.dataset.tip=label;left.querySelector('.panel-toggle-label').textContent=label;left.querySelector('use')?.setAttribute('href',panels.left?'#i-expand':'#i-collapse');}
  const right=document.querySelector('#toggle-rail');
  if(right){right.setAttribute('aria-expanded',String(!panels.right));const label=panels.right?'Abrir herramientas':'Contraer herramientas';right.setAttribute('aria-label',label);right.dataset.tip=label;right.querySelector('.panel-toggle-label').textContent=label;right.querySelector('use')?.setAttribute('href',panels.right?'#i-collapse':'#i-expand');}
- const strategy=document.querySelector('#strategy-toggle');
- if(strategy){strategy.setAttribute('aria-expanded',String(panels.strategy));document.querySelector('#strategy-list').hidden=!panels.strategy;document.querySelector('#strategy-more').hidden=!panels.strategy;}
+
  const label=document.querySelector('.focus-mode-label');if(label)label.hidden=!(panels.left&&panels.right&&desk);
  // Exactly one tool panel: the docked Brando dialog, or one rail section.
  const panel=document.querySelector('#rail-panel');
@@ -89,12 +88,9 @@ document.querySelector('#toggle-rail')?.addEventListener('click',()=>{
  if(panels.right){panels.right=false;}else panels.right=true;
  applyPanels();
 });
-document.querySelector('#strategy-toggle')?.addEventListener('click',()=>{
- // Collapsed navigation: the group opens the navigation first so the nine decisions are reachable.
- if(panels.left&&desktopRail.matches&&matchMedia('(min-width:1280px)').matches){panels.left=false;panels.strategy=true;}
- else panels.strategy=!panels.strategy;
- applyPanels();
-});
+// PHASE4_SPEC §3 · Estrategia is a destination: it opens the current decision; its steps live inside the area.
+document.querySelector('#strategy-toggle')?.addEventListener('click',()=>run(refresh));
+document.querySelector('#strategy-decisions')?.addEventListener('click',()=>run(refresh));
 document.querySelectorAll('[data-rail-tool]').forEach(button=>button.addEventListener('click',()=>selectRailTool(button.dataset.railTool,button)));
 document.querySelector('#close-rail-panel')?.addEventListener('click',()=>{if(desktopRail.matches){panels.right=true;applyPanels();$('#toggle-rail').focus();}else closeRailDrawer();});
 document.querySelector('#rail-panel')?.addEventListener('keydown',event=>{if(event.key==='Escape'){event.stopPropagation();if(desktopRail.matches){panels.right=true;applyPanels();$('#toggle-rail').focus();}else closeRailDrawer();}});
@@ -904,7 +900,7 @@ async function refresh(){
 }
 function render() {
   $('#decision').before($('#brando-suggestion'));
-  setNavActive();$('#decision').dataset.view='decision';updateShell();if(!panels.strategy){panels.strategy=true;applyPanels();}
+  setNavActive();$('#decision').dataset.view='decision';updateShell();
   document.querySelectorAll('[data-module]').forEach(b=>{if(b.dataset.module===selected)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
   if(!context){analytics.sendOnce(PILOT_EVENTS.onboardingStarted,{pilot_stage:'no_brand'});$('#decision').innerHTML='<section class="empty-state" aria-labelledby="onboarding-title"><p class="eyebrow">Tu punto de partida</p><h2 id="onboarding-title">Construye tu primera decisión estratégica.</h2><p>Primero qué quieres construir y dónde competirás. Después, a quién sirves y cómo quieres ser elegido. Cada decisión conservará tu criterio y su historia.</p><ol><li>Abre «Nueva marca» para crear tu espacio.</li><li>Define tu objetivo estratégico.</li><li>Compara opciones y decide con tu criterio.</li></ol><p><strong>La IA propone. Tú decides. Brandopolis recuerda.</strong></p></section>';$('#context').innerHTML='';return;}
   history.replaceState(null,'',`/?brand=${encodeURIComponent(brandId)}&module=${encodeURIComponent(selected)}`);setTitle(labels[selected]);
@@ -1089,7 +1085,7 @@ document.querySelectorAll('[data-module]').forEach(button=>button.addEventListen
 function historyHtml(versions,decision){return historyView(versions,decision,user.userId);}
 /** An existing brand without a journey section: one explicit action adds it; nothing is created on read. */
 function renderMissingSection(){
- const missing=[...document.querySelectorAll('#journey [data-module]')].map(b=>b.dataset.module).filter(m=>!context.questions.some(q=>q.module===m)).map(m=>labels[m]??m);
+ const missing=[...document.querySelectorAll('#strategy-list [data-module]')].map(b=>b.dataset.module).filter(m=>!context.questions.some(q=>q.module===m)).map(m=>labels[m]??m);
  $('#decision').innerHTML=strategicSectionsHtml(labels[selected]??selected,missing);
  renderContext();
  $('#add-strategic-sections').addEventListener('click',event=>run(async()=>{
@@ -2441,15 +2437,15 @@ function bindStrategyLinks(){document.querySelectorAll('[data-strategy-module]')
 
 // PHASE4_SPEC §3 · seven entries; the Estrategia group holds the nine decisions, Validación and Mapa estratégico.
 const STRATEGY_VIEWS=new Set(['#learning-loop','#blueprint']);
-let navArea=null;
 function setNavActive(selector){
  $('#decision').dataset.view=selector?.slice(1)??'decision';
- document.querySelectorAll('#journey [aria-current]').forEach(b=>b.removeAttribute('aria-current'));
+ document.querySelectorAll('#journey [aria-current],#strategy-nav .strategy-tab[aria-current]').forEach(b=>b.removeAttribute('aria-current'));
  if(selector)$(selector).setAttribute('aria-current','page');
  const inStrategy=!selector||STRATEGY_VIEWS.has(selector);
+ // Inside Estrategia the area keeps its own navigation (sections and the nine steps); outside it disappears.
  $('#strategy-toggle')?.classList.toggle('contains-current',inStrategy);
- const area=inStrategy?'strategy':selector;
- if(area!==navArea){navArea=area;if(panels.strategy!==inStrategy){panels.strategy=inStrategy;applyPanels();}}
+ $('#strategy-nav').hidden=!inStrategy;
+ if(inStrategy&&!selector)$('#strategy-decisions')?.setAttribute('aria-current','page');
 }
 
 /** Completion hand-off: what to do next, in the page, on every viewport. Shows a continuation only
@@ -2592,7 +2588,7 @@ function resetBrando(){
  $('#brando-form button[type="submit"]').disabled=false;setBrandoBusy(false);
  brandoVisualState='idle';brandoSuggestionDismissed=false;syncBrandoPresentation();
 }
-function brandoQuestion(){return $('#journey [data-module][aria-current="page"]')?context?.questions.find(q=>q.module===selected)?.id??null:null;}
+function brandoQuestion(){return $('#strategy-list [data-module][aria-current="page"]')?context?.questions.find(q=>q.module===selected)?.id??null:null;}
 function currentBrandoScope(){return JSON.stringify([user?.userId,brandId,brandoQuestion(),context?.brandoContextVersion??context?.contextVersion]);}
 /** Explicit, human-initiated strategy-wide question: opens the existing drawer and sends one query. */
 function askBrandoAbout(opener,question){

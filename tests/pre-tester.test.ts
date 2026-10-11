@@ -117,7 +117,7 @@ describe('final pre-tester workspace UX', () => {
   it('hands off to the next phase without depending on the drawer', () => {
     expect(app).toContain('function nextPhase()');
     // Journey order is read from the canonical navigation, never duplicated in a second list.
-    expect(app).toContain("document.querySelectorAll('#journey [data-module]')");
+    expect(app).toContain("document.querySelectorAll('#strategy-list [data-module]')");
     // A continuation appears only when a next phase genuinely exists.
     expect(app).toContain('const next=nextPhase();');
     expect(app).toContain('Continuar a ${escape(label)}');
@@ -241,7 +241,7 @@ describe('production verification hotfix', () => {
     expect(competitive).toContain('const reviewComplete=Boolean(activeResult?.findings?.length)&&pendingFindings.length===0');
     // Destination still comes from the canonical journey; no second ordering is introduced.
     expect(app.split('function nextPhase()').length - 1).toBe(1);
-    expect(app.slice(app.indexOf('function nextPhase()'))).toContain("document.querySelectorAll('#journey [data-module]')");
+    expect(app.slice(app.indexOf('function nextPhase()'))).toContain("document.querySelectorAll('#strategy-list [data-module]')");
     const handoff = app.slice(app.indexOf('function showPhaseHandoff'));
     expect(handoff.slice(0, 900)).toContain('const next=nextPhase();');
     // Completion is reported once per research round, so a re-render cannot inflate it.
@@ -264,20 +264,19 @@ describe('production verification hotfix', () => {
       expect(app, stage).toContain(stage);
   });
 
-  it('keeps the owner-approved navigation: seven entries, Estrategia group (nine decisions, Validación, Mapa), «Próximamente» and secondary access (ADR-0027/0029/0030, PHASE4_SPEC §3)', () => {
+  it('keeps the owner-approved navigation: seven entries without sidebar scroll; Estrategia inner navigation (sections and nine steps); «Próximamente» and secondary access (ADR-0027/0029/0030, PHASE4_SPEC §3)', () => {
     // The public header has its own <nav>, so the closing tag must be found after this one opens.
     const navStart = html.indexOf('<nav id="journey"');
     const nav = html.slice(navStart, html.indexOf('</nav>', navStart));
     const labels = [...nav.matchAll(/<span class="nav-label">([^<]+)/g)].map(m => m[1]);
-    expect(labels).toEqual(['Inicio', 'Estrategia', 'Validación', 'Mapa estratégico', 'Productos y servicios', 'Marketing', 'Marca y recursos', 'Colaboración', 'Resultados', 'Mi aprendizaje', 'Configuración de marca', 'Ayuda']);
-    // PHASE4_SPEC §3: seven main entries; Validación and Mapa estratégico are sub-items folded inside Estrategia.
-    const main = [...nav.matchAll(/<button type="button"[^>]*class="nav-item(?: is-soon)?"[^>]*>.*?<span class="nav-label">([^<]+)/g)].map(m => m[1]);
-    expect(main.slice(0, 7)).toEqual(['Inicio', 'Estrategia', 'Productos y servicios', 'Marketing', 'Marca y recursos', 'Colaboración', 'Resultados']);
-    const more = nav.slice(nav.indexOf('id="strategy-more"'), nav.indexOf('</div>', nav.indexOf('id="strategy-more"')));
-    expect([...more.matchAll(/id="([a-z-]+)" class="nav-item nav-subitem"/g)].map(m => m[1])).toEqual(['learning-loop', 'blueprint']);
-    expect(nav).toContain('aria-controls="strategy-list strategy-more"');
-    // The Decision Spine keeps exactly the nine journey sections, in canonical order, inside the Estrategia group.
-    const group = nav.slice(nav.indexOf('id="strategy-list"'), nav.indexOf('</div></div>', nav.indexOf('id="strategy-list"')));
+    // PHASE4_SPEC §3 (2026-10-10): the sidebar holds only the seven areas and the footer; no scroll is needed.
+    expect(labels).toEqual(['Inicio', 'Estrategia', 'Productos y servicios', 'Marketing', 'Marca y recursos', 'Colaboración', 'Resultados', 'Mi aprendizaje', 'Configuración de marca', 'Ayuda']);
+    expect(nav).not.toContain('data-module');
+    expect(nav).not.toContain('aria-expanded="true" aria-controls="strategy-list');
+    // Estrategia keeps its own inner navigation: sections, then the nine journey steps in canonical order.
+    const inner = html.slice(html.indexOf('<nav id="strategy-nav"'), html.indexOf('</nav>', html.indexOf('<nav id="strategy-nav"')));
+    expect([...inner.matchAll(/<button type="button" id="([a-z-]+)" class="strategy-tab"/g)].map(m => m[1])).toEqual(['strategy-decisions', 'learning-loop', 'blueprint']);
+    const group = inner.slice(inner.indexOf('id="strategy-list"'));
     expect([...group.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(['Strategic Objective', 'Market Arena', 'Primary Customer', 'Value Mechanism', 'Positioning', 'Brand Promise', 'Core Message', 'GTM Priority', 'Priority Experiment']);
     expect(group).toContain('<span>02</span> Mercado objetivo');
     expect(nav).not.toContain('Arena de mercado');
@@ -306,10 +305,9 @@ describe('production verification hotfix', () => {
       expect(button).not.toMatch(/<span>\d/);
       expect(button).not.toContain('data-module');
     }
-    expect(nav).toContain('id="learning-loop"');
+    expect(inner).toContain('id="learning-loop"');
     expect(nav.indexOf('id="practice"')).toBeGreaterThan(nav.indexOf('class="nav-divider"'));
-    // PHASE4_SPEC §3: Mapa estratégico moved into the Estrategia group; the footer keeps Mi aprendizaje, Configuración and Ayuda.
-    expect(nav.indexOf('id="blueprint"')).toBeLessThan(nav.indexOf('class="nav-divider"'));
+    expect(nav.indexOf('id="brand-settings"')).toBeGreaterThan(nav.indexOf('id="practice"'));
     expect(nav.indexOf('id="brand-settings"')).toBeGreaterThan(nav.indexOf('id="practice"'));
   });
 
@@ -392,7 +390,7 @@ describe('production verification hotfix', () => {
   it('names the connected view «Mapa estratégico» wherever a participant reads it', () => {
     // «Blueprint» is industry jargon an entrepreneur should not need explained. One vocabulary is used
     // everywhere it is read, including the exported document.
-    const nav = html.slice(html.indexOf('<nav id="journey"'), html.indexOf('</nav>', html.indexOf('<nav id="journey"')));
+    const nav = html.slice(html.indexOf('<nav id="strategy-nav"'), html.indexOf('</nav>', html.indexOf('<nav id="strategy-nav"')));
     expect(nav).toContain('id="blueprint"');
     expect(nav).toContain('<span class="nav-label">Mapa estratégico</span>');
     expect(nav, 'no jargon left in the navigation').not.toContain('Blueprint');

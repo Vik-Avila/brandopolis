@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 /**
  * Navigation of the Strategic Workspace (ADR-0027), shared by the browser suites. Destinations renamed by the
  * owner's decision keep working under their previous names; «Contexto estratégico» and «Entorno competitivo» are
- * reached from the rail's Contexto tool; the nine decisions live in the expandable Estrategia group.
+ * reached from the rail's Contexto tool; the nine decisions, Validación and Mapa estratégico live in the inner navigation of Estrategia.
  */
 const RENAMED:Record<string,string>={
  'Qué necesita atención':'Inicio',
@@ -26,13 +26,15 @@ export async function navigate(page:Page,raw:string){
   return;
  }
  const menu=page.getByRole('button',{name:'Abrir navegación',exact:true});
- if(await menu.isVisible())await menu.click();
- const button=page.locator('#journey').getByRole('button',{name,exact:true});
- if(!(await button.isVisible())){
-  const group=page.locator('#strategy-toggle');
-  if(await group.isVisible()&&(await group.getAttribute('aria-expanded'))==='false')await group.click();
+ // PHASE4_SPEC §3: the nine steps, Validación and Mapa estratégico live in the inner navigation of Estrategia.
+ const inner=page.locator('#strategy-nav').getByRole('button',{name,exact:true,includeHidden:true});
+ if(await inner.count()){
+  if(!(await inner.isVisible())){if(await menu.isVisible())await menu.click();await page.locator('#strategy-toggle').click();}
+  await inner.click();
+  return;
  }
- await button.click();
+ if(await menu.isVisible())await menu.click();
+ await page.locator('#journey').getByRole('button',{name,exact:true}).click();
 }
 
 /** Opens one tool of the right rail (desktop strip, or the drawer below 1001px). Never asks the AI. */

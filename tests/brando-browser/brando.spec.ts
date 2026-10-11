@@ -137,7 +137,7 @@ test('section orientation navigates all nine sections without inference or write
  await page.goto(base+'/?brand=a&module=Primary%20Customer');
  for(const [module,label] of [['Strategic Objective','Objetivo estratégico'],['Market Arena','Mercado objetivo'],['Primary Customer','Cliente principal'],['Value Mechanism','Modelo de valor'],['Positioning','Posicionamiento'],['Brand Promise','Promesa de marca'],['Core Message','Mensaje principal'],['GTM Priority','Prioridad de lanzamiento'],['Priority Experiment','Experimento prioritario']]){
   if(info.project.name==='mobile')await page.locator('#menu').click();
-  await page.locator(`#journey [data-module="${module}"]`).click();
+  await page.locator(`#strategy-list [data-module="${module}"]`).click();
   await expect(page.locator('#brando-section')).toContainText(label);
   await expect(page.locator('#brando-section')).toContainText('sin consulta a la IA');
   expect(await page.locator('#brando-section').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
@@ -156,7 +156,7 @@ test('section exploration is explicit, scoped and reuses its current answer with
  await page.locator('#brando-section-explore').click();await expect(page.locator('#brando-dialog')).toBeVisible();expect(asks).toHaveLength(1);
  await page.keyboard.press('Escape');
  if(info.project.name==='mobile')await page.locator('#menu').click();
- await page.locator('#journey [data-module="Core Message"]').click();
+ await page.locator('#strategy-list [data-module="Core Message"]').click();
  await page.locator('#brando-section-explore').click();await expect(page.locator('#brando-conversation .brando-turn')).toHaveCount(1);
  expect(asks).toHaveLength(2);expect(asks[1]).toMatchObject({brandId:'a',questionId:'q3'});
  await page.keyboard.press('Escape');await page.screenshot({path:`test-results/brando-section-${info.project.name}.png`});
@@ -185,7 +185,7 @@ test('section change discards a pending answer and makes no automatic retry',asy
  await page.route('**/api/brando/ask',async route=>{calls++;await hold;await route.continue();});
  await page.goto(base+'/?brand=a&module=Primary%20Customer');await page.locator('#brando-section-explore').click();
  await expect(page.locator('#brando-section-explore')).toBeDisabled();await expect(page.locator('#brando-submit')).toHaveText('Pensando…');
- await page.keyboard.press('Escape');if(info.project.name==='mobile')await page.locator('#menu').click();await page.locator('#journey [data-module="Positioning"]').click();
+ await page.keyboard.press('Escape');if(info.project.name==='mobile')await page.locator('#menu').click();await page.locator('#strategy-list [data-module="Positioning"]').click();
  const response=page.waitForResponse('**/api/brando/ask');release();await response;
  await expect(page.locator('#brando-section')).toContainText('Posicionamiento');await page.locator('#open-brando').click();await expect(page.locator('#brando-conversation')).toBeEmpty();expect(calls).toBe(1);
 });
@@ -214,7 +214,7 @@ test('Objetivo and Arena reuse the orientation, explicit query and editor guide 
  expect(asks).toHaveLength(1);expect(asks[0]).toMatchObject({brandId:'a',questionId:'q-arena'});
  await page.keyboard.press('Escape');
  if(info.project.name==='mobile')await page.locator('#menu').click();
- await page.locator('#journey [data-module="Strategic Objective"]').click();
+ await page.locator('#strategy-list [data-module="Strategic Objective"]').click();
  await expect(page.locator('#brando-section')).toContainText('Objetivo estratégico');
  expect(asks).toHaveLength(1);expect(commits).toEqual([]);
 });
@@ -252,7 +252,7 @@ test('Promesa de marca reuses orientation and editor guide without querying or w
 test('journey line marks the next phase in words, with a finite pulse that reduced motion removes',async({page},info)=>{
  await page.goto(base+'/?brand=a&module=Primary%20Customer');
  if(info.project.name==='mobile')await page.locator('#menu').click();
- const next=page.locator('#journey [data-module="Strategic Objective"]');
+ const next=page.locator('#strategy-list [data-module="Strategic Objective"]');
  await expect(next).toHaveClass(/is-next/);
  await expect(next).toHaveAttribute('aria-description',/Siguiente decisión sugerida/);
  await expect(page.locator('#journey .is-next')).toHaveCount(1);
@@ -260,7 +260,7 @@ test('journey line marks the next phase in words, with a finite pulse that reduc
  expect(node.radius).toBe('50%');
  expect(node.iterations,'the pulse is finite').toBe('3');
  expect(node.name).toBe('bp-journey-next');
- const connector=await page.locator('#journey [data-module="Market Arena"]').evaluate(el=>getComputedStyle(el,'::before').content);
+ const connector=await page.locator('#strategy-list [data-module="Market Arena"]').evaluate(el=>getComputedStyle(el,'::before').content);
  expect(connector,'phases are joined by a vertical line').not.toBe('none');
  expect(await next.evaluate(el=>getComputedStyle(el,'::before').content),'the first phase has no line above it').toBe('none');
  await page.emulateMedia({reducedMotion:'reduce'});

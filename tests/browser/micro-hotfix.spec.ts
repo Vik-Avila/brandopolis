@@ -99,29 +99,29 @@ test('navigation keeps every destination reachable at laptop height; preparation
   const menu = page.getByRole('button', { name: 'Abrir navegación', exact: true });
   if (await menu.isVisible()) await menu.click();
   const labels = await page.locator('#journey .nav-label').evaluateAll(nodes => nodes.map(n => (n.firstChild?.textContent ?? '').trim()));
-  // PHASE4_SPEC §3: seven entries; Validación and Mapa estratégico are folded inside Estrategia.
-  expect(labels).toEqual(['Inicio', 'Estrategia', 'Validación', 'Mapa estratégico', 'Productos y servicios', 'Marketing', 'Marca y recursos', 'Colaboración', 'Resultados', 'Mi aprendizaje', 'Configuración de marca', 'Ayuda']);
-  // Inside Estrategia (a new brand opens on a decision) the group is open; elsewhere it folds and the menu fits
-  // 1366×768 without scrolling.
-  await expect(page.locator('#strategy-toggle')).toHaveAttribute('aria-expanded', 'true');
-  await navigate(page, 'Inicio');
-  if (await menu.isVisible()) await menu.click();
-  await expect(page.locator('#strategy-toggle')).toHaveAttribute('aria-expanded', 'false');
-  await expect(page.locator('#strategy-list')).toBeHidden();
-  expect(await page.locator('#journey').evaluate(nav => nav.scrollHeight <= nav.clientHeight + 1), 'no menu scroll at 1366×768').toBe(true);
-  await page.locator('#strategy-toggle').click();
-  await expect(page.locator('#strategy-toggle')).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.locator('#journey [data-module]')).toHaveCount(9);
+  // PHASE4_SPEC §3 (2026-10-10): the sidebar holds the seven areas and the footer; Estrategia keeps an inner navigation.
+  expect(labels).toEqual(['Inicio', 'Estrategia', 'Productos y servicios', 'Marketing', 'Marca y recursos', 'Colaboración', 'Resultados', 'Mi aprendizaje', 'Configuración de marca', 'Ayuda']);
+  await expect(page.locator('#journey [data-module]')).toHaveCount(0);
   await expect(page.locator('#journey #competitive-context')).toHaveCount(0);
   await expect(page.locator('#rail-panel #competitive-context')).not.toHaveAttribute('data-module');
-  // Every destination is reachable: when the nine decisions do not fit, the column scrolls instead of clipping.
-  for (const id of ['#home', '#strategy-toggle', '#learning-loop', '#blueprint', '#offers', '#marketing', '#practice', '#brand-settings', '#help']) {
-    await page.locator(id).scrollIntoViewIfNeeded();
-    await expect(page.locator(id)).toBeVisible();
-    expect((await page.locator(id).boundingBox())!.height, `${id} target`).toBeGreaterThanOrEqual(36);
-  }
-  const column = await page.locator('#journey').evaluate(nav => ({ overflowY: getComputedStyle(nav).overflowY, clips: nav.scrollHeight > nav.clientHeight + 1 }));
-  if (column.clips) expect(['auto', 'scroll']).toContain(column.overflowY);
+  // No vertical scroll in the sidebar at 1366×768, inside Estrategia (a new brand opens on a decision) and outside it;
+  // every destination is visible without scrolling and keeps a comfortable target.
+  const fits = async (where: string) => {
+    expect(await page.locator('#journey').evaluate(nav => nav.scrollHeight <= nav.clientHeight + 1), `no sidebar scroll ${where}`).toBe(true);
+    for (const id of ['#home', '#strategy-toggle', '#offers', '#marketing', '#brand-resources', '#practice', '#brand-settings', '#help']) {
+      await expect(page.locator(id), `${id} ${where}`).toBeInViewport();
+      expect((await page.locator(id).boundingBox())!.height, `${id} target`).toBeGreaterThanOrEqual(36);
+    }
+  };
+  await expect(page.locator('#strategy-nav')).toBeVisible();
+  await expect(page.locator('#strategy-list [data-module]')).toHaveCount(9);
+  for (const id of ['#strategy-decisions', '#learning-loop', '#blueprint']) await expect(page.locator(id)).toBeVisible();
+  if (await menu.isVisible()) { /* drawer already open on small screens */ }
+  await fits('inside Estrategia');
+  await navigate(page, 'Inicio');
+  if (await menu.isVisible()) await menu.click();
+  await expect(page.locator('#strategy-nav')).toBeHidden();
+  await fits('outside Estrategia');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 });
 
@@ -159,7 +159,7 @@ test('market context carries its own status and never joins the decision count',
   // The hand-off speaks the language of the workflow and points at the canonical next decision.
   await expect(page.locator('.phase-handoff')).toContainText(/contexto competitivo revisado/i);
   await expect(page.locator('#phase-review')).toHaveText('Revisar contexto');
-  const firstModule = await page.locator('#journey [data-module]').first().getAttribute('data-module');
+  const firstModule = await page.locator('#strategy-list [data-module]').first().getAttribute('data-module');
   await expect(page.locator('#phase-next')).toHaveAttribute('data-next', firstModule!);
 });
 
@@ -232,7 +232,8 @@ test('the right panel ranks its sections and no static label reacts to hover', a
   // Interactive controls elsewhere keep their intended hover, and it is not a dark block either.
   const menu = page.getByRole('button', { name: 'Abrir navegación', exact: true });
   if (await menu.isVisible()) await menu.click();
-  const navItem = page.locator('#blueprint');
+  // PHASE4_SPEC §3: Mapa estratégico moved to Estrategia's inner navigation; a sidebar entry carries this check.
+  const navItem = page.locator('#offers');
   const resting = await navItem.evaluate(el => getComputedStyle(el).backgroundColor);
   await navItem.hover();
   // Hover starts a CSS colour transition; reading in the same frame can still see the resting

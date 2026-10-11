@@ -174,7 +174,7 @@ test('competitive review hands off only once the human has resolved every findin
 
   // The destination comes from the canonical journey: no decision is approved on this brand yet, so
   // the next phase is the first one in the nav, never a locally invented order.
-  const firstModule = await page.locator('#journey [data-module]').first().getAttribute('data-module');
+  const firstModule = await page.locator('#strategy-list [data-module]').first().getAttribute('data-module');
   await expect(page.locator('#phase-next')).toHaveAttribute('data-next', firstModule!);
   await page.locator('#phase-next').click();
   await expect(page.locator('#decision')).toContainText('Por decidir');

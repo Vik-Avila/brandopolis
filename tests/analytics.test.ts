@@ -199,7 +199,7 @@ describe('GA4 base instrumentation', () => {
     expect(app).toContain('Mapa estratégico · estrategia vigente');
     expect(app).toContain('<h4 class="context-market-title">Entorno competitivo</h4>');
     expect(app).toContain('${versions.length} de ${context.questions.length}');
-    expect(app).toContain("document.querySelectorAll('#journey [data-module]')");
+    expect(app).toContain("document.querySelectorAll('#strategy-list [data-module]')");
     // Internal telemetry stays the canonical evidence layer, and GA4 keeps its privacy contract.
     expect(clientSource).toContain('PRIVACY CONTRACT');
     expect(clientSource).toContain("const ALLOWED_PARAMS = new Set(['cohort', 'auth_method', 'pilot_stage', 'mode'])");

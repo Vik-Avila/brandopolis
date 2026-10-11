@@ -23,7 +23,7 @@ test('human connected proof survives reload without console errors or overflow',
   await expect(page.locator('#decision')).toContainText('Por decidir');
   // ADR-0021 (D5): a new brand starts its journey at Objetivo estratégico.
   await expect(page.locator('#decision .decision-question')).toHaveText('¿Qué estamos intentando construir o cambiar?');await expect(page.locator('#decision h2').first()).toHaveText('Objetivo estratégico');
-  await expect(page.locator('#journey [data-module="Strategic Objective"]')).toHaveAttribute('aria-current','page');
+  await expect(page.locator('#strategy-list [data-module="Strategic Objective"]')).toHaveAttribute('aria-current','page');
   await navigate(page,'Contexto estratégico');
   await page.getByLabel('Contenido',{exact:true}).fill('Ayudamos a agencias a conservar decisiones');
   await page.getByRole('button',{name:'Guardar contexto',exact:true}).click();
