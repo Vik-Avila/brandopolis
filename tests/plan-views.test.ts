@@ -4,8 +4,9 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 
 const source = readFileSync('src/transport/public/product-views.js', 'utf8').replace(/export (?=const |function )/g, '');
-const views = runInNewContext(source + '\n({planHtml,actionFormHtml,objectiveFormHtml,moneyText,planActionBadge});') as {
-  planHtml: (d: unknown, mode?: string) => string; actionFormHtml: (d: unknown, a?: unknown) => string;
+const views = runInNewContext(source + '\n({planHtml,sharedPlanHtml,calendarDays,actionFormHtml,objectiveFormHtml,moneyText,planActionBadge});') as {
+  planHtml: (d: unknown, mode?: string, month?: string | null) => string; sharedPlanHtml: (d: unknown) => string;
+  calendarDays: (a: unknown[], month: string) => { iso: string; weekday: number; actions: { id: string }[] }[]; actionFormHtml: (d: unknown, a?: unknown) => string;
   objectiveFormHtml: (h: string, o?: unknown) => string; moneyText: (b: unknown) => string; planActionBadge: (s: string) => string;
 };
 const action = (extra: Record<string, unknown> = {}) => ({ id: 'a1', revision: 0, title: 'Webinar <b>agencias</b>', kind: 'INSTITUTIONAL', offerId: null, objectiveId: null, owner: '', startDate: null, dueDate: null, budget: null, indicator: '', status: 'PLANNED', ...extra });
@@ -62,5 +63,56 @@ describe('PHASE4_SPEC §4.2 · plan views', () => {
     expect(html).not.toContain('Archivado');
     expect(views.moneyText({ amountMinor: 1000, currency: 'MXN', certainty: 'CONFIRMED' })).toMatch(/confirmado$/);
     expect(views.actionFormHtml(data({}), null)).toContain('Aún no hay ofertas. Créalas en Productos y servicios.');
+  });
+});
+
+describe('PLN-001…003 · sharing and calendar views', () => {
+  const actions = [action({ id: 'a1', title: 'Webinar', owner: 'Ana', startDate: '2027-01-11', dueDate: '2027-01-13', status: 'IN_PROGRESS' }), action({ id: 'a2', title: 'Boletín', owner: 'Luis', dueDate: '2027-01-29' }), action({ id: 'a3', title: 'Sin fecha' })];
+  it('the calendar uses the same records: an action spans its dates; weeks start on Monday', () => {
+    const days = views.calendarDays(actions, '2027-01');
+    expect(days).toHaveLength(31);
+    expect(days[0]).toMatchObject({ iso: '2027-01-01', weekday: 4 }); // Friday
+    expect(days.filter(d => d.actions.some(a => a.id === 'a1')).map(d => d.iso)).toEqual(['2027-01-11', '2027-01-12', '2027-01-13']);
+    expect(days.filter(d => d.actions.some(a => a.id === 'a2')).map(d => d.iso)).toEqual(['2027-01-29']);
+  });
+  it('owner and status match across list, month and calendar (grid and mobile agenda); undated actions are named', () => {
+    const d = data({ actions });
+    for (const mode of ['list', 'month', 'calendar']) {
+      const html = views.planHtml(d, mode, '2027-01');
+      expect(html, mode).toContain('Ana');
+      expect(html, mode).toContain('En curso');
+      expect(html, mode).toContain('Luis');
+    }
+    const calendar = views.planHtml(d, 'calendar', '2027-01');
+    expect(calendar).toContain('<table class="plan-calendar-grid"');
+    expect(calendar).toContain('<ol class="plan-agenda"');
+    expect(calendar).toContain('11 de enero de 2027');
+    expect(calendar).toContain('Sin fecha: Sin fecha.');
+    expect(calendar).toContain('data-plan-month="2026-12"');
+    expect(calendar).toContain('data-plan-month="2027-02"');
+    expect(calendar.match(/data-action-edit="a1"/g)!.length).toBeGreaterThanOrEqual(4); // 3 grid days + agenda
+  });
+  it('sharing states: nothing shared, version in review with criterion form, approved with pending internal changes', () => {
+    expect(views.planHtml(data({ actions, sharing: { approved: null, inReview: null, changedSinceShared: null, history: [] } }))).toContain('Preparar versión para revisión');
+    const review = views.planHtml(data({ actions, sharing: { approved: null, inReview: { id: 's1', sequence: 1, fingerprint: 'f'.repeat(64), matchesPlan: false, content: { objectives: [], actions: [{}, {}] } }, changedSinceShared: null, history: [] } }));
+    expect(review).toContain('Versión 1 en revisión.');
+    expect(review).toContain('lo que se aprueba es esta copia');
+    expect(review).toContain('Aprobar y compartir esta versión');
+    expect(review).not.toContain('id="plan-share"');
+    const pending = views.planHtml(data({ actions, sharing: { approved: { id: 's1', sequence: 1, decidedAt: null, criterion: 'x', actionIds: ['a1'] }, inReview: null, changedSinceShared: true, history: [] } }));
+    expect(pending).toContain('El cliente ve la versión 1');
+    expect(pending).toContain('Hay cambios en el plan que el cliente aún no ve.');
+    expect(pending).toContain('id="plan-share"');
+    // Only actions of the shared version get the progress note.
+    expect(pending).toContain('data-note-for="a1"');
+    expect(pending).not.toContain('data-note-for="a2"');
+  });
+  it('the client view shows the approved copy and its progress, never internal state', () => {
+    const html = views.sharedPlanHtml({ year: 2027, shared: { snapshotId: 's1', sequence: 2, approvedAt: null, content: { year: 2027, focusStart: null, focus: null, objectives: [], actions: [action({ id: 'a1', title: 'Webinar', owner: 'Ana', status: 'PLANNED', offerName: null })] }, progress: [{ actionId: 'a1', status: 'DONE', date: '2027-01-14', note: 'Asistieron <40>' }] } });
+    expect(html).toContain('Versión 2 del plan 2027');
+    expect(html).toContain('<span class="badge">Hecha</span>');
+    expect(html).toContain('Avance del 14 de enero de 2027: Asistieron &lt;40&gt;');
+    expect(html).not.toMatch(/data-action-(edit|status)|Añadir|Editar/);
+    expect(views.sharedPlanHtml({ year: 2027, shared: null })).toContain('Aún no hay una versión aprobada');
   });
 });

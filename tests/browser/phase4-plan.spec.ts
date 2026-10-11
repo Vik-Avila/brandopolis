@@ -73,3 +73,66 @@ test('plan: start, objective, 90-day priority, action with owner/dates/budget/in
   expect(calls, 'the plan never asks the AI').toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });
+
+test('PLN-001…003 and calendar: shared version is fixed, progress is shared apart, calendar shows the same actions', async ({ page }, info) => {
+  test.slow();
+  await signIn(page, `Plan compartido ${info.project.name} ${Date.now()}`);
+  if (await page.locator('#menu').isVisible()) await page.locator('#menu').click();
+  await page.locator('#marketing').click();
+  const view = page.locator('#decision');
+  const year = new Date().getFullYear();
+  await view.getByRole('button', { name: `Empezar el plan de ${year}` }).click();
+  await view.getByRole('button', { name: 'Añadir acción' }).click();
+  const form = view.locator('#action-form');
+  await form.getByLabel('¿Qué vas a hacer?').fill('Boletín mensual');
+  await form.getByLabel('Responsable').fill('Ana');
+  await form.getByLabel('Empieza').fill(`${year}-03-10`);
+  await form.getByLabel('Termina').fill(`${year}-03-12`);
+  await form.getByRole('button', { name: 'Guardar acción' }).click();
+  await expect(view.locator('.plan-action').first()).toContainText('Boletín mensual');
+
+  // Calendar: the same record, on its dates; grid on wide screens, agenda on small ones.
+  await view.getByRole('button', { name: 'Calendario' }).click();
+  await expect(view.getByRole('button', { name: 'Calendario' })).toHaveAttribute('aria-pressed', 'true');
+  // Without a 90-day start, the calendar opens on the month of the first dated action.
+  await expect(view.locator('#plan-calendar-title')).toHaveText(`marzo ${year}`);
+  const narrow = (page.viewportSize()?.width ?? 1000) <= 760;
+  const visibleChips = view.locator(narrow ? '.plan-agenda .plan-chip' : '.plan-calendar-grid .plan-chip');
+  await expect(visibleChips).toHaveCount(3); // 10, 11 and 12 March
+  await expect(visibleChips.first()).toContainText('Planeada · Ana');
+  await expect(view.locator(narrow ? '.plan-calendar-grid' : '.plan-agenda')).toBeHidden();
+  await view.getByRole('button', { name: 'Mes siguiente' }).click();
+  await expect(view.locator('#plan-calendar-title')).toHaveText(`abril ${year}`);
+  await expect(view.getByRole('button', { name: 'Mes siguiente' })).toBeFocused();
+  await view.getByRole('button', { name: 'Mes anterior' }).click();
+
+  // Share: prepare a fixed version, approve it on its exact content.
+  await view.getByRole('button', { name: 'Preparar versión para revisión' }).click();
+  await expect(view.locator('.plan-review')).toContainText('Versión 1 en revisión.');
+  await view.getByLabel('¿Por qué apruebas o pides cambios?').fill('Plan revisado con la dirección');
+  await view.getByRole('button', { name: 'Aprobar y compartir esta versión' }).click();
+  await expect(view.locator('.plan-sharing')).toContainText('El cliente ve la versión 1');
+
+  // An internal edit does not change what the client received.
+  await view.getByRole('button', { name: 'Por prioridad' }).click();
+  await view.locator('.plan-action').first().getByRole('button', { name: 'Editar' }).click();
+  await view.locator('#action-form').getByLabel('Responsable').fill('Luis');
+  await view.locator('#action-form').getByRole('button', { name: 'Guardar acción' }).click();
+  await expect(view.locator('.plan-pending')).toContainText('Hay cambios en el plan que el cliente aún no ve.');
+
+  // Progress is shared without approving again.
+  await view.locator('.plan-action').first().getByLabel('Nota de avance para el cliente').fill('Primer envío listo');
+  await view.locator('.plan-action').first().getByRole('button', { name: 'Empezar' }).click();
+  await expect(view.locator('.plan-action').first().locator('.badge')).toHaveText('En curso');
+  await view.getByRole('button', { name: 'Ver lo que recibe el cliente' }).click();
+  await expect(view.locator('h2').first()).toHaveText('Lo que recibe el cliente');
+  const shared = view.locator('.plan-action').first();
+  await expect(shared).toContainText('Ana');
+  await expect(shared).not.toContainText('Luis');
+  await expect(shared.locator('.badge')).toHaveText('En curso');
+  await expect(shared).toContainText('Primer envío listo');
+  await expect(view.getByRole('button', { name: 'Editar' })).toHaveCount(0);
+  await view.getByRole('button', { name: 'Volver al plan' }).click();
+  await expect(view.locator('h2').first()).toHaveText('Plan de Marketing');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+});

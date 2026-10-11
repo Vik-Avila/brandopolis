@@ -15,7 +15,7 @@ import { ModelGateway, DemoProvider, evaluate, type Recommendation } from '../do
 import { effectiveCapabilities } from '../domain/brand-capabilities.js';
 import { changeCapability, grantedCapabilities, listCapabilityGrants, readWorkPriority, recordWorkPriority, type BrandActor } from './brand-access.js';
 import { ExternalOperations } from './external-operations.js';
-import { actionStatus, addAction, addObjective, createPlan, readPlan, updateAction, updateObjective, updatePlan } from './marketing-plan.js';
+import { actionStatus, addAction, addObjective, createPlan, createSnapshot, decideSnapshot, readPlan, readSharedPlan, updateAction, updateObjective, updatePlan } from './marketing-plan.js';
 import { createOffer, decideOffer, listOffers, newOfferDraft, retireOffer, saveOfferDraft, submitOffer } from './offers.js';
 
 const id=()=>randomUUID();
@@ -115,14 +115,19 @@ export class Engine {
     return this.withBrandActor(token,brandId,(tx,actor)=>readPlan(tx,actor,year));
   }
   /** PHASE4_SPEC §4.2 · one plan operation under the brand scope (revision 409, idempotency, change log, audit). */
-  async planCommand(token:string,action:'create'|'update'|'add-objective'|'update-objective'|'add-action'|'update-action'|'action-status',input:Record<string,unknown>) {
+  async sharedPlan(token:string,brandId:string,year:number) {
+    return this.withBrandActor(token,brandId,(tx,actor)=>readSharedPlan(tx,actor,year));
+  }
+  async planCommand(token:string,action:'create'|'update'|'add-objective'|'update-objective'|'add-action'|'update-action'|'action-status'|'share'|'decide-share',input:Record<string,unknown>) {
     if(!input||typeof input!=='object'||Array.isArray(input))throw new AppError('INVALID','Invalid plan request');
-    const run={create:createPlan,update:updatePlan,'add-objective':addObjective,'update-objective':updateObjective,'add-action':addAction,'update-action':updateAction,'action-status':actionStatus}[action];
+    const run={create:createPlan,update:updatePlan,'add-objective':addObjective,'update-objective':updateObjective,'add-action':addAction,'update-action':updateAction,'action-status':actionStatus,share:createSnapshot,'decide-share':decideSnapshot}[action];
     if(!run)throw new AppError('INVALID','Unknown plan operation');
     return this.withBrandActor(token,input.brandId as string,async(tx,actor)=>{
       const result=await (run as (tx:Transaction,a:BrandActor,i:Record<string,unknown>)=>Promise<Record<string,unknown>>)(tx,actor,input);
-      const entity=(result.actionId??result.objectiveId??result.planId) as string;
-      if(!result.replayed)await this.audit(tx,{...actor},{operation:`PLAN_${action.toUpperCase().replace('-','_')}`,idempotencyKey:typeof input.idempotencyKey==='string'?input.idempotencyKey:randomUUID(),newVersion:`${entity}@${result.revision}`});
+      const entity=(result.actionId??result.objectiveId??result.snapshotId??result.planId) as string;
+      // A decision on a shared version is audited as PLAN_SHARE_APPROVE / PLAN_SHARE_REQUEST_CHANGES with its criterion.
+      const operation=action==='decide-share'?(result.status==='APPROVED'?'PLAN_SHARE_APPROVE':'PLAN_SHARE_REQUEST_CHANGES'):`PLAN_${action.toUpperCase().replace('-','_')}`;
+      if(!result.replayed)await this.audit(tx,{...actor},{operation,idempotencyKey:typeof input.idempotencyKey==='string'?input.idempotencyKey:randomUUID(),newVersion:result.revision===undefined?entity:`${entity}@${result.revision}`,previousVersion:(result.superseded as string|null|undefined)??null,rationale:action==='decide-share'?result.criterion as string:undefined});
       return result;
     },true);
   }
@@ -822,7 +827,7 @@ export class Engine {
         // before decisions; the self reference of versions is satisfied because the whole chain goes in one statement.
         // Phase 4 rows of this Brand (append-only tables allow it only inside this registered deletion). Workspace
         // connections are NOT deleted here: only this Brand's links to them (a credential may serve other brands).
-        for(const table of [t.planChanges,t.planActions,t.planObjectives,t.marketingPlans,t.offerApprovals,t.offerVersions,t.offers,t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
+        for(const table of [t.planProgressUpdates,t.planSnapshotApprovals,t.planSnapshots,t.planChanges,t.planActions,t.planObjectives,t.marketingPlans,t.offerApprovals,t.offerVersions,t.offers,t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));
         for(const table of [t.audits,t.telemetry,t.idempotency,t.reviewReceipts,t.reviews,t.impacts,t.dependencies,t.learningSignals,t.signals,t.learnings,t.experiments,t.analyses,t.documentClaims,t.documentExtractions,t.sourceDocuments,t.versions,t.decisions,t.recommendations,t.questions,t.userInputs,t.evidence,t.hypotheses,t.openQuestions,t.brandProfiles,t.assignments] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));

@@ -1,6 +1,6 @@
 import {createBrandoPresence} from './brando-presence.js';
 const $=s=>document.querySelector(s);
-import {planHtml,objectiveFormHtml,focusFormHtml,actionFormHtml,offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
+import {planHtml,sharedPlanHtml,objectiveFormHtml,focusFormHtml,actionFormHtml,offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
 import {trapFocus,decisionTabs,viewTabs} from './product-interactions.js';
 import * as analytics from './analytics.js';
 import {PILOT_EVENTS} from './analytics.js';
@@ -2029,18 +2029,23 @@ function openOfferEditor(offer){
  });
 }
 /** PHASE4_SPEC §4.2 · Marketing → Plan de Marketing. Every write sends the revision it saw (409 when stale). */
-let planYear=new Date().getFullYear(),planMode='list',planData=null;
+let planYear=new Date().getFullYear(),planMode='list',planMonth=null,planData=null;
 async function showMarketingPlan(){
  if(!enterView('#marketing','Plan de Marketing'))return;
  planData=await api(`/api/plan?brandId=${encodeURIComponent(brandId)}&year=${planYear}`);
- const root=$('#decision');root.innerHTML=planHtml(planData,planMode);
+ const root=$('#decision');root.innerHTML=planHtml(planData,planMode,planMonth);
  const command=(action,payload,message)=>run(async()=>{await api(`/api/plan/${action}`,{brandId,...payload});await showMarketingPlan();notice(message);});
- root.querySelectorAll('[data-plan-year]').forEach(b=>b.addEventListener('click',()=>{planYear=Number(b.dataset.planYear);run(showMarketingPlan);}));
+ root.querySelectorAll('[data-plan-year]').forEach(b=>b.addEventListener('click',()=>{planYear=Number(b.dataset.planYear);planMonth=null;run(showMarketingPlan);}));
  $('#plan-start')?.addEventListener('submit',event=>{event.preventDefault();command('create',{year:planYear,focusStart:$('#plan-focus-start').value||null},`Plan de ${planYear} creado. Empieza por un objetivo del año o una prioridad de 90 días.`);});
  const p=planData.plan;if(!p)return;
  const editor=$('#plan-editor');
  const open=(html,focusId,onSubmit)=>{editor.innerHTML=html;const form=editor.querySelector('form');$(focusId).focus();form.querySelector('[data-editor-cancel]').addEventListener('click',()=>{editor.innerHTML='';});form.addEventListener('submit',event=>{event.preventDefault();onSubmit(form,event.submitter);});return form;};
- root.querySelectorAll('[data-plan-mode]').forEach(b=>b.addEventListener('click',()=>{planMode=b.dataset.planMode;run(showMarketingPlan);}));
+ root.querySelectorAll('[data-plan-mode]').forEach(b=>b.addEventListener('click',()=>{planMode=b.dataset.planMode;run(async()=>{await showMarketingPlan();$(`[data-plan-mode="${planMode}"]`)?.focus();});}));
+ root.querySelectorAll('[data-plan-month]').forEach(b=>b.addEventListener('click',()=>{planMonth=b.dataset.planMonth;const label=b.getAttribute('aria-label');run(async()=>{await showMarketingPlan();$(`[data-plan-month][aria-label="${label}"]`)?.focus();});}));
+ // PLN-001/002 · version shared with the client: a frozen copy reviewed on its exact content before the client sees it.
+ $('#plan-share')?.addEventListener('click',()=>command('share',{planId:p.id,idempotencyKey:crypto.randomUUID()},'Versión preparada. Revísala y apruébala para compartirla con el cliente.'));
+ root.querySelector('.plan-share-decide')?.addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget,criterion=form.querySelector('textarea').value.trim();if(criterion.length<10){form.querySelector('textarea').focus();notice('Escribe al menos diez caracteres para explicar tu decisión.',true);return;}const decision=event.submitter?.value;const keyName=`key${decision}`;form.dataset[keyName]??=crypto.randomUUID();command('decide-share',{snapshotId:form.dataset.snapshot,fingerprint:form.dataset.fingerprint,decision,criterion,idempotencyKey:form.dataset[keyName]},decision==='APPROVE'?'Versión aprobada: es la que ve el cliente.':'Cambios solicitados. El cliente sigue viendo la versión aprobada anterior, si la hay.');});
+ $('#plan-shared-view')?.addEventListener('click',()=>run(showSharedPlan));
  $('#plan-focus-edit').addEventListener('click',()=>open(focusFormHtml(p.focusStart),'#focus-start',()=>command('update',{planId:p.id,expectedRevision:p.revision,focusStart:$('#focus-start').value||null},'Periodo de 90 días actualizado.')));
  const objectiveById=id=>p.objectives.find(o=>o.id===id);
  const saveObjective=(horizon,o)=>()=>{const title=$('#objective-title').value.trim();if(!title){$('#objective-form-status').textContent='Escribe el objetivo.';$('#objective-title').focus();return;}const content={horizon,title,measure:$('#objective-measure').value,status:'ACTIVE'};if(o)command('update-objective',{objectiveId:o.id,expectedRevision:o.revision,content},'Objetivo guardado.');else command('add-objective',{planId:p.id,content,idempotencyKey:crypto.randomUUID()},'Objetivo añadido.');};
@@ -2068,7 +2073,14 @@ async function showMarketingPlan(){
  $('#plan-action-new').addEventListener('click',()=>openAction(null));
  root.querySelectorAll('[data-action-edit]').forEach(b=>b.addEventListener('click',()=>openAction(actionById(b.dataset.actionEdit))));
  const statusWords={IN_PROGRESS:'Acción en curso.',DONE:'Acción marcada como hecha.',CANCELLED:'Acción cancelada. Se conserva en el historial.'};
- root.querySelectorAll('[data-action-status]').forEach(b=>b.addEventListener('click',()=>{const a=actionById(b.dataset.action);command('action-status',{actionId:a.id,expectedRevision:a.revision,status:b.dataset.actionStatus},statusWords[b.dataset.actionStatus]);}));
+ root.querySelectorAll('[data-action-status]').forEach(b=>b.addEventListener('click',()=>{const a=actionById(b.dataset.action);const note=root.querySelector(`[data-note-for="${CSS.escape(a.id)}"]`)?.value.trim()||null;command('action-status',{actionId:a.id,expectedRevision:a.revision,status:b.dataset.actionStatus,note},statusWords[b.dataset.actionStatus]);}));
+}
+/** PLN-001…003 · what the client receives: approved version and shared progress (read only). */
+async function showSharedPlan(){
+ if(!enterView('#marketing','Plan de Marketing · Lo que recibe el cliente'))return;
+ const data=await api(`/api/plan/shared?brandId=${encodeURIComponent(brandId)}&year=${planYear}`);
+ $('#decision').innerHTML=sharedPlanHtml(data);
+ $('#plan-back').addEventListener('click',()=>run(showMarketingPlan));$('#plan-back').focus();
 }
 /** Inicio · «Tu prioridad»: save a new priority (append-only) and re-render. Never changes decisions or permissions. */
 function bindWorkPriorityForm(){

@@ -1,3 +1,9 @@
+## 2026-10-10 · Phase 4 — bloque 3: versión compartida del plan, avance y calendario
+
+- PLN-001…003: versión fija del plan revisada y aprobada sobre su contenido exacto; el avance se comparte aparte sin nueva aprobación; migración aditiva 0021, schema plan-snapshot v1.
+- Calendario mensual (agenda en móvil) con los mismos registros de acción.
+- Evidencia sobre el árbol 217ac4d7…: pnpm test 415 PASS; test:e2e 227 PASS · 13 SKIP · 0 FAIL (240); test:visual sin diferencias; test:pilot:e2e 10/10; Foundation 0 errores.
+
 ## 2026-10-10 · Phase 4 — bloque 3: seguridad de ofertas y Plan de Marketing
 
 - Ofertas: revisión obligatoria, ofertas retiradas de sólo lectura, sin aprobar versiones anteriores, decisión idempotente con registro append-only, auditoría con versiones, migración 0020 con transiciones sólo hacia delante.

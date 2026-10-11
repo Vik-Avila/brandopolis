@@ -23,7 +23,7 @@ const OWNED = {
   // Phase 4 · block 2 (ADR-0030/0031/0033): Brand-owned rows. Workspace connections are not Brand-owned.
   brand_capabilities: t.brandCapabilities, brand_work_priorities: t.brandWorkPriorities, connection_brand_links: t.connectionBrandLinks,
   operation_authorizations: t.operationAuthorizations, external_jobs: t.externalJobs, external_steps: t.externalSteps,
-  external_attempts: t.externalAttempts, external_attempt_outcomes: t.externalAttemptOutcomes, external_step_releases: t.externalStepReleases, offers: t.offers, offer_versions: t.offerVersions, offer_approvals: t.offerApprovals, marketing_plans: t.marketingPlans, plan_objectives: t.planObjectives, plan_actions: t.planActions, plan_changes: t.planChanges
+  external_attempts: t.externalAttempts, external_attempt_outcomes: t.externalAttemptOutcomes, external_step_releases: t.externalStepReleases, offers: t.offers, offer_versions: t.offerVersions, offer_approvals: t.offerApprovals, marketing_plans: t.marketingPlans, plan_objectives: t.planObjectives, plan_actions: t.planActions, plan_changes: t.planChanges, plan_snapshots: t.planSnapshots, plan_snapshot_approvals: t.planSnapshotApprovals, plan_progress_updates: t.planProgressUpdates
 } as const;
 
 /** ADR-0029 · Eliminar marca: admin-only, typed confirmation, complete purge, private reflections unlinked, idempotent. */

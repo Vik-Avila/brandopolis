@@ -1,3 +1,34 @@
+## 2026-10-10 · PHASE 4 · bloque 3 · PLN-001…003, calendario y regresión completa
+
+Sobre `e33b343` más cambios sin commit (árbol de trabajo exacto `217ac4d7ada20ad662372f428507d299a6a20b32`, calculado
+con `git write-tree` sobre un índice temporal, archivos nuevos incluidos). Sin push ni deploy; producción sin cambios.
+Migración aditiva `0021` aplicada sólo a la base de pruebas efímera y al perfil aislado `rc1-smoke`.
+
+**Hecho:**
+- Versión compartida del plan (`PlanSnapshot`, schema `plan-snapshot` v1): copia fija con objetivos activos y acciones
+  no canceladas (revisión de cada una), huella; una en revisión a la vez; aprobación o cambios sobre versión + huella
+  exactas, con criterio y clave idempotente (`plan_snapshot_approvals` append-only); aprobar una nueva reemplaza la
+  anterior; nunca una más antigua. Editar el plan no cambia lo compartido y se muestra «Hay cambios que el cliente aún
+  no ve». Base de datos: copia inmutable, transiciones sólo hacia delante, decisión inmutable.
+- Avance (`plan_progress_updates`, append-only): cambiar el estado de una acción incluida en la versión aprobada
+  comparte el avance (fecha y nota opcional de 280 caracteres) sin nueva aprobación; acciones añadidas después no se
+  ven hasta otra versión. «Lo que recibe el cliente»: vista de sólo lectura de la versión aprobada y su avance.
+- Calendario con los mismos registros de acción (sin copias): cuadrícula mensual en pantallas amplias y agenda en
+  móvil, navegación por mes con foco conservado; responsables, estados y fechas iguales en las vistas por prioridad,
+  por mes y calendario.
+- Invitados: aún no existen (portal, invitaciones y comentarios llegan con ADR-0033 en Colaboración). La lectura del
+  cliente está separada para que el portal la use; hoy sólo ADMIN o MEMBER asignado la leen (otro workspace → 404,
+  miembro no asignado → 403, otra marca → sin datos). Comentarios: no existen todavía.
+
+**Comprobado sobre ese mismo árbol (salida real, secuencial, un worker):** typecheck PASS; lint PASS; Foundation 0
+errores (35 schemas); `git diff --check` limpio; pnpm test 19 archivos / 415 PASS; **test:e2e 240 pruebas: 227 PASS ·
+13 SKIP intencionales · 0 FAIL** (wide 47/1, desktop 47/1, compact 47/1, tablet 43/5, mobile 43/5; los mismos 13
+omitidos por tamaño de pantalla ya documentados); test:visual 10 PASS · 1 SKIP sin diferencias (capturas canónicas
+intactas); UI validator PASS; **test:pilot:e2e 10/10**.
+
+**Pendiente del bloque 3:** entregables, navegación a siete entradas, Brando marketing; portal de invitado y
+comentarios en el bloque de Colaboración.
+
 ## 2026-10-10 · PHASE 4 · bloque 3 · revisión de seguridad de ofertas y Plan de Marketing
 
 Sin commit todavía sobre `a34e950`; sin push ni deploy; producción sin cambios. Migraciones aditivas `0019` (plan) y

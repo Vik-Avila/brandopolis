@@ -82,3 +82,32 @@ export function planGaps(objectives: readonly ObjectiveContent[], actions: reado
   if (active.some(o => !o.measure)) gaps.push('MEASURE');
   return gaps;
 }
+
+/**
+ * PLN-001…003 · content of a PlanSnapshot: the exact plan shared with the client (period, active objectives, actions
+ * that are not cancelled, each with the revision it had). Built once and frozen; later edits never change it.
+ */
+export type SnapshotContent = {
+  year: number;
+  focusStart: string | null;
+  objectives: (ObjectiveContent & { id: string; revision: number })[];
+  actions: (ActionContent & { id: string; revision: number; offerName: string | null })[];
+};
+export function snapshotContent(plan: { year: number; focusStart: string | null }, objectives: readonly (ObjectiveContent & { id: string; revision: number })[], actions: readonly (ActionContent & { id: string; revision: number; offerName: string | null })[]): SnapshotContent {
+  const content: SnapshotContent = {
+    year: plan.year,
+    focusStart: plan.focusStart,
+    objectives: objectives.filter(o => o.status === 'ACTIVE').map(o => ({ id: o.id, revision: o.revision, horizon: o.horizon, title: o.title, measure: o.measure, status: o.status })),
+    actions: actions.filter(a => a.status !== 'CANCELLED').map(a => ({ ...a }))
+  };
+  validate('plan-snapshot', content);
+  return content;
+}
+
+/** Progress shared with the client: the latest update per action of the snapshot, else the status it had when shared. */
+export function sharedProgress(content: SnapshotContent, updates: readonly { actionId: string; status: ActionStatus; date: string; note: string | null; createdAt: string }[]) {
+  return content.actions.map(a => {
+    const latest = updates.filter(u => u.actionId === a.id).sort((x, y) => y.createdAt.localeCompare(x.createdAt))[0];
+    return { actionId: a.id, status: latest?.status ?? a.status, date: latest?.date ?? null, note: latest?.note ?? null };
+  });
+}

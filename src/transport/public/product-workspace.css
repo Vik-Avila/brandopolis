@@ -382,6 +382,31 @@ body.left-collapsed #journey .nav-item[data-tip]:hover::after, body.left-collaps
 .plan-changes { padding: 12px 16px; border: 1px solid var(--ws-line); border-radius: 14px; }
 .plan-changes ul { margin: 8px 0 0; padding-left: 18px; }
 @media (max-width: 640px) { .plan-dates { grid-template-columns: 1fr; } }
+/* PLN-001…003 · version shared with the client; calendar of the same actions (grid on wide screens, agenda on small). */
+.plan-sharing p { margin: 0 0 10px; }
+.plan-pending { padding: 10px 12px; border-radius: 12px; background: var(--bp-warning-bg); }
+.plan-review { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--ws-line); }
+.plan-share-decide textarea { width: 100%; }
+.plan-sharing .actions, .plan-share-decide .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.plan-sharing button, #plan-back { min-height: 44px; }
+.plan-note-label { display: block; margin-top: 8px; font-size: 14px; }
+.plan-note { width: 100%; max-width: 420px; }
+.plan-calendar-nav { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
+.plan-calendar-nav h4 { margin: 0; min-width: 9ch; text-align: center; text-transform: capitalize; }
+.plan-calendar-nav button { min-height: 44px; min-width: 44px; }
+.plan-calendar-grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.plan-calendar-grid th { padding: 6px 4px; font-size: 13px; font-weight: 650; text-align: left; color: var(--ws-ink-soft); }
+.plan-calendar-grid td { height: 86px; padding: 4px; vertical-align: top; border: 1px solid var(--ws-line); }
+.plan-day { display: block; font-size: 12px; color: var(--ws-ink-soft); }
+.plan-chip { display: block; width: 100%; margin-top: 3px; padding: 4px 6px; border: 1px solid var(--ws-line); border-radius: 8px; background: var(--surface-card); text-align: left; font: inherit; font-size: 12px; line-height: 1.25; cursor: pointer; }
+.plan-chip:disabled { cursor: default; opacity: .75; }
+.plan-chip-title { display: block; font-weight: 650; overflow-wrap: anywhere; }
+.plan-chip-meta { display: block; color: var(--ws-ink-soft); }
+.plan-agenda { display: none; list-style: none; margin: 0; padding: 0; }
+.plan-agenda li { padding: 8px 0; border-bottom: 1px solid var(--ws-line); }
+.plan-agenda-day { margin: 0 0 4px; font-weight: 650; }
+.plan-agenda .plan-chip { min-height: 44px; font-size: 14px; }
+@media (max-width: 760px) { .plan-calendar-grid { display: none; } .plan-agenda { display: block; } }
 /* PHASE4_SPEC §4.1 · Productos y servicios. */
 .offer-list { display: grid; gap: 16px; margin-top: 18px; }
 .offer-card { padding: 20px 22px; border: 1px solid var(--ws-line); border-radius: 18px; background: var(--surface-card); }

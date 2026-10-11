@@ -580,28 +580,68 @@ export function moneyText(budget){
  return `${amount} · ${budget.certainty==='ESTIMATED'?'estimado':'confirmado'}`;
 }
 const NEXT_STATUS={PLANNED:[['IN_PROGRESS','Empezar'],['CANCELLED','Cancelar']],IN_PROGRESS:[['DONE','Marcar como hecha'],['CANCELLED','Cancelar']],DONE:[],CANCELLED:[]};
-function actionHtml(a,offers){
+const actionFacts=(a,offerName)=>[['Tipo',a.kind==='COMMERCIAL'?`Comercial${offerName?` · ${offerName}`:''}`:'Institucional (marca)'],['Responsable',a.owner],['Fechas',a.startDate||a.dueDate?`${a.startDate?dayText(a.startDate):'—'} a ${a.dueDate?dayText(a.dueDate):'sin fecha final'}`:''],['Presupuesto',moneyText(a.budget)],['Cómo se mide',a.indicator]].filter(([,v])=>v);
+const factsHtml=facts=>`<dl class="offer-facts">${facts.map(([k,v])=>`<div><dt>${escape(k)}</dt><dd>${escape(v)}</dd></div>`).join('')}</dl>`;
+/** One action. When it is part of the version shared with the client, a status change also shares its progress (with an optional note). */
+function actionHtml(a,offers,shared=false){
  const offer=a.offerId?offers.find(o=>o.id===a.offerId):null;
- const facts=[['Tipo',a.kind==='COMMERCIAL'?`Comercial${offer?` · ${offer.name}`:''}`:'Institucional (marca)'],['Responsable',a.owner],['Fechas',a.startDate||a.dueDate?`${a.startDate?dayText(a.startDate):'—'} a ${a.dueDate?dayText(a.dueDate):'sin fecha final'}`:''],['Presupuesto',moneyText(a.budget)],['Cómo se mide',a.indicator]].filter(([,v])=>v);
  const open=a.status==='PLANNED'||a.status==='IN_PROGRESS';
- return `<li class="plan-action" data-action-id="${escape(a.id)}"><div class="plan-action-head">${planActionBadge(a.status)}<h4>${escape(a.title)}</h4></div>
- <dl class="offer-facts">${facts.map(([k,v])=>`<div><dt>${escape(k)}</dt><dd>${escape(v)}</dd></div>`).join('')}</dl>
- ${open?`<div class="actions">${NEXT_STATUS[a.status].map(([to,label])=>`<button type="button" class="${to==='CANCELLED'?'link-action':'secondary'}" data-action-status="${to}" data-action="${escape(a.id)}">${escape(label)}</button>`).join('')}<button type="button" class="secondary" data-action-edit="${escape(a.id)}">Editar</button></div>`:''}</li>`;
+ const note=shared&&open?`<label class="plan-note-label" for="progress-note-${escape(a.id)}">Nota de avance para el cliente <span class="hint">opcional</span></label><input id="progress-note-${escape(a.id)}" class="plan-note" maxlength="280" data-note-for="${escape(a.id)}">`:'';
+ return `<li class="plan-action" data-action-id="${escape(a.id)}"><div class="plan-action-head">${planActionBadge(a.status)}<h4>${escape(a.title)}</h4>${shared?'<span class="hint">En la versión compartida</span>':''}</div>
+ ${factsHtml(actionFacts(a,offer?.name))}
+ ${open?`${note}<div class="actions">${NEXT_STATUS[a.status].map(([to,label])=>`<button type="button" class="${to==='CANCELLED'?'link-action':'secondary'}" data-action-status="${to}" data-action="${escape(a.id)}">${escape(label)}</button>`).join('')}<button type="button" class="secondary" data-action-edit="${escape(a.id)}">Editar</button></div>`:''}</li>`;
 }
-function actionsByMonth(actions,offers){
+function actionsByMonth(actions,offers,sharedIds){
  const groups=new Map();
  for(const a of actions){const k=a.dueDate?a.dueDate.slice(0,7):'';if(!groups.has(k))groups.set(k,[]);groups.get(k).push(a);}
  const keys=[...groups.keys()].sort((x,y)=>x===''?1:y===''?-1:x.localeCompare(y));
- return keys.map(k=>`<section class="plan-month"><h4>${k?`${MONTHS[Number(k.slice(5,7))-1]} ${k.slice(0,4)}`:'Sin fecha'}</h4><ul class="plan-actions">${groups.get(k).map(a=>actionHtml(a,offers)).join('')}</ul></section>`).join('')||'<p class="hint">Aún no hay acciones.</p>';
+ return keys.map(k=>`<section class="plan-month"><h4>${k?`${MONTHS[Number(k.slice(5,7))-1]} ${k.slice(0,4)}`:'Sin fecha'}</h4><ul class="plan-actions">${groups.get(k).map(a=>actionHtml(a,offers,sharedIds.has(a.id))).join('')}</ul></section>`).join('')||'<p class="hint">Aún no hay acciones.</p>';
 }
-/** Plan de Marketing: annual objectives, 90-day priorities with their actions, other actions, list or month view. */
-export function planHtml(data,mode='list'){
+const pad=n=>String(n).padStart(2,'0');
+/** Days of a month (YYYY-MM) on which an action is active: from its start (or due) date to its due (or start) date. */
+export function calendarDays(actions,month){
+ const [y,m]=month.split('-').map(Number),last=new Date(Date.UTC(y,m,0)).getUTCDate(),days=[];
+ for(let d=1;d<=last;d++){
+  const iso=`${month}-${pad(d)}`;
+  days.push({iso,day:d,weekday:(new Date(Date.UTC(y,m-1,d)).getUTCDay()+6)%7,actions:actions.filter(a=>{const from=a.startDate??a.dueDate,to=a.dueDate??a.startDate;return from&&from<=iso&&iso<=to;})});
+ }
+ return days;
+}
+/** Calendar of the same action records (no copies): a month grid on wide screens, an agenda list on small ones. */
+function calendarHtml(actions,month){
+ const [y,m]=month.split('-').map(Number);
+ const prev=m===1?`${y-1}-12`:`${y}-${pad(m-1)}`,next=m===12?`${y+1}-01`:`${y}-${pad(m+1)}`;
+ const days=calendarDays(actions,month);
+ const chip=a=>`<button type="button" class="plan-chip" data-action-edit="${escape(a.id)}" ${a.status==='DONE'?'disabled':''}><span class="plan-chip-title">${escape(a.title)}</span><span class="plan-chip-meta">${escape(ACTION_WORDS[a.status]??'')}${a.owner?` · ${escape(a.owner)}`:''}</span></button>`;
+ const cells=[...Array(days[0].weekday).fill(null),...days];
+ while(cells.length%7)cells.push(null);
+ const rows=[];for(let i=0;i<cells.length;i+=7)rows.push(cells.slice(i,i+7));
+ const undated=actions.filter(a=>!a.startDate&&!a.dueDate);
+ const busy=days.filter(d=>d.actions.length);
+ return `<div class="plan-calendar"><div class="plan-calendar-nav"><button type="button" class="secondary" data-plan-month="${prev}" aria-label="Mes anterior">‹</button><h4 id="plan-calendar-title">${MONTHS[m-1]} ${y}</h4><button type="button" class="secondary" data-plan-month="${next}" aria-label="Mes siguiente">›</button></div>
+ <table class="plan-calendar-grid" aria-labelledby="plan-calendar-title"><thead><tr>${['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(d=>`<th scope="col">${d}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>c?`<td><span class="plan-day">${c.day}</span>${c.actions.map(chip).join('')}</td>`:'<td aria-hidden="true"></td>').join('')}</tr>`).join('')}</tbody></table>
+ <ol class="plan-agenda" aria-label="Acciones de ${MONTHS[m-1]} ${y}">${busy.map(d=>`<li><p class="plan-agenda-day">${escape(dayText(d.iso))}</p>${d.actions.map(chip).join('')}</li>`).join('')||'<li class="hint">Sin acciones con fecha este mes.</li>'}</ol>
+ ${undated.length?`<p class="hint">Sin fecha: ${undated.map(a=>escape(a.title)).join(' · ')}.</p>`:''}</div>`;
+}
+/** Version shared with the client: prepare, review (exact copy + criterion), approved version and pending changes. */
+function sharingHtml(p){
+ const s=p.sharing??{approved:null,inReview:null,changedSinceShared:null,history:[]};
+ const prepare=`<button type="button" id="plan-share">Preparar versión para revisión</button>`;
+ const review=s.inReview?`<div class="plan-review"><p><strong>Versión ${s.inReview.sequence} en revisión.</strong> Incluye ${s.inReview.content.objectives.length} objetivo(s) y ${s.inReview.content.actions.length} acción(es). Al aprobarla, es lo que verá el cliente.</p>${s.inReview.matchesPlan?'':'<p class="hint">El plan cambió después de preparar esta versión; lo que se aprueba es esta copia, no los cambios posteriores.</p>'}
+ <form class="plan-share-decide" data-snapshot="${escape(s.inReview.id)}" data-fingerprint="${escape(s.inReview.fingerprint)}"><label for="plan-share-criterion">¿Por qué apruebas o pides cambios?</label><textarea id="plan-share-criterion" required minlength="10" maxlength="2000" rows="2"></textarea><div class="actions"><button type="submit" value="APPROVE">Aprobar y compartir esta versión</button><button type="submit" value="REQUEST_CHANGES" class="secondary">Pedir cambios</button></div></form></div>`:'';
+ const approved=s.approved?`<p><strong>El cliente ve la versión ${s.approved.sequence}</strong>${s.approved.decidedAt?`, aprobada el ${escape(fmt(s.approved.decidedAt))}`:''}. El avance de las acciones se comparte sin volver a aprobar el plan.</p>${s.changedSinceShared?'<p class="plan-pending" role="note">Hay cambios en el plan que el cliente aún no ve. Para compartirlos, prepara una nueva versión y revísala.</p>':''}<button type="button" class="secondary" id="plan-shared-view">Ver lo que recibe el cliente</button>`:'<p>Aún no compartes este plan. Cuando esté listo, prepara una versión: es una copia fija que alguien revisa antes de compartirla.</p>';
+ const canPrepare=!s.inReview&&(!s.approved||s.changedSinceShared);
+ return `<section class="plan-block plan-sharing" aria-labelledby="plan-sharing-title"><h3 id="plan-sharing-title">Versión compartida con el cliente</h3>${approved}${review}${canPrepare?`<div class="actions">${prepare}</div>`:''}</section>`;
+}
+/** Plan de Marketing: annual objectives, 90-day priorities with their actions, other actions; list, month or calendar view. */
+export function planHtml(data,mode='list',month=null){
  const head=`<div class="ws-hero"><p class="eyebrow">Marketing</p><h2>Plan de Marketing</h2><p class="ws-lead">Tu año en objetivos claros, con foco en los próximos 90 días: qué harás, quién se encarga, cuándo, cuánto cuesta y cómo sabrás si funcionó.</p></div>
  <p class="hint plan-areas">Redes sociales, Sitio web y Campañas digitales se sumarán a Marketing más adelante.</p>
  <div class="plan-year" role="group" aria-label="Año del plan"><button type="button" class="secondary" data-plan-year="${data.year-1}" aria-label="Ver el plan de ${data.year-1}">‹ ${data.year-1}</button><strong>Plan ${data.year}</strong><button type="button" class="secondary" data-plan-year="${data.year+1}" aria-label="Ver el plan de ${data.year+1}">${data.year+1} ›</button></div>`;
  if(!data.plan)return `${head}<div class="plan-empty"><p>Aún no hay plan para ${data.year}. Puedes empezarlo aunque tu estrategia no esté completa; te diremos qué falta.</p>
  <form id="plan-start" class="plan-inline-form"><label for="plan-focus-start">¿Desde qué día cuentan tus próximos 90 días? <span class="hint">opcional</span></label><input id="plan-focus-start" type="date"><button type="submit">Empezar el plan de ${data.year}</button></form></div>`;
  const p=data.plan;
+ const sharedIds=new Set(p.sharing?.approved?.actionIds??[]);
  const active=p.objectives.filter(o=>o.status==='ACTIVE');
  const annual=active.filter(o=>o.horizon==='ANNUAL'),priorities=active.filter(o=>o.horizon==='NINETY_DAYS');
  const objective=o=>`<li class="plan-objective" data-objective-id="${escape(o.id)}"><p class="plan-objective-title">${escape(o.title)}</p>${o.measure?`<p class="hint">Cómo se mide: ${escape(o.measure)}</p>`:'<p class="hint">Falta decir cómo se medirá.</p>'}<div class="actions"><button type="button" class="secondary" data-objective-edit="${escape(o.id)}">Editar</button><button type="button" class="link-action" data-objective-archive="${escape(o.id)}">Archivar</button></div></li>`;
@@ -610,18 +650,39 @@ export function planHtml(data,mode='list'){
  const priorityIds=new Set(priorities.map(o=>o.id));
  const others=visible.filter(a=>!priorityIds.has(a.objectiveId));
  const focus=p.focus?`Del ${dayText(p.focus.start)} al ${dayText(p.focus.end)}.`:'Aún no elegiste desde qué día cuentan los 90 días.';
- const list=`${priorities.map(o=>`<section class="plan-priority"><h4>${escape(o.title)}</h4><ul class="plan-actions">${visible.filter(a=>a.objectiveId===o.id).map(a=>actionHtml(a,data.offers)).join('')||'<li class="hint">Sin acciones todavía.</li>'}</ul></section>`).join('')}
- <section class="plan-priority"><h4>Otras acciones del año</h4><ul class="plan-actions">${others.map(a=>actionHtml(a,data.offers)).join('')||'<li class="hint">Sin otras acciones.</li>'}</ul></section>`;
+ const item=a=>actionHtml(a,data.offers,sharedIds.has(a.id));
+ const list=`${priorities.map(o=>`<section class="plan-priority"><h4>${escape(o.title)}</h4><ul class="plan-actions">${visible.filter(a=>a.objectiveId===o.id).map(item).join('')||'<li class="hint">Sin acciones todavía.</li>'}</ul></section>`).join('')}
+ <section class="plan-priority"><h4>Otras acciones del año</h4><ul class="plan-actions">${others.map(item).join('')||'<li class="hint">Sin otras acciones.</li>'}</ul></section>`;
+ const firstDated=visible.map(a=>a.startDate??a.dueDate).filter(Boolean).sort()[0];
+ const calendarMonth=month??(p.focusStart??firstDated??`${data.year}-01-01`).slice(0,7);
+ const body=mode==='month'?actionsByMonth(visible,data.offers,sharedIds):mode==='calendar'?calendarHtml(visible,calendarMonth):list;
+ const modeButton=(id,label)=>`<button type="button" class="secondary" data-plan-mode="${id}" aria-pressed="${mode===id}">${label}</button>`;
  return `${head}
  ${p.gaps.length?`<div class="plan-gaps" role="note"><p><strong>Para que el plan sea útil, aún falta:</strong></p><ul>${p.gaps.map(g=>`<li>${escape(PLAN_GAP_WORDS[g])}</li>`).join('')}</ul></div>`:''}
  <section class="plan-block" aria-labelledby="plan-annual-title"><h3 id="plan-annual-title">Objetivos del año</h3><ul class="plan-objectives">${annual.map(objective).join('')||'<li class="hint">Aún no hay objetivos para el año.</li>'}</ul><button type="button" class="secondary" data-objective-new="ANNUAL">Añadir objetivo del año</button></section>
  <section class="plan-block" aria-labelledby="plan-focus-title"><h3 id="plan-focus-title">Prioridades de los próximos 90 días</h3><p class="plan-focus">${escape(focus)} <button type="button" class="link-action" id="plan-focus-edit">Cambiar</button></p><ul class="plan-objectives">${priorities.map(objective).join('')||'<li class="hint">Aún no hay prioridades para estos 90 días.</li>'}</ul><button type="button" class="secondary" data-objective-new="NINETY_DAYS">Añadir prioridad de 90 días</button></section>
  <div id="plan-editor"></div>
- <section class="plan-block" aria-labelledby="plan-actions-title"><div class="plan-actions-head"><h3 id="plan-actions-title">Acciones</h3><div class="plan-view" role="group" aria-label="Ver acciones"><button type="button" class="secondary" data-plan-mode="list" aria-pressed="${mode==='list'}">Por prioridad</button><button type="button" class="secondary" data-plan-mode="month" aria-pressed="${mode==='month'}">Por mes</button></div></div>
+ <section class="plan-block" aria-labelledby="plan-actions-title"><div class="plan-actions-head"><h3 id="plan-actions-title">Acciones</h3><div class="plan-view" role="group" aria-label="Ver acciones">${modeButton('list','Por prioridad')}${modeButton('month','Por mes')}${modeButton('calendar','Calendario')}</div></div>
  <button type="button" id="plan-action-new">Añadir acción</button>
- ${mode==='month'?actionsByMonth(visible,data.offers):list}
- ${cancelled.length?`<details class="plan-cancelled"><summary>Acciones canceladas (${cancelled.length})</summary><ul class="plan-actions">${cancelled.map(a=>actionHtml(a,data.offers)).join('')}</ul></details>`:''}</section>
+ ${body}
+ ${cancelled.length?`<details class="plan-cancelled"><summary>Acciones canceladas (${cancelled.length})</summary><ul class="plan-actions">${cancelled.map(item).join('')}</ul></details>`:''}</section>
+ ${sharingHtml(p)}
  <details class="plan-changes"><summary>Cambios recientes</summary><ul>${p.changes.map(c=>`<li>${escape(fmt(c.createdAt))} · ${escape({CREATE:'Creado',UPDATE:'Editado',STATUS:'Cambio de estado'}[c.operation]??'')} · ${escape(c.title)} <span class="hint">(revisión ${c.revision})</span></li>`).join('')}</ul></details>`;
+}
+/** What the client receives: the approved version exactly as approved, with the shared progress of its actions. Read only. */
+export function sharedPlanHtml(data){
+ const back='<button type="button" class="secondary" id="plan-back">Volver al plan</button>';
+ if(!data.shared)return `<div class="ws-hero"><p class="eyebrow">Marketing · Plan de Marketing</p><h2>Lo que recibe el cliente</h2></div><p>Aún no hay una versión aprobada de este plan.</p>${back}`;
+ const s=data.shared,c=s.content,progress=new Map(s.progress.map(x=>[x.actionId,x]));
+ const objectives=h=>c.objectives.filter(o=>o.horizon===h);
+ const objectiveList=list=>list.length?`<ul class="plan-objectives">${list.map(o=>`<li class="plan-objective"><p class="plan-objective-title">${escape(o.title)}</p>${o.measure?`<p class="hint">Cómo se mide: ${escape(o.measure)}</p>`:''}</li>`).join('')}</ul>`:'<p class="hint">Sin elementos.</p>';
+ const action=a=>{const pr=progress.get(a.id);return `<li class="plan-action"><div class="plan-action-head">${planActionBadge(pr?.status??a.status)}<h4>${escape(a.title)}</h4></div>${factsHtml(actionFacts(a,a.offerName))}${pr?.note||pr?.date?`<p class="hint">Avance${pr.date?` del ${escape(dayText(pr.date))}`:''}${pr.note?`: ${escape(pr.note)}`:''}</p>`:''}</li>`;};
+ return `<div class="ws-hero"><p class="eyebrow">Marketing · Plan de Marketing</p><h2>Lo que recibe el cliente</h2><p class="ws-lead">Versión ${s.sequence} del plan ${c.year}${s.approvedAt?`, aprobada el ${escape(fmt(s.approvedAt))}`:''}. Sólo lectura: los cambios internos posteriores no aparecen aquí hasta aprobar otra versión.</p></div>
+ ${back}
+ ${c.focus?`<p class="plan-focus">Próximos 90 días: del ${escape(dayText(c.focus.start))} al ${escape(dayText(c.focus.end))}.</p>`:''}
+ <section class="plan-block"><h3>Objetivos del año</h3>${objectiveList(objectives('ANNUAL'))}</section>
+ <section class="plan-block"><h3>Prioridades de los próximos 90 días</h3>${objectiveList(objectives('NINETY_DAYS'))}</section>
+ <section class="plan-block"><h3>Acciones y avance</h3><ul class="plan-actions">${c.actions.map(action).join('')||'<li class="hint">Sin acciones.</li>'}</ul></section>`;
 }
 /** Objective form (annual objective or 90-day priority). */
 export function objectiveFormHtml(horizon,o=null){

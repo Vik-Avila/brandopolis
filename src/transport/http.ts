@@ -387,7 +387,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(path==='/api/brands/work-priority') return send(res,201,await engine.setWorkPriority(token,{brandId:input.brandId,intent:input.intent,note:input.note,idempotencyKey:input.idempotencyKey}));
         // PHASE4_SPEC §4.1 · offers: one path per operation; authorization, concurrency and audit in the engine.
         // PHASE4_SPEC §4.2 · marketing plan: one path per operation; authorization, revision and audit in the engine.
-        if(path.startsWith('/api/plan/')){const action=path.slice('/api/plan/'.length);if(['create','update','add-objective','update-objective','add-action','update-action','action-status'].includes(action))return send(res,action==='create'||action.startsWith('add-')?201:200,await engine.planCommand(token,action as 'create',input));}
+        if(path.startsWith('/api/plan/')){const action=path.slice('/api/plan/'.length);if(['create','update','add-objective','update-objective','add-action','update-action','action-status','share','decide-share'].includes(action))return send(res,action==='create'||action==='share'||action.startsWith('add-')?201:200,await engine.planCommand(token,action as 'create',input));}
         if(path.startsWith('/api/offers/')){const action=path.slice('/api/offers/'.length);if(['create','draft','submit','decide','new-draft','retire'].includes(action))return send(res,action==='create'?201:200,await engine.offerCommand(token,action as 'create',input));}
         if(path==='/api/brands/capabilities') return send(res,200,await engine.changeBrandCapability(token,{brandId:input.brandId,userId:input.userId,capability:input.capability,grant:input.grant}));
         if(path==='/api/brands') return send(res,201,await engine.createBrand(token,string(input.name),input.initialContext===undefined?undefined:string(input.initialContext)));
@@ -648,6 +648,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         }
         if(path==='/api/offers') return send(res,200,await engine.offers(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/plan') return send(res,200,await engine.marketingPlan(token,string(url.searchParams.get('brandId')),Number(url.searchParams.get('year'))));
+        if(path==='/api/plan/shared') return send(res,200,await engine.sharedPlan(token,string(url.searchParams.get('brandId')),Number(url.searchParams.get('year'))));
         if(path==='/api/brands/work-priority') return send(res,200,await engine.workPriority(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/brands/capabilities') return send(res,200,await engine.brandCapabilities(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/brands') return send(res,200,await engine.listBrands(token));

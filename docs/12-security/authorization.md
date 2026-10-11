@@ -27,6 +27,7 @@ Fase 4 · bloque 2 (2026-10-10, [ADR-0033](../14-decisions/ADR-0033.md), [ADR-00
 | Leer y editar ofertas (`/api/offers`, `/api/offers/{create,draft,submit,new-draft,retire}`) | sí | sí | no | no |
 | Aprobar o pedir cambios sobre una versión de oferta (`/api/offers/decide`: versión + huella exactas, criterio, clave de idempotencia; registro `offer_approvals` append-only) | sí | sí | no (hasta el portal de ADR-0033, y nunca para ofertas) | **no** |
 | Leer y editar el Plan de Marketing (`/api/plan`, `/api/plan/{create,update,add-objective,update-objective,add-action,update-action,action-status}`; revisión obligatoria, 409 si está desactualizada) | sí | sí | no | no |
+| Preparar y decidir la versión compartida del plan (`/api/plan/share`, `/api/plan/decide-share`: versión + huella, criterio, clave) y leer lo que recibe el cliente (`/api/plan/shared`) | sí | sí | no hasta el portal de ADR-0033; entonces sólo lectura de la versión aprobada y su avance, sin editar estrategia, plan ni acciones | **no** |
 | Conceder o retirar capacidades por Brand (`/api/brands/capabilities`) | sí, sólo a un MEMBER asignado | no (403) | no | no |
 | Gestionar conexiones de proveedor y vincular cuentas | sí | sólo con `MANAGE_CONNECTIONS` | no | no |
 | Autorizar, encolar o reintentar una operación con gasto | sí | sólo con `AUTHORIZE_SPEND` | no | **no** |

@@ -116,5 +116,100 @@ export function planCases(connection: () => ReturnType<typeof connect>) {
       await expect(x.engine.planCommand(x.who.token, 'update-action', { brandId: other.id, actionId: a.actionId, expectedRevision: 1, content: x.action() })).rejects.toMatchObject({ code: 'NOT_FOUND' });
       await expect(x.engine.planCommand(x.who.token, 'add-action', { brandId: other.id, planId: plan.planId, content: x.action(), idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'NOT_FOUND' });
     });
+
+    it('PLN-001/002: a fixed version is reviewed and approved on its exact content; internal edits never change what the client received', async () => {
+      const x = await setup();
+      const plan = await x.cmd('create', { year: 2027, focusStart: '2027-01-04' });
+      await expect(x.cmd('share', { planId: plan.planId, idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'INVALID' });
+      const first = await x.cmd('add-action', { planId: plan.planId, content: x.action({ owner: 'Ana', dueDate: '2027-01-29' }), idempotencyKey: randomUUID() });
+      const key = randomUUID();
+      const v1 = await x.cmd('share', { planId: plan.planId, idempotencyKey: key });
+      expect(await x.cmd('share', { planId: plan.planId, idempotencyKey: key })).toMatchObject({ snapshotId: v1.snapshotId, replayed: true });
+      await expect(x.cmd('share', { planId: plan.planId, idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'CONFLICT' }); // one in review
+      expect((await x.engine.sharedPlan(x.who.token, x.brand.id, 2027)).shared).toBeNull(); // nothing shared before approval
+      const decide = (snapshot: Record<string, unknown>, extra: Record<string, unknown> = {}) => x.cmd('decide-share', { snapshotId: snapshot.snapshotId, fingerprint: snapshot.fingerprint, decision: 'APPROVE', criterion: 'Revisado con la dirección', idempotencyKey: randomUUID(), ...extra });
+      await expect(decide(v1, { fingerprint: 'f'.repeat(64) })).rejects.toMatchObject({ code: 'CONFLICT' }); // PLN-002
+      const decision = { idempotencyKey: randomUUID() };
+      await decide(v1, decision);
+      expect(await decide(v1, decision)).toMatchObject({ status: 'APPROVED', replayed: true });
+      await expect(decide(v1)).rejects.toMatchObject({ code: 'CONFLICT' });
+      let shared = (await x.engine.sharedPlan(x.who.token, x.brand.id, 2027)).shared!;
+      expect(shared.content.actions.map(a => [a.title, a.owner])).toEqual([['Webinar para agencias', 'Ana']]);
+      expect(shared.content.focus).toEqual({ start: '2027-01-04', end: '2027-04-03' });
+      await expect(x.cmd('share', { planId: plan.planId, idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'CONFLICT' }); // identical to shared
+      // PLN-001: editing the plan leaves the shared copy intact and marks «changed since shared».
+      await x.cmd('update-action', { actionId: first.actionId, expectedRevision: 0, content: x.action({ owner: 'Luis', dueDate: '2027-02-12' }) });
+      shared = (await x.engine.sharedPlan(x.who.token, x.brand.id, 2027)).shared!;
+      expect(shared.content.actions[0]).toMatchObject({ owner: 'Ana', dueDate: '2027-01-29', revision: 0 });
+      expect((await x.read()).plan!.sharing.changedSinceShared).toBe(true);
+      // A change of approved content needs a new version and its review; until approved the client keeps v1.
+      const v2 = await x.cmd('share', { planId: plan.planId, idempotencyKey: randomUUID() });
+      expect((await x.engine.sharedPlan(x.who.token, x.brand.id, 2027)).shared!.sequence).toBe(1);
+      await decide(v2);
+      shared = (await x.engine.sharedPlan(x.who.token, x.brand.id, 2027)).shared!;
+      expect(shared).toMatchObject({ sequence: 2 });
+      expect(shared.content.actions[0].owner).toBe('Luis');
+      const view = (await x.read()).plan!;
+      expect(view.sharing.history.map(h => h.status)).toEqual(['SUPERSEDED', 'APPROVED']);
+      expect(view.sharing.changedSinceShared).toBe(false);
+      // Database: a snapshot is immutable and only moves forward; approvals are append-only.
+      expect(await databaseError(x.db.execute(sql`update plan_snapshots set content='{}'::jsonb where id=${v2.snapshotId}`))).toMatch(/immutable/);
+      expect(await databaseError(x.db.execute(sql`update plan_snapshots set status='IN_REVIEW' where id=${v2.snapshotId}`))).toMatch(/not allowed/);
+      expect(await databaseError(x.db.execute(sql`delete from plan_snapshot_approvals where "snapshotId"=${v2.snapshotId}`))).toMatch(/append-only/);
+      const audits = (await x.db.select().from(t.audits).where(eq(t.audits.brandId, x.brand.id))).filter(a => a.operation.startsWith('PLAN_SHARE'));
+      expect(audits.map(a => a.operation).sort()).toEqual(['PLAN_SHARE', 'PLAN_SHARE', 'PLAN_SHARE_APPROVE', 'PLAN_SHARE_APPROVE']);
+      expect(audits.find(a => a.operation === 'PLAN_SHARE_APPROVE' && a.previousVersion === v1.snapshotId)).toMatchObject({ newVersion: v2.snapshotId, rationale: 'Revisado con la dirección' });
+    });
+
+    it('PLN-002: requesting changes keeps the client on the approved version; an older version cannot be approved after a newer one', async () => {
+      const x = await setup();
+      const plan = await x.cmd('create', { year: 2027 });
+      const a = await x.cmd('add-action', { planId: plan.planId, content: x.action(), idempotencyKey: randomUUID() });
+      const v1 = await x.cmd('share', { planId: plan.planId, idempotencyKey: randomUUID() });
+      await x.cmd('decide-share', { snapshotId: v1.snapshotId, fingerprint: v1.fingerprint, decision: 'REQUEST_CHANGES', criterion: 'Falta el presupuesto del webinar', idempotencyKey: randomUUID() });
+      expect((await x.engine.sharedPlan(x.who.token, x.brand.id, 2027)).shared).toBeNull();
+      await expect(x.cmd('decide-share', { snapshotId: v1.snapshotId, fingerprint: v1.fingerprint, decision: 'APPROVE', criterion: 'Lo aprobamos después', idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'CONFLICT' });
+      await x.cmd('update-action', { actionId: a.actionId, expectedRevision: 0, content: x.action({ budget: { amountMinor: 100000, currency: 'MXN', certainty: 'ESTIMATED' } }) });
+      const v2 = await x.cmd('share', { planId: plan.planId, idempotencyKey: randomUUID() });
+      expect(v2.sequence).toBe(2);
+      await x.cmd('decide-share', { snapshotId: v2.snapshotId, fingerprint: v2.fingerprint, decision: 'APPROVE', criterion: 'Ya incluye el presupuesto', idempotencyKey: randomUUID() });
+      expect((await x.engine.sharedPlan(x.who.token, x.brand.id, 2027)).shared!.content.actions[0].budget).toEqual({ amountMinor: 100000, currency: 'MXN', certainty: 'ESTIMATED' });
+    });
+
+    it('PLN-003: progress is shared without a new approval; actions added later are not visible until another version', async () => {
+      const x = await setup();
+      const plan = await x.cmd('create', { year: 2027 });
+      const a = await x.cmd('add-action', { planId: plan.planId, content: x.action(), idempotencyKey: randomUUID() });
+      // Before sharing, a status change records no shared progress.
+      expect(await x.cmd('action-status', { actionId: a.actionId, expectedRevision: 0, status: 'IN_PROGRESS' })).toMatchObject({ progressShared: false });
+      const v1 = await x.cmd('share', { planId: plan.planId, idempotencyKey: randomUUID() });
+      await x.cmd('decide-share', { snapshotId: v1.snapshotId, fingerprint: v1.fingerprint, decision: 'APPROVE', criterion: 'Plan listo para el cliente', idempotencyKey: randomUUID() });
+      expect((await x.engine.sharedPlan(x.who.token, x.brand.id, 2027)).shared!.progress).toEqual([{ actionId: a.actionId, status: 'IN_PROGRESS', date: null, note: null }]);
+      await expect(x.cmd('action-status', { actionId: a.actionId, expectedRevision: 1, status: 'DONE', note: 'x'.repeat(281) })).rejects.toMatchObject({ code: 'INVALID' });
+      expect(await x.cmd('action-status', { actionId: a.actionId, expectedRevision: 1, status: 'DONE', note: 'Asistieron 40 personas' })).toMatchObject({ progressShared: true });
+      const later = await x.cmd('add-action', { planId: plan.planId, content: x.action({ title: 'Acción posterior' }), idempotencyKey: randomUUID() });
+      await x.cmd('action-status', { actionId: later.actionId, expectedRevision: 0, status: 'IN_PROGRESS' });
+      const shared = (await x.engine.sharedPlan(x.who.token, x.brand.id, 2027)).shared!;
+      expect(shared.sequence).toBe(1); // no new approval was needed
+      expect(shared.content.actions.map(r => r.title)).toEqual(['Webinar para agencias']);
+      expect(shared.progress).toEqual([{ actionId: a.actionId, status: 'DONE', date: new Date().toISOString().slice(0, 10), note: 'Asistieron 40 personas' }]);
+      // The snapshot keeps the status it had when shared; progress is a separate record.
+      expect(shared.content.actions[0].status).toBe('IN_PROGRESS');
+      expect(await databaseError(x.db.execute(sql`update plan_progress_updates set note='otra' where "snapshotId"=${v1.snapshotId}`))).toMatch(/append-only/);
+    });
+
+    it('scope of the shared plan: only members of the brand read it; another workspace or an unassigned member never do', async () => {
+      const x = await setup();
+      const plan = await x.cmd('create', { year: 2027 });
+      await x.cmd('add-action', { planId: plan.planId, content: x.action(), idempotencyKey: randomUUID() });
+      const v1 = await x.cmd('share', { planId: plan.planId, idempotencyKey: randomUUID() });
+      const stranger = await seedIdentity(x.db), member = await seedIdentity(x.db, 'MEMBER', x.who.workspaceId);
+      await expect(x.engine.sharedPlan(stranger.token, x.brand.id, 2027)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      await expect(x.engine.sharedPlan(member.token, x.brand.id, 2027)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      await expect(x.engine.planCommand(member.token, 'decide-share', { brandId: x.brand.id, snapshotId: v1.snapshotId, fingerprint: v1.fingerprint, decision: 'APPROVE', criterion: 'Sin asignación', idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      const other = await x.engine.createBrand(x.who.token, 'Otra marca');
+      await expect(x.engine.planCommand(x.who.token, 'decide-share', { brandId: other.id, snapshotId: v1.snapshotId, fingerprint: v1.fingerprint, decision: 'APPROVE', criterion: 'Desde otra marca', idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      expect((await x.engine.sharedPlan(x.who.token, other.id, 2027)).shared).toBeNull();
+    });
   });
 }

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/plan-snapshot.v1",
+  "title": "plan-snapshot",
+  "x-version": "v1",
+  "description": "ADR-0030 / PLN-001…003 · frozen content of a version of the marketing plan shared with the client: period, active objectives and the actions that are not cancelled, each with the revision it had. Immutable; the client also sees the shared progress of these actions, never later edits or actions added afterwards.",
+  "properties": {
+    "year": { "type": "integer", "minimum": 2000, "maximum": 2100 },
+    "focusStart": { "type": ["string", "null"], "format": "date" },
+    "objectives": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "revision": { "type": "integer", "minimum": 0 },
+          "horizon": { "type": "string", "enum": ["ANNUAL", "NINETY_DAYS"] },
+          "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+          "measure": { "type": "string", "maxLength": 500 },
+          "status": { "type": "string", "enum": ["ACTIVE"] }
+        },
+        "required": ["id", "revision", "horizon", "title", "measure", "status"]
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "revision": { "type": "integer", "minimum": 0 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+          "kind": { "type": "string", "enum": ["COMMERCIAL", "INSTITUTIONAL"] },
+          "offerId": { "type": ["string", "null"], "maxLength": 200 },
+          "offerName": { "type": ["string", "null"], "maxLength": 160 },
+          "objectiveId": { "type": ["string", "null"], "maxLength": 200 },
+          "owner": { "type": "string", "maxLength": 160 },
+          "startDate": { "type": ["string", "null"], "format": "date" },
+          "dueDate": { "type": ["string", "null"], "format": "date" },
+          "budget": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "amountMinor": { "type": "integer", "minimum": 0 },
+              "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+              "certainty": { "type": "string", "enum": ["CONFIRMED", "ESTIMATED"] }
+            },
+            "required": ["amountMinor", "currency", "certainty"]
+          },
+          "indicator": { "type": "string", "maxLength": 500 },
+          "status": { "type": "string", "enum": ["PLANNED", "IN_PROGRESS", "DONE"] }
+        },
+        "required": ["id", "revision", "title", "kind", "offerId", "offerName", "objectiveId", "owner", "startDate", "dueDate", "budget", "indicator", "status"]
+      }
+    }
+  },
+  "required": ["year", "focusStart", "objectives", "actions"],
+  "examples": [
+    { "year": 2027, "focusStart": "2027-01-04", "objectives": [{ "id": "o1", "revision": 0, "horizon": "NINETY_DAYS", "title": "Primeros diez clientes", "measure": "Clientes firmados", "status": "ACTIVE" }], "actions": [{ "id": "a1", "revision": 2, "title": "Webinar para agencias", "kind": "INSTITUTIONAL", "offerId": null, "offerName": null, "objectiveId": "o1", "owner": "Ana", "startDate": "2027-01-11", "dueDate": "2027-01-29", "budget": null, "indicator": "Registros", "status": "PLANNED" }] }
+  ]
+}

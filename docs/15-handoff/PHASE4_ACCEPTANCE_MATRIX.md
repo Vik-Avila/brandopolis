@@ -265,6 +265,15 @@ Sobre el código del commit de resguardo `25a763c`. Regresión completa ejecutad
 | Implementado · verificado en DEMO | Ofertas reforzadas: MKT-004 sin atajo por revisión omitida, MKT-005 en la decisión, APR-001/002 con registro append-only y repetición idempotente (U `tests/offers-cases.ts`). Plan: MKT-001, MKT-004 y MKT-005 para plan, objetivos y acciones; estados de PlanAction (U `tests/plan-cases.ts`, `tests/plan-views.test.ts`; E `tests/browser/phase4-plan.spec.ts`); INT-004 en su parte «Organizar mi marketing abre el plan anual con prioridades de 90 días» (enlace desde Inicio, U) |
 | Pendiente | PLN-001…003 (instantánea compartida y avance), vista de calendario, resto de INT-004 (campañas) |
 
+## Estado de implementación · bloque 3 (plan compartido y calendario, 2026-10-10)
+
+Evidencia sobre el árbol de trabajo `217ac4d7…` (ver SESSION_STATE): test:e2e 227 PASS · 13 SKIP · 0 FAIL, PILOT 10/10.
+
+| Estado | Criterios |
+|---|---|
+| Implementado · verificado en DEMO | PLN-001, PLN-002, PLN-003 (U `tests/plan-cases.ts`, `tests/plan-views.test.ts`; E `tests/browser/phase4-plan.spec.ts`); calendario como vista de los mismos registros (§4.2) |
+| Parcial | Lectura del cliente: separada y limitada a la versión aprobada y su avance; la verificación con identidad de invitado queda para IVT/PRT al existir el portal (ADR-0033) |
+
 ## Gates por bloque
 
 Matriz de brandopolis-review según archivos tocados: typecheck, lint, `pnpm test` (incluye INV-001..010, VAL, WS,
@@ -285,3 +294,4 @@ Ninguna prueba se debilita para pasar.
 | v6 | 2026-10-10 | Bloque 2: EXT-022…026 y DEL-006 (correcciones de la revisión de seguridad) y sección «Estado de implementación»; el resto sigue pendiente |
 | v7 | 2026-10-10 | Bloque 3 (avance): prioridad de trabajo y ofertas; sección «Estado de implementación · bloque 3» |
 | v8 | 2026-10-10 | Bloque 3: revisión de seguridad de ofertas y Plan de Marketing; sección de estado correspondiente |
+| v9 | 2026-10-10 | Bloque 3: PLN-001…003 y calendario implementados; sección de estado correspondiente |
