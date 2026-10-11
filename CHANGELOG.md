@@ -1,3 +1,7 @@
+## 2026-10-11 · Phase 4 — Exportaciones: evaluación técnica (sin cambios de runtime)
+
+- Evaluación del generador PDF propio y de jszip frente a EXP-001…005; recomendación sin dependencia nueva: fuentes TrueType incrustadas con subconjunto y ToUnicode, PPTX/DOCX con jszip. Pendiente la aplicación de destino (EXT-REQ-12).
+
 ## 2026-10-11 · Phase 4 — Clientes y Resultados verificados y estabilizados
 
 - Resultados: tipo de fuente y limitaciones por indicador; presupuesto planificado del Plan por moneda, separado del gasto real (sin conectar); ventas «Sin datos» hasta Fase 5.

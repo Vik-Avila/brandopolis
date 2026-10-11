@@ -1,3 +1,13 @@
+## 2026-10-11 · PHASE 4 · bloque 6 (exportaciones): evaluación del generador PDF propio y jszip
+
+Evaluación técnica sin cambios de runtime: `docs/15-handoff/PHASE4_EXPORTS_EVALUATION_2026-10-11.md`. El generador
+propio sólo usa fuentes estándar con WinAnsi (no cumple EXP-004/005 ni «sin pérdida» de EXP-003 para cualquier texto);
+`jszip` 3.10.2 ya instalado escribe OOXML (spike: PPTX mínimo con texto en español intacto al releerlo) y una fuente
+TrueType se puede leer sin dependencias (tablas, `cmap` 4/12, `OS/2.fsType`). Recomendación: ampliar el generador con
+fuentes TrueType incrustadas (subconjunto, `ToUnicode`, comprobación de permiso) y generar PPTX/DOCX con jszip; sin
+dependencia nueva. Pendiente del propietario: aplicación de destino para EXP-001 (EXT-REQ-12). Siguiente: PDF con
+fuentes incrustadas.
+
 ## 2026-10-11 · PHASE 4 · Clientes y Resultados: verificación completa y estabilización
 
 Punto de partida comprobado: rama `feat/phase4-marketing-web-collaboration`, HEAD `ec31409` (después de `6d1e55c`),
