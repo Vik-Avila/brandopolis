@@ -1,3 +1,17 @@
+## 2026-10-11 · PHASE 4 · capturas v4 (seis aplicadas) y corrección del recuento E2E
+
+**Capturas:** decisión de Codex sobre el ZIP v4 (SHA-256 `ce4683d7…7d48c5`, verificado): aplicados los `-current.png`
+exactos de decision-card-desktop, history-desktop, history-mobile, m1-guided-review-desktop, m1-needs-review-desktop
+y m1-workspace-desktop. Pendientes de una comparación corregida: blueprint-desktop/mobile (Posicionamiento aparece
+resaltado estando en Mapa estratégico) y m1-guided-review-mobile / m1-needs-review-mobile (otra decisión con fondo
+resaltado). Registro de hashes: sólo esas seis y el README de capturas.
+
+**Corrección del recuento** (no reescribe la entrada anterior): la E2E completa sobre `cb8d59a` fue **265 pruebas:
+252 PASS · 13 SKIP · 0 FAIL** (wide 52/1, desktop 52/1, compact 52/1, tablet 48/5, mobile 48/5), según las salidas
+originales; se transcribió 51 por proyecto. Cambios de `cb8d59a` a `556a535`: producto sólo CSS (`7f73461`), prueba
+`tests/visual/phase10a.spec.ts` (helper de navegación) y documentación. Evidencia diferenciada: regresión completa
+sobre `cb8d59a`; menú (76 PASS · 9 SKIP), unitarias 451 y PILOT 10/10 sobre `7f73461`; identidad 10/10 sobre `0a92d68`.
+
 ## 2026-10-11 · PHASE 4 · menú compacto: Estrategia con navegación interior
 
 **Problema medido** (Chrome, sesión DEMO): con Estrategia desplegada el lateral tenía 1110 px de contenido; en

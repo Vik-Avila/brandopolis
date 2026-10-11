@@ -59,5 +59,12 @@ percentage of changed pixels plus both sizes, with a red overlay of the changed 
   `-current.png` images of that ZIP — m1-workspace-desktop, blueprint-desktop, decision-card-desktop,
   history-desktop, m1-guided-review-desktop, m1-needs-review-desktop («Marca y recursos» available and menu spacing).
   The other eleven are unchanged. The approval does not cover a later regeneration with further changes.
+- 2026-10-11 · human decision (Codex review of
+  `Brandopolis_Fase4_capturas_canonicas_comparacion_v4_2026-10-11.zip`, SHA-256
+  `ce4683d7fab4eb402f8ee2bd9c3ce76f1d9273f348feb9db87e023afe67d48c5`): six files replaced by the exact `-current.png`
+  images of that ZIP — decision-card-desktop, history-desktop, history-mobile, m1-guided-review-desktop,
+  m1-needs-review-desktop, m1-workspace-desktop (compact navigation; Estrategia inner navigation). Kept pending a
+  corrected comparison: blueprint-desktop, blueprint-mobile, m1-guided-review-mobile, m1-needs-review-mobile. The
+  other seven are unchanged.
 
 These screenshots define presentation only. Domain behavior remains owned by the Engineering Repository.

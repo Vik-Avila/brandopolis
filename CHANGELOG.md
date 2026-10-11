@@ -1,3 +1,8 @@
+## 2026-10-11 · Phase 4 — capturas v4 aplicadas (seis) y corrección del recuento E2E
+
+- Seis capturas canónicas actualizadas con las imágenes exactas del ZIP v4; cuatro pendientes de comparación corregida.
+- Corrección: la E2E sobre cb8d59a fue 265 pruebas, 252 PASS · 13 SKIP · 0 FAIL (no «249 PASS · 260»).
+
 ## 2026-10-11 · Phase 4 — menú compacto y direcciones visuales de Brando
 
 - Lateral con las siete áreas sin desplazamiento en 1366×768; Estrategia con navegación interior (nueve pasos, Validación, Mapa estratégico).
