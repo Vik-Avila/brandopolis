@@ -1,3 +1,23 @@
+## 2026-10-10 · PHASE 4 · verificación de `85ec322` y capturas canónicas aprobadas
+
+**Correcciones de seguridad de `85ec322` verificadas** (rutas HTTP reales, raíz de documentos temporal):
+- `DEL-005: deleting a brand that only has kit files purges them from disk…`: dos marcas sólo con archivos del kit
+  subidos por `/api/brand-kit/assets`; al borrar una, su carpeta desaparece del disco y el archivo de la otra sigue
+  intacto (y su registro en `kit_assets`).
+- `a refused kit upload leaves no file on disk…`: PNG declarado como fuente y PDF declarado como logotipo (rechazados
+  tras guardarse) y firma desconocida (rechazada antes): ninguna carpeta nueva; el archivo previo intacto.
+- Mutación comprobada: al deshacer temporalmente cada corrección, las tres pruebas afectadas fallan; restauradas, el
+  código coincide con el commit.
+
+**Capturas canónicas (decisión del propietario tras revisar el ZIP v2, SHA-256 `334d8df3…6ed98f`):** reemplazadas
+con los `-current.png` exactos del ZIP las siete aprobadas (m1-workspace-desktop/mobile, blueprint-desktop,
+decision-card-desktop, history-desktop, m1-guided-review-desktop, m1-needs-review-desktop); las otras diez sin
+cambios. En `design/brandopolis-ui/specs/brand-assets.json` sólo se actualizaron esas siete entradas: el script de
+refresco intentó además registrar `public/brand/web/workspace-atmosphere-clean.webp` (recurso sin registrar previo),
+fuera de la decisión, y se descartó. UI validator PASS. Método de comparación y umbrales documentados en el README de
+las capturas: `test:visual` no compara píxeles; la comparación real usa umbral de 48/765 por píxel y porcentaje de
+píxeles cambiados.
+
 ## 2026-10-10 · PHASE 4 · bloque 4 · revisión automática de seguridad del commit `71fb8a4`
 
 Dos hallazgos verificados en el código y corregidos:

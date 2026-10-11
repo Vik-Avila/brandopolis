@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { and, eq } from 'drizzle-orm';
@@ -227,6 +227,53 @@ export function brandDeletionCases(connection: () => ReturnType<typeof connect>)
       writeFileSync(join(root, 'sentinel'), 'x');
       await purgeBrandFiles('ws/missing-brand'); // missing directory = nothing to purge
       expect(existsSync(join(root, 'sentinel'))).toBe(true);
+    }));
+
+    // Security review of 71fb8a4 (fixed in 85ec322): verified through the real HTTP routes and the file system.
+    const PNG_1PX = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+    const uploadKit = (base: string, token: string, brandId: string, role: string, name: string, data: Buffer) => fetch(base + '/api/brand-kit/assets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream', Origin: base, Cookie: `brandopolis_session=${token}`, 'X-Brand-Id': brandId, 'X-File-Name': encodeURIComponent(name), 'X-Asset-Role': role },
+      body: new Uint8Array(data)
+    });
+    const kitDirs = (root: string, workspaceId: string, brandId: string) => existsSync(join(root, workspaceId, brandId)) ? readdirSync(join(root, workspaceId, brandId)).filter(d => d.startsWith('kit-')) : [];
+
+    it('DEL-005: deleting a brand that only has kit files purges them from disk; another brand’s kit file stays intact', async () => withRoot(async root => {
+      const db = connection().db, engine = new Engine(db), who = await seedIdentity(db);
+      const doomed = await engine.createBrand(who.token, 'Solo kit a eliminar'), kept = await engine.createBrand(who.token, 'Solo kit que se queda');
+      const { base, del, close } = await app(engine);
+      try {
+        const a = await uploadKit(base, who.token, doomed.id, 'LOGO', 'logo.png', PNG_1PX);
+        const b = await uploadKit(base, who.token, kept.id, 'LOGO', 'logo.png', Buffer.concat([PNG_1PX, Buffer.from([0])]));
+        expect([a.status, b.status]).toEqual([201, 201]);
+        const [doomedDir] = kitDirs(root, who.workspaceId, doomed.id), [keptDir] = kitDirs(root, who.workspaceId, kept.id);
+        expect(readFileSync(join(root, who.workspaceId, doomed.id, doomedDir, 'original')).equals(PNG_1PX)).toBe(true);
+        expect(await db.select().from(t.sourceDocuments).where(eq(t.sourceDocuments.brandId, doomed.id))).toEqual([]); // no uploaded documents
+        const response = await del(who.token, { brandId: doomed.id, confirmName: 'Solo kit a eliminar', idempotencyKey: randomUUID() });
+        expect([response.status, await response.json()]).toEqual([200, { status: 'DELETED', brandId: doomed.id }]);
+        expect(existsSync(join(root, who.workspaceId, doomed.id)), 'deleted brand kit files purged from disk').toBe(false);
+        expect(existsSync(join(root, who.workspaceId, kept.id, keptDir, 'original')), 'other brand kit file intact').toBe(true);
+        expect((await db.select().from(t.kitAssets).where(eq(t.kitAssets.brandId, kept.id))).length).toBe(1);
+      } finally { await close(); }
+    }));
+
+    it('a refused kit upload leaves no file on disk; files already stored stay intact', async () => withRoot(async root => {
+      const db = connection().db, engine = new Engine(db), who = await seedIdentity(db);
+      const brand = await engine.createBrand(who.token, 'Subidas rechazadas');
+      const { base, close } = await app(engine);
+      try {
+        expect((await uploadKit(base, who.token, brand.id, 'LOGO', 'logo.png', PNG_1PX)).status).toBe(201);
+        const before = kitDirs(root, who.workspaceId, brand.id);
+        // Stored first, then refused at registration: a PNG declared as a font, and a PDF declared as a logo.
+        const asFont = await uploadKit(base, who.token, brand.id, 'FONT', 'fuente.ttf', Buffer.concat([PNG_1PX, Buffer.from([1])]));
+        const asLogo = await uploadKit(base, who.token, brand.id, 'LOGO', 'logo.pdf', Buffer.from('%PDF-1.7 %falso'));
+        expect([asFont.status, asLogo.status]).toEqual([400, 400]);
+        // Refused before storing: unknown signature.
+        expect((await uploadKit(base, who.token, brand.id, 'LOGO', 'x.png', Buffer.from('<html></html>'))).status).toBe(400);
+        expect(kitDirs(root, who.workspaceId, brand.id), 'no orphan directories after refused uploads').toEqual(before);
+        expect(existsSync(join(root, who.workspaceId, brand.id, before[0], 'original'))).toBe(true);
+        expect((await db.select().from(t.kitAssets).where(eq(t.kitAssets.brandId, brand.id))).length).toBe(1);
+      } finally { await close(); }
     }));
   });
 }
