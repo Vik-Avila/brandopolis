@@ -1,3 +1,30 @@
+## 2026-10-10 · PHASE 4 · bloque 3 · regresión completa sobre `25a763c`
+
+Ejecutada por separado y con un solo worker, sin otras comprobaciones pesadas simultáneas, contra el perfil aislado
+`rc1-smoke` (3001), sobre el código del commit de resguardo `25a763c` (sin push ni deploy):
+
+- **test:e2e 230 pruebas: 217 PASS · 13 SKIP intencionales · 0 FAIL**, proyecto a proyecto: wide 45/1, desktop 45/1,
+  compact 45/1, tablet 41/5, mobile 41/5. En `wide` falló al principio «Navigation: Estrategia group…» porque
+  `tests/browser/workspace.spec.ts` seguía exigiendo «Productos y servicios» como «Próximamente». Se actualizó al
+  estado aprobado (ADR-0030; Marketing y Resultados siguen anunciados y no navegables; Productos abre su pantalla), sólo
+  en la prueba, y se repitió en los 5 proyectos: 5/5. Cambio de prueba posterior al commit, aún sin commit.
+- **test:visual 10 PASS · 1 SKIP**, sin diferencias; capturas canónicas sin tocar.
+- UI validator PASS; **test:pilot:e2e 10/10**.
+- Memoria: el corte del sistema había detenido el PostgreSQL del perfil aislado y el de la base local por defecto
+  (ambos iniciados por esta sesión); se detuvieron sólo esos procesos huérfanos y se relanzaron. Ningún proceso ajeno
+  se tocó.
+
+**Alcance de la evidencia:** código de `25a763c` más el ajuste posterior de `tests/browser/workspace.spec.ts` (sólo
+prueba). **13 SKIP intencionales, todos por tamaño de pantalla** (`test.skip` declarado en la prueba): wide, desktop y
+compact omiten «Mobile: navigation and tools are drawers…» (sólo por debajo de 1001 px), 3 en total; tablet y mobile
+omiten, cada uno, «Right rail: one tool at a time…», «Left navigation collapses to icons…», «The nine strategy nodes
+are joined by one fine vertical line…» (`workspace.spec.ts`), «C · panels collapse independently into Focus Mode…»
+(`phase2.spec.ts`) y «E · Brando shows the proposed alternative first…» (`phase3-closure.spec.ts`), porque por debajo
+de 1001 px esos paneles son cajones cubiertos por las pruebas móviles; 10 en total.
+
+Pendiente antes de cerrar el bloque 3: revisión de seguridad de los endpoints de ofertas; plan anual, entregables,
+navegación a siete entradas y Brando marketing.
+
 ## 2026-10-10 · PHASE 4 · bloque 3 en curso (prioridad y ofertas) · regresión completa pendiente
 
 PHASE 4 · BLOCK 3 IN PROGRESS · NOT RELEASE-READY. Rama `feat/phase4-marketing-web-collaboration` sobre `f3e370e`.

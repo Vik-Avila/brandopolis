@@ -42,7 +42,7 @@ test('Inicio: one next step, real 9-segment progress and decision vs observation
  expect(await noOverflow(page)).toBe(true);
 });
 
-test('Navigation: Estrategia group, Mercado objetivo, three «Próximamente» non-destinations, Mi aprendizaje, Mapa and Ayuda',async({page},info)=>{
+test('Navigation: Estrategia group, Mercado objetivo, Productos y servicios, two «Próximamente» non-destinations, Mi aprendizaje, Mapa and Ayuda',async({page},info)=>{
  await signIn(page,`Menu ${info.project.name} ${Date.now()}`);
  const menu=page.getByRole('button',{name:'Abrir navegación',exact:true});
  if(await menu.isVisible())await menu.click();
@@ -54,7 +54,9 @@ test('Navigation: Estrategia group, Mercado objetivo, three «Próximamente» no
  await expect(nav.locator('#strategy-toggle')).toHaveAttribute('aria-expanded','false');
  await nav.locator('#strategy-toggle').click();
  await expect(nav.locator('#strategy-list')).toBeVisible();
- for(const name of ['Productos y servicios','Plan de marketing','Resultados']){
+ // ADR-0030 (Phase 4, owner-approved 2026-10-10): Productos y servicios is a real destination; the other two stay announced.
+ await expect(nav.locator('[data-soon]',{hasText:'Productos y servicios'})).toHaveCount(0);
+ for(const name of ['Plan de marketing','Resultados']){
   const item=nav.locator('[data-soon]',{hasText:name});
   await expect(item).toHaveAttribute('aria-disabled','true');
   await expect(item).toContainText('Próximamente');
@@ -71,6 +73,9 @@ test('Navigation: Estrategia group, Mercado objetivo, three «Próximamente» no
  await navigate(page,'Mapa estratégico');
  await expect(page.locator('.map-cell')).toHaveCount(9);
  await expect(page.locator('.map-cell').nth(1)).toContainText('Mercado objetivo');
+ await navigate(page,'Productos y servicios');
+ await expect(page.locator('#offers')).toHaveAttribute('aria-current','page');
+ await expect(page.locator('#decision h2').first()).toHaveText('Qué ofreces y por qué te elegirían');
  expect(await noOverflow(page)).toBe(true);
 });
 

@@ -250,7 +250,7 @@ está «verificada con proveedor»: Google, Meta y Canva siguen pendientes de ac
 | Pendiente | Todo lo demás: navegación, ofertas, plan, identidad, entregables, sitios, medición, Canva, Ads reales, invitados y resultados |
 ## Estado de implementación · bloque 3 (avance, 2026-10-10)
 
-Sobre el código del commit de resguardo del bloque 3; la regresión completa (test:e2e, test:visual) sigue pendiente.
+Sobre el código del commit de resguardo `25a763c`. Regresión completa ejecutada: test:e2e 217 PASS · 13 SKIP · 0 FAIL (230), test:visual sin diferencias, test:pilot:e2e 10/10.
 
 | Estado | Criterios |
 |---|---|

@@ -1,3 +1,9 @@
+## 2026-10-10 · Phase 4 — bloque 3: regresión completa sobre 25a763c
+
+- test:e2e 217 PASS · 13 SKIP · 0 FAIL (230, por proyecto, un worker); test:visual 10 PASS · 1 SKIP sin diferencias; test:pilot:e2e 10/10; UI validator PASS.
+- Evidencia sobre 25a763c más el ajuste de prueba; los 13 SKIP son omisiones intencionales por tamaño de pantalla (detalle en SESSION_STATE).
+- `tests/browser/workspace.spec.ts` alineada con Productos y servicios habilitado (ADR-0030); Marketing y Resultados siguen «Próximamente».
+
 ## 2026-10-10 · Phase 4 — bloque 3 en curso: prioridad de trabajo y ofertas (regresión completa pendiente)
 
 - Pregunta de prioridad en el alta y en Inicio, append-only, con orientación determinista.
