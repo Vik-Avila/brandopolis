@@ -1,3 +1,15 @@
+## 2026-10-11 · PHASE 4 · corrección de seguridad en exportaciones (imágenes subidas)
+
+La revisión automática de seguridad del commit `d806ae2` señaló un riesgo de denegación de servicio en
+`pdf-brand.ts`. Causa confirmada: `decodePng` (`pdf-editorial.ts`) descomprimía los datos PNG sin límite; antes sólo
+recibía imágenes propias del producto, pero las exportaciones le pasan logotipos que los usuarios suben al kit (hasta
+15 MB comprimidos), así que un PNG manipulado podía inflarse a gigabytes y agotar la memoria del servidor. Corrección:
+la descompresión se limita al tamaño exacto que exigen las dimensiones declaradas; las exportaciones rechazan imágenes
+de más de 12 Mpx (PNG y JPEG) y un archivo dañado se omite con aviso en vez de fallar la descarga. Prueba nueva: PNG
+«bomba» (declara 10×10 y se infla a 40 MB), PNG y JPEG gigantes y JPEG inválido → aviso, PDF válido, memoria acotada.
+`pnpm test` **494 PASS** (incluye los PDF del Mapa estratégico y del Brand Book que usan el mismo decodificador).
+No hubo exposición en producción: este código no está desplegado.
+
 ## 2026-10-11 · PHASE 4 · permiso para compartir (opción A) y exportaciones PDF, PPTX y DOCX
 
 **Permiso para compartir (`8288310`):** decisión del propietario, opción A de PHASE4_SPEC §12.5. `shareToPortal` y

@@ -1,3 +1,7 @@
+## 2026-10-11 · Phase 4 — Seguridad: decodificación PNG acotada en exportaciones
+
+- La descompresión PNG se limita al tamaño que exigen sus dimensiones; imágenes subidas de más de 12 Mpx o dañadas se omiten con aviso. Evita agotar la memoria con un logotipo manipulado. Unitarias 494.
+
 ## 2026-10-11 · Phase 4 — Compartir exige «Gestionar invitados»; exportaciones PDF, PPTX y DOCX
 
 - Compartir con el cliente y dejar de compartir exigen `MANAGE_GUESTS` en la marca (decisión del propietario, opción A).

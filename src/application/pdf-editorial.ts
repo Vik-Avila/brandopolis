@@ -61,7 +61,11 @@ export function decodePng(bytes: Buffer): Png {
   }
   const channels = { 0: 1, 2: 3, 4: 2, 6: 4 }[type as 0 | 2 | 4 | 6];
   if (depth !== 8 || interlace !== 0 || !channels || width <= 0 || height <= 0 || width * height > 16_000_000) throw new Error('Unsupported PNG');
-  const raw = inflateSync(Buffer.concat(idat)), stride = width * channels, out = Buffer.alloc(stride * height);
+  const stride = width * channels, expected = (stride + 1) * height;
+  // Bounded inflate: a PNG never decompresses beyond what its declared size needs (a crafted upload cannot exhaust memory).
+  let raw: Buffer;
+  try { raw = inflateSync(Buffer.concat(idat), { maxOutputLength: expected }); } catch { throw new Error('Corrupt or oversized PNG data'); }
+  const out = Buffer.alloc(stride * height);
   if (raw.length < (stride + 1) * height) throw new Error('Truncated PNG data');
   for (let y = 0; y < height; y++) {
     const filter = raw[y * (stride + 1)], line = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1)), row = y * stride;

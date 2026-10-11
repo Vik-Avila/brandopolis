@@ -59,7 +59,7 @@ function finishPdf(pdf: BrandPdf, fonts: FontChoice, footer: string, title: stri
   const bytes = pdf.build({ title, subject, created: now });
   const notices = [...fonts.notices];
   if (pdf.missingCharacters.length) notices.push({ code: 'MISSING_CHARACTERS', message: `Algunos caracteres no están en la tipografía del documento y se muestran con la estándar o como «?»: ${pdf.missingCharacters.join(' ')}` });
-  if (pdf.notices.has('IMAGE_FORMAT')) notices.push({ code: 'IMAGE_FORMAT', message: 'Una imagen del kit no es PNG ni JPEG y no se incluyó.' });
+  if (pdf.notices.has('IMAGE_FORMAT')) notices.push({ code: 'IMAGE_FORMAT', message: 'Una imagen del kit no es un PNG o JPEG válido de tamaño admitido y no se incluyó.' });
   return { bytes, filename, mediaType: 'application/pdf', notices };
 }
 

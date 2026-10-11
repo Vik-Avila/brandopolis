@@ -13,6 +13,8 @@ import { pdfString, textWidth } from './pdf-writer.js';
 import { subsetTrueType, type ParsedFont } from '../domain/ttf.js';
 
 export const A4 = { width: 595.28, height: 841.89 };
+/** Largest image (pixels) an export decodes: generous for a logo, bounded for memory. */
+export const MAX_IMAGE_PIXELS = 12_000_000;
 export type Rgb = [number, number, number];
 export type Role = 'heading' | 'body';
 type Std = 'F1' | 'F2';
@@ -144,13 +146,20 @@ export class BrandPdf {
   image(bytes: Buffer, format: string, maxW: number, maxH: number) {
     let w: number, h: number, object: (add: (b: string | Buffer) => number) => number;
     if (format === 'PNG') {
-      const png = decodePng(bytes); w = png.width; h = png.height;
+      // Kit logos are uploads: check the declared size before decoding and report a bad file instead of failing.
+      if (bytes.length < 24 || bytes.readUInt32BE(16) * bytes.readUInt32BE(20) > MAX_IMAGE_PIXELS) { this.notices.add('IMAGE_FORMAT'); return; }
+      let png: ReturnType<typeof decodePng>;
+      try { png = decodePng(bytes); } catch { this.notices.add('IMAGE_FORMAT'); return; }
+      w = png.width; h = png.height;
       object = add => {
         const smask = png.alpha ? add(stream(`<< /Type /XObject /Subtype /Image /Width ${w} /Height ${h} /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /FlateDecode`, deflateSync(png.alpha))) : 0;
         return add(stream(`<< /Type /XObject /Subtype /Image /Width ${w} /Height ${h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode${smask ? ` /SMask ${smask} 0 R` : ''}`, deflateSync(png.rgb)));
       };
     } else if (format === 'JPEG') {
-      const size = jpegSize(bytes); w = size.width; h = size.height;
+      let size: ReturnType<typeof jpegSize>;
+      try { size = jpegSize(bytes); } catch { this.notices.add('IMAGE_FORMAT'); return; }
+      if (!size.width || !size.height || size.width * size.height > MAX_IMAGE_PIXELS) { this.notices.add('IMAGE_FORMAT'); return; }
+      w = size.width; h = size.height;
       object = add => add(stream(`<< /Type /XObject /Subtype /Image /Width ${w} /Height ${h} /ColorSpace /${size.components === 1 ? 'DeviceGray' : size.components === 4 ? 'DeviceCMYK' : 'DeviceRGB'} /BitsPerComponent 8 /Filter /DCTDecode`, bytes));
     } else { this.notices.add('IMAGE_FORMAT'); return; }
     const scale = Math.min(maxW / w, maxH / h, 1), dw = w * scale, dh = h * scale;

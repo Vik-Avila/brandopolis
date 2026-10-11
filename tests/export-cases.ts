@@ -241,6 +241,27 @@ export function exportCases(connection: () => ReturnType<typeof connect>) {
       } finally { if (previous === undefined) delete process.env.BRANDOPOLIS_DOCUMENT_ROOT; else process.env.BRANDOPOLIS_DOCUMENT_ROOT = previous; rmSync(root, { recursive: true, force: true }); }
     });
 
+    it('uploaded images are untrusted: a decompression bomb or an oversized PNG/JPEG is skipped with a notice, never decoded without bounds', () => {
+      const png = (w: number, h: number, idat: Buffer) => {
+        const chunk = (type: string, data: Buffer) => { const b = Buffer.alloc(12 + data.length); b.writeUInt32BE(data.length, 0); b.write(type, 4, 'latin1'); data.copy(b, 8); return b; };
+        const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 2;
+        return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', idat), chunk('IEND', Buffer.alloc(0))]);
+      };
+      // Declares 10×10 (310 bytes of image data) but its data inflates to 40 MB of zeros.
+      const bomb = png(10, 10, deflateSync(Buffer.alloc(40 * 1024 * 1024)));
+      const huge = png(20000, 20000, deflateSync(Buffer.alloc(16)));
+      const jpegHuge = Buffer.from([0xff, 0xd8, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x4e, 0x20, 0x4e, 0x20, 0x03, 0, 0, 0, 0, 0, 0, 0, 0]);
+      const pdf = new BrandPdf({});
+      const before = process.memoryUsage().rss;
+      pdf.image(bomb, 'PNG', 100, 100);
+      pdf.image(huge, 'PNG', 100, 100);
+      pdf.image(jpegHuge, 'JPEG', 100, 100);
+      pdf.image(Buffer.from('not an image'), 'JPEG', 100, 100);
+      expect(process.memoryUsage().rss - before).toBeLessThan(100 * 1024 * 1024);
+      expect(pdf.notices.has('IMAGE_FORMAT')).toBe(true);
+      expect(pdf.build({ title: 'x', created: new Date(0) }).subarray(0, 5).toString('latin1')).toBe('%PDF-');
+    });
+
     it('deliverable PDF names brand, version, state and kit; no kit → standard font with a notice', async () => {
       const src = deck();
       const doc = deliverablePdf({ ...src, kit: null }, chooseFonts(null, [], 'PDF'), new Map());
