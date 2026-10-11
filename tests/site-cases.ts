@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import { request as httpRequest } from 'node:http';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { connect } from '../src/persistence/database.js';
 import { Engine } from '../src/application/engine.js';
 import { seedIdentity } from '../scripts/seed.js';
@@ -144,6 +144,7 @@ export function siteCases(connection: () => ReturnType<typeof connect>) {
         const home = await get('/?utm_source=facebook&utm_campaign=otono&fbclid=IwAR0abc', host, { Cookie: 'brandopolis_session=secreto' });
         expect(home.status).toBe(200);
         expect(home.headers.get('set-cookie')).toBeNull();
+        expect(home.headers.get('cache-control')).toBe('private, no-cache'); // back navigation reuses the visitor's copy (same submission id); never a shared cache
         expect(home.headers.get('content-security-policy')).toContain("default-src 'none'");
         const html = await home.text();
         expect(html).toContain('Café &lt;script&gt;');
@@ -260,30 +261,48 @@ export function siteCases(connection: () => ReturnType<typeof connect>) {
       } finally { server.close(); delete process.env.BRANDOPOLIS_PREVIEW_ORIGIN; delete process.env.BRANDOPOLIS_APP_ORIGIN; }
     }));
 
-    it('DOM-001/002/004/006 · custom domain: TXT verification by the client, unique across brands without revealing which, removal stops serving; nothing is bought or changed', async () => withRoots(async () => {
+    it('DOM-001/002/004/006 · custom domain: TXT proof by the client, an unverified claim never blocks the real owner, a holder keeps it only while its record exists, removal stops serving; nothing is bought or changed', async () => withRoots(async () => {
       const x = await setup();
       const first = await approvedSite(x);
       await x.engine.publishSite(x.who.token, { brandId: x.brand.id, siteId: first.siteId, versionId: first.versionId, confirm: { siteName: 'Sitio de café', sequence: 1, host: first.site.domains[0].hostname }, idempotencyKey: randomUUID() }, writer(x.engine));
+      // A squatter in another workspace claims the hostname first: it reserves nothing.
+      const other = await setup();
+      await other.cmd('create', { name: 'Otro sitio', goal: 'INFORM', idempotencyKey: randomUUID() });
+      const otherSite = (await other.engine.sites(other.who.token, other.brand.id)).sites[0];
+      const squat = await other.cmd('domain-add', { siteId: otherSite.id, hostname: 'www.cafe-nandu.mx', idempotencyKey: randomUUID() }) as { domainId: string };
       const added = await x.cmd('domain-add', { siteId: first.siteId, hostname: 'www.cafe-nandu.mx', idempotencyKey: randomUUID() }) as { domainId: string };
+      await expect(x.cmd('domain-add', { siteId: first.siteId, hostname: 'www.cafe-nandu.mx', idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'CONFLICT' }); // once per brand
       let d = (await x.engine.sites(x.who.token, x.brand.id)).sites[0].domains.find(z => z.kind === 'CUSTOM')!;
       expect(d).toMatchObject({ status: 'PENDING_VERIFICATION', record: { name: '_brandopolis.www.cafe-nandu.mx', type: 'TXT', value: expect.stringMatching(/^brandopolis-site-verification=/) } });
+      const squatRecord = (await other.engine.sites(other.who.token, other.brand.id)).sites[0].domains.find(z => z.kind === 'CUSTOM')!.record!.value;
+      expect(squatRecord).not.toBe(d.record!.value); // every claim has its own token
       const server = createPublicSiteServer(x.engine), base = await serve(server);
+      const dns: string[] = [];
+      const resolver = async () => [...dns];
       try {
         expect((await hostFetch(base + '/', { headers: { Host: 'www.cafe-nandu.mx' } })).status).toBe(404); // not verified → not served
-        const other = await setup();
-        await other.cmd('create', { name: 'Otro sitio', goal: 'INFORM', idempotencyKey: randomUUID() });
-        const otherSite = (await other.engine.sites(other.who.token, other.brand.id)).sites[0];
-        await expect(other.cmd('domain-add', { siteId: otherSite.id, hostname: 'www.cafe-nandu.mx', idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'CONFLICT', message: 'This domain is not available' });
-        expect((await x.cmd('domain-check', { domainId: added.domainId }, x.who.token, async () => ['otra-cosa'])).status).toBe('PENDING_VERIFICATION');
-        expect((await x.cmd('domain-check', { domainId: added.domainId }, x.who.token, async () => [d.record!.value])).status).toBe('VERIFIED');
+        expect((await other.cmd('domain-check', { domainId: squat.domainId }, other.who.token, resolver)).status).toBe('PENDING_VERIFICATION');
+        dns.push('otra-cosa');
+        expect((await x.cmd('domain-check', { domainId: added.domainId }, x.who.token, resolver)).status).toBe('PENDING_VERIFICATION');
+        dns.push(d.record!.value); // the owner publishes its record
+        expect((await x.cmd('domain-check', { domainId: added.domainId }, x.who.token, resolver)).status).toBe('VERIFIED');
         expect((await hostFetch(base + '/', { headers: { Host: 'www.cafe-nandu.mx' } })).status).toBe(200);
-        // Losing the record on a later check withdraws it (no dangling domain).
-        expect((await x.cmd('domain-check', { domainId: added.domainId }, x.who.token, async () => [])).status).toBe('FAILED');
+        // While the holder's record is published nobody else verifies, even with a record of its own; the answer reveals nothing.
+        dns.push(squatRecord);
+        await expect(other.cmd('domain-check', { domainId: squat.domainId }, other.who.token, resolver)).rejects.toMatchObject({ code: 'CONFLICT', message: 'This domain is not available' });
+        dns.splice(0, dns.length, squatRecord); // the domain changed hands: only the new controller's record remains
+        expect((await other.cmd('domain-check', { domainId: squat.domainId }, other.who.token, resolver)).status).toBe('VERIFIED');
+        d = (await x.engine.sites(x.who.token, x.brand.id)).sites[0].domains.find(z => z.kind === 'CUSTOM')!;
+        expect(d.status).toBe('FAILED'); // the stale holder no longer serves it
+        expect(await x.db.select().from(t.siteDomains).where(and(eq(t.siteDomains.hostname, 'www.cafe-nandu.mx'), eq(t.siteDomains.status, 'VERIFIED')))).toHaveLength(1);
+        // Losing the record on a later check withdraws it (no dangling domain); removing releases the claim.
+        dns.length = 0;
+        expect((await other.cmd('domain-check', { domainId: squat.domainId }, other.who.token, resolver)).status).toBe('FAILED');
         expect((await hostFetch(base + '/', { headers: { Host: 'www.cafe-nandu.mx' } })).status).toBe(404);
         await x.cmd('domain-remove', { domainId: added.domainId });
         d = (await x.engine.sites(x.who.token, x.brand.id)).sites[0].domains.find(z => z.kind === 'CUSTOM')!;
         expect(d.status).toBe('REMOVED');
-        expect(await other.cmd('domain-add', { siteId: otherSite.id, hostname: 'www.cafe-nandu.mx', idempotencyKey: randomUUID() })).toMatchObject({ replayed: false }); // released
+        expect(await x.cmd('domain-add', { siteId: first.siteId, hostname: 'www.cafe-nandu.mx', idempotencyKey: randomUUID() })).toMatchObject({ replayed: false });
         for (const bad of ['localhost', 'tienda.localhost:3999', 'x.brandopolis.ai', 'no valido', 'a.b']) await expect(x.cmd('domain-add', { siteId: first.siteId, hostname: bad, idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'INVALID' });
       } finally { server.close(); }
     }));

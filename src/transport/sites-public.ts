@@ -19,7 +19,7 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 const safeParam = (v: string | null) => (v && /^[\p{L}\p{N} ._~:+\-|/()%,]{1,200}$/u.test(v) ? v : null);
 
 function headers(res: ServerResponse, type: string, extra: Record<string, string> = {}) {
-  res.writeHead(res.statusCode || 200, { 'Content-Type': type, 'Content-Security-Policy': CSP, 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Cache-Control': type.startsWith('text/html') ? 'no-store' : 'public, max-age=300', ...extra });
+  res.writeHead(res.statusCode || 200, { 'Content-Type': type, 'Content-Security-Policy': CSP, 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Cache-Control': type.startsWith('text/html') ? 'private, no-cache' : 'public, max-age=300', ...extra });
 }
 function page(res: ServerResponse, status: number, title: string, body: string) {
   res.statusCode = status;

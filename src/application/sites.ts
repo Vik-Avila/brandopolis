@@ -336,13 +336,12 @@ export async function addCustomDomain(tx: Transaction, a: BrandActor, input: { s
   if (!DOMAIN.test(hostname) || hostname.endsWith(siteConfig().publicBase.split(':')[0]) || hostname.endsWith('brandopolis.ai')) throw new AppError('INVALID', 'Write a domain like www.tumarca.com');
   const [prior] = await tx.select().from(t.siteDomains).where(and(byBrand(t.siteDomains, a), eq(t.siteDomains.createdBy, a.userId), eq(t.siteDomains.idempotencyKey, idempotencyKey)));
   if (prior) return { domainId: prior.id, replayed: true };
-  // Never reveal which brand or workspace holds a domain.
-  const [taken] = await tx.select({ id: t.siteDomains.id }).from(t.siteDomains).where(and(eq(t.siteDomains.hostname, hostname), ne(t.siteDomains.status, 'REMOVED')));
-  if (taken) throw new AppError('CONFLICT', 'This domain is not available');
+  // An unverified claim reserves nothing (no squatting): several brands may claim a hostname and only the one that proves
+  // DNS control verifies it. The answer never reveals whether another brand or workspace claims or holds it.
+  const [mine] = await tx.select({ id: t.siteDomains.id }).from(t.siteDomains).where(and(byBrand(t.siteDomains, a), eq(t.siteDomains.hostname, hostname), ne(t.siteDomains.status, 'REMOVED')));
+  if (mine) throw new AppError('CONFLICT', 'This domain is already added to this brand');
   const id = randomUUID();
-  await tx.insert(t.siteDomains).values({ id, workspaceId: a.workspaceId, brandId: a.brandId, siteId: site.id, hostname, kind: 'CUSTOM', status: 'PENDING_VERIFICATION', token: newToken(), createdBy: a.userId, idempotencyKey, createdAt: new Date() }).onConflictDoNothing();
-  const [mine] = await tx.select({ id: t.siteDomains.id }).from(t.siteDomains).where(eq(t.siteDomains.id, id));
-  if (!mine) throw new AppError('CONFLICT', 'This domain is not available');
+  await tx.insert(t.siteDomains).values({ id, workspaceId: a.workspaceId, brandId: a.brandId, siteId: site.id, hostname, kind: 'CUSTOM', status: 'PENDING_VERIFICATION', token: newToken(), createdBy: a.userId, idempotencyKey, createdAt: new Date() });
   return { domainId: id, replayed: false };
 }
 export type TxtResolver = (name: string) => Promise<string[]>;
@@ -351,9 +350,18 @@ export async function checkDomain(tx: Transaction, a: BrandActor, input: { domai
   needsPublish(a);
   const [d] = await tx.select().from(t.siteDomains).where(and(byBrand(t.siteDomains, a), eq(t.siteDomains.id, idOf(input.domainId, 'Domain')))).for('update');
   if (!d || d.kind !== 'CUSTOM' || d.status === 'REMOVED') throw new AppError('NOT_FOUND', 'Domain not available');
-  let found = false;
-  try { found = (await resolveTxt(`_brandopolis.${d.hostname}`)).some(v => v.trim() === `brandopolis-site-verification=${d.token}`); } catch { found = false; }
+  const proves = async (token: string) => { try { return (await resolveTxt(`_brandopolis.${d.hostname}`)).some(v => v.trim() === `brandopolis-site-verification=${token}`); } catch { return false; } };
+  const found = await proves(d.token);
   const now = new Date();
+  if (found && d.status !== 'VERIFIED') {
+    // Serialise every claim of this hostname; a current holder keeps it only while its own record is still published.
+    const claims = await tx.select().from(t.siteDomains).where(eq(t.siteDomains.hostname, d.hostname)).orderBy(t.siteDomains.id).for('update');
+    const holder = claims.find(c => c.id !== d.id && c.status === 'VERIFIED');
+    if (holder) {
+      if (holder.kind !== 'CUSTOM' || await proves(holder.token)) throw new AppError('CONFLICT', 'This domain is not available');
+      await tx.update(t.siteDomains).set({ status: 'FAILED', checkedAt: now }).where(eq(t.siteDomains.id, holder.id));
+    }
+  }
   const status = found ? 'VERIFIED' : d.status === 'VERIFIED' ? 'FAILED' : d.status;
   await tx.update(t.siteDomains).set({ status, checkedAt: now, ...(found && d.status !== 'VERIFIED' ? { verifiedAt: now } : {}) }).where(eq(t.siteDomains.id, d.id));
   return { domainId: d.id, status, found };
