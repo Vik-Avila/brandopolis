@@ -1,0 +1,12 @@
+/* ADR-0035 · development web form page (standalone; no product shell). */
+.lead-page { margin: 0; background: #fff; }
+.lead-main { max-width: 560px; margin: 0 auto; padding: 24px 16px 48px; }
+.lead-dev { margin: 0 0 16px; padding: 8px 12px; border: 1px dashed currentColor; border-radius: 10px; font-size: .9rem; }
+.lead-brand { margin: -8px 0 16px; opacity: .8; }
+#lead-form { display: grid; gap: 8px; }
+#lead-form label { font-weight: 600; }
+#lead-form input:not([type="checkbox"]), #lead-form textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 10px 12px; border: 1px solid #b8b8b8; border-radius: 10px; }
+#lead-form .lead-check { display: flex; gap: 8px; align-items: flex-start; font-weight: 400; }
+#lead-form button { min-height: 44px; margin-top: 8px; font: inherit; font-weight: 600; border-radius: 10px; cursor: pointer; }
+.lead-hint { margin: 0; font-size: .9rem; opacity: .8; }
+.lead-status:empty { display: none; }

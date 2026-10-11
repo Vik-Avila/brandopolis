@@ -1,6 +1,6 @@
 import {createBrandoPresence} from './brando-presence.js';
 const $=s=>document.querySelector(s);
-import {guideHtml,collaborationHtml,invitationLinkHtml,portalHtml,setupHtml,SETUP_LABELS,SETUP_STAGES,identityDirectionsHtml,identityHtml,kitFormHtml,brandoProposalHtml,areaTabsHtml,deliverablesHtml,deliverableFormHtml,deliverableText,AREA_TYPES,planHtml,sharedPlanHtml,objectiveFormHtml,focusFormHtml,actionFormHtml,offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
+import {clientsHtml,resultsHtml,guideHtml,collaborationHtml,invitationLinkHtml,portalHtml,setupHtml,SETUP_LABELS,SETUP_STAGES,identityDirectionsHtml,identityHtml,kitFormHtml,brandoProposalHtml,areaTabsHtml,deliverablesHtml,deliverableFormHtml,deliverableText,AREA_TYPES,planHtml,sharedPlanHtml,objectiveFormHtml,focusFormHtml,actionFormHtml,offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
 import {trapFocus,decisionTabs,viewTabs} from './product-interactions.js';
 import * as analytics from './analytics.js';
 import {PILOT_EVENTS} from './analytics.js';
@@ -2328,6 +2328,43 @@ async function showCollaboration(link){
  root.querySelectorAll('.share-comment').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const text=form.querySelector('textarea'),body=text.value.trim();if(!body){text.focus();notice('Escribe tu comentario.',true);return;}form.dataset.key??=crypto.randomUUID();command('comment',{shareId:form.dataset.share,body,visibility:form.querySelector('select').value,idempotencyKey:form.dataset.key},'Comentario publicado.');}));
  root.querySelectorAll('[data-withdraw]').forEach(b=>b.addEventListener('click',()=>command('withdraw',{shareId:b.dataset.withdraw},'Dejaste de compartirlo. Tu cliente ya no lo verá.')));
 }
+/** ADR-0035 · Clientes: register and follow up real opportunities of the active brand (team only). */
+let clientFilter='all';
+async function showClients(filter=clientFilter,focusId){
+ if(!enterView('#clients','Clientes'))return;
+ clientFilter=filter;
+ const data=await api(`/api/clients?brandId=${encodeURIComponent(brandId)}`);
+ const root=$('#decision');root.innerHTML=clientsHtml(data,filter);
+ const value=id=>{const el=$(id);return el?el.value.trim():'';};
+ root.querySelectorAll('[data-client-filter]').forEach(b=>b.addEventListener('click',()=>run(()=>showClients(b.dataset.clientFilter))));
+ $('#client-form')?.addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget,status=$('#client-form-status');
+  const personName=value('#client-name'),need=value('#client-need');
+  if(!personName){status.textContent='Escribe el nombre o una referencia.';$('#client-name').focus();return;}
+  if(!need){status.textContent='Escribe qué necesita.';$('#client-need').focus();return;}
+  if(value('#client-date')&&!value('#client-next')){status.textContent='Di cuál es el siguiente seguimiento.';$('#client-next').focus();return;}
+  // The key is kept until the server confirms, so a retry after a lost response returns the same opportunity.
+  form.dataset.key??=crypto.randomUUID();
+  run(async()=>{try{const r=await api('/api/clients/create',{brandId,idempotencyKey:form.dataset.key,personName,need,contactEmail:value('#client-email'),contactPhone:value('#client-phone'),attentionChannel:value('#client-channel'),declaredOrigin:value('#client-declared'),ownerUserId:value('#client-owner'),segmentId:value('#client-segment'),offerId:value('#client-offer'),nextAction:value('#client-next'),nextActionDate:value('#client-date')});await showClients('all',r.opportunityId);notice(`Oportunidad guardada (${r.reference}).`);}
+   catch(error){status.textContent=error.code==='INVALID'?'Revisa los datos: correo o teléfono con formato válido y textos más cortos.':'No pudimos confirmar el guardado. Tus datos siguen aquí; vuelve a intentarlo.';throw error;}},event.submitter);
+ });
+ root.querySelectorAll('.client-update').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const f=event.currentTarget,field=n=>f.querySelector(`[name="${n}"]`),status=f.querySelector('.client-update-status');
+  if(field('nextActionDate').value&&!field('nextAction').value.trim()){status.textContent='Di cuál es el siguiente seguimiento.';field('nextAction').focus();return;}
+  const payload={brandId,opportunityId:f.dataset.id,expectedRevision:Number(f.dataset.revision),ownerUserId:field('ownerUserId').value,status:field('status').value,nextAction:field('nextAction').value.trim(),nextActionDate:field('nextActionDate').value};
+  if(field('segmentId'))payload.segmentId=field('segmentId').value;if(field('offerId'))payload.offerId=field('offerId').value;
+  run(async()=>{try{await api('/api/clients/update',payload);await showClients(clientFilter,f.dataset.id);notice('Seguimiento guardado.');}
+   catch(error){if(error.code==='CONFLICT'){status.textContent='Alguien cambió esta oportunidad. Recarga para ver la versión actual; tus cambios no se aplicaron.';}throw error;}},event.submitter);
+ }));
+ $('#segment-form')?.addEventListener('submit',event=>{event.preventDefault();const name=value('#segment-name');if(!name){$('#segment-name').focus();return;}const form=event.currentTarget;form.dataset.key??=crypto.randomUUID();run(async()=>{await api('/api/clients/segment',{brandId,name,idempotencyKey:form.dataset.key});await showClients();notice('Segmento añadido.');},event.submitter);});
+ $('#lead-form-create')?.addEventListener('submit',event=>{event.preventDefault();const name=value('#lead-form-name');if(!name){$('#lead-form-name').focus();return;}const form=event.currentTarget;form.dataset.key??=crypto.randomUUID();run(async()=>{await api('/api/clients/form',{brandId,name,segmentId:value('#lead-form-segment'),idempotencyKey:form.dataset.key});await showClients();notice('Formulario creado. Ábrelo para probarlo; cada envío aparecerá aquí.');},event.submitter);});
+ root.querySelectorAll('[data-disable-form]').forEach(b=>b.addEventListener('click',()=>run(async()=>{await api('/api/clients/disable-form',{brandId,formId:b.dataset.disableForm});await showClients();notice('Formulario desactivado: ya no acepta envíos.');})));
+ if(focusId){const card=document.getElementById(`op-${focusId}`);card?.scrollIntoView({block:'center'});}
+}
+/** ADR-0035 · Resultados: marketing, commercial operation and sales with their real availability. */
+async function showResults(){
+ if(!enterView('#results','Resultados'))return;
+ const data=await api(`/api/results?brandId=${encodeURIComponent(brandId)}`);
+ $('#decision').innerHTML=resultsHtml(data);
+}
 /** ADR-0033 · an invitation link opens the app with #invitacion=…; it is kept until a session exists, then accepted once. */
 const INVITATION_KEY='brandopolis.invitation';
 (()=>{const m=location.hash.match(/^#invitacion=([A-Za-z0-9_-]{43})$/);if(!m)return;try{sessionStorage.setItem(INVITATION_KEY,m[1]);}catch{/* storage unavailable: the hash stays */}history.replaceState(null,'',location.pathname+location.search);window.__pendingInvitation=m[1];})();
@@ -2391,6 +2428,8 @@ $('#offers').addEventListener('click',()=>run(showOffersArea));
 $('#marketing').addEventListener('click',()=>run(showMarketing));
 $('#brand-resources').addEventListener('click',()=>run(showIdentity));
 $('#collaboration').addEventListener('click',()=>run(()=>showCollaboration()));
+$('#clients').addEventListener('click',()=>run(()=>showClients()));
+$('#results').addEventListener('click',()=>run(showResults));
 $('#portal-entry').addEventListener('click',()=>run(()=>showPortal()));
 // ADR-0026: the next Brando question may carry an interpretation scope; a valid answer returns a server proof.
 let brandoInterpretation=null,brandoAssistanceProof=null;
@@ -2530,7 +2569,7 @@ async function showBrandSettings(){
 }
 async function showHelp(){
  enterView('#help','Ayuda');
- $('#decision').innerHTML=`<div class="ws-hero"><p class="eyebrow">Ayuda</p><h2>Cómo funciona Brandopolis</h2><p class="ws-lead">La IA propone. Tú decides. Brandopolis recuerda.</p></div><div class="help-grid"><section><h3>Inicio</h3><p>Te muestra tu siguiente paso: una decisión por tomar o algo que requiere tu revisión. Distingue lo que requiere tu decisión de las observaciones.</p></section><section><h3>Estrategia</h3><p>Nueve decisiones conectadas. Cada una guarda tu elección, tu criterio y su historial. Si una decisión cambia, las conectadas piden revisión; nada se reescribe solo.</p></section><section><h3>Mercado objetivo</h3><p>El mercado donde decides competir: tipo de mercado, necesidad y alcance. No es lo mismo que el <strong>ámbito geográfico</strong> (dónde operas o vendes), el <strong>entorno competitivo</strong> (competidores y alternativas) ni el <strong>cliente principal</strong> (a quién atiendes primero dentro de ese mercado).</p></section><section><h3>Validación</h3><p>Un camino opcional para poner tus ideas a prueba: qué quieres comprobar, cómo lo probarás, qué ocurrió y qué aprendiste. Tu estrategia puede avanzar sin esto; una hipótesis sólo cambia de estado con un aprendizaje que tú aceptas</p></section><section><h3>Brando</h3><p>Tu copiloto estratégico. Sólo consulta a la IA cuando tú lo pides. Sus propuestas aparecen «sin aprobar»: puedes llevarlas al borrador, modificarlas o rechazarlas.</p></section><section><h3>Mi aprendizaje</h3><p>Tu práctica registrada y tus reflexiones privadas. No hay calificaciones automáticas y tus reflexiones no cambian la estrategia de la marca.</p></section><section><h3>Laterales y modo enfoque</h3><p>Contrae la navegación y las herramientas para ganar espacio. Con ambos plegados trabajas en modo enfoque; tus borradores se conservan.</p></section><section><h3>Documentos y configuración</h3><p>Desde el Mapa estratégico descargas el Mapa estratégico ejecutivo y el Brand Book integral. En Configuración de marca está la zona de peligro para eliminar una marca de forma permanente.</p></section><section><h3>Próximamente</h3><p>Productos y servicios, Plan de marketing y Resultados aparecen en la navegación como «Próximamente». Todavía no están disponibles en esta versión.</p></section></div>`;
+ $('#decision').innerHTML=`<div class="ws-hero"><p class="eyebrow">Ayuda</p><h2>Cómo funciona Brandopolis</h2><p class="ws-lead">La IA propone. Tú decides. Brandopolis recuerda.</p></div><div class="help-grid"><section><h3>Inicio</h3><p>Te muestra tu siguiente paso: una decisión por tomar o algo que requiere tu revisión. Distingue lo que requiere tu decisión de las observaciones.</p></section><section><h3>Estrategia</h3><p>Nueve decisiones conectadas. Cada una guarda tu elección, tu criterio y su historial. Si una decisión cambia, las conectadas piden revisión; nada se reescribe solo.</p></section><section><h3>Mercado objetivo</h3><p>El mercado donde decides competir: tipo de mercado, necesidad y alcance. No es lo mismo que el <strong>ámbito geográfico</strong> (dónde operas o vendes), el <strong>entorno competitivo</strong> (competidores y alternativas) ni el <strong>cliente principal</strong> (a quién atiendes primero dentro de ese mercado).</p></section><section><h3>Validación</h3><p>Un camino opcional para poner tus ideas a prueba: qué quieres comprobar, cómo lo probarás, qué ocurrió y qué aprendiste. Tu estrategia puede avanzar sin esto; una hipótesis sólo cambia de estado con un aprendizaje que tú aceptas</p></section><section><h3>Brando</h3><p>Tu copiloto estratégico. Sólo consulta a la IA cuando tú lo pides. Sus propuestas aparecen «sin aprobar»: puedes llevarlas al borrador, modificarlas o rechazarlas.</p></section><section><h3>Mi aprendizaje</h3><p>Tu práctica registrada y tus reflexiones privadas. No hay calificaciones automáticas y tus reflexiones no cambian la estrategia de la marca.</p></section><section><h3>Laterales y modo enfoque</h3><p>Contrae la navegación y las herramientas para ganar espacio. Con ambos plegados trabajas en modo enfoque; tus borradores se conservan.</p></section><section><h3>Documentos y configuración</h3><p>Desde el Mapa estratégico descargas el Mapa estratégico ejecutivo y el Brand Book integral. En Configuración de marca está la zona de peligro para eliminar una marca de forma permanente.</p></section><section><h3>Clientes y Resultados</h3><p>En Clientes registras cada oportunidad, quién la atiende y el siguiente seguimiento; un formulario web también puede crearlas. Resultados muestra lo que ya se mide con esos registros y dice «Sin conectar» o «Sin datos» cuando falta la fuente. Una oportunidad nueva no es una venta.</p></section></div>`;
 }
 
 function renderContext(){

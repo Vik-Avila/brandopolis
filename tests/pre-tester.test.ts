@@ -271,8 +271,9 @@ describe('production verification hotfix', () => {
     const navStart = html.indexOf('<nav id="journey"');
     const nav = html.slice(navStart, html.indexOf('</nav>', navStart));
     const labels = [...nav.matchAll(/<span class="nav-label">([^<]+)/g)].map(m => m[1]);
-    // PHASE4_SPEC §3 (2026-10-10): the sidebar holds only the seven areas and the footer; no scroll is needed.
-    expect(labels).toEqual(['Inicio', 'Estrategia', 'Productos y servicios', 'Marketing', 'Marca y recursos', 'Colaboración', 'Resultados', 'Mi aprendizaje', 'Configuración de marca', 'Ayuda']);
+    // PHASE4_SPEC §3 (2026-10-10) and §12.3 (issue #10, 2026-10-11): eight compact areas (Clientes is an approved
+    // destination) and the footer; no scroll is needed at the checked sizes (browser suite).
+    expect(labels).toEqual(['Inicio', 'Estrategia', 'Productos y servicios', 'Marketing', 'Clientes', 'Marca y recursos', 'Colaboración', 'Resultados', 'Mi aprendizaje', 'Configuración de marca', 'Ayuda']);
     expect(nav).not.toContain('data-module');
     expect(nav).not.toContain('aria-expanded="true" aria-controls="strategy-list');
     // Estrategia keeps its own inner navigation: sections, then the nine journey steps in canonical order.
@@ -288,9 +289,11 @@ describe('production verification hotfix', () => {
     // PHASE4_SPEC §4.2: Marketing (Plan de Marketing) is a real destination too. Marca y recursos, Colaboración and
     // Resultados are announced until their blocks exist (never a fake destination).
     // ADR-0034: Marca y recursos (Identidad visual) is a real destination too. ADR-0033: Colaboración as well.
-    expect(soon.map(m => m[1])).toEqual(['results']);
+    // ADR-0035: Clientes and Resultados are real destinations; no area is announced as «Próximamente» any more.
+    expect(soon.map(m => m[1])).toEqual([]);
     for (const m of soon) { expect(m[0]).toContain('aria-disabled="true"'); expect(m[0]).not.toContain('data-module'); expect(m[0]).not.toMatch(/id="/); }
-    expect(nav.match(/Próximamente<\/span>/g)).toHaveLength(1);
+    expect(nav).not.toContain('Próximamente');
+    for (const id of ['clients', 'results']) expect(nav.match(new RegExp(`<button[^>]*id="${id}"[^>]*>`))?.[0] ?? '').not.toMatch(/aria-disabled|data-soon/);
     expect(nav.match(/<button[^>]*id="brand-resources"[^>]*>/)?.[0] ?? '').not.toContain('aria-disabled');
     const offers = nav.match(/<button[^>]*id="offers"[^>]*>/)?.[0] ?? '';
     expect(offers).not.toContain('aria-disabled');

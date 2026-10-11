@@ -1,3 +1,41 @@
+## 2026-10-11 · PHASE 4 · Clientes: captura persistente manual/web y Resultados ampliados (issue #10)
+
+- **Datos (migración aditiva `0027_client_capture`, ADR-0035 propuesto):** `client_segments` (id estable por marca;
+  sólo se desactiva), `lead_forms` (id público aleatorio de 22 caracteres; ACTIVE → DISABLED una vez),
+  `client_opportunities` (persona, contacto opcional, necesidad, origen MANUAL/WEB_FORM, responsable o cola, segmento,
+  oferta, siguiente seguimiento, NEW/IN_PROGRESS, revisión; clave de captura única por espacio, marca, ámbito y clave,
+  con huella), `client_interactions` (evidencia por interacción: canal de atención, plataforma, origen declarado, UTM,
+  identificadores de clic, ruta y dominio de referencia depurados, estado de campaña con causa, consentimiento) y
+  `client_opportunity_events` (append-only). Triggers: identidad de captura, origen y recepción inmutables; revisión
+  +1 por cambio; borrado sólo en el borrado registrado de marca (añadidas a `deleteBrand`). Sólo se aplicó en la base
+  aislada de la DEMO (55434) y en la de pruebas (55432).
+- **Motor:** `src/domain/clients.ts` (validación, lista de campos de evidencia, estado de campaña, huella estable,
+  pendientes) y `src/application/clients.ts`. Equipo por `withBrandActor` (el invitado no tiene membresía → 404);
+  responsable sólo miembro activo con acceso; formularios con `PUBLISH_SITE`; auditoría `CLIENTS_*` sólo con ids.
+  Formulario público sin sesión: la marca sale del formulario activo; confirmación tras el commit; reintento con el
+  mismo envío → misma oportunidad; misma clave con otro contenido → 409; dos envíos simultáneos → una fila.
+- **Rutas:** `/api/clients`, `/api/clients/{create,update,segment,form,disable-form}`, `/api/results`,
+  `GET /api/forms/public`, `POST /api/forms/submit` (mismo origen, 40 KB, límites por cliente y por formulario).
+  Página de desarrollo `/formulario?f=…` (`lead-form.html/js/css`, `noindex`).
+- **Interfaz:** ocho áreas (Clientes entre Marketing y Marca y recursos; Resultados deja «Próximamente»); filas del
+  lateral de 42 px sólo con altura ≤ 820 px para que no haya desplazamiento a 1366×768; Ayuda actualizada.
+- **Herramientas, prueba técnica y pendientes:** ver la entrada documental anterior; la prueba acotada de Chatwoot no
+  se ejecutó (sin entorno aislado ni versión elegida).
+- **Resultados (árbol de este commit, DEMO aislada):** typecheck y lint 0 errores; Foundation 0; validador de UI PASS.
+  `pnpm test`: 480 PASS y 2 FAIL antes de actualizar las dos pruebas de navegación que esperaban siete áreas
+  (`pre-tester.test.ts`); tras actualizarlas, ese archivo 29/29 y los 7 casos de Clientes 7/7. **La suite completa no
+  se repitió después de esa corrección.** E2E nueva `phase4-clients.spec.ts`: PASS en wide, desktop, compact, tablet y
+  móvil (con un invitado real de la DEMO y la respuesta perdida tras el commit). Defecto propio corregido: la octava
+  área desplazaba el lateral a 1366×768 (32 px); ahora las filas miden 42 px sólo con altura ≤ 820 px.
+- **Regresión E2E completa: NO terminada.** Claude Code detuvo por falta de memoria del equipo la ejecución secuencial
+  (`wide-a` sí terminó: 24 PASS · 3 FAIL —dos «worker process exited unexpectedly» con código 0xC0000142 durante la falta
+  de memoria y `phase3.spec.ts:58` (Validación, `.plan-quality` no apareció), sin diagnóstico y sin relación conocida
+  con Clientes—), el servidor aislado y la base de pruebas; los procesos que quedaron (servidor 3001 y PostgreSQL 55434,
+  propios del repositorio) se detuvieron después, sin reiniciar nada. Pendientes antes de dar el bloque por cerrado:
+  `pnpm test` completo, `test:e2e` en los 5 proyectos (incluidas `workspace.spec` y `micro-hotfix.spec` actualizadas),
+  `test:pilot:e2e`, `test:visual` y comparación de píxeles (cambian el menú de ocho áreas y su altura en pantallas
+  bajas; ninguna canónica tocada). Estado: **not release-ready**.
+
 ## 2026-10-11 · PHASE 4 · reconciliación del issue #10 (Clientes y Resultados, plan v5) · documental
 
 - **Fuentes verificadas:** paquete `Brandopolis_Fase4_Issue10_Clientes_Resultados_2026-10-11 (1).zip` (en la carpeta

@@ -42,7 +42,7 @@ test('Inicio: one next step, real 9-segment progress and decision vs observation
  expect(await noOverflow(page)).toBe(true);
 });
 
-test('Navigation: Estrategia inner navigation, Mercado objetivo, Productos y servicios, Marketing, Marca y recursos, Colaboración, one «Próximamente» non-destination, Mi aprendizaje, Mapa and Ayuda',async({page},info)=>{
+test('Navigation: Estrategia inner navigation, Mercado objetivo, Productos y servicios, Marketing, Marca y recursos, Colaboración, Clientes and Resultados as destinations, Mi aprendizaje, Mapa and Ayuda',async({page},info)=>{
  await signIn(page,`Menu ${info.project.name} ${Date.now()}`);
  const menu=page.getByRole('button',{name:'Abrir navegación',exact:true});
  if(await menu.isVisible())await menu.click();
@@ -57,14 +57,9 @@ test('Navigation: Estrategia inner navigation, Mercado objetivo, Productos y ser
  await expect(nav.locator('[data-soon]',{hasText:'Marketing'})).toHaveCount(0);
  await expect(nav.locator('[data-soon]',{hasText:'Marca y recursos'})).toHaveCount(0);
  await expect(nav.locator('[data-soon]',{hasText:'Colaboración'})).toHaveCount(0); // ADR-0033: a real destination
- for(const name of ['Resultados']){
-  const item=nav.locator('[data-soon]',{hasText:name});
-  await expect(item).toHaveAttribute('aria-disabled','true');
-  await expect(item).toContainText('Próximamente');
-  const before=await page.locator('#decision').innerHTML();
-  await item.click({force:true});
-  expect(await page.locator('#decision').innerHTML(),`${name} never opens a screen`).toBe(before);
- }
+ // ADR-0035 (issue #10): Clientes and Resultados are real destinations; no area is announced as «Próximamente».
+ await expect(nav.locator('[data-soon]')).toHaveCount(0);
+ await expect(nav).not.toContainText('Próximamente');
  await nav.getByRole('button',{name:'Mi aprendizaje',exact:true}).click();
  await expect(page.locator('#practice')).toHaveAttribute('aria-current','page');
  await expect(page.locator('#learning-loop')).not.toHaveAttribute('aria-current','page');

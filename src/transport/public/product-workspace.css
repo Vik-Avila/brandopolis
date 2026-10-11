@@ -969,3 +969,26 @@ button.danger:disabled { background: #E8D5D2; border-color: #E8D5D2; color: #6E5
 .portal-strategy dt { font-weight: 600; }
 .portal-strategy dd { margin: 0; overflow-wrap: anywhere; }
 @media (max-width: 640px) { .portal-strategy { grid-template-columns: 1fr; } .portal-strategy dd { margin-bottom: 8px; } }
+/* ADR-0035 · Clientes and Resultados */
+.client-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
+.client-filters button[aria-pressed="true"] { border-color: var(--ws-ink); font-weight: 600; }
+.client-count { font-variant-numeric: tabular-nums; }
+.client-list { display: grid; gap: 12px; }
+.client-card { padding: 14px; border: 1px solid var(--ws-line); border-radius: 14px; display: grid; gap: 8px; min-width: 0; }
+.client-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.client-head h4 { margin: 0; flex: 1 1 200px; overflow-wrap: anywhere; }
+.client-card .offer-facts dd { overflow-wrap: anywhere; }
+.client-tags { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; padding: 0; }
+.client-tags li { padding: 4px 10px; border: 1px solid var(--ws-line); border-radius: 999px; }
+.result-grid { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin: 8px 0 0; padding: 0; }
+.result-card { padding: 14px; border: 1px solid var(--ws-line); border-radius: 14px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.result-card.is-missing { border-style: dashed; }
+.result-label { margin: 0; font-weight: 600; }
+.result-value { margin: 0; font-size: 1.6rem; font-variant-numeric: tabular-nums; }
+.result-card.is-missing .result-value { font-size: 1.05rem; }
+/* PHASE4_SPEC §12.3 · eight areas plus the footer fit without sidebar scroll on short laptop screens (1366×768,
+   1280×800): rows tighten from 46px to 42px only there; zoom or smaller heights may still scroll, never clip. */
+@media (min-width: 761px) and (max-height: 820px) {
+  #journey .nav-item, #journey #home.nav-item, #journey #practice.nav-item { min-height: 42px; padding-top: 6px; padding-bottom: 6px; }
+  #journey .nav-head { padding-bottom: 6px; }
+}

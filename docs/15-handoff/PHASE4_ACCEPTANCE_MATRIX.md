@@ -337,39 +337,39 @@ comprueba un botón oculto no demuestra autorización del servidor.
 
 | ID | Momento | Criterio observable y evidencia esperada | Estado |
 |---|---|---|---|
-| I10-DOC-01 | F4 | Especificación, aceptación, requisitos, alcance, roadmap, handoff, SESSION_STATE y CHANGELOG concuerdan con el issue; diff revisado y enlaces válidos. | pendiente |
-| I10-CLI-01 | F4 | Registrar manualmente una oportunidad y recuperarla tras recarga y nueva sesión; comprobar la fila persistida y su ámbito. | pendiente |
-| I10-CLI-02 | F4 | Enviar el formulario web realmente habilitado en desarrollo; comprobar oportunidad y respuesta después de guardar, no solo una llamada simulada. | pendiente |
-| I10-CLI-03 | F4 | Origen, fecha de recepción, estado inicial, responsable o cola quedan guardados; relaciones a oferta/público/campaña, si existen, pertenecen a la marca. | pendiente |
-| I10-CLI-04 | F4 | Repetir el mismo envío, incluso simultáneamente, produce una sola oportunidad; clave repetida con contenido distinto devuelve conflicto. | pendiente |
-| I10-CLI-05 | F4 | Dos solicitudes legítimas con distintos identificadores y el mismo correo/teléfono se conservan; no hay fusión automática de identidades. | pendiente |
-| I10-CLI-06 | F4 | Interrumpir antes del commit y después del commit antes de responder: el reintento recupera exactamente un registro por envío. | pendiente |
-| I10-CLI-07 | F4 | Guardar, modificar y recuperar el siguiente seguimiento; una revisión antigua se rechaza sin perder el cambio vigente. | pendiente |
-| I10-CLI-08 | F4 | Sin responsable o seguimiento, la oportunidad aparece en pendientes accionables; los filtros abren el expediente correcto. | pendiente |
-| I10-CLI-09 | F4 | Con Chatwoot y la IA desconectados, registro manual/web y seguimiento nativos siguen funcionando. | pendiente |
-| I10-CLI-10 | F4 | Una base no disponible no produce confirmación falsa ni pérdida silenciosa; se permite reintentar con la misma referencia. | pendiente |
+| I10-DOC-01 | F4 | Especificación, aceptación, requisitos, alcance, roadmap, handoff, SESSION_STATE y CHANGELOG concuerdan con el issue; diff revisado y enlaces válidos. | documentado (`6d1e55c`) |
+| I10-CLI-01 | F4 | Registrar manualmente una oportunidad y recuperarla tras recarga y nueva sesión; comprobar la fila persistida y su ámbito. | validado en DEMO: U `tests/client-cases.ts` (nueva sesión) + E `tests/browser/phase4-clients.spec.ts` (5 proyectos) (recarga y otro contexto) |
+| I10-CLI-02 | F4 | Enviar el formulario web realmente habilitado en desarrollo; comprobar oportunidad y respuesta después de guardar, no solo una llamada simulada. | validado en DEMO: página de desarrollo `/formulario` real, no simulada (E `tests/browser/phase4-clients.spec.ts` (5 proyectos)) |
+| I10-CLI-03 | F4 | Origen, fecha de recepción, estado inicial, responsable o cola quedan guardados; relaciones a oferta/público/campaña, si existen, pertenecen a la marca. | validado en DEMO: U `tests/client-cases.ts`; ofertas/segmentos de otra marca rechazados |
+| I10-CLI-04 | F4 | Repetir el mismo envío, incluso simultáneamente, produce una sola oportunidad; clave repetida con contenido distinto devuelve conflicto. | validado en DEMO: U `tests/client-cases.ts` (reintento, simultáneos, clave con otro contenido → 409) |
+| I10-CLI-05 | F4 | Dos solicitudes legítimas con distintos identificadores y el mismo correo/teléfono se conservan; no hay fusión automática de identidades. | validado en DEMO: U `tests/client-cases.ts` |
+| I10-CLI-06 | F4 | Interrumpir antes del commit y después del commit antes de responder: el reintento recupera exactamente un registro por envío. | validado en DEMO: U `tests/client-cases.ts` (fallo antes del commit) + E `tests/browser/phase4-clients.spec.ts` (5 proyectos) (respuesta perdida tras el commit) |
+| I10-CLI-07 | F4 | Guardar, modificar y recuperar el siguiente seguimiento; una revisión antigua se rechaza sin perder el cambio vigente. | validado en DEMO: U `tests/client-cases.ts` (409 sin pérdida) + E `tests/browser/phase4-clients.spec.ts` (5 proyectos) |
+| I10-CLI-08 | F4 | Sin responsable o seguimiento, la oportunidad aparece en pendientes accionables; los filtros abren el expediente correcto. | validado en DEMO: U `tests/client-cases.ts` + E `tests/browser/phase4-clients.spec.ts` (5 proyectos) (filtro «Por asignar») |
+| I10-CLI-09 | F4 | Con Chatwoot y la IA desconectados, registro manual/web y seguimiento nativos siguen funcionando. | validado en DEMO: la DEMO no tiene Chatwoot ni IA y la captura funciona |
+| I10-CLI-10 | F4 | Una base no disponible no produce confirmación falsa ni pérdida silenciosa; se permite reintentar con la misma referencia. | parcial: la página no confirma sin respuesta y conserva la referencia (E); el servidor responde 503 sin detalle; sin prueba con la base caída |
 
 ### Seguridad y aislamiento
 
 | ID | Momento | Criterio observable y evidencia esperada | Estado |
 |---|---|---|---|
-| I10-SEC-01 | F4 | Dos espacios y dos marcas del mismo espacio: IDs manipulados no permiten leer, crear, editar, relacionar o agregar datos ajenos. | pendiente |
-| I10-SEC-02 | F4 | Invitado de marketing sin capacidad comercial no accede a Clientes ni a sus endpoints; ser invitado en otra marca no amplía su acceso. | pendiente |
-| I10-SEC-03 | F4 | La asignación admite solo miembros autorizados; revocación y baja surten efecto en la siguiente operación y en trabajos pendientes. | pendiente |
-| I10-SEC-04 | F4 | El formulario no acepta un espacio/marca arbitrarios ni relaciones de otra marca; validar también el identificador de formulario. | pendiente |
-| I10-SEC-05 | F4 | Límites, campos malformados y exceso de solicitudes se manejan de forma controlada; no se filtran secretos ni datos personales a logs/telemetría. | pendiente |
-| I10-SEC-06 | F4 y cada ampliación | Borrado/cierre/exportación/retención cubren los datos nuevos; borrar una marca no elimina ni conserva indebidamente datos de otra. | pendiente |
-| I10-SEC-07 | F4 y cada ampliación | Búsquedas, agregados, archivos, trabajos y exportaciones habilitados validan el ámbito en servidor; lo no construido se marca pendiente, no “validado”. | pendiente |
-| I10-SEC-08 | F4 y F6 | Datos comerciales o instrucciones de un formulario no cambian decisiones estratégicas ni permisos; IA solo ve el ámbito autorizado cuando se habilite. | pendiente |
+| I10-SEC-01 | F4 | Dos espacios y dos marcas del mismo espacio: IDs manipulados no permiten leer, crear, editar, relacionar o agregar datos ajenos. | validado en DEMO: U `tests/client-cases.ts` (otro espacio 404, otra marca, ids manipulados) |
+| I10-SEC-02 | F4 | Invitado de marketing sin capacidad comercial no accede a Clientes ni a sus endpoints; ser invitado en otra marca no amplía su acceso. | validado en DEMO: U `tests/client-cases.ts` + E `tests/browser/phase4-clients.spec.ts` (5 proyectos) (invitado real recibe 404 en Clientes y Resultados) |
+| I10-SEC-03 | F4 | La asignación admite solo miembros autorizados; revocación y baja surten efecto en la siguiente operación y en trabajos pendientes. | validado en DEMO: U `tests/client-cases.ts` (responsable sin acceso rechazado; baja aplica en la siguiente operación) |
+| I10-SEC-04 | F4 | El formulario no acepta un espacio/marca arbitrarios ni relaciones de otra marca; validar también el identificador de formulario. | validado en DEMO: U `tests/client-cases.ts` (marca/espacio del navegador ignorados; formulario desactivado o inexistente → 404) |
+| I10-SEC-05 | F4 | Límites, campos malformados y exceso de solicitudes se manejan de forma controlada; no se filtran secretos ni datos personales a logs/telemetría. | parcial: límites y campos malformados probados (U); límite de solicitudes implementado sin prueba de carga; logs sin contenido por revisión de código |
+| I10-SEC-06 | F4 y cada ampliación | Borrado/cierre/exportación/retención cubren los datos nuevos; borrar una marca no elimina ni conserva indebidamente datos de otra. | parcial: borrado de marca validado en DEMO (U `tests/client-cases.ts`); exportación y retención aún no existen |
+| I10-SEC-07 | F4 y cada ampliación | Búsquedas, agregados, archivos, trabajos y exportaciones habilitados validan el ámbito en servidor; lo no construido se marca pendiente, no “validado”. | parcial: agregados de Resultados calculados en servidor con el ámbito (U); búsquedas y exportaciones de Clientes no construidas |
+| I10-SEC-08 | F4 y F6 | Datos comerciales o instrucciones de un formulario no cambian decisiones estratégicas ni permisos; IA solo ve el ámbito autorizado cuando se habilite. | implementado por construcción (ninguna ruta de Clientes escribe estrategia ni permisos; Brando no lee Clientes); sin prueba específica |
 
 ### Resultados
 
 | ID | Momento | Criterio observable y evidencia esperada | Estado |
 |---|---|---|---|
-| I10-RES-01 | F4 | Resultados presenta marketing, operación comercial y ventas con su disponibilidad real; recuentos iniciales usan oportunidades persistidas. | pendiente |
-| I10-RES-02 | F4 | Cada cifra identifica definición, ámbito, fuente, periodo, zona horaria y actualización; moneda cuando aplica. | pendiente |
-| I10-RES-03 | F4 | Periodo medido sin registros muestra cero; fuente ausente/incompleta muestra sin datos/sin conectar; prueba con ambos casos. | pendiente |
-| I10-RES-04 | F4 y F5 | No se suman conversiones de proveedores como ventas únicas; separar atribución conocida, estimada y desconocida. | pendiente |
+| I10-RES-01 | F4 | Resultados presenta marketing, operación comercial y ventas con su disponibilidad real; recuentos iniciales usan oportunidades persistidas. | validado en DEMO: U `tests/client-cases.ts` + E `tests/browser/phase4-clients.spec.ts` (5 proyectos) |
+| I10-RES-02 | F4 | Cada cifra identifica definición, ámbito, fuente, periodo, zona horaria y actualización; moneda cuando aplica. | validado en DEMO: U `tests/client-cases.ts` (definición, fuente, ámbito, periodo, zona horaria, cálculo) |
+| I10-RES-03 | F4 | Periodo medido sin registros muestra cero; fuente ausente/incompleta muestra sin datos/sin conectar; prueba con ambos casos. | validado en DEMO: U `tests/client-cases.ts` + E `tests/browser/phase4-clients.spec.ts` (5 proyectos) (cero medido frente a «Sin conectar»/«Sin datos») |
+| I10-RES-04 | F4 y F5 | No se suman conversiones de proveedores como ventas únicas; separar atribución conocida, estimada y desconocida. | parcial: no hay conversiones de proveedores que sumar; la referencia de campaña se muestra como capturada sin verificar |
 | I10-RES-05 | F5 | Venta ganada, facturación, cobro y previsión se muestran por separado, con fuentes y permisos; no convertir conversación resuelta en venta. | pendiente |
 | I10-RES-06 | F5 | No mezclar monedas sin conversión explícita y trazable; preservar el valor original y la fecha/tasa utilizada. | pendiente |
 
@@ -377,44 +377,44 @@ comprueba un botón oculto no demuestra autorización del servidor.
 
 | ID | Momento | Criterio observable y evidencia esperada | Estado |
 |---|---|---|---|
-| I10-UI-01 | F4 | Clientes ofrece registro y seguimiento reales; su apertura conserva selector de marca y contexto; ninguna maqueta acredita el criterio. | pendiente |
-| I10-UI-02 | F4 | Propuesta de navegación probada a 1366×768, 1280×800 y 1440×900 sin scroll lateral a escala normal; zoom mantiene todos los controles accesibles. | pendiente |
-| I10-UI-03 | F4 | Teclado, foco, tablet y móvil funcionan; cambio de área cierra el menú móvil; revisar diferencias visuales de los archivos afectados. | pendiente |
+| I10-UI-01 | F4 | Clientes ofrece registro y seguimiento reales; su apertura conserva selector de marca y contexto; ninguna maqueta acredita el criterio. | validado en DEMO: E `tests/browser/phase4-clients.spec.ts` (5 proyectos) |
+| I10-UI-02 | F4 | Propuesta de navegación probada a 1366×768, 1280×800 y 1440×900 sin scroll lateral a escala normal; zoom mantiene todos los controles accesibles. | parcial: sin desplazamiento del lateral a 1366×768, 1280×800 y 1440×900 (E `tests/browser/phase4-clients.spec.ts` (5 proyectos) y `micro-hotfix.spec.ts`); zoom sin prueba nueva |
+| I10-UI-03 | F4 | Teclado, foco, tablet y móvil funcionan; cambio de área cierra el menú móvil; revisar diferencias visuales de los archivos afectados. | parcial: tablet y móvil (E), el menú móvil se cierra al cambiar de área; teclado sin prueba nueva; diferencias visuales registradas sin aprobar |
 
 ### Prueba técnica Chatwoot
 
 | ID | Momento | Criterio observable y evidencia esperada | Estado |
 |---|---|---|---|
-| I10-CW-01 | Prueba técnica | Fijar repositorio, versión/commit y componentes; inventariar licencias MIT, Enterprise y terceros; no copiar funciones comerciales sin autorización contractual. | pendiente |
-| I10-CW-02 | Prueba técnica | Demostrar cobertura real de APIs para lectura/respuesta, notas privadas, asignación y adjuntos; documentar operaciones ausentes y coste de construirlas. | pendiente |
-| I10-CW-03 | Prueba técnica | Comparar cuenta por marca con cuenta por espacio e inboxes; probar contactos, búsquedas, informes, exportaciones, notas y archivos entre ámbitos y roles. | pendiente |
-| I10-CW-04 | Prueba técnica | Tokens permanecen en servidor; cada operación comprueba actor, espacio, marca y correspondencia del recurso externo, también con IDs manipulados. | pendiente |
-| I10-CW-05 | Prueba técnica | Aprovisionamiento usa Platform API dentro de sus recursos permitidos; no confundirlo con SAML ni con APIs del widget. | pendiente |
-| I10-CW-06 | Prueba técnica | Rechazar webhook adulterado, firma inválida o repetición indebida según el contrato de la versión; verificar cuerpo original y asociación de cuenta. | pendiente |
-| I10-CW-07 | Prueba técnica | Reintentos y eventos fuera de orden no duplican ni hacen retroceder registros; probar evento faltante, conciliación y resultado incierto. | pendiente |
-| I10-CW-08 | Prueba técnica | Mensaje web → referencia de contacto → oportunidad y seguimiento persistentes; recargar, reintentar y comprobar dos marcas con accesos negativos. | pendiente |
-| I10-CW-09 | Prueba técnica | Baja/revocación corta acceso a conversaciones y archivos, incluidos enlaces ya emitidos según su contrato; notas privadas no llegan al invitado. | pendiente |
-| I10-CW-10 | Prueba técnica | Caída de Chatwoot conserva la oportunidad y el seguimiento; recuperación no duplica contactos/eventos ni declara mensajes entregados sin evidencia. | pendiente |
-| I10-CW-11 | Prueba técnica | Inventariar costes de licencia, agentes/cuentas, infraestructura, almacenamiento, correo, canales, IA y mantenimiento; comparar escenarios sin suponer licencia gratuita = coste cero. | pendiente |
-| I10-CW-12 | Prueba técnica | Registrar autoridad de cada campo y correspondencias externas; resolver conflicto sin mantener dos expedientes comerciales maestros editables. | pendiente |
+| I10-CW-01 | Prueba técnica | Fijar repositorio, versión/commit y componentes; inventariar licencias MIT, Enterprise y terceros; no copiar funciones comerciales sin autorización contractual. | pendiente: prueba técnica sin entorno aislado ni versión elegida (no se instala Chatwoot junto a las E2E) |
+| I10-CW-02 | Prueba técnica | Demostrar cobertura real de APIs para lectura/respuesta, notas privadas, asignación y adjuntos; documentar operaciones ausentes y coste de construirlas. | pendiente: prueba técnica sin entorno aislado ni versión elegida (no se instala Chatwoot junto a las E2E) |
+| I10-CW-03 | Prueba técnica | Comparar cuenta por marca con cuenta por espacio e inboxes; probar contactos, búsquedas, informes, exportaciones, notas y archivos entre ámbitos y roles. | pendiente: prueba técnica sin entorno aislado ni versión elegida (no se instala Chatwoot junto a las E2E) |
+| I10-CW-04 | Prueba técnica | Tokens permanecen en servidor; cada operación comprueba actor, espacio, marca y correspondencia del recurso externo, también con IDs manipulados. | pendiente: prueba técnica sin entorno aislado ni versión elegida (no se instala Chatwoot junto a las E2E) |
+| I10-CW-05 | Prueba técnica | Aprovisionamiento usa Platform API dentro de sus recursos permitidos; no confundirlo con SAML ni con APIs del widget. | pendiente: prueba técnica sin entorno aislado ni versión elegida (no se instala Chatwoot junto a las E2E) |
+| I10-CW-06 | Prueba técnica | Rechazar webhook adulterado, firma inválida o repetición indebida según el contrato de la versión; verificar cuerpo original y asociación de cuenta. | pendiente: prueba técnica sin entorno aislado ni versión elegida (no se instala Chatwoot junto a las E2E) |
+| I10-CW-07 | Prueba técnica | Reintentos y eventos fuera de orden no duplican ni hacen retroceder registros; probar evento faltante, conciliación y resultado incierto. | pendiente: prueba técnica sin entorno aislado ni versión elegida (no se instala Chatwoot junto a las E2E) |
+| I10-CW-08 | Prueba técnica | Mensaje web → referencia de contacto → oportunidad y seguimiento persistentes; recargar, reintentar y comprobar dos marcas con accesos negativos. | pendiente: prueba técnica sin entorno aislado ni versión elegida (no se instala Chatwoot junto a las E2E) |
+| I10-CW-09 | Prueba técnica | Baja/revocación corta acceso a conversaciones y archivos, incluidos enlaces ya emitidos según su contrato; notas privadas no llegan al invitado. | pendiente: prueba técnica sin entorno aislado ni versión elegida (no se instala Chatwoot junto a las E2E) |
+| I10-CW-10 | Prueba técnica | Caída de Chatwoot conserva la oportunidad y el seguimiento; recuperación no duplica contactos/eventos ni declara mensajes entregados sin evidencia. | pendiente: prueba técnica sin entorno aislado ni versión elegida (no se instala Chatwoot junto a las E2E) |
+| I10-CW-11 | Prueba técnica | Inventariar costes de licencia, agentes/cuentas, infraestructura, almacenamiento, correo, canales, IA y mantenimiento; comparar escenarios sin suponer licencia gratuita = coste cero. | pendiente: prueba técnica sin entorno aislado ni versión elegida (no se instala Chatwoot junto a las E2E) |
+| I10-CW-12 | Prueba técnica | Registrar autoridad de cada campo y correspondencias externas; resolver conflicto sin mantener dos expedientes comerciales maestros editables. | pendiente: prueba técnica sin entorno aislado ni versión elegida (no se instala Chatwoot junto a las E2E) |
 
 ### Canales
 
 | ID | Momento | Criterio observable y evidencia esperada | Estado |
 |---|---|---|---|
-| I10-CHN-01 | F4 y cada integración | Matriz por canal diferencia formulario, conversación, anuncios y analítica; cada capacidad informa estado, requisitos, pruebas y limitaciones. | pendiente |
+| I10-CHN-01 | F4 y cada integración | Matriz por canal diferencia formulario, conversación, anuncios y analítica; cada capacidad informa estado, requisitos, pruebas y limitaciones. | documentado (PHASE4_EXTERNAL_REQUIREMENTS, tabla de fuentes) |
 | I10-CHN-02 | Fase correspondiente | TikTok valida elegibilidad/región/aprobación; LinkedIn Lead Sync aprobado no se presenta como acceso a mensajes privados. | pendiente |
-| I10-CHN-03 | F4 | Contacto comercial no activa consentimientos publicitarios ni depende de etiquetas de conversión; conservar evidencia de la finalidad y opciones elegidas. | pendiente |
+| I10-CHN-03 | F4 | Contacto comercial no activa consentimientos publicitarios ni depende de etiquetas de conversión; conservar evidencia de la finalidad y opciones elegidas. | validado en DEMO: U `tests/client-cases.ts` (finalidad del contacto obligatoria; publicidad opcional y falsa por defecto; sin etiquetas) |
 | I10-CHN-04 | Fase correspondiente | Envío externo de mensajes o anuncios exige su permiso y estado real; no confundir propuesta, encolado, enviado y entregado. | pendiente |
 
 ### Continuidad y evidencia
 
 | ID | Momento | Criterio observable y evidencia esperada | Estado |
 |---|---|---|---|
-| I10-CON-01 | F4 | Registrar por separado código implementado, evidencia DEMO, pruebas PILOT sintéticas, invitado PILOT real y proveedores reales. | pendiente |
-| I10-CON-02 | F4 | Conservar cuatro intermitencias reportadas como sin diagnóstico; una repetición verde no acredita su corrección. | pendiente |
-| I10-CON-03 | F4 | Registrar versión/árbol de cada gate; no aprobar capturas v5 ni nuevas de Colaboración por esta adenda. | pendiente |
-| I10-CON-04 | F4 | Cierre de la captura no declara completado el CRM, la mensajería, las integraciones ni toda Fase 4. | pendiente |
+| I10-CON-01 | F4 | Registrar por separado código implementado, evidencia DEMO, pruebas PILOT sintéticas, invitado PILOT real y proveedores reales. | documentado (SESSION_STATE y esta matriz distinguen código, DEMO, PILOT y proveedores) |
+| I10-CON-02 | F4 | Conservar cuatro intermitencias reportadas como sin diagnóstico; una repetición verde no acredita su corrección. | documentado (intermitencias conservadas sin diagnóstico) |
+| I10-CON-03 | F4 | Registrar versión/árbol de cada gate; no aprobar capturas v5 ni nuevas de Colaboración por esta adenda. | documentado (árbol de cada gate en SESSION_STATE; capturas no aprobadas) |
+| I10-CON-04 | F4 | Cierre de la captura no declara completado el CRM, la mensajería, las integraciones ni toda Fase 4. | documentado (el cierre no declara CRM, mensajería ni Fase 4 completos) |
 
 ### Flujo comercial (plan v5 §11)
 
@@ -433,25 +433,25 @@ comprueba un botón oculto no demuestra autorización del servidor.
 |---|---|---|---|
 | I10-BRA-01 | F5 | El asistente interno redacta con contexto autorizado y vigente; el borrador no se envía al cliente al generarlo. | pendiente |
 | I10-BRA-02 | F6 | El agente externo solo responde en marcas/canales con política habilitada y contexto publicable; notas internas/borradores no se filtran. | pendiente |
-| I10-BRA-03 | Contrato/prueba F4; operación F6 | Toma humana durante generación o antes del envío impide nuevas respuestas del bot; devolución explícita queda auditada; un envío ya iniciado se concilia sin repetición ciega. | pendiente |
-| I10-BRA-04 | Prueba F4; F5/F6 según modo | Webhooks repetidos, mensajes del bot y cambios sincronizados no generan bucles ni duplican respuestas; probar llegada fuera de orden. | pendiente |
-| I10-BRA-05 | Prueba F4; operación F5/F6 | Ante fallo de IA/canal se conserva el expediente y se muestra atención humana y estado real; no se finge un envío. | pendiente |
-| I10-BRA-06 | Prueba F4; F5/F6 | Se reutiliza el gateway autorizado, se registra consumo por marca y límites; no se incorpora Captain AI o un proveedor nuevo implícitamente. | pendiente |
+| I10-BRA-03 | Contrato/prueba F4; operación F6 | Toma humana durante generación o antes del envío impide nuevas respuestas del bot; devolución explícita queda auditada; un envío ya iniciado se concilia sin repetición ciega. | pendiente: prueba técnica sin entorno aislado ni versión elegida (no se instala Chatwoot junto a las E2E) |
+| I10-BRA-04 | Prueba F4; F5/F6 según modo | Webhooks repetidos, mensajes del bot y cambios sincronizados no generan bucles ni duplican respuestas; probar llegada fuera de orden. | pendiente: prueba técnica sin entorno aislado ni versión elegida (no se instala Chatwoot junto a las E2E) |
+| I10-BRA-05 | Prueba F4; operación F5/F6 | Ante fallo de IA/canal se conserva el expediente y se muestra atención humana y estado real; no se finge un envío. | pendiente: prueba técnica sin entorno aislado ni versión elegida (no se instala Chatwoot junto a las E2E) |
+| I10-BRA-06 | Prueba F4; F5/F6 | Se reutiliza el gateway autorizado, se registra consumo por marca y límites; no se incorpora Captain AI o un proveedor nuevo implícitamente. | pendiente: prueba técnica sin entorno aislado ni versión elegida (no se instala Chatwoot junto a las E2E) |
 | I10-BRA-07 | F5/F6 | Pruebas negativas cubren roles/equipos, marcas, espacios, identificadores manipulados y separación del contexto interno/publicable. | pendiente |
-| I10-BRA-08 | Prueba F4 y cada habilitación | Informar por separado simulador, Chatwoot real, canal real e IA real; fijar versión/licencia/token/firma y alcance de la prueba. | pendiente |
+| I10-BRA-08 | Prueba F4 y cada habilitación | Informar por separado simulador, Chatwoot real, canal real e IA real; fijar versión/licencia/token/firma y alcance de la prueba. | pendiente: prueba técnica sin entorno aislado ni versión elegida (no se instala Chatwoot junto a las E2E) |
 
 ### Origen y atribución (plan v5 §12)
 
 | ID | Momento | Criterio observable y evidencia esperada | Estado |
 |---|---|---|---|
-| I10-ATR-01 | F4; continuidad hasta venta F5 | Un formulario etiquetado persiste UTMs/IDs disponibles, cuenta/fuente, canal, evento y fechas; no depende de Analytics para vincular la captura. | pendiente |
-| I10-ATR-02 | F4 | Sin referencia o permisos se guarda el lead y se muestra Campaña no identificada con causa; origen declarado permanece distinto del verificado. | pendiente |
-| I10-ATR-03 | F4 | Captura manual/web guarda responsable o cola y segmento conocido opcional de esa marca; campo ausente no provoca una clasificación inventada. | pendiente |
+| I10-ATR-01 | F4; continuidad hasta venta F5 | Un formulario etiquetado persiste UTMs/IDs disponibles, cuenta/fuente, canal, evento y fechas; no depende de Analytics para vincular la captura. | validado en DEMO en su parte F4 (U `tests/client-cases.ts` + E `tests/browser/phase4-clients.spec.ts` (5 proyectos)); continuidad hasta la venta en F5 |
+| I10-ATR-02 | F4 | Sin referencia o permisos se guarda el lead y se muestra Campaña no identificada con causa; origen declarado permanece distinto del verificado. | validado en DEMO: U `tests/client-cases.ts` + E `tests/browser/phase4-clients.spec.ts` (5 proyectos) |
+| I10-ATR-03 | F4 | Captura manual/web guarda responsable o cola y segmento conocido opcional de esa marca; campo ausente no provoca una clasificación inventada. | validado en DEMO: U `tests/client-cases.ts` (responsable o cola; segmento de la marca, nunca inventado) |
 | I10-ATR-04 | Prueba F4; canal habilitado F5/F6 | Referencia publicitaria se guarda por interacción/mensaje y se recupera vía API/evento real de la versión seleccionada; no hereda sin evidencia una campaña antigua. | pendiente |
 | I10-ATR-05 | F5 | Primer origen permanece y contactos posteriores agregan historia; se pueden inspeccionar primer/último contacto y atribución elegida. | pendiente |
 | I10-ATR-06 | F5 | Cada oportunidad/venta conserva su atribución, incluso al fusionar/corregir contactos; eventos repetidos no duplican ingresos. | pendiente |
-| I10-ATR-07 | F4 contrato; F5 resolución | Anuncio se relaciona con grupo/campaña solo mediante API/catálogo verificable de la cuenta/marca; IDs manipulados no exponen datos ajenos. | pendiente |
-| I10-ATR-08 | F4 | URLs/UTMs/referrer se validan y depuran antes de guardar; datos personales/secretos no aparecen en telemetría o logs sin autorización. | pendiente |
+| I10-ATR-07 | F4 contrato; F5 resolución | Anuncio se relaciona con grupo/campaña solo mediante API/catálogo verificable de la cuenta/marca; IDs manipulados no exponen datos ajenos. | contrato documentado (ADR-0035); resolución con catálogo verificable en F5 |
+| I10-ATR-08 | F4 | URLs/UTMs/referrer se validan y depuran antes de guardar; datos personales/secretos no aparecen en telemetría o logs sin autorización. | validado en DEMO: U `tests/client-cases.ts` (lista de campos, ruta sin consulta, sólo dominio del referente); logs sin contenido por revisión |
 
 ### ROAS (plan v5 §12.4)
 
@@ -468,16 +468,16 @@ comprueba un botón oculto no demuestra autorización del servidor.
 
 | ID | Momento | Criterio observable y evidencia esperada | Estado |
 |---|---|---|---|
-| I10-EQU-01 | Contrato F4; F5 | Varios asesores participan; reasignación actual tiene actor/fecha y conserva el crédito histórico al cierre. | pendiente |
+| I10-EQU-01 | Contrato F4; F5 | Varios asesores participan; reasignación actual tiene actor/fecha y conserva el crédito histórico al cierre. | contrato documentado (ADR-0035); implementación F5 |
 | I10-EQU-02 | F5 | Venta MXN 100,000 con crédito 60/40 muestra 60,000 y 40,000 por asesor, y 100,000 global; el crédito total suma 100%. | pendiente |
-| I10-EQU-03 | Contrato F4; F5 | Segmento principal y etiquetas no multiplican una venta; renombrar/desactivar segmento o asesor mantiene la consulta histórica. | pendiente |
-| I10-EQU-04 | Contrato F4; F5 | Partidas de producto MXN 60,000 y servicio MXN 40,000 suman 100,000 global; cantidades/importes/moneda y referencias son inspeccionables. | pendiente |
+| I10-EQU-03 | Contrato F4; F5 | Segmento principal y etiquetas no multiplican una venta; renombrar/desactivar segmento o asesor mantiene la consulta histórica. | contrato documentado (ADR-0035); implementación F5 |
+| I10-EQU-04 | Contrato F4; F5 | Partidas de producto MXN 60,000 y servicio MXN 40,000 suman 100,000 global; cantidades/importes/moneda y referencias son inspeccionables. | contrato documentado (ADR-0035); implementación F5 |
 
 ### Metas (plan v5 §13.3)
 
 | ID | Momento | Criterio observable y evidencia esperada | Estado |
 |---|---|---|---|
-| I10-MET-01 | Contrato F4; F5 | Crear/consultar metas globales, segmento, producto, servicio, asesor y equipo, en mes/trimestre/año y calendario/zona horaria definidos. | pendiente |
+| I10-MET-01 | Contrato F4; F5 | Crear/consultar metas globales, segmento, producto, servicio, asesor y equipo, en mes/trimestre/año y calendario/zona horaria definidos. | contrato documentado (PHASE4_SPEC §12.7); implementación F5 |
 | I10-MET-02 | F5 | Real 80,000 frente a meta 100,000 muestra 80% y brecha 20,000; cero/sin meta se distinguen; previsión no cumple una meta de cobro. | pendiente |
 | I10-MET-03 | F5 | Metas tienen versiones/autor/base/moneda; distribuir año y jerarquía requiere revisión y detecta desajustes, sin imponer reparto uniforme. | pendiente |
 | I10-MET-04 | F5 | Solo roles autorizados ajustan metas/crédito y consolidan equipos/marcas; dimensiones de las mismas ventas no se suman como ingresos independientes. | pendiente |
@@ -486,7 +486,7 @@ comprueba un botón oculto no demuestra autorización del servidor.
 
 | ID | Momento | Criterio observable y evidencia esperada | Estado |
 |---|---|---|---|
-| I10-HIS-01 | Contrato F4; F5 | Nuevo periodo conserva metas/resultados anteriores; cambios de catálogo/asesor y correcciones no destruyen ni reescriben cortes publicados. | pendiente |
+| I10-HIS-01 | Contrato F4; F5 | Nuevo periodo conserva metas/resultados anteriores; cambios de catálogo/asesor y correcciones no destruyen ni reescriben cortes publicados. | contrato documentado (PHASE4_SPEC §12.7); implementación F5 |
 | I10-HIS-02 | F5 | Comparar mes, trimestre, año, mismo mes/trimestre previo y acumulado anual manteniendo dimensión, moneda y base. | pendiente |
 | I10-HIS-03 | F5 | Periodos parciales comparan el mismo avance; base anterior cero produce variación porcentual no aplicable, ausencia de datos no se vuelve cero. | pendiente |
 | I10-HIS-04 | F5 | Consulta/exportación autorizada reconcilia detalle conocido al corte frente a correcciones posteriores; conserva acceso a catálogos inactivos. | pendiente |
@@ -509,21 +509,21 @@ como completado.
 
 | Requisito / origen aprobado | Fase | Documento y contrato | Criterios | Estado real |
 |---|---|---|---|---|
-| Captura manual/web persistente, prioridad de F4 | F4 | PHASE4_SPEC §12.2; ADR-0035; state-machines; authorization | I10-CLI-01…10; I10-SEC-01…08 | Documentado; implementación pendiente |
+| Captura manual/web persistente, prioridad de F4 | F4 | PHASE4_SPEC §12.2; ADR-0035; state-machines; authorization | I10-CLI-01…10; I10-SEC-01…08 | **Implementado y validado en DEMO** (migración 0027; U `tests/client-cases.ts` 7/7; E `phase4-clients.spec.ts` en 5 proyectos); parciales: CLI-10, SEC-05/06/07/08; sin proveedor real ni sitio público |
 | Flujo multicanal contacto → oportunidad → cierre → Validación (§11) | Contratos/prueba F4; operativo F5 | PHASE4_SPEC §12.6; ADR-0035 §F5 | I10-FLU-01…06 | Alcance aprobado y documentado; runtime pendiente (F5) |
 | Asistente interno de Brando (§11.3) | Preparación F4; F5 | PHASE4_SPEC §12.6; brand-intelligence-engine (sin nueva autoridad) | I10-BRA-01, 05…08 | Documentado; pendiente de desarrollar y probar con IA real |
 | Agente externo, política y toma humana (§11.3–4) | Prueba acotada F4; habilitación F6 | PHASE4_SPEC §12.6, §12.9; PHASE4_EXTERNAL_REQUIREMENTS I10-EXT-09/13 | I10-BRA-02…08; I10-CW-01…12 | Documentado; adopción y operación pendientes |
-| Origen, UTM y segmento conocido (§12.2, §13.6) | F4 | PHASE4_SPEC §12.2; ADR-0035 (interacciones y evidencia) | I10-ATR-01…03, 07…08 | Documentado; implementación pendiente |
+| Origen, UTM y segmento conocido (§12.2, §13.6) | F4 | PHASE4_SPEC §12.2; ADR-0035 (interacciones y evidencia) | I10-ATR-01…03, 07…08 | **Implementado y validado en DEMO** (UTM, identificadores de clic, ruta y referente depurados; «Campaña no identificada» con causa; responsable/cola; segmento de la marca); ATR-07 contrato documentado (F5) |
 | Referencias publicitarias por mensaje (§12.5) | Prueba F4; conector F5/F6 | PHASE4_EXTERNAL_REQUIREMENTS I10-EXT-10 | I10-ATR-04, 07; I10-CW-06…08 | Fuente técnica revisada (PR Chatwoot #14681); integración sin probar |
 | Historia de interacciones y atribución por oportunidad/venta (§12.3) | F5 | PHASE4_SPEC §12.7; ADR-0035 §F5 | I10-ATR-05…07; I10-ROA-04 | Pendiente (F5); el modelo F4 ya guarda evidencia por interacción |
-| Gasto real, ingreso elegible, ROAS y cobertura (§12.4) | F5; ampliación F6 | PHASE4_SPEC §12.7; I10-EXT-11/12 | I10-ROA-01…06; I10-RES-01…06 | Pendiente; no hay ROAS real acreditado |
+| Gasto real, ingreso elegible, ROAS y cobertura (§12.4) | F5; ampliación F6 | PHASE4_SPEC §12.7; I10-EXT-11/12 | I10-ROA-01…06; I10-RES-01…06 | RES-01…03 **validados en DEMO** (Resultados con marketing, operación y ventas; cero frente a «Sin conectar»/«Sin datos»); ROAS y RES-05/06 pendientes (F5); no hay ROAS real acreditado |
 | Asesores/equipos y crédito (§13.2) | Contratos F4; F5 | PHASE4_SPEC §12.7; ADR-0035 §F5 | I10-EQU-01…02; I10-MET-04 | Contrato documentado; implementación F5 |
-| Segmentos y partidas (§13.2) | Segmento conocido y contratos F4; completo F5 | PHASE4_SPEC §12.2, §12.7; ADR-0035 | I10-ATR-03; I10-EQU-03…04 | Documentado; segmento conocido pendiente de implementar; partidas F5 |
+| Segmentos y partidas (§13.2) | Segmento conocido y contratos F4; completo F5 | PHASE4_SPEC §12.2, §12.7; ADR-0035 | I10-ATR-03; I10-EQU-03…04 | Segmento conocido **implementado y validado en DEMO** (id estable por marca); partidas y segmento principal: contrato documentado, implementación F5 |
 | Metas por seis dimensiones y tres periodos (§13.3) | Contratos F4; F5 | PHASE4_SPEC §12.7; I10-EXT-14 | I10-MET-01…04 | Contrato documentado; implementación F5 (no se difiere a F6) |
 | Históricos, comparativos y exportaciones (§13.4) | Contratos F4; F5 | PHASE4_SPEC §12.7 | I10-HIS-01…04 | Contrato documentado; implementación F5 |
 | Forecast de ganados y programación (§13.5) | Contratos F4; F5 | PHASE4_SPEC §12.7; I10-EXT-12/14 | I10-FOR-01…06 | Contrato documentado; implementación F5, separada de oportunidades abiertas |
 | Licencia, API, aislamiento, costes y canales | Evaluación/prueba F4; cada habilitación | PHASE4_EXTERNAL_REQUIREMENTS I10-EXT-01…14; ADR previo a dependencias | I10-CW-01…12; I10-CHN-01…04; I10-BRA-08 | Sólo evaluación documental (fuentes del paquete); ninguna versión instalada |
-| Navegación y continuidad | F4 | PHASE4_SPEC §3, §12.3; handoff; SESSION_STATE; CHANGELOG | I10-DOC-01; I10-UI-01…03; I10-CON-01…04 | Documentado; navegación y capturas pendientes |
+| Navegación y continuidad | F4 | PHASE4_SPEC §3, §12.3; handoff; SESSION_STATE; CHANGELOG | I10-DOC-01; I10-UI-01…03; I10-CON-01…04 | Documentado; ocho áreas **implementadas** (Clientes y Resultados reales, sin «Próximamente»; sin desplazamiento a 1366×768, 1280×800 y 1440×900); capturas canónicas afectadas pendientes de decisión del propietario |
 
 ## Historial de revisiones
 
@@ -544,3 +544,4 @@ como completado.
 | v13 | 2026-10-11 | ONB-006 y ONB-007 implementados (reutilización del manual en Identidad visual, identidad parcial, procedencia de correcciones decidida por el servidor) |
 | v14 | 2026-10-11 | Colaboración y guía viva: invitaciones por enlace, invitados, portal, comentarios y aprobación por versión (migración 0026); sección de estado correspondiente |
 | v15 | 2026-10-11 | Issue #10 (paquete revisión 3, plan v5): 94 criterios I10 añadidos sin renumerar (48 + 46), todos pendientes, y tabla de trazabilidad requisito → fase → contrato → aceptación → estado real |
+| v16 | 2026-10-11 | Clientes implementado (migración 0027, ADR-0035): estado por criterio I10 y trazabilidad actualizados con evidencia de DEMO; regresión completa pendiente |

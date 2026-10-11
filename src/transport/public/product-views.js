@@ -1034,3 +1034,78 @@ export function portalHtml(p){
  ${p.guide?`<section class="portal-section" aria-label="Guía de marca"><h2 class="portal-section-title">Guía de marca</h2><p class="hint">Versión ${p.guide.sequence} del kit, publicada.</p>${guideBodyHtml(p.guide,id=>`/api/portal/asset?brandId=${encodeURIComponent(p.brand.id)}&amp;assetId=${encodeURIComponent(id)}`)}</section>`:''}
  ${sections||'<p>El equipo todavía no ha compartido nada contigo.</p>'}`;
 }
+
+// ─── ADR-0035 · Clientes and Resultados (pure projections; operations live in app.js) ───
+// Opportunity status words (canonical values in schemas/client-opportunity). «Nueva» never means a sale.
+const OPPORTUNITY_WORDS={NEW:'Nueva',IN_PROGRESS:'En seguimiento'};
+export function opportunityBadge(status){return `<span class="badge">${escape(OPPORTUNITY_WORDS[status]??'')}</span>`;}
+const ATTENTION_WORDS={UNASSIGNED:'Por asignar',NO_FOLLOW_UP:'Sin seguimiento',OVERDUE:'Seguimiento vencido'};
+const CHANNEL_WORDS3={WEB_FORM:'Formulario web',PHONE:'Teléfono',EMAIL:'Correo',IN_PERSON:'En persona',WHATSAPP:'WhatsApp',SOCIAL:'Redes sociales',OTHER:'Otro',UNKNOWN:'Sin dato'};
+const PLATFORM_WORDS={GOOGLE:'Google',META:'Meta',TIKTOK:'TikTok',LINKEDIN:'LinkedIn',ORGANIC_SEARCH:'Búsqueda orgánica',REFERRAL:'Recomendación o enlace',DIRECT:'Directo',OTHER:'Otra fuente',UNKNOWN:''};
+const CAUSE_WORDS={NO_REFERENCE:'no llegó ninguna referencia',DECLARED_ONLY:'sólo hay origen declarado'};
+const EVENT_WORDS={CREATED:'Registrada',ASSIGNED:'Responsable asignado',UNASSIGNED:'Pasó a «Por asignar»',FOLLOW_UP_SET:'Seguimiento actualizado',FOLLOW_UP_CLEARED:'Seguimiento quitado',STATUS_CHANGED:'Estado cambiado',DETAILS_EDITED:'Datos editados'};
+export const CLIENT_FILTERS=[['all','Todas'],['UNASSIGNED','Por asignar'],['NO_FOLLOW_UP','Sin seguimiento'],['OVERDUE','Seguimiento vencido']];
+/** Where an opportunity came from: attention channel, platform, and the campaign evidence with its real status. */
+export function acquisitionText(origin){
+ if(!origin)return 'Origen sin registrar';
+ const parts=[CHANNEL_WORDS3[origin.attentionChannel]??'',PLATFORM_WORDS[origin.acquisitionPlatform]??''].filter(Boolean);
+ const utm=origin.utm??{},campaign=utm.campaign||utm.id;
+ const ref=origin.campaignStatus==='CAPTURED_UNVERIFIED'?`Campaña capturada sin verificar${campaign?`: ${campaign}`:''}`:`Campaña no identificada (${CAUSE_WORDS[origin.campaignCause]??'sin referencia'})`;
+ return [parts.join(' · '),ref,origin.declaredOrigin?`Dice: «${origin.declaredOrigin}»`:''].filter(Boolean).join(' · ');
+}
+const selectOptions=(list,selected,empty)=>`${empty!==undefined?`<option value="">${escape(empty)}</option>`:''}${list.map(([v,l])=>`<option value="${escape(v)}"${v===selected?' selected':''}>${escape(l)}</option>`).join('')}`;
+function opportunityCardHtml(o,d){
+ const segment=d.segments.find(s=>s.id===o.segmentId),offer=d.offers.find(x=>x.id===o.offerId);
+ const facts=[['Necesita',o.need],['Contacto',[o.contactEmail,o.contactPhone].filter(Boolean).join(' · ')||'Sin medio de contacto'],['Origen',acquisitionText(o.origin)],['Recibida',fmt(o.receivedAt)],['Responsable',o.ownerName??'Por asignar'],['Siguiente seguimiento',o.nextActionDate?`${o.nextAction??''} · ${dayText(o.nextActionDate)}`:'Sin seguimiento'],...(segment?[['Segmento',segment.name]]:[]),...(offer?[['Oferta',offer.name]]:[])];
+ const members=d.members.map(m=>[m.userId,m.name]),segs=d.segments.filter(s=>s.active||s.id===o.segmentId).map(s=>[s.id,s.name]),offs=d.offers.filter(x=>x.active||x.id===o.offerId).map(x=>[x.id,x.name]);
+ const id=escape(o.id);
+ return `<article class="client-card" id="op-${id}"><div class="client-head"><h4>${escape(o.personName)}</h4>${opportunityBadge(o.status)}${o.attention.map(a=>`<span class="badge warn">${escape(ATTENTION_WORDS[a])}</span>`).join('')}<span class="hint">${escape(o.reference??'')}</span></div>${factsHtml(facts)}
+ <details class="client-edit"><summary>Dar seguimiento</summary><form class="client-update offer-form" data-id="${id}" data-revision="${o.revision}" novalidate>
+ <label for="owner-${id}">Responsable</label><select id="owner-${id}" name="ownerUserId">${selectOptions(members,o.ownerUserId,'Por asignar')}</select>
+ <label for="status-${id}">Estado</label><select id="status-${id}" name="status">${selectOptions(Object.entries(OPPORTUNITY_WORDS),o.status)}</select>
+ <label for="next-${id}">Siguiente seguimiento</label><input id="next-${id}" name="nextAction" maxlength="300" value="${escape(o.nextAction??'')}" placeholder="Ej. Llamar para enviar precios">
+ <label for="date-${id}">Fecha</label><input id="date-${id}" name="nextActionDate" type="date" value="${escape(o.nextActionDate??'')}">
+ ${segs.length?`<label for="segment-${id}">Segmento</label><select id="segment-${id}" name="segmentId">${selectOptions(segs,o.segmentId,'Sin segmento')}</select>`:''}
+ ${offs.length?`<label for="offer-${id}">Oferta</label><select id="offer-${id}" name="offerId">${selectOptions(offs,o.offerId,'Sin oferta')}</select>`:''}
+ <p class="hint client-update-status" role="status" aria-live="polite"></p><div class="actions"><button type="submit">Guardar seguimiento</button></div></form></details>
+ ${o.history.length?`<details class="client-history"><summary>Historial</summary><ul>${o.history.map(h=>`<li>${escape(EVENT_WORDS[h.kind]??h.kind)} · ${escape(h.actor??'')} · <span class="hint">${escape(fmt(h.createdAt))}</span></li>`).join('')}</ul></details>`:''}</article>`;
+}
+/** Clientes: register and follow up real opportunities of the active brand. Nothing here is sample data. */
+export function clientsHtml(d,filter='all'){
+ const count=f=>f==='all'?d.opportunities.length:d.opportunities.filter(o=>o.attention.includes(f)).length;
+ const shown=filter==='all'?d.opportunities:d.opportunities.filter(o=>o.attention.includes(filter));
+ const members=d.members.map(m=>[m.userId,m.name]),segs=d.segments.filter(s=>s.active).map(s=>[s.id,s.name]),offs=d.offers.filter(x=>x.active).map(x=>[x.id,x.name]);
+ const create=`<details class="plan-block client-new"${d.opportunities.length?'':' open'}><summary><strong>Registrar una oportunidad</strong></summary><form id="client-form" class="offer-form" novalidate>
+ <label for="client-name">Nombre o referencia</label><input id="client-name" maxlength="160" required autocomplete="off">
+ <label for="client-need">¿Qué necesita?</label><textarea id="client-need" maxlength="2000" rows="2" required></textarea>
+ <div class="plan-dates"><div><label for="client-email">Correo <span class="hint">opcional</span></label><input id="client-email" type="email" maxlength="254" autocomplete="off"></div><div><label for="client-phone">Teléfono <span class="hint">opcional</span></label><input id="client-phone" type="tel" maxlength="40" autocomplete="off"></div></div>
+ <label for="client-channel">¿Por dónde llegó?</label><select id="client-channel">${selectOptions(Object.entries(CHANNEL_WORDS3).filter(([k])=>k!=='WEB_FORM'),'UNKNOWN')}</select>
+ <label for="client-declared">¿Cómo dice que te conoció? <span class="hint">opcional; se guarda tal como lo dijo, sin atribuirlo a una campaña</span></label><input id="client-declared" maxlength="300">
+ <label for="client-owner">Responsable</label><select id="client-owner">${selectOptions(members,null,'Por asignar')}</select>
+ ${segs.length?`<label for="client-segment">Segmento <span class="hint">opcional</span></label><select id="client-segment">${selectOptions(segs,null,'Sin segmento')}</select>`:''}
+ ${offs.length?`<label for="client-offer">Oferta <span class="hint">opcional</span></label><select id="client-offer">${selectOptions(offs,null,'Sin oferta')}</select>`:''}
+ <div class="plan-dates"><div><label for="client-next">Siguiente seguimiento <span class="hint">opcional</span></label><input id="client-next" maxlength="300" placeholder="Ej. Llamar el jueves"></div><div><label for="client-date">Fecha</label><input id="client-date" type="date"></div></div>
+ <p id="client-form-status" role="status" aria-live="polite"></p><div class="actions"><button type="submit">Guardar oportunidad</button></div></form></details>`;
+ const filters=`<div class="client-filters" role="group" aria-label="Filtrar oportunidades">${CLIENT_FILTERS.map(([k,l])=>`<button type="button" class="secondary" data-client-filter="${k}" aria-pressed="${k===filter}">${escape(l)} <span class="client-count">${count(k)}</span></button>`).join('')}</div>`;
+ const list=shown.length?`<div class="client-list">${shown.map(o=>opportunityCardHtml(o,d)).join('')}</div>`:`<p class="hint">${d.opportunities.length?'Nada pendiente en este filtro.':'Aún no hay oportunidades. Registra la primera o recibe solicitudes con un formulario web.'}</p>`;
+ const forms=`<section class="plan-block" aria-labelledby="client-forms-title"><h3 id="client-forms-title">Formulario web</h3><p class="hint">Cada envío crea una oportunidad en esta marca con su origen y las referencias de campaña que traiga. En esta etapa el formulario se prueba en una página de desarrollo de Brandopolis; publicarlo en tu sitio llegará con Sitio web, dominio y aviso de privacidad definitivo.</p>
+ ${d.forms.length?`<ul class="collab-list">${d.forms.map(f=>`<li><span>${escape(f.name)}</span><span class="badge ${f.status==='ACTIVE'?'':'warn'}">${f.status==='ACTIVE'?'Activo':'Desactivado'}</span>${f.status==='ACTIVE'?`<a href="/formulario?f=${escape(f.publicId)}" target="_blank" rel="noopener" data-form-link>Abrir formulario de prueba</a>${d.canManageForms?`<button type="button" class="tertiary" data-disable-form="${escape(f.id)}">Desactivar</button>`:''}`:''}</li>`).join('')}</ul>`:'<p class="hint">Todavía no hay formularios.</p>'}
+ ${d.canManageForms?`<form id="lead-form-create" class="offer-form" novalidate><label for="lead-form-name">Nombre del formulario</label><input id="lead-form-name" maxlength="120" value="Contacto del sitio">${segs.length?`<label for="lead-form-segment">Segmento de quien lo use <span class="hint">opcional</span></label><select id="lead-form-segment">${selectOptions(segs,null,'Sin segmento')}</select>`:''}<div class="actions"><button type="submit" class="secondary">Crear formulario</button></div></form>`:'<p class="hint">Crear o desactivar un formulario necesita el permiso de publicar en esta marca.</p>'}</section>`;
+ const segments=`<section class="plan-block" aria-labelledby="client-segments-title"><h3 id="client-segments-title">Segmentos</h3><p class="hint">Grupos de clientes que usa tu equipo. Son opcionales y nunca se asignan solos.</p>${d.segments.length?`<ul class="client-tags">${d.segments.map(s=>`<li>${escape(s.name)}</li>`).join('')}</ul>`:''}<form id="segment-form" class="offer-form" novalidate><label for="segment-name">Nuevo segmento</label><input id="segment-name" maxlength="120" placeholder="Ej. Restaurantes"><div class="actions"><button type="submit" class="secondary">Añadir segmento</button></div></form></section>`;
+ return `<div class="ws-hero"><p class="eyebrow">Clientes</p><h2>Oportunidades de tu marca</h2><p class="ws-lead">Registra cada solicitud, quién la atiende y cuál es el siguiente paso. Nada se pierde al recargar y nada se marca como venta por sí solo.</p></div>
+ ${create}<section class="plan-block" aria-labelledby="client-list-title"><h3 id="client-list-title">Oportunidades</h3>${filters}${list}</section>${forms}${segments}`;
+}
+const periodText=m=>m.period?`${m.period.label}${m.period.from?` (desde ${fmt(m.period.from)})`:''}`:'';
+function metricHtml(m){
+ if(!m.available)return `<li class="result-card is-missing" data-metric="${escape(m.id)}"><p class="result-label">${escape(m.label)}</p><p class="result-value">${m.state==='NOT_CONNECTED'?'Sin conectar':'Sin datos'}</p><p class="hint">${escape(m.reason)}</p></li>`;
+ return `<li class="result-card" data-metric="${escape(m.id)}"><p class="result-label">${escape(m.label)}</p><p class="result-value">${escape(String(m.value))}</p><details><summary>Cómo se calcula</summary><p class="hint">${escape(m.definition)}</p><p class="hint">Fuente: ${escape(m.source)} · Ámbito: ${escape(m.scope)} · Periodo: ${escape(periodText(m))} · Zona horaria: ${escape(m.timezone)} · Calculado: ${escape(fmt(m.computedAt))}</p></details></li>`;
+}
+/** Resultados: marketing, commercial operation and sales, each with its real availability. */
+export function resultsHtml(r){
+ const block=(title,lead,list)=>`<section class="plan-block" aria-label="${escape(title)}"><h3>${escape(title)}</h3><p class="hint">${escape(lead)}</p><ul class="result-grid">${list.map(metricHtml).join('')}</ul></section>`;
+ return `<div class="ws-hero"><p class="eyebrow">Resultados</p><h2>Lo que está pasando con tu marca</h2><p class="ws-lead">Cifras calculadas con los registros reales de esta marca. Un cero significa que se midió y no hubo eventos; «Sin conectar» o «Sin datos» significa que todavía falta la fuente.</p></div>
+ ${block('Marketing','Solicitudes que llegan y si traen una referencia de campaña. Las conversiones de Google o Meta no se suman como personas.',r.marketing)}
+ ${block('Operación comercial','Cómo va la atención de las oportunidades registradas en Clientes.',r.operations)}
+ ${block('Ventas','Una oportunidad nueva no es una venta. Las ventas ganadas y perdidas, las metas y el forecast llegan con el núcleo comercial.',r.sales)}
+ <p class="hint">Zona horaria: ${escape(r.timezone)} · Calculado: ${escape(fmt(r.computedAt))}</p>`;
+}

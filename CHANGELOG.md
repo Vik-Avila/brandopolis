@@ -1,3 +1,11 @@
+## 2026-10-11 · Phase 4 — Clientes: captura persistente manual/web y Resultados ampliados (migración aditiva 0027)
+
+- Clientes es un área real: registrar oportunidades (persona, contacto opcional, necesidad, canal, origen declarado, responsable o «Por asignar», segmento, oferta y siguiente seguimiento), filtros «Por asignar», «Sin seguimiento» y «Seguimiento vencido», seguimiento con revisión (409 si alguien lo cambió) e historial.
+- Formulario web de la marca con página de desarrollo `/formulario`: guarda UTM, identificadores de clic, ruta y dominio de referencia depurados; «Campaña capturada sin verificar» o «Campaña no identificada» con causa; finalidad del contacto obligatoria y publicidad opcional; reintentos y envíos simultáneos dejan una sola oportunidad.
+- Resultados deja «Próximamente»: marketing (solicitudes del formulario y cobertura de campaña), operación comercial (nuevas, por asignar, sin seguimiento, vencidas) y ventas «Sin datos» hasta la Fase 5; cada cifra declara definición, fuente, ámbito, periodo, zona horaria y cálculo.
+- Ocho áreas en el lateral sin desplazamiento a 1366×768, 1280×800 y 1440×900 (filas de 42 px sólo en pantallas bajas). El invitado del portal no accede a Clientes ni a Resultados.
+- Evidencia: Clientes U 7/7 y E2E nueva en 5 proyectos; la regresión E2E completa y `pnpm test` completo quedaron pendientes (ejecución detenida por falta de memoria). No release-ready.
+
 ## 2026-10-11 · Phase 4 — reconciliación documental del issue #10 (Clientes y Resultados, plan v5)
 
 - Alcance aprobado incorporado: Clientes con captura manual/web persistente en Fase 4; Resultados con marketing, operación comercial y ventas; núcleo comercial, Brando asistente interno, atribución/ROAS, asesores, metas, históricos y forecast en Fase 5; atención automática y conectores ampliados en Fase 6.

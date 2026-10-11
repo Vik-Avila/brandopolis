@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/client-interaction.v1",
+  "title": "client-interaction",
+  "x-version": "v1",
+  "description": "ADR-0035 · acquisition evidence of one interaction (append-only). The attention channel is not the acquisition platform; a browser-supplied campaign reference is CAPTURED_UNVERIFIED, never verified; without a reference the campaign is UNIDENTIFIED with its cause. The declared origin is kept apart from technical evidence.",
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "opportunityId": { "type": "string", "minLength": 1 },
+    "kind": { "type": "string", "enum": ["MANUAL_ENTRY", "WEB_FORM_SUBMISSION"] },
+    "attentionChannel": { "type": "string", "enum": ["WEB_FORM", "PHONE", "EMAIL", "IN_PERSON", "WHATSAPP", "SOCIAL", "OTHER", "UNKNOWN"] },
+    "acquisitionPlatform": { "type": "string", "enum": ["GOOGLE", "META", "TIKTOK", "LINKEDIN", "ORGANIC_SEARCH", "REFERRAL", "DIRECT", "OTHER", "UNKNOWN"] },
+    "declaredOrigin": { "type": ["string", "null"], "maxLength": 300 },
+    "utm": { "type": "object", "additionalProperties": false, "properties": { "source": { "type": "string", "maxLength": 200 }, "medium": { "type": "string", "maxLength": 200 }, "campaign": { "type": "string", "maxLength": 200 }, "id": { "type": "string", "maxLength": 200 }, "content": { "type": "string", "maxLength": 200 }, "term": { "type": "string", "maxLength": 200 } } },
+    "clickIds": { "type": "object", "additionalProperties": false, "properties": { "gclid": { "type": "string", "maxLength": 200 }, "gbraid": { "type": "string", "maxLength": 200 }, "wbraid": { "type": "string", "maxLength": 200 }, "fbclid": { "type": "string", "maxLength": 200 }, "ttclid": { "type": "string", "maxLength": 200 }, "li_fat_id": { "type": "string", "maxLength": 200 }, "msclkid": { "type": "string", "maxLength": 200 } } },
+    "landingPath": { "type": ["string", "null"], "maxLength": 300 },
+    "referrerHost": { "type": ["string", "null"], "maxLength": 253 },
+    "campaignStatus": { "type": "string", "enum": ["UNIDENTIFIED", "CAPTURED_UNVERIFIED"] },
+    "campaignCause": { "type": ["string", "null"], "enum": ["NO_REFERENCE", "DECLARED_ONLY", null] },
+    "eventId": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "occurredAt": { "type": ["string", "null"], "format": "date-time" },
+    "receivedAt": { "type": "string", "format": "date-time" }
+  },
+  "required": ["id", "opportunityId", "kind", "attentionChannel", "acquisitionPlatform", "declaredOrigin", "utm", "clickIds", "landingPath", "referrerHost", "campaignStatus", "campaignCause", "eventId", "occurredAt", "receivedAt"],
+  "examples": [
+    { "id": "ci-1", "opportunityId": "op-1", "kind": "WEB_FORM_SUBMISSION", "attentionChannel": "WEB_FORM", "acquisitionPlatform": "META", "declaredOrigin": null, "utm": { "source": "facebook", "medium": "cpc", "campaign": "otono-2026" }, "clickIds": { "fbclid": "IwAR0abc" }, "landingPath": "/formulario", "referrerHost": "l.facebook.com", "campaignStatus": "CAPTURED_UNVERIFIED", "campaignCause": null, "eventId": "5d1f3e1c-2a1b-4c8e-9a51-0f4b8c1d2e3f", "occurredAt": null, "receivedAt": "2026-10-11T12:00:00Z" }
+  ]
+}

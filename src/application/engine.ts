@@ -21,6 +21,7 @@ import { actionStatus, addAction, addObjective, createPlan, createSnapshot, deci
 import { IdentityDirectionsStore, directionValues, identityPacket, validIdentityProposal } from '../domain/brando-identity.js';
 import { MarketingAssistance, marketingPacket, proposalContent, type MarketingPacket } from '../domain/brando-marketing.js';
 import { DELIVERABLE_TYPES, type DeliverableType } from '../domain/deliverables.js';
+import { createForm, createOpportunity, createSegment, disableForm, publicForm, readClients, readResults, submitWebForm, updateOpportunity } from './clients.js';
 import { acceptInvitation, brandGuide, createInvitation, guestAsset, guestBrands, guestComment, guestDecide, readCollaboration, readPortal, resolveGuest, revokeGuest, revokeInvitation, shareToPortal, teamComment, withdrawShare, type GuestActor } from './collaboration.js';
 import { applyDirection, draftValueIds, adoptKitValues, decideKit, kitAsset, mergeKitCandidates, reusableDocument, publishKit, readKit, registerKitAsset, saveKitDraft, startKitDraft, submitKit } from './brand-kit.js';
 import type { KitAssetInfo } from '../domain/kit-assets.js';
@@ -153,6 +154,33 @@ export class Engine {
       if(!result.replayed)await this.audit(tx,actor,{operation:`COLLAB_${action.toUpperCase().replace(/-/g,'_')}`,idempotencyKey:String(input.idempotencyKey??randomUUID()),newVersion:String(result.invitationId??result.guestId??result.shareId??result.commentId??'')});
       return result;
     },true);
+  }
+  // ─── ADR-0035 · Clientes (team side: membership + brand scope; a client guest has no membership and never gets here) ───
+  async clients(token:string,brandId:string) {
+    return this.withBrandActor(token,brandId,(tx,actor)=>readClients(tx,actor));
+  }
+  async results(token:string,brandId:string) {
+    return this.withBrandActor(token,brandId,(tx,actor)=>readResults(tx,actor));
+  }
+  /** One Clientes operation; every change is audited with ids only (never names, contacts or needs). */
+  async clientsCommand(token:string,action:'create'|'update'|'segment'|'form'|'disable-form',input:Record<string,unknown>) {
+    if(!input||typeof input!=='object'||Array.isArray(input))throw new AppError('INVALID','Invalid Clientes request');
+    const run={create:createOpportunity,update:updateOpportunity,segment:createSegment,form:createForm,'disable-form':disableForm}[action];
+    if(!run)throw new AppError('INVALID','Unknown Clientes operation');
+    return this.withBrandActor(token,String(input.brandId??''),async(tx,actor)=>{
+      const result=await (run as (tx:Transaction,a:BrandActor,i:Record<string,unknown>)=>Promise<Record<string,unknown>>)(tx,actor,input);
+      if(!result.replayed&&result.changed!==false)await this.audit(tx,actor,{operation:`CLIENTS_${action.toUpperCase().replace(/-/g,'_')}`,idempotencyKey:typeof input.idempotencyKey==='string'?input.idempotencyKey:randomUUID(),newVersion:String(result.opportunityId??result.segmentId??result.formId??'')});
+      return result;
+    },true);
+  }
+  /** Public web form: no session. The brand comes from the active form; the strategic audit needs a member, so the
+   * submission is recorded in its own rows (opportunity, interaction with consent, CREATED event without actor). */
+  async publicLeadForm(publicId:unknown) {
+    return this.db.transaction(tx=>publicForm(tx,publicId));
+  }
+  async submitLeadForm(input:Record<string,unknown>) {
+    if(!input||typeof input!=='object'||Array.isArray(input))throw new AppError('INVALID','Invalid submission');
+    return this.db.transaction(tx=>submitWebForm(tx,input));
   }
   // ─── ADR-0033 · portal (guest side: a valid session plus an ACTIVE BrandGuest of that exact brand; never membership) ───
   private async sessionUser(tx:Transaction,token:string) {
@@ -1217,7 +1245,7 @@ export class Engine {
         // before decisions; the self reference of versions is satisfied because the whole chain goes in one statement.
         // Phase 4 rows of this Brand (append-only tables allow it only inside this registered deletion). Workspace
         // connections are NOT deleted here: only this Brand's links to them (a credential may serve other brands).
-        for(const table of [t.portalApprovals,t.portalComments,t.portalShares,t.brandGuests,t.brandInvitations,t.brandSetupDrafts,t.brandKitPublications,t.brandKitApprovals,t.brandKitVersions,t.brandKits,t.kitAssets,t.deliverablePublications,t.deliverableApprovals,t.deliverableVersions,t.deliverables,t.planProgressUpdates,t.planSnapshotApprovals,t.planSnapshots,t.planChanges,t.planActions,t.planObjectives,t.marketingPlans,t.offerApprovals,t.offerVersions,t.offers,t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
+        for(const table of [t.clientOpportunityEvents,t.clientInteractions,t.clientOpportunities,t.leadForms,t.clientSegments,t.portalApprovals,t.portalComments,t.portalShares,t.brandGuests,t.brandInvitations,t.brandSetupDrafts,t.brandKitPublications,t.brandKitApprovals,t.brandKitVersions,t.brandKits,t.kitAssets,t.deliverablePublications,t.deliverableApprovals,t.deliverableVersions,t.deliverables,t.planProgressUpdates,t.planSnapshotApprovals,t.planSnapshots,t.planChanges,t.planActions,t.planObjectives,t.marketingPlans,t.offerApprovals,t.offerVersions,t.offers,t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));
         for(const table of [t.audits,t.telemetry,t.idempotency,t.reviewReceipts,t.reviews,t.impacts,t.dependencies,t.learningSignals,t.signals,t.learnings,t.experiments,t.analyses,t.documentClaims,t.documentExtractions,t.sourceDocuments,t.versions,t.decisions,t.recommendations,t.questions,t.userInputs,t.evidence,t.hypotheses,t.openQuestions,t.brandProfiles,t.assignments] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));

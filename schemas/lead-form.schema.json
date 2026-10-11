@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/lead-form.v1",
+  "title": "lead-form",
+  "x-version": "v1",
+  "description": "ADR-0035 · a web form of one brand. The public id resolves the brand on the server; the browser never chooses it. ACTIVE → DISABLED once. Opening or closing a form needs PUBLISH_SITE.",
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "brandId": { "type": "string", "minLength": 1 },
+    "publicId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{22}$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "segmentId": { "type": ["string", "null"] },
+    "status": { "type": "string", "enum": ["ACTIVE", "DISABLED"] },
+    "privacyNoticeVersion": { "type": "string", "minLength": 1, "maxLength": 60 }
+  },
+  "required": ["id", "brandId", "publicId", "name", "segmentId", "status", "privacyNoticeVersion"],
+  "examples": [
+    { "id": "lf-1", "brandId": "b-1", "publicId": "Qm9yZGVyLXRlc3QtZm9ybQ", "name": "Contacto del sitio", "segmentId": null, "status": "ACTIVE", "privacyNoticeVersion": "dev-2026-10-11" }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/client-opportunity.v1",
+  "title": "client-opportunity",
+  "x-version": "v1",
+  "description": "ADR-0035 · an opportunity captured for one brand (manual entry or the brand's web form). Persistent and revisioned; NEW/IN_PROGRESS never mean a sale, a provider conversion or a strategic approval. Owner null = «Por asignar» queue. Closing won/lost is a Phase 5 contract.",
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "brandId": { "type": "string", "minLength": 1 },
+    "revision": { "type": "integer", "minimum": 0 },
+    "status": { "type": "string", "enum": ["NEW", "IN_PROGRESS"] },
+    "source": { "type": "string", "enum": ["MANUAL", "WEB_FORM"] },
+    "formId": { "type": ["string", "null"] },
+    "personName": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "contactEmail": { "type": ["string", "null"], "maxLength": 254 },
+    "contactPhone": { "type": ["string", "null"], "maxLength": 40 },
+    "need": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "ownerUserId": { "type": ["string", "null"] },
+    "segmentId": { "type": ["string", "null"] },
+    "offerId": { "type": ["string", "null"] },
+    "nextAction": { "type": ["string", "null"], "maxLength": 300 },
+    "nextActionDate": { "type": ["string", "null"], "format": "date" },
+    "receivedAt": { "type": "string", "format": "date-time" }
+  },
+  "required": ["id", "brandId", "revision", "status", "source", "formId", "personName", "contactEmail", "contactPhone", "need", "ownerUserId", "segmentId", "offerId", "nextAction", "nextActionDate", "receivedAt"],
+  "examples": [
+    { "id": "op-1", "brandId": "b-1", "revision": 0, "status": "NEW", "source": "WEB_FORM", "formId": "lf-1", "personName": "Ana Pérez", "contactEmail": "ana@example.com", "contactPhone": null, "need": "Cotización para 50 cajas", "ownerUserId": null, "segmentId": null, "offerId": null, "nextAction": null, "nextActionDate": null, "receivedAt": "2026-10-11T12:00:00Z" }
+  ]
+}

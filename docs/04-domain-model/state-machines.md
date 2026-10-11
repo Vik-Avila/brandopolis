@@ -77,3 +77,26 @@ stateDiagram-v2
   Compartido --> Retirado: dejar de compartir o nueva estrategia compartida
  }
 ```
+
+## ClientOpportunity y LeadForm (ADR-0035 · Clientes, Fase 4)
+
+Una oportunidad registrada a mano o por el formulario web de la marca. `NEW` (Nueva) y `IN_PROGRESS` (En
+seguimiento) no significan venta, conversión de un proveedor ni aprobación estratégica. Responsable y seguimiento
+son atributos, no estados: sin responsable = cola «Por asignar»; sin fecha = «Sin seguimiento»; fecha pasada =
+«Seguimiento vencido» (derivado, nunca guardado). Cada cambio sube la revisión en uno (409 ante revisión antigua) y
+añade un evento append-only. El cierre ganado/perdido es contrato de la Fase 5 (PHASE4_SPEC §12.6). Un formulario se
+desactiva una sola vez. Las interacciones (evidencia de origen) y los eventos son append-only. Triggers en la
+migración 0027.
+
+```mermaid
+stateDiagram-v2
+ state ClientOpportunity {
+  [*] --> NEW: registro manual o envío del formulario
+  NEW --> IN_PROGRESS: el equipo empieza el seguimiento
+  IN_PROGRESS --> NEW: corrección humana
+ }
+ state LeadForm {
+  [*] --> ACTIVE
+  ACTIVE --> DISABLED: el equipo con PUBLISH_SITE lo desactiva
+ }
+```

@@ -158,6 +158,8 @@ export class RateLimiter implements Limiter {
     return ++entry.count<=limit;
   }
 }
+// ADR-0035 · public web form: reads of the form, submissions per client and per form.
+export const leadFormLimits={read:[60,60000],submit:[10,600000],perForm:[200,3600000]} as const;
 export const pilotLimits={all:[600,60000],auth:[20,60000],ai:[20,600000],feedback:[20,600000],reflections:[30,600000]} as const;
 export function createApp(engine:Engine,assets?:(path:string)=>{content:string|Buffer;type:string;etag?:string}|undefined,health?:()=>Promise<string>,pilot?:PilotBoundary,competitiveResearch?:CompetitiveResearchService,documentClaims?:DocumentClaimsService,options?:{brandFilePurge?:BrandFilePurge}) {
   // ADR-0029: injectable only so tests can simulate a failing file purge; production uses purgeBrandFiles.
@@ -189,6 +191,22 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
       if(req.method==='GET'&&path==='/health') {
         const ready=health?await health():'UNAVAILABLE';
         if(pilot&&ready!=='READY')console.error(JSON.stringify({event:'readiness',status:ready}));return send(res,ready==='READY'?200:503,{application:pilot?'brandopolis-pilot':'brandopolis-competition',protocol:pilot?'pilot-v1':'rc1',status:ready==='READY'?'ready':'unavailable'});
+      }
+      // ADR-0035 · the brand's web form: the only entry without a session. Same origin, bounded body, per-client and
+      // per-form limits; the brand comes from the active form. Contents never reach logs or telemetry.
+      if(path==='/api/forms/public'||path==='/api/forms/submit'){
+        const forwarded=pilot?.trustProxy?String(req.headers['x-forwarded-for']??'').split(',').map(v=>v.trim()).filter(Boolean).at(-1):undefined;
+        const client=forwarded??req.socket.remoteAddress??'unknown';
+        if(req.method==='GET'&&path==='/api/forms/public'){if(limited('form-read:'+client,leadFormLimits.read))return;return send(res,200,await engine.publicLeadForm(url.searchParams.get('f')));}
+        if(req.method==='POST'&&path==='/api/forms/submit'){
+          if(req.headers.origin!==(pilot?pilot.origin:`http://${req.headers.host}`))throw new AppError('FORBIDDEN','Same-origin submission required');
+          if(limited('form-submit:'+client,leadFormLimits.submit))return;
+          const input=await body(req);
+          if(typeof input.form==='string'&&limited('form-id:'+input.form.slice(0,40),leadFormLimits.perForm))return;
+          const result=await engine.submitLeadForm(input);
+          return send(res,result.replayed?200:201,{reference:result.reference,replayed:result.replayed});
+        }
+        return send(res,404,{code:'NOT_FOUND'});
       }
       if(req.method==='GET'&&!path.startsWith('/api/')) {
         const asset=assets?.(path);if(!asset) return send(res,404,{code:'NOT_FOUND'});
@@ -446,6 +464,8 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         }
         // ADR-0033 · collaboration. Team routes go through membership + brand scope; portal routes through the guest
         // context of that exact brand. Neither path reads the other's data.
+        // ADR-0035 · Clientes (team): membership + brand scope; guests never pass the brand scope.
+        if(path.startsWith('/api/clients/')){const action=path.slice('/api/clients/'.length);if(['create','update','segment','form','disable-form'].includes(action)){const r=await engine.clientsCommand(token,action as 'create',input);return send(res,action==='update'||action==='disable-form'||r.replayed?200:201,r);}}
         if(path.startsWith('/api/collaboration/')){const action=path.slice('/api/collaboration/'.length);if(['invite','revoke-invitation','revoke-guest','share','withdraw','comment'].includes(action))return send(res,action==='invite'||action==='share'?201:200,await engine.collaborationCommand(token,action as 'invite',input));}
         if(path==='/api/invitations/accept') return send(res,200,await engine.acceptInvitation(token,{token:input.token}));
         if(path==='/api/portal/comment') return send(res,201,await engine.portalComment(token,{brandId:input.brandId,shareId:input.shareId,body:input.body,idempotencyKey:input.idempotencyKey}));
@@ -721,6 +741,8 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(path==='/api/offers') return send(res,200,await engine.offers(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/plan') return send(res,200,await engine.marketingPlan(token,string(url.searchParams.get('brandId')),Number(url.searchParams.get('year'))));
         if(path==='/api/collaboration') return send(res,200,await engine.collaboration(token,string(url.searchParams.get('brandId'))));
+        if(path==='/api/clients') return send(res,200,await engine.clients(token,string(url.searchParams.get('brandId'))));
+        if(path==='/api/results') return send(res,200,await engine.results(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/brand-guide') return send(res,200,await engine.brandGuide(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/portal/brands') return send(res,200,await engine.portalBrands(token));
         if(path==='/api/portal') return send(res,200,await engine.portal(token,url.searchParams.get('brandId')));

@@ -45,6 +45,10 @@ Fase 4 · bloque 2 (2026-10-10, [ADR-0033](../14-decisions/ADR-0033.md), [ADR-00
 | Portal (`/api/portal/brands`, `/api/portal`): sólo con un `BrandGuest` ACTIVE de esa marca exacta; lee lo compartido activo, la guía publicada y comentarios compartidos; nunca comentarios internos, borradores, plan vivo, ofertas, Brando ni conexiones | no (su vista es la de equipo) | no | sí | no |
 | Comentar en lo compartido y aprobar o pedir cambios sobre la versión exacta compartida (`/api/portal/{comment,decide}`: huella exacta, 409 si cambió; clave de idempotencia; materiales y kit, no estrategia ni plan); nunca concede publicar ni gastar | — | — | sí | no |
 | Vista previa de un archivo para el invitado (`/api/portal/asset`): sólo PNG, JPEG o WebP citados por la guía publicada o por una versión de kit compartida activa; autorizado en cada petición | — | — | sí | no |
+| Clientes ([ADR-0035](../14-decisions/ADR-0035.md)): leer, registrar y dar seguimiento a oportunidades, crear segmentos (`/api/clients`, `/api/clients/{create,update,segment}`); responsable sólo un miembro activo con acceso a la marca; revisión antigua → 409 | sí | sí | **no** (404: no tiene membresía) | no |
+| Abrir o desactivar un formulario web de la marca (`/api/clients/{form,disable-form}`) | sí | sólo con `PUBLISH_SITE` | no | no |
+| Leer Resultados de la marca (`/api/results`): cifras calculadas en servidor con el ámbito del usuario | sí | sí | **no** | no |
+| Formulario web público (`GET /api/forms/public`, `POST /api/forms/submit`): sin sesión, mismo origen, cuerpo limitado, límites por cliente y por formulario; la marca sale del formulario activo, nunca del navegador; el contenido no va a logs ni telemetría | — | — | — | — (visitante anónimo: sólo enviar) |
 
 El actor y sus capacidades se resuelven en servidor (`Engine.withBrandActor`: sesión, membresía activa, Brand bajo
 Workspace y asignación). Otra organización → 404; un MEMBER sin asignación → 403. Ejecutar un paso externo revalida

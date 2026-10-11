@@ -99,8 +99,8 @@ test('navigation keeps every destination reachable at laptop height; preparation
   const menu = page.getByRole('button', { name: 'Abrir navegación', exact: true });
   if (await menu.isVisible()) await menu.click();
   const labels = await page.locator('#journey .nav-label').evaluateAll(nodes => nodes.map(n => (n.firstChild?.textContent ?? '').trim()));
-  // PHASE4_SPEC §3 (2026-10-10): the sidebar holds the seven areas and the footer; Estrategia keeps an inner navigation.
-  expect(labels).toEqual(['Inicio', 'Estrategia', 'Productos y servicios', 'Marketing', 'Marca y recursos', 'Colaboración', 'Resultados', 'Mi aprendizaje', 'Configuración de marca', 'Ayuda']);
+  // PHASE4_SPEC §3 and §12.3 (issue #10): eight compact areas (Clientes added) and the footer; Estrategia keeps an inner navigation.
+  expect(labels).toEqual(['Inicio', 'Estrategia', 'Productos y servicios', 'Marketing', 'Clientes', 'Marca y recursos', 'Colaboración', 'Resultados', 'Mi aprendizaje', 'Configuración de marca', 'Ayuda']);
   await expect(page.locator('#journey [data-module]')).toHaveCount(0);
   await expect(page.locator('#journey #competitive-context')).toHaveCount(0);
   await expect(page.locator('#rail-panel #competitive-context')).not.toHaveAttribute('data-module');
@@ -108,7 +108,7 @@ test('navigation keeps every destination reachable at laptop height; preparation
   // every destination is visible without scrolling and keeps a comfortable target.
   const fits = async (where: string) => {
     expect(await page.locator('#journey').evaluate(nav => nav.scrollHeight <= nav.clientHeight + 1), `no sidebar scroll ${where}`).toBe(true);
-    for (const id of ['#home', '#strategy-toggle', '#offers', '#marketing', '#brand-resources', '#practice', '#brand-settings', '#help']) {
+    for (const id of ['#home', '#strategy-toggle', '#offers', '#marketing', '#clients', '#brand-resources', '#collaboration', '#results', '#practice', '#brand-settings', '#help']) {
       await expect(page.locator(id), `${id} ${where}`).toBeInViewport();
       expect((await page.locator(id).boundingBox())!.height, `${id} target`).toBeGreaterThanOrEqual(36);
     }
