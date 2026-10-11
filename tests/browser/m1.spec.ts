@@ -67,8 +67,8 @@ test('human connected proof survives reload without console errors or overflow',
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.emulateMedia({reducedMotion:'reduce'});expect(await page.locator('#journey').evaluate(e=>getComputedStyle(e).transitionDuration)).toBe('0s');
   await page.screenshot({path:`test-results/m1-completed-${testInfo.project.name}.png`,fullPage:true});
-  if(await page.getByRole('button',{name:'Abrir navegación',exact:true}).isVisible())await page.getByRole('button',{name:'Abrir navegación',exact:true}).click();
-  await page.getByRole('button',{name:'Mapa estratégico',exact:true}).click();
+  // PHASE4_SPEC §3: Mapa estratégico lives in Estrategia's inner navigation (the shared helper reaches it on any screen).
+  await navigate(page,'Mapa estratégico');
   await expect(page.locator('#decision')).toContainText('Suscripción por marca activa');
   await expect(page.locator('#decision')).toContainText('Decisiones conectadas, criterio compartido');
   await expect(page.locator('#decision')).toContainText('Requiere revisión');
