@@ -89,7 +89,8 @@ document.querySelector('#toggle-rail')?.addEventListener('click',()=>{
  applyPanels();
 });
 // PHASE4_SPEC §3 · Estrategia is a destination: it opens the current decision; its steps live inside the area.
-document.querySelector('#strategy-toggle')?.addEventListener('click',()=>run(refresh));
+// On small screens the sidebar is a drawer: opening Estrategia closes it so the inner navigation is reachable.
+document.querySelector('#strategy-toggle')?.addEventListener('click',()=>{closeMenu(false);run(refresh);});
 document.querySelector('#strategy-decisions')?.addEventListener('click',()=>run(refresh));
 document.querySelectorAll('[data-rail-tool]').forEach(button=>button.addEventListener('click',()=>selectRailTool(button.dataset.railTool,button)));
 document.querySelector('#close-rail-panel')?.addEventListener('click',()=>{if(desktopRail.matches){panels.right=true;applyPanels();$('#toggle-rail').focus();}else closeRailDrawer();});
