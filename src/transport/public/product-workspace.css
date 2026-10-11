@@ -343,8 +343,8 @@ body.left-collapsed #journey .nav-item[data-tip]:hover::after, body.left-collaps
 .new-brand .work-intent-option, .work-intent-option { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: 0; padding: 8px 12px; border: 1px solid var(--ws-line); border-radius: 12px; background: var(--surface-card); font-weight: 500; cursor: pointer; }
 .work-intent-option:has(input:checked) { border-color: var(--bp-brand-emerald); box-shadow: 0 0 0 1px var(--bp-brand-emerald) inset; }
 .work-intent-option input { width: 18px; height: 18px; margin: 0; flex: 0 0 18px; }
-.work-intent-other { display: grid; gap: 6px; margin: 0 0 0 24px; }
-.work-intent-other[hidden] { display: none; }
+.work-intent-note { display: grid; gap: 6px; margin: 8px 0 0; }
+.work-intent-note[hidden] { display: none; }
 .work-priority { margin: 18px 0 0; padding: 20px 22px; border: 1px solid var(--ws-line); border-radius: 18px; background: var(--surface-card); }
 .work-priority-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
 .work-priority-head h3 { margin: 0; font: 500 24px/1.2 var(--font-display); }

@@ -346,14 +346,14 @@ export function attentionListHtml(c,documentState){
 }
 // PHASE4_SPEC §4.9 · «¿Qué te gustaría trabajar primero con tu marca?». Intent ids mirror schemas/work-priority (v1).
 // The priority orders suggestions only: it never hides an area, changes permissions or approves anything.
-export const WORK_INTENTS_MAIN=[['STRATEGY_FULL','Desarrollar mi estrategia completa'],['STRATEGY_POINT','Definir o mejorar un punto de mi estrategia'],['MARKETING_PLAN','Organizar mi marketing'],['CAMPAIGN','Preparar una campaña']];
-export const WORK_INTENTS_OTHER=[['CONTENT','Crear contenidos o materiales'],['WEBSITE','Crear o mejorar mi sitio web'],['VISUAL_IDENTITY','Incorporar, completar o crear mi identidad visual'],['SELL_OFFER','Vender un producto o servicio']];
-export const workIntentLabel=id=>[...WORK_INTENTS_MAIN,...WORK_INTENTS_OTHER,['HELP_ME_CHOOSE','No estoy seguro; ayúdame a elegir']].find(([k])=>k===id)?.[1]??'';
-/** Radio group (native keyboard support). `prefix` keeps ids unique when the group appears twice. */
-export function workIntentFieldsHtml(prefix,current=null){
- const otherIds=WORK_INTENTS_OTHER.map(([k])=>k),otherChosen=otherIds.includes(current);
- const radio=([k,label],name=`${prefix}-intent`,checked=current===k)=>`<label class="work-intent-option"><input type="radio" name="${name}" value="${k}"${checked?' checked':''}> <span>${escape(label)}</span></label>`;
- return `<fieldset class="work-intent" data-prefix="${escape(prefix)}"><legend>¿Qué te gustaría trabajar primero con tu marca?</legend><p class="hint">Elige por dónde empezar. Podrás cambiarlo después.</p><div class="work-intent-options">${WORK_INTENTS_MAIN.map(o=>radio(o)).join('')}${radio(['OTHER','Otras necesidades'],undefined,otherChosen)}<div class="work-intent-other" ${otherChosen?'':'hidden'}>${WORK_INTENTS_OTHER.map(o=>radio(o,`${prefix}-intent-other`,current===o[0])).join('')}</div>${radio(['HELP_ME_CHOOSE','No estoy seguro; ayúdame a elegir'])}</div></fieldset>`;
+// PHASE4_SPEC §4.9/§4.10 (owner list 2026-10-11): eleven understandable choices. CONTENT is an earlier value, still
+// shown with its name for brands that chose it before.
+export const WORK_INTENTS=[['STRATEGY_FULL','Mi estrategia completa'],['STRATEGY_POINT','Un punto concreto de mi estrategia'],['SELL_OFFER','Mis productos y servicios'],['VISUAL_IDENTITY','Mi identidad visual'],['MARKETING_PLAN','Mi Plan de Marketing'],['SOCIAL_MEDIA','Mis redes sociales'],['WEBSITE','Mi sitio web'],['CAMPAIGN','Mis campañas digitales'],['SALES_MATERIALS','Mis materiales de venta'],['OTHER','Otro'],['HELP_ME_CHOOSE','No lo sé todavía']];
+export const workIntentLabel=id=>[...WORK_INTENTS,['CONTENT','Crear contenidos o materiales']].find(([k])=>k===id)?.[1]??'';
+/** Radio group (native keyboard support). `prefix` keeps ids unique when the group appears twice. «Otro» adds a note. */
+export function workIntentFieldsHtml(prefix,current=null,note=''){
+ const radio=([k,label])=>`<label class="work-intent-option"><input type="radio" name="${prefix}-intent" value="${k}"${current===k?' checked':''}> <span>${escape(label)}</span></label>`;
+ return `<fieldset class="work-intent" data-prefix="${escape(prefix)}"><legend>¿Qué te gustaría trabajar primero con tu marca?</legend><p class="hint">Elige por dónde empezar. Ordena tus sugerencias; no oculta nada y puedes cambiarlo después.</p><div class="work-intent-options">${WORK_INTENTS.map(radio).join('')}</div><div class="work-intent-note"${current==='OTHER'?'':' hidden'}><label for="${prefix}-intent-note">Cuéntanos qué te gustaría trabajar <span class="hint">opcional</span></label><input id="${prefix}-intent-note" maxlength="500" value="${escape(note??'')}"></div></fieldset>`;
 }
 // Where an intent leads today. Areas of the next blocks are named honestly as not available yet; the suggestion falls
 // back to the strategic decisions that prepare them. Never a button to a capability that does not exist.
@@ -363,7 +363,9 @@ const INTENT_GUIDE={
  CONTENT:{area:'Marketing · Redes sociales y materiales',modules:['Core Message','Brand Promise']},
  WEBSITE:{area:'Marketing · Sitio web',modules:['Positioning','Core Message']},
  VISUAL_IDENTITY:{area:'Marca y recursos · Identidad visual',modules:['Positioning','Brand Promise']},
- SELL_OFFER:{area:'Productos y servicios',modules:['Primary Customer','Value Mechanism']}
+ SELL_OFFER:{area:'Productos y servicios',modules:['Primary Customer','Value Mechanism']},
+ SOCIAL_MEDIA:{area:'Marketing · Redes sociales',modules:['Core Message','Primary Customer']},
+ SALES_MATERIALS:{area:'Productos y servicios · Materiales de venta',modules:['Value Mechanism','Core Message']}
 };
 /** Inicio · «Tu prioridad»: the saved priority, what it suggests now and a way to change it. Pure projection. */
 export function priorityHtml(priority,context,available={}){
@@ -374,6 +376,7 @@ export function priorityHtml(priority,context,available={}){
  if(!intent) body=`<p>Aún no has elegido por dónde empezar. Elegirlo ordena las sugerencias de Inicio; no limita lo que puedes hacer.</p>`;
  else if(intent==='STRATEGY_FULL') body=`<p>Sigue el recorrido completo de las nueve decisiones. Tu siguiente paso aparece arriba.</p>`;
  else if(intent==='STRATEGY_POINT') body=`<p>Elige el punto de tu estrategia que quieres trabajar. No necesitas recorrer las nueve decisiones.</p>${moduleButtons(Object.keys(labels))}`;
+ else if(intent==='OTHER') body=`<p>${priority.note?`Nos contaste: «${escape(priority.note)}». `:''}Elige el área más cercana cuando quieras; mientras tanto, tu siguiente paso aparece arriba.</p>`;
  else if(intent==='HELP_ME_CHOOSE'){
   const pending=Object.keys(labels).filter(m=>!decided.has(m)).slice(0,3);
   body=pending.length?`<p>Una base sólida empieza por la estrategia. Te sugerimos empezar por estas decisiones; tú eliges.</p>${moduleButtons(pending)}`:`<p>Tus nueve decisiones están definidas. Puedes elegir una prioridad concreta para ordenar el siguiente trabajo.</p>`;
@@ -383,7 +386,7 @@ export function priorityHtml(priority,context,available={}){
   body=available[intent]?`<p>Puedes empezar en <strong>${escape(guide.area)}</strong>.</p><div class="actions"><button type="button" data-priority-area="${escape(intent)}">Ir a ${escape(guide.area)}</button></div>`
    :`<p><strong>${escape(guide.area)}</strong> todavía no está disponible en tu espacio. Mientras tanto, estas decisiones preparan ese trabajo:</p>${moduleButtons(guide.modules)}`;
  }
- return `<section class="work-priority" aria-labelledby="work-priority-title"><div class="work-priority-head"><h3 id="work-priority-title">Tu prioridad</h3>${intent?`<p class="badge">${escape(workIntentLabel(intent))}</p>`:''}</div>${body}<details class="work-priority-change"><summary>${intent?'Cambiar prioridad':'Elegir prioridad'}</summary><form id="work-priority-form">${workIntentFieldsHtml('home',intent)}<p id="work-priority-status" role="status" aria-live="polite"></p><button type="submit">Guardar prioridad</button></form></details></section>`;
+ return `<section class="work-priority" aria-labelledby="work-priority-title"><div class="work-priority-head"><h3 id="work-priority-title">Tu prioridad</h3>${intent?`<p class="badge">${escape(workIntentLabel(intent))}</p>`:''}</div>${body}<details class="work-priority-change"><summary>${intent?'Cambiar prioridad':'Elegir prioridad'}</summary><form id="work-priority-form">${workIntentFieldsHtml('home',intent,priority?.note??'')}<p id="work-priority-status" role="status" aria-live="polite"></p><button type="submit">Guardar prioridad</button></form></details></section>`;
 }
 export function homeHtml(context,documentState={total:0,pending:0,processed:0,candidateClaims:0},priority=undefined,available={}){
  const step=nextStep(context),progress=strategyProgress(context);

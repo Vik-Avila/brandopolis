@@ -1,3 +1,14 @@
+## 2026-10-11 · PHASE 4 · inicio guiado (1/2): once prioridades de trabajo
+
+Migración aditiva `0024` (amplía la restricción de valores; el historial append-only no se toca): STRATEGY_FULL,
+STRATEGY_POINT, SELL_OFFER, VISUAL_IDENTITY, MARKETING_PLAN, SOCIAL_MEDIA, WEBSITE, CAMPAIGN, SALES_MATERIALS, OTHER,
+HELP_ME_CHOOSE; CONTENT (valor anterior) sigue válido y se muestra con su nombre. Interfaz: once opciones con
+nombres comprensibles, «Otro» con nota opcional (mostrada en Inicio), «No lo sé todavía»; ordena sugerencias, no
+oculta áreas ni cambia permisos; distinta del Objetivo estratégico. Inicio enlaza las áreas existentes (Redes
+sociales, Materiales de venta, Identidad visual) y nombra Sitio web como no disponible todavía.
+Comprobado: typecheck, lint, Foundation 0 errores; pnpm test 451 PASS (incluye historial con CONTENT y valores nuevos,
+auditoría por elección); E2E `phase4-priority` 10/10 en los 5 proyectos.
+
 ## 2026-10-11 · PHASE 4 · cuatro capturas pendientes: diagnóstico y comparación corregida
 
 - **Mapa estratégico (blueprint-desktop/mobile):** defecto de navegación confirmado con sonda de navegador: al pasar

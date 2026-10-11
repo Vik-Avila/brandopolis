@@ -1035,7 +1035,7 @@ $('#create-brand').addEventListener('submit',event=>{event.preventDefault();run(
  if(brandDocuments.length)
   await uploadSourceDocuments(brand.id,brandDocuments);
  // PHASE4_SPEC §4.9 · optional work priority, saved with its brand (append-only). Never a decision or permission.
- if(workIntent)await api('/api/brands/work-priority',{brandId:brand.id,intent:workIntent,idempotencyKey:crypto.randomUUID()});
+ if(workIntent)await api('/api/brands/work-priority',{brandId:brand.id,intent:workIntent,note:selectedWorkNote($('#create-brand'),'brand'),idempotencyKey:crypto.randomUUID()});
 
  $('#brand-name').value='';
  $('#brand-stage').value='idea';
@@ -1070,9 +1070,12 @@ $('#create-brand').addEventListener('submit',event=>{event.preventDefault();run(
 bindDocumentSelection('#brand-documents','#brand-document-selection');
 // Work priority radio group: «Otras necesidades» reveals its four options (keyboard and pointer alike).
 $('#brand-work-intent').innerHTML=workIntentFieldsHtml('brand');
-document.addEventListener('change',event=>{const input=event.target;if(!(input instanceof HTMLInputElement)||input.type!=='radio')return;const group=input.closest('.work-intent');if(!group||input.name!==`${group.dataset.prefix}-intent`)return;const other=group.querySelector('.work-intent-other');if(other)other.hidden=input.value!=='OTHER';});
+// «Otro» reveals an optional note (keyboard and pointer alike).
+document.addEventListener('change',event=>{const input=event.target;if(!(input instanceof HTMLInputElement)||input.type!=='radio')return;const group=input.closest('.work-intent');if(!group||input.name!==`${group.dataset.prefix}-intent`)return;const note=group.querySelector('.work-intent-note');if(note)note.hidden=input.value!=='OTHER';});
 /** Selected work intent of a radio group, or null (none chosen, or «Otras necesidades» without a choice). */
-function selectedWorkIntent(root,prefix){const main=root.querySelector(`input[name="${prefix}-intent"]:checked`)?.value??null;if(main!=='OTHER')return main;return root.querySelector(`input[name="${prefix}-intent-other"]:checked`)?.value??null;}
+function selectedWorkIntent(root,prefix){return root.querySelector(`input[name="${prefix}-intent"]:checked`)?.value??null;}
+/** The optional «Otro» note of a radio group (null when another option is chosen). */
+function selectedWorkNote(root,prefix){return selectedWorkIntent(root,prefix)==='OTHER'?(root.querySelector(`#${prefix}-intent-note`)?.value.trim()||null):null;}
 $('#new-brand').addEventListener('click',()=>{$('#brand-dialog').showModal();$('#brand-name').focus();});
 $('#cancel-brand').addEventListener('click',()=>$('#brand-dialog').close());
 $('#brand-dialog').addEventListener('close',()=>$('#new-brand').focus());
@@ -1980,12 +1983,15 @@ async function showHome(){
  // ADR-0027 · Inicio: one next step from the real Brand state, a brief real progress and what needs attention.
  // The full Strategic Intelligence stays one click away in the rail (Atención); nothing here asks the AI.
  // Areas that already exist in this build; the others are named as not available yet (never a fake button).
- $('#decision').innerHTML=homeHtml(context,documentState,priority.current,{SELL_OFFER:true,MARKETING_PLAN:true,CONTENT:true,CAMPAIGN:true});
+ $('#decision').innerHTML=homeHtml(context,documentState,priority.current,{SELL_OFFER:true,MARKETING_PLAN:true,CONTENT:true,CAMPAIGN:true,SOCIAL_MEDIA:true,SALES_MATERIALS:true,VISUAL_IDENTITY:true});
  bindWorkPriorityForm();
  $('#decision').querySelector('[data-priority-area="SELL_OFFER"]')?.addEventListener('click',()=>run(showOffers));
  $('#decision').querySelector('[data-priority-area="MARKETING_PLAN"]')?.addEventListener('click',()=>{marketingTab='plan';run(showMarketing);});
  $('#decision').querySelector('[data-priority-area="CONTENT"]')?.addEventListener('click',()=>{marketingTab='social';run(showMarketing);});
  $('#decision').querySelector('[data-priority-area="CAMPAIGN"]')?.addEventListener('click',()=>{marketingTab='ads';run(showMarketing);});
+ $('#decision').querySelector('[data-priority-area="SOCIAL_MEDIA"]')?.addEventListener('click',()=>{marketingTab='social';run(showMarketing);});
+ $('#decision').querySelector('[data-priority-area="SALES_MATERIALS"]')?.addEventListener('click',()=>{offersTab='materials';run(showOffersArea);});
+ $('#decision').querySelector('[data-priority-area="VISUAL_IDENTITY"]')?.addEventListener('click',()=>run(showIdentity));
  bindAttentionActions($('#decision'));
  $('#next-step-brando')?.addEventListener('click',event=>{const module=event.currentTarget.dataset.module;openModule(module,false);$('#brando-section-explore')?.click();});
  $('#home-open-attention')?.addEventListener('click',event=>selectRailTool('attention',event.currentTarget));
@@ -2215,7 +2221,7 @@ async function showSharedPlan(){
 }
 /** Inicio · «Tu prioridad»: save a new priority (append-only) and re-render. Never changes decisions or permissions. */
 function bindWorkPriorityForm(){
- $('#work-priority-form')?.addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget;const intent=selectedWorkIntent(form,'home');if(!intent){$('#work-priority-status').textContent='Elige una opción para guardar tu prioridad.';return;}run(async()=>{await api('/api/brands/work-priority',{brandId,intent,idempotencyKey:crypto.randomUUID()});await showHome();notice('Prioridad guardada. Inicio ordena sus sugerencias con ella; puedes cambiarla cuando quieras.');},event.submitter);});
+ $('#work-priority-form')?.addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget;const intent=selectedWorkIntent(form,'home');if(!intent){$('#work-priority-status').textContent='Elige una opción para guardar tu prioridad.';return;}run(async()=>{await api('/api/brands/work-priority',{brandId,intent,note:selectedWorkNote(form,'home'),idempotencyKey:crypto.randomUUID()});await showHome();notice('Prioridad guardada. Inicio ordena sus sugerencias con ella; puedes cambiarla cuando quieras.');},event.submitter);});
 }
 /** Shared by Inicio and the rail: open a decision or a view. Navigation only; it never writes or asks the AI. */
 function bindAttentionActions(root){

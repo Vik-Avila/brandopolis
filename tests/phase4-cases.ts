@@ -37,6 +37,15 @@ export function phase4Cases(connection: () => ReturnType<typeof connect>) {
       const view = await engine.workPriority(who.token, brand.id);
       expect(view.current).toMatchObject({ intent: 'CAMPAIGN', entry: { area: 'Marketing', section: 'Campañas digitales' } });
       expect(view.history.map(h => h.intent)).toEqual(['CAMPAIGN', 'STRATEGY_POINT']);
+      // 2026-10-11 · eleven choices (additive migration 0024): the new values are accepted, and an earlier CONTENT choice
+      // stays valid and readable in the history next to them.
+      for (const intent of ['SOCIAL_MEDIA', 'SALES_MATERIALS', 'OTHER', 'HELP_ME_CHOOSE', 'CONTENT'])
+        await engine.setWorkPriority(who.token, { brandId: brand.id, intent, note: intent === 'OTHER' ? 'Ordenar mi catálogo' : null, idempotencyKey: randomUUID() });
+      const later = await engine.workPriority(who.token, brand.id);
+      // Records written within the same millisecond have no defined order, so the history is compared as a set.
+      expect(later.history.map(h => h.intent).sort()).toEqual(['CAMPAIGN', 'CONTENT', 'HELP_ME_CHOOSE', 'OTHER', 'SALES_MATERIALS', 'SOCIAL_MEDIA', 'STRATEGY_POINT']);
+      expect(later.history.find(h => h.intent === 'OTHER')).toMatchObject({ note: 'Ordenar mi catálogo', entry: { area: 'Inicio' } });
+      expect(later.history.find(h => h.intent === 'SALES_MATERIALS')!.entry).toEqual({ area: 'Productos y servicios', section: 'Materiales de venta' });
       await expect(engine.setWorkPriority(who.token, { brandId: brand.id, intent: 'NOT_AN_INTENT', idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'INVALID' });
       await expect(engine.setWorkPriority(who.token, { brandId: brand.id, intent: 'CONTENT', note: 'x'.repeat(501), idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'INVALID' });
       // INT-003: choosing a priority never writes a decision, a version, context or a plan; history is append-only.
@@ -44,7 +53,7 @@ export function phase4Cases(connection: () => ReturnType<typeof connect>) {
       expect(await db.select().from(t.userInputs).where(eq(t.userInputs.brandId, brand.id))).toEqual([]);
       expect(await databaseError(db.execute(sql`update brand_work_priorities set intent='WEBSITE' where id=${first.id}`))).toMatch(/append-only/);
       expect(await databaseError(db.execute(sql`delete from brand_work_priorities where id=${first.id}`))).toMatch(/append-only/);
-      expect((await db.select().from(t.audits).where(and(eq(t.audits.brandId, brand.id), eq(t.audits.operation, 'WORK_PRIORITY_SET')))).length).toBe(2);
+      expect((await db.select().from(t.audits).where(and(eq(t.audits.brandId, brand.id), eq(t.audits.operation, 'WORK_PRIORITY_SET')))).length).toBe(7); // two earlier + five new choices, each audited
     });
 
     it('is scoped like every brand operation: other workspace 404, unassigned member 403, no session 401', async () => {

@@ -4,10 +4,10 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 
 const source = readFileSync('src/transport/public/product-views.js', 'utf8').replace(/export (?=const |function )/g, '');
-const views = runInNewContext(source + '\n({priorityHtml,workIntentFieldsHtml,WORK_INTENTS_MAIN,WORK_INTENTS_OTHER,workIntentLabel,homeHtml,labels});') as {
+const views = runInNewContext(source + '\n({priorityHtml,workIntentFieldsHtml,WORK_INTENTS,workIntentLabel,homeHtml,labels});') as {
   priorityHtml: (p: unknown, c: unknown, available?: Record<string, boolean>) => string;
-  workIntentFieldsHtml: (prefix: string, current?: string | null) => string;
-  WORK_INTENTS_MAIN: [string, string][]; WORK_INTENTS_OTHER: [string, string][];
+  workIntentFieldsHtml: (prefix: string, current?: string | null, note?: string) => string;
+  WORK_INTENTS: [string, string][];
   workIntentLabel: (id: string) => string; homeHtml: (c: unknown, d?: unknown, p?: unknown) => string; labels: Record<string, string>;
 };
 const MODULES = Object.keys(views.labels);
@@ -18,20 +18,25 @@ const context = (decided: string[] = []) => ({
 });
 
 describe('PHASE4_SPEC §4.9 · work priority views', () => {
-  it('the visible options cover exactly the v1 schema intents', () => {
+  it('the eleven offered choices plus the earlier CONTENT value cover exactly the schema intents', () => {
     const schema = JSON.parse(readFileSync('schemas/work-priority.schema.json', 'utf8')).properties.intent.enum;
-    const shown = [...views.WORK_INTENTS_MAIN, ...views.WORK_INTENTS_OTHER].map(([k]) => k).concat('HELP_ME_CHOOSE');
-    expect(shown.sort()).toEqual([...schema].sort());
+    const shown = views.WORK_INTENTS.map(([k]) => k);
+    expect([...shown, 'CONTENT'].sort()).toEqual([...schema].sort());
+    expect(views.workIntentLabel('CONTENT')).toBe('Crear contenidos o materiales'); // earlier choices keep their name
   });
 
-  it('INT-001: six visible choices (others grouped), the question and the change hint', () => {
+  it('INT-001 (owner list 2026-10-11): eleven understandable choices, «Otro» with an optional note, «No lo sé todavía»', () => {
     const html = views.workIntentFieldsHtml('brand');
     expect(html).toContain('¿Qué te gustaría trabajar primero con tu marca?');
-    expect(html).toContain('Elige por dónde empezar. Podrás cambiarlo después.');
-    expect(html.match(/name="brand-intent"/g)).toHaveLength(6);
-    expect(html.match(/name="brand-intent-other"/g)).toHaveLength(4);
-    expect(html).toMatch(/class="work-intent-other" hidden/);
-    expect(views.workIntentFieldsHtml('home', 'WEBSITE')).not.toMatch(/class="work-intent-other" hidden/);
+    expect([...html.matchAll(/name="brand-intent" value="([A-Z_]+)"[^>]*> <span>([^<]+)/g)].map(m => m[2])).toEqual(['Mi estrategia completa', 'Un punto concreto de mi estrategia', 'Mis productos y servicios', 'Mi identidad visual', 'Mi Plan de Marketing', 'Mis redes sociales', 'Mi sitio web', 'Mis campañas digitales', 'Mis materiales de venta', 'Otro', 'No lo sé todavía']);
+    expect(html).toMatch(/class="work-intent-note" hidden/);
+    expect(html).toContain('no oculta nada y puedes cambiarlo después');
+    const other = views.workIntentFieldsHtml('home', 'OTHER', 'Ordenar mi catálogo <b>');
+    expect(other).not.toMatch(/class="work-intent-note" hidden/);
+    expect(other).toContain('value="Ordenar mi catálogo &lt;b&gt;"');
+    expect(views.priorityHtml({ intent: 'OTHER', note: 'Ordenar mi catálogo' }, context())).toContain('Nos contaste: «Ordenar mi catálogo»');
+    expect(views.priorityHtml({ intent: 'SOCIAL_MEDIA' }, context(), { SOCIAL_MEDIA: true })).toContain('data-priority-area="SOCIAL_MEDIA"');
+    expect(views.priorityHtml({ intent: 'SALES_MATERIALS' }, context(), { SALES_MATERIALS: true })).toContain('Materiales de venta');
   });
 
   it('full strategy and a single point lead to different suggestions; a point never forces the nine decisions', () => {

@@ -169,6 +169,13 @@
       "when": 1791690879235,
       "tag": "0023_strange_wonder_man",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791707635118,
+      "tag": "0024_work_priority_intents",
+      "breakpoints": true
     }
   ]
 }

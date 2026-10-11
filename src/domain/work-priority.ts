@@ -4,7 +4,8 @@
  */
 import { states } from './contracts.js';
 
-export type WorkIntent = 'STRATEGY_FULL' | 'STRATEGY_POINT' | 'MARKETING_PLAN' | 'CAMPAIGN' | 'CONTENT' | 'WEBSITE' | 'VISUAL_IDENTITY' | 'SELL_OFFER' | 'HELP_ME_CHOOSE';
+// Eleven choices offered since 2026-10-11; CONTENT is the earlier «contenidos o materiales» value, kept valid for history.
+export type WorkIntent = 'STRATEGY_FULL' | 'STRATEGY_POINT' | 'SELL_OFFER' | 'VISUAL_IDENTITY' | 'MARKETING_PLAN' | 'SOCIAL_MEDIA' | 'WEBSITE' | 'CAMPAIGN' | 'SALES_MATERIALS' | 'OTHER' | 'HELP_ME_CHOOSE' | 'CONTENT';
 // The JSON schema is the executable source; the type above must match it (checked in tests).
 export const WORK_INTENTS = states('work-priority', 'intent') as WorkIntent[];
 
@@ -21,7 +22,10 @@ export const INTENT_ENTRY: Record<WorkIntent, { area: string; section: string | 
   WEBSITE: { area: 'Marketing', section: 'Sitio web' },
   VISUAL_IDENTITY: { area: 'Marca y recursos', section: 'Identidad visual' },
   SELL_OFFER: { area: 'Productos y servicios', section: null },
-  HELP_ME_CHOOSE: { area: 'Inicio', section: null }
+  HELP_ME_CHOOSE: { area: 'Inicio', section: null },
+  SOCIAL_MEDIA: { area: 'Marketing', section: 'Redes sociales' },
+  SALES_MATERIALS: { area: 'Productos y servicios', section: 'Materiales de venta' },
+  OTHER: { area: 'Inicio', section: null }
 };
 
 /** Verified measurement is required for lead-generation campaigns only, never for traffic (ADR-0032). */
