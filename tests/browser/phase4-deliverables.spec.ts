@@ -104,3 +104,31 @@ test('offer copy lives in Productos y servicios → Materiales de venta and need
   await expect(card).toContainText('Ordena tu marca en 30 días');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });
+
+test('Brando proposes a social post from approved information (DEMO labelled); using it fills the form; provenance is server-decided', async ({ page }, info) => {
+  test.slow();
+  const marketing: string[] = []; page.on('request', r => { if (new URL(r.url()).pathname === '/api/brando/marketing') marketing.push(r.method()); });
+  await signIn(page, `Brando marketing ${info.project.name} ${Date.now()}`);
+  await open(page, '#marketing');
+  await section(page, 'social', 'Redes sociales');
+  const view = page.locator('#decision');
+  await view.getByRole('button', { name: 'Nuevo: Publicación para redes' }).click();
+  const form = view.locator('#deliverable-form');
+  await expect(form).toContainText('Tú lo editas y decides; nada se aprueba ni se publica solo.');
+  await form.getByLabel('¿Qué necesitas?').fill('Anunciar el lanzamiento con un tono cercano');
+  await form.getByRole('button', { name: 'Pedir una propuesta a Brando' }).click();
+  const proposal = form.locator('.brando-proposal');
+  await expect(proposal).toContainText('Propuesta de ejemplo (modo DEMO, no generada por IA)');
+  await expect(proposal).toContainText('Preguntas para ti');
+  expect(marketing).toEqual(['POST']);
+  await expect(view.locator('.deliverable-card')).toHaveCount(0); // asking writes nothing
+  await proposal.getByRole('button', { name: 'Usar esta propuesta en el formulario' }).click();
+  await expect(form.getByLabel('Nombre')).toHaveValue(/Propuesta de ejemplo/);
+  await form.getByLabel('Nombre').fill('Lanzamiento con Brando');
+  await form.getByRole('button', { name: 'Crear borrador' }).click();
+  const card = view.locator('.deliverable-card').first();
+  await expect(card).toContainText('Lanzamiento con Brando');
+  await expect(card).toContainText('Propuesta de Brando editada por una persona');
+  await expect(card).toContainText('Borrador · v1');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+});

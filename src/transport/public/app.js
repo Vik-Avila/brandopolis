@@ -1,6 +1,6 @@
 import {createBrandoPresence} from './brando-presence.js';
 const $=s=>document.querySelector(s);
-import {areaTabsHtml,deliverablesHtml,deliverableFormHtml,deliverableText,AREA_TYPES,planHtml,sharedPlanHtml,objectiveFormHtml,focusFormHtml,actionFormHtml,offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
+import {brandoProposalHtml,areaTabsHtml,deliverablesHtml,deliverableFormHtml,deliverableText,AREA_TYPES,planHtml,sharedPlanHtml,objectiveFormHtml,focusFormHtml,actionFormHtml,offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
 import {trapFocus,decisionTabs,viewTabs} from './product-interactions.js';
 import * as analytics from './analytics.js';
 import {PILOT_EVENTS} from './analytics.js';
@@ -2118,6 +2118,12 @@ function openDeliverableEditor(area,type,d){
  const host=$('#deliverable-editor');host.innerHTML=deliverableFormHtml(type,context,deliverableOffers,d?.draft?.content??null,d);
  const form=$('#deliverable-form');$('#dl-name').focus();
  form.querySelector('[data-editor-cancel]').addEventListener('click',()=>{host.innerHTML='';});
+ // ADR-0030 · Brando proposes from approved information only; using it fills the form, never saves or approves.
+ $('#dl-ask-brando')?.addEventListener('click',event=>run(async()=>{
+  const r=await api('/api/brando/marketing',{brandId,type,offerId:$('#dl-offer')?.value||null,request:$('#dl-request').value});
+  const result=$('#dl-brando-result');result.innerHTML=brandoProposalHtml(r);
+  $('#dl-use-proposal')?.addEventListener('click',()=>{fillDeliverableForm(r.proposal.content);form.dataset.proof=r.assistanceProof?.proofId??'';result.innerHTML='<p class="hint">Propuesta copiada al formulario. Edítala y guarda el borrador cuando esté lista.</p>';$('#dl-name').focus();});
+ },event.currentTarget));
  form.addEventListener('submit',event=>{event.preventDefault();
   const v=id=>$(id)?.value??'',lines=id=>v(id).split('\n').map(x=>x.trim()).filter(Boolean),status=$('#deliverable-form-status');
   if(!v('#dl-name').trim()){status.textContent='Escribe un nombre.';$('#dl-name').focus();return;}
@@ -2137,10 +2143,21 @@ function openDeliverableEditor(area,type,d){
   const content={type,name:v('#dl-name'),offerId:v('#dl-offer')||null,sourceDecisionVersionIds:[...form.querySelectorAll('input[name="dl-source"]:checked')].map(i=>i.value),body};
   run(async()=>{
    if(d)await api('/api/deliverables/draft',{brandId,deliverableId:d.id,expectedRevision:d.revision,content});
-   else await api('/api/deliverables/create',{brandId,content,idempotencyKey:crypto.randomUUID()});
+   else await api('/api/deliverables/create',{brandId,content,idempotencyKey:crypto.randomUUID(),...(form.dataset.proof?{assistanceProof:form.dataset.proof}:{})});
    await showDeliverables(area);notice(d?'Borrador guardado.':'Borrador creado. Complétalo y envíalo a revisión cuando esté listo.');
   },event.submitter);
  });
+}
+/** Copies a proposal into the deliverable form fields (the person still edits and saves). */
+function fillDeliverableForm(c){
+ const set=(id,value)=>{const el=$(id);if(el)el.value=value??'';};
+ const b=c.body;set('#dl-name',c.name);
+ if(c.type==='SALES_PRESENTATION'){set('#dl-audience',b.audience);set('#dl-slides',b.slides.map(sl=>`${sl.title}\n${sl.text}`).join('\n\n'));}
+ if(c.type==='OFFER_COPY'){set('#dl-headline',b.headline);set('#dl-short',b.short);set('#dl-long',b.long);set('#dl-cta',b.callToAction);}
+ if(c.type==='SOCIAL_POST'){set('#dl-network',b.network);set('#dl-format',b.format);set('#dl-objective',b.objective);set('#dl-date',b.scheduledDate);set('#dl-text',b.text);set('#dl-hashtags',b.hashtags.join(' '));set('#dl-materials',b.materials);}
+ if(c.type==='AD'){set('#dl-channel',b.channel);set('#dl-ad-objective',b.objective);set('#dl-headlines',b.headlines.join('\n'));set('#dl-descriptions',b.descriptions.join('\n'));set('#dl-ad-cta',b.callToAction);set('#dl-landing',b.landingUrl);}
+ if(c.type==='DESIGN_BRIEF'){set('#dl-for',b.for);set('#dl-piece',b.piece);set('#dl-format-size',b.format);set('#dl-brief-audience',b.audience);set('#dl-message',b.message);set('#dl-must',b.mustInclude);set('#dl-avoid',b.avoid);set('#dl-due',b.dueDate);}
+ for(const box of document.querySelectorAll('input[name="dl-source"]'))box.checked=c.sourceDecisionVersionIds.includes(box.value);
 }
 /** PLN-001…003 · what the client receives: approved version and shared progress (read only). */
 async function showSharedPlan(){

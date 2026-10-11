@@ -1,32 +1,39 @@
 import { randomUUID } from 'node:crypto';
 import { demoBrando, type BrandoAnswer } from './brando.js';
+import { demoMarketingProposal, type MarketingPacket, type MarketingProposal } from './brando-marketing.js';
 import { validate } from './contracts.js';
 import type { assemble } from './context-assembler.js';
 export type ContextPacket=ReturnType<typeof assemble>;
 export interface Recommendation {id:string;brandId:string;questionId:string;contextVersion:string;options:{id:string;label:string;rationale:string;tradeoffs:string[]}[];recommendedOptionId:string|null;rationale:string;evidenceReferences:string[];hypothesesUsed:string[];tradeoffs:string[];openQuestions:string[];supportLevel:string;affectedDomains:string[];failureConditions:string[]}
 export interface StrategicGatewayRequest {task:'STRATEGIC_ANALYSIS';module:string;promptVersion:string;contextVersion:string;input:ContextPacket;outputSchema:'recommendation';budget:{maxCharacters:number;timeoutMs:number};tenantScope:{workspaceId:string;brandId:string};questionId:string}
 export interface BrandoGatewayRequest extends Omit<StrategicGatewayRequest,'task'|'outputSchema'> {task:'BRANDO_CONTEXTUAL';outputSchema:'brando-answer'|'brando-answer-v2'}
+// ADR-0030 · Brando for marketing: propose-only, same gateway, minimum authorized packet of one brand.
+export interface MarketingGatewayRequest extends Omit<StrategicGatewayRequest,'task'|'outputSchema'|'input'> {task:'BRANDO_MARKETING';outputSchema:'marketing-proposal-v1';input:MarketingPacket}
 export type GatewayRequest=StrategicGatewayRequest|BrandoGatewayRequest;
+export type AnyGatewayRequest=GatewayRequest|MarketingGatewayRequest;
 type GatewayResponse<T>={error:GatewayError|null;result:T|null;traceId:string;provider:string;model:string;latencyMs:number;tokenIn:number|null;tokenOut:number|null;cost:null;promptVersion:string;contextVersion:string};
 export type GatewayError='UNAVAILABLE'|'TIMEOUT'|'INVALID_OUTPUT'|'RATE_LIMIT'|'BUDGET_EXCEEDED'|'PROVIDER_ERROR';
 export class ProviderFailure extends Error {constructor(readonly code:GatewayError){super(code);}}
-export interface ModelProvider {name:string;model:string;generate(request:GatewayRequest):Promise<unknown>;generateMeasured?(request:GatewayRequest):Promise<{output:unknown;tokenIn:number|null;tokenOut:number|null}>}
+// `propose` serves the marketing surface (ADR-0030); a provider without it answers UNAVAILABLE and manual editing stays.
+export interface ModelProvider {name:string;model:string;generate(request:GatewayRequest):Promise<unknown>;generateMeasured?(request:GatewayRequest):Promise<{output:unknown;tokenIn:number|null;tokenOut:number|null}>;propose?(request:MarketingGatewayRequest):Promise<{output:unknown;tokenIn:number|null;tokenOut:number|null}>}
 export class ModelGateway {
   constructor(private provider:ModelProvider,readonly promptVersion='competition-demo-v1',readonly timeoutMs=5000) {}
   get providerName() {return this.provider.name;}
   invoke(request:StrategicGatewayRequest):Promise<GatewayResponse<Recommendation>>;
   invoke(request:BrandoGatewayRequest):Promise<GatewayResponse<BrandoAnswer>>;
-  invoke(request:GatewayRequest):Promise<GatewayResponse<Recommendation|BrandoAnswer>>;
-  async invoke(request:GatewayRequest):Promise<GatewayResponse<Recommendation|BrandoAnswer>> {
+  invoke(request:MarketingGatewayRequest):Promise<GatewayResponse<MarketingProposal>>;
+  invoke(request:AnyGatewayRequest):Promise<GatewayResponse<Recommendation|BrandoAnswer|MarketingProposal>>;
+  async invoke(request:AnyGatewayRequest):Promise<GatewayResponse<Recommendation|BrandoAnswer|MarketingProposal>> {
     const started=Date.now(),traceId=randomUUID();let timer:ReturnType<typeof setTimeout>|undefined;
     let tokenIn:number|null=null,tokenOut:number|null=null;
     const meta=()=>({traceId,provider:this.provider.name,model:this.provider.model,latencyMs:Date.now()-started,tokenIn,tokenOut,cost:null,promptVersion:request.promptVersion,contextVersion:request.contextVersion});
     try {
       if(JSON.stringify(request.input).length>request.budget.maxCharacters) return {error:'BUDGET_EXCEEDED' as GatewayError,result:null,...meta()};
-      const generated=this.provider.generateMeasured?this.provider.generateMeasured(request).then(r=>{tokenIn=r.tokenIn;tokenOut=r.tokenOut;return r.output;}):this.provider.generate(request);
+      const measured=(r:{output:unknown;tokenIn:number|null;tokenOut:number|null})=>{tokenIn=r.tokenIn;tokenOut=r.tokenOut;return r.output;};
+      const generated=request.task==='BRANDO_MARKETING'?(this.provider.propose?this.provider.propose(request).then(measured):Promise.reject(new ProviderFailure('UNAVAILABLE'))):this.provider.generateMeasured?this.provider.generateMeasured(request).then(measured):this.provider.generate(request);
       const result=await Promise.race([generated,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('TIMEOUT')),request.budget.timeoutMs);})]);
       try {validate(request.outputSchema,result);} catch {return {error:'INVALID_OUTPUT' as GatewayError,result:null,...meta()};}
-      return {error:null,result:result as Recommendation|BrandoAnswer,...meta()};
+      return {error:null,result:result as Recommendation|BrandoAnswer|MarketingProposal,...meta()};
     } catch(error) {return {error:(error instanceof ProviderFailure?error.code:error instanceof Error&&error.message==='TIMEOUT'?'TIMEOUT':'PROVIDER_ERROR') as GatewayError,result:null,...meta()};}
     finally {if(timer)clearTimeout(timer);}
   }
@@ -45,6 +52,7 @@ const examples:Record<string,[string,string]>={
 /** Deterministic fixture, never presented as live AI or market evidence. */
 export class DemoProvider implements ModelProvider {
   name='DEMO_FIXTURE';model='competition-v1';
+  async propose(r:MarketingGatewayRequest){return {output:demoMarketingProposal(r.input),tokenIn:null,tokenOut:null};}
   async generate(r:GatewayRequest):Promise<Recommendation|BrandoAnswer> {
     if(r.task==='BRANDO_CONTEXTUAL'){const answer=demoBrando(r.input);return r.outputSchema==='brando-answer-v2'?{...answer,suggestionActions:answer.suggestions.map(()=>({kind:'EVIDENCE',proposedDecision:null}))}:answer;}
     const labels=examples[r.module];if(!labels)throw new Error('Unsupported module');

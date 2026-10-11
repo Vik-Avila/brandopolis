@@ -113,6 +113,12 @@ export function deliverablesCases(connection: () => ReturnType<typeof connect>) 
       const [d] = await x.list();
       expect(d.publications).toEqual([expect.objectContaining({ versionId: v1.versionId, publishedOn: '2026-11-03', url: 'https://www.linkedin.com/posts/123', note: 'Publicado por Ana' })]);
       expect(await databaseError(x.db.execute(sql`update deliverable_publications set url=null where "deliverableId"=${created.deliverableId}`))).toMatch(/append-only/);
+      // Security review: the same key with another link or note is a conflict, never a silent replay.
+      await expect(record({ versionId: v1.versionId, idempotencyKey: key, note: 'Publicado por Ana', url: 'https://www.linkedin.com/posts/456' })).rejects.toMatchObject({ code: 'CONFLICT' });
+      await expect(record({ versionId: v1.versionId, idempotencyKey: key, note: 'Otra nota' })).rejects.toMatchObject({ code: 'CONFLICT' });
+      // A retired deliverable records no publication.
+      await x.cmd('retire', { deliverableId: created.deliverableId, expectedRevision: 2 });
+      await expect(record({ versionId: v1.versionId })).rejects.toMatchObject({ code: 'CONFLICT' });
       const ad = await x.cmd('create', { content: { type: 'AD', name: 'Anuncio', offerId: null, sourceDecisionVersionIds: [], body: { channel: 'META', objective: 'LEADS', headlines: ['h'], descriptions: [], callToAction: '', landingUrl: null } }, idempotencyKey: randomUUID() });
       await expect(x.cmd('publication', { deliverableId: ad.deliverableId, versionId: ad.versionId, publishedOn: '2026-11-03', idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'INVALID' });
     });

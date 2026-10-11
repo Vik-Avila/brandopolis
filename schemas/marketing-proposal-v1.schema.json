@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/marketing-proposal.v1",
+  "title": "marketing-proposal-v1",
+  "x-version": "v1",
+  "description": "ADR-0030 · Brando B2 output for a marketing deliverable: a proposed draft (name and typed body, validated again against deliverable-version v1 by the server), why it is proposed, which authorized sources of the request it uses (ids only), what is missing and plain-language questions to refine it. A proposal: never a version, an approval or a publication.",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "body": { "type": "object" },
+    "rationale": { "type": "string", "minLength": 1, "maxLength": 1200 },
+    "sourceIds": { "type": "array", "maxItems": 20, "items": { "type": "string", "minLength": 1, "maxLength": 200 } },
+    "missing": { "type": "array", "maxItems": 6, "items": { "type": "string", "minLength": 1, "maxLength": 300 } },
+    "questions": { "type": "array", "maxItems": 4, "items": { "type": "string", "minLength": 1, "maxLength": 300 } }
+  },
+  "required": ["name", "body", "rationale", "sourceIds", "missing", "questions"],
+  "examples": [
+    { "name": "Publicación de lanzamiento", "body": { "network": "LINKEDIN", "format": "POST", "objective": "Dar a conocer la oferta", "scheduledDate": null, "text": "Texto propuesto", "hashtags": ["#marca"], "materials": "" }, "rationale": "Usa el mensaje principal aprobado.", "sourceIds": ["v-1"], "missing": ["Fecha prevista"], "questions": ["¿Qué fecha quieres publicarla?"] }
+  ]
+}

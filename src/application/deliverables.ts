@@ -187,6 +187,7 @@ export async function recordPublication(tx: Transaction, a: BrandActor, input: {
   const idempotencyKey = key(input.idempotencyKey);
   const row = await lockDeliverable(tx, a, input.deliverableId, NOT_GUARDED);
   if (row.type !== 'SOCIAL_POST') throw new AppError('INVALID', 'Only a social post records a manual publication');
+  const trimmedNote = (value: unknown) => (typeof value === 'string' ? value.trim() || null : null);
   const publishedOn = typeof input.publishedOn === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(input.publishedOn) && !Number.isNaN(Date.parse(`${input.publishedOn}T00:00:00Z`)) ? input.publishedOn : null;
   if (!publishedOn) throw new AppError('INVALID', 'Publication date required');
   const url = input.url == null || input.url === '' ? null : input.url;
@@ -195,10 +196,11 @@ export async function recordPublication(tx: Transaction, a: BrandActor, input: {
   if (note !== null && (typeof note !== 'string' || note.trim().length > 280)) throw new AppError('INVALID', 'Note too long');
   const [prior] = await tx.select().from(t.deliverablePublications).where(and(byBrand(t.deliverablePublications, a), eq(t.deliverablePublications.actorId, a.userId), eq(t.deliverablePublications.idempotencyKey, idempotencyKey)));
   if (prior) {
-    if (prior.deliverableId !== row.id || prior.versionId !== input.versionId || prior.publishedOn !== publishedOn) throw new AppError('CONFLICT', 'Idempotency key already used for another record');
+    if (prior.deliverableId !== row.id || prior.versionId !== input.versionId || prior.publishedOn !== publishedOn || prior.url !== url || prior.note !== trimmedNote(note)) throw new AppError('CONFLICT', 'Idempotency key already used for another record');
     return { deliverableId: row.id, versionId: prior.versionId, replayed: true };
   }
+  active(row);
   if (!row.approvedVersionId || input.versionId !== row.approvedVersionId) throw new AppError('CONFLICT', 'Only the approved version can be recorded as published');
-  await tx.insert(t.deliverablePublications).values({ id: randomUUID(), workspaceId: a.workspaceId, brandId: a.brandId, deliverableId: row.id, versionId: row.approvedVersionId, publishedOn, url, note: typeof note === 'string' ? note.trim() || null : null, actorId: a.userId, idempotencyKey, createdAt: new Date() });
+  await tx.insert(t.deliverablePublications).values({ id: randomUUID(), workspaceId: a.workspaceId, brandId: a.brandId, deliverableId: row.id, versionId: row.approvedVersionId, publishedOn, url, note: trimmedNote(note), actorId: a.userId, idempotencyKey, createdAt: new Date() });
   return { deliverableId: row.id, versionId: row.approvedVersionId };
 }

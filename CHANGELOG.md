@@ -1,3 +1,10 @@
+## 2026-10-10 · Phase 4 — bloque 3: entregables y Brando para marketing
+
+- Cinco tipos de entregable con versiones, aprobación por huella, decisión idempotente, manifiesto de origen y registro manual de publicación; migración aditiva 0022; pestañas de área accesibles.
+- Brando para marketing: propuestas con contexto mínimo autorizado, sin escrituras, procedencia AI_ASSISTED sólo con prueba de un solo uso ligada a contexto y oferta.
+- Revisión de seguridad: 1 MEDIUM y 3 LOW corregidos con regresiones.
+- Evidencia sobre el árbol 1f374eb2…: pnpm test 432 PASS; test:e2e 242 PASS · 13 SKIP · 0 FAIL (255; una intermitencia previa en m1.spec registrada); test:pilot:e2e 10/10; 10 capturas canónicas difieren y siguen sin actualizar.
+
 ## 2026-10-10 · Phase 4 — bloque 3: navegación de siete entradas; corrección de la evidencia visual
 
 - Navegación: siete entradas; Validación y Mapa estratégico dentro de Estrategia (plegado fuera de esa área); Marca y recursos, Colaboración y Resultados «Próximamente».

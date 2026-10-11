@@ -1,7 +1,7 @@
 import {BrandoSuggestions,BrandoAssistance} from '../domain/brando-suggestions.js';
 import { attentionFor, brandoPacket,brandoSuggestionActions, validBrandoReferences } from '../domain/brando.js';
 import { randomUUID, createHash } from 'node:crypto';
-import { and, eq, ne, asc, desc, sql } from 'drizzle-orm';
+import { inArray, and, eq, ne, asc, desc, sql } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { AppError, validate, rules, reviewsOnFirstUpstreamVersion, transition, reviewOrder, type CommitCommand } from '../domain/contracts.js';
 import type { Database, Transaction } from '../persistence/database.js';
@@ -16,6 +16,8 @@ import { effectiveCapabilities } from '../domain/brand-capabilities.js';
 import { changeCapability, grantedCapabilities, listCapabilityGrants, readWorkPriority, recordWorkPriority, type BrandActor } from './brand-access.js';
 import { ExternalOperations } from './external-operations.js';
 import { actionStatus, addAction, addObjective, createPlan, createSnapshot, decideSnapshot, readPlan, readSharedPlan, updateAction, updateObjective, updatePlan } from './marketing-plan.js';
+import { MarketingAssistance, marketingPacket, proposalContent, type MarketingPacket } from '../domain/brando-marketing.js';
+import { DELIVERABLE_TYPES, type DeliverableType } from '../domain/deliverables.js';
 import { createDeliverable, decideDeliverable, listDeliverables, newDeliverableDraft, recordPublication, retireDeliverable, saveDeliverableDraft, submitDeliverable } from './deliverables.js';
 import { createOffer, decideOffer, listOffers, newOfferDraft, retireOffer, saveOfferDraft, submitOffer } from './offers.js';
 
@@ -27,6 +29,7 @@ const inScope=(table:{workspaceId:AnyPgColumn;brandId:AnyPgColumn},s:Scope)=>and
 export class Engine {
   private brandoSuggestions=new BrandoSuggestions();
   private brandoAssistance=new BrandoAssistance();
+  private marketingAssistance=new MarketingAssistance();
   constructor(private db:Database, private impactHook?:()=>void,private gateway=new ModelGateway(new DemoProvider())) {}
   /** Whether explicit AI requests reach a real provider (local live AI) or the deterministic DEMO fixture. */
   get aiMode():'LIVE'|'DEMO' {return this.gateway.providerName==='DEMO_FIXTURE'?'DEMO':'LIVE';}
@@ -121,11 +124,68 @@ export class Engine {
     const run={create:createDeliverable,draft:saveDeliverableDraft,submit:submitDeliverable,decide:decideDeliverable,'new-draft':newDeliverableDraft,retire:retireDeliverable,publication:recordPublication}[action];
     if(!run)throw new AppError('INVALID','Unknown deliverable operation');
     return this.withBrandActor(token,input.brandId as string,async(tx,actor)=>{
-      const result=await (run as (tx:Transaction,a:BrandActor,i:Record<string,unknown>)=>Promise<Record<string,unknown>>)(tx,actor,input);
+      // Provenance is decided by the server (ADR-0030): only a current proof issued to this person for this brand and
+      // type marks the draft AI_ASSISTED; the proof is consumed once a new deliverable is created from it.
+      const content=input.content as {type?:unknown;offerId?:unknown}|undefined,type=content?.type as DeliverableType;
+      const proof=action==='create'&&DELIVERABLE_TYPES.includes(type)?this.marketingAssistance.read(input.assistanceProof,actor,type):null;
+      // VAL-011: same offer and unchanged brand context since the proposal; otherwise the draft is MANUAL.
+      const assisted=Boolean(proof&&(content?.offerId||null)===proof.offerId&&(await this.marketingContext(tx,actor,type,proof.offerId,'')).contextVersion===proof.contextVersion);
+      const result:Record<string,unknown>=action==='create'?await createDeliverable(tx,actor,input,assisted?'AI_ASSISTED':'MANUAL'):await (run as (tx:Transaction,a:BrandActor,i:Record<string,unknown>)=>Promise<Record<string,unknown>>)(tx,actor,input);
+      if(assisted&&!result.replayed)this.marketingAssistance.consume(String(input.assistanceProof));
       const operation=action==='decide'?(result.status==='APPROVED'?'DELIVERABLE_APPROVE':'DELIVERABLE_REQUEST_CHANGES'):`DELIVERABLE_${action.toUpperCase().replace('-','_')}`;
       if(!result.replayed)await this.audit(tx,{...actor},{operation,idempotencyKey:typeof input.idempotencyKey==='string'?input.idempotencyKey:randomUUID(),newVersion:(result.versionId as string|null)??null,previousVersion:((result.superseded??result.previousVersionId) as string|null|undefined)??null,rationale:action==='decide'?result.criterion as string:undefined});
       return result;
     },true);
+  }
+  /**
+   * ADR-0030 · Brando for marketing (B2, propose-only). Builds the minimum authorized packet of one brand (name, active
+   * decision versions, approved offers, active 90-day priorities), asks the gateway outside any transaction,
+   * re-authorizes and compares the context before returning, and validates references and body. It writes nothing:
+   * the person decides whether to create a draft from it.
+   */
+  async proposeDeliverable(token:string,input:{brandId?:unknown;type?:unknown;offerId?:unknown;request?:unknown}) {
+    if(!input||typeof input!=='object'||Array.isArray(input))throw new AppError('INVALID','Invalid proposal request');
+    if(!DELIVERABLE_TYPES.includes(input.type as DeliverableType))throw new AppError('INVALID','Unknown deliverable type');
+    if(input.offerId!=null&&(typeof input.offerId!=='string'||input.offerId.length>200))throw new AppError('INVALID','Invalid offer');
+    if(input.request!=null&&(typeof input.request!=='string'||input.request.length>1000))throw new AppError('INVALID','Request too long');
+    const brandId=input.brandId as string,type=input.type as DeliverableType,offerId=(input.offerId as string|null|undefined)||null;
+    const read=()=>this.withBrandActor(token,brandId,async(tx,actor)=>({actor,packet:await this.marketingContext(tx,actor,type,offerId,String(input.request??''))}));
+    const before=await read();
+    if(offerId&&!before.packet.offers.some(o=>o.id===offerId))throw new AppError('INVALID','The offer must be approved before Brando can use it');
+    await this.db.transaction(async tx=>{const s=await this.scope(tx,token,brandId,false);await this.event(tx,s,'brando_requested');});
+    const response=await this.gateway.invoke({task:'BRANDO_MARKETING',module:'Brando marketing',promptVersion:'brando-marketing-v1',contextVersion:before.packet.contextVersion,input:before.packet,outputSchema:'marketing-proposal-v1',budget:{maxCharacters:30000,timeoutMs:this.gateway.timeoutMs},tenantScope:{workspaceId:before.actor.workspaceId,brandId},questionId:''});
+    const after=await read(); // Re-authorize after provider latency, before returning any content.
+    if(after.packet.contextVersion!==before.packet.contextVersion)throw new AppError('CONFLICT','Brand information changed; ask again');
+    const content=response.result?proposalContent(response.result,before.packet):null;
+    const error=response.error??(content?null:'INVALID_OUTPUT');
+    const proof=content&&!error?this.marketingAssistance.issue({workspaceId:before.actor.workspaceId,userId:before.actor.userId,brandId,type,offerId,contextVersion:before.packet.contextVersion}):null;
+    const labels=new Map([...before.packet.decisions.map(d=>[d.id,d.area] as const),...before.packet.offers.map(o=>[o.id,`Oferta: ${o.name}`] as const),...before.packet.priorities.map(p=>[p.id,`Prioridad de 90 días: ${p.title}`] as const)]);
+    return {
+      proposal:content&&!error?{content,rationale:response.result!.rationale,missing:response.result!.missing,questions:response.result!.questions,sources:response.result!.sourceIds.map(id=>({id,label:labels.get(id)??''}))}:null,
+      assistanceProof:proof,error,provider:response.provider,demo:response.provider==='DEMO_FIXTURE',
+      context:{decisions:before.packet.decisions.length,offers:before.packet.offers.length,priorities:before.packet.priorities.length}
+    };
+  }
+  /** Minimum authorized context for a marketing proposal: approved and active information of this brand only. */
+  private async marketingContext(tx:Transaction,a:BrandActor,type:DeliverableType,offerId:string|null,request:string):Promise<MarketingPacket> {
+    const s={workspaceId:a.workspaceId,brandId:a.brandId,userId:a.userId};
+    const [brand]=await tx.select().from(t.brands).where(and(eq(t.brands.workspaceId,s.workspaceId),eq(t.brands.id,s.brandId)));
+    const decisions=await tx.select().from(t.decisions).where(inScope(t.decisions,s));
+    const questions=await tx.select().from(t.questions).where(inScope(t.questions,s));
+    const active=decisions.filter(d=>d.activeVersionId);
+    const versions=active.length?await tx.select().from(t.versions).where(and(inScope(t.versions,s),inArray(t.versions.id,active.map(d=>d.activeVersionId!)))):[];
+    const offers=await tx.select().from(t.offers).where(and(inScope(t.offers,s),eq(t.offers.status,'ACTIVE')));
+    const approved=offers.filter(o=>o.approvedVersionId);
+    const offerVersions=approved.length?await tx.select().from(t.offerVersions).where(and(inScope(t.offerVersions,s),inArray(t.offerVersions.id,approved.map(o=>o.approvedVersionId!)))):[];
+    const [plan]=await tx.select().from(t.marketingPlans).where(and(inScope(t.marketingPlans,s),eq(t.marketingPlans.year,new Date().getFullYear())));
+    const objectives=plan?await tx.select().from(t.planObjectives).where(and(inScope(t.planObjectives,s),eq(t.planObjectives.planId,plan.id))):[];
+    const packet=marketingPacket({
+      contextVersion:'',brand:{name:brand.name},target:{type,offerId},request,
+      decisions:versions.map(v=>({id:v.id,area:questions.find(q=>q.id===active.find(d=>d.activeVersionId===v.id)?.questionId)?.module??'',text:v.selectedOption})).sort((x,y)=>x.id.localeCompare(y.id)),
+      offers:offerVersions.map(v=>{const c=v.content as {name:string;need:string;outcome:string;benefits:string[];differentiators:string[];audience:{segment:string}};return {id:approved.find(o=>o.approvedVersionId===v.id)!.id,name:c.name,need:c.need,outcome:c.outcome,benefits:c.benefits,differentiators:c.differentiators,audience:c.audience.segment};}).sort((x,y)=>x.id.localeCompare(y.id)),
+      priorities:objectives.map(o=>({id:o.id,...(o.content as {horizon:string;title:string;status:string})})).filter(o=>o.horizon==='NINETY_DAYS'&&o.status==='ACTIVE').map(o=>({id:o.id,title:o.title})).sort((x,y)=>x.id.localeCompare(y.id))
+    });
+    return {...packet,contextVersion:hash(JSON.stringify({...packet,request:null}))};
   }
   /** PHASE4_SPEC §4.2 · marketing plan of a year (objectives, 90-day priorities, actions, changes). Reading never writes. */
   async marketingPlan(token:string,brandId:string,year:number) {

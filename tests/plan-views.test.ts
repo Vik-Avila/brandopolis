@@ -160,3 +160,23 @@ describe('PHASE4_SPEC §3/§4.4 · area tabs and deliverable views', () => {
     expect(html).not.toContain('Retirada');
   });
 });
+
+describe('ADR-0030 · Brando marketing proposal view', () => {
+  const v = runInNewContext(source + '\n({brandoProposalHtml,deliverableFormHtml});') as { brandoProposalHtml: (r: unknown) => string; deliverableFormHtml: (t: string, c: unknown, o: unknown[], content?: unknown, d?: unknown) => string };
+  const content = { type: 'SOCIAL_POST', name: 'Propuesta <x>', offerId: null, sourceDecisionVersionIds: [], body: { network: 'LINKEDIN', format: 'POST', objective: 'o', scheduledDate: null, text: 'Hola', hashtags: [], materials: '' } };
+  it('labels DEMO honestly, explains why, cites approved information, lists what is missing and asks; never applies itself', () => {
+    const html = v.brandoProposalHtml({ demo: true, proposal: { content, rationale: 'Usa tu mensaje', sources: [{ id: 'v1', label: 'Core Message' }], missing: ['Fecha'], questions: ['¿Cuándo?'] } });
+    expect(html).toContain('Propuesta de ejemplo (modo DEMO, no generada por IA)');
+    expect(html).toContain('Propuesta &lt;x&gt;');
+    expect(html).toContain('<strong>Por qué:</strong> Usa tu mensaje');
+    expect(html).toContain('Lo que falta para afinarla');
+    expect(html).toContain('Preguntas para ti');
+    expect(html).toContain('Usar esta propuesta en el formulario');
+    expect(v.brandoProposalHtml({ proposal: null, error: 'UNAVAILABLE' })).toContain('el formulario sigue disponible');
+  });
+  it('the Brando panel appears only when creating; editing an existing draft keeps the manual form', () => {
+    const ctx = { questions: [], decisions: [], versions: [] };
+    expect(v.deliverableFormHtml('SOCIAL_POST', ctx, [])).toContain('Pedir una propuesta a Brando');
+    expect(v.deliverableFormHtml('SOCIAL_POST', ctx, [], content, { id: 'd1' })).not.toContain('Pedir una propuesta a Brando');
+  });
+});

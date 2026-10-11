@@ -1,3 +1,46 @@
+## 2026-10-10 · PHASE 4 · bloque 3 · entregables, Brando para marketing y regresión completa
+
+Sobre `214f884` más cambios del árbol probado `1f374eb2ddb99d061e1a77aba148dc19a2e1f08a` (`git write-tree` sobre
+índice temporal, archivos nuevos incluidos). Sin push ni deploy; producción sin cambios. Migración aditiva `0022`
+sólo en la base de pruebas efímera y en el perfil aislado `rc1-smoke`.
+
+**Hecho:**
+- Entregables (PHASE4_SPEC §4.4): cinco tipos con contenido tipado (`deliverable-version` v1), versiones
+  editoriales con aprobación humana por huella y criterio, decisión idempotente (`deliverable_approvals` append-only),
+  manifiesto de origen (versiones de decisión, versión aprobada de la oferta; kit pendiente), procedencia decidida
+  por el servidor y «Origen actualizado» como proyección. Publicaciones agrupadas por mes con **registro manual** de
+  publicación (sólo versión aprobada, enlace https, append-only); Brandopolis nunca publica. Anuncios: sólo textos;
+  publicación y gasto llegan con las conexiones. Exportación: copiar o descargar texto; PPTX, DOCX y PDF pendientes
+  (requieren ADR para una librería nueva).
+- Pestañas de área (flechas, Inicio/Fin, foco; selector en pantallas estrechas): Marketing = Plan de Marketing ·
+  Redes sociales · Campañas digitales (Sitio web «llegará más adelante»); Productos y servicios = Ofertas ·
+  Materiales de venta. Inicio enlaza las prioridades de contenidos y campaña a sus secciones.
+- Brando para marketing (ADR-0030, B2 sólo propuesta): `POST /api/brando/marketing`, tarea `BRANDO_MARKETING` en el
+  mismo gateway, prompt `brando-marketing-v1`, schema `marketing-proposal-v1`, contexto mínimo autorizado (nombre,
+  decisiones vigentes, ofertas aprobadas, prioridades de 90 días), petición como texto no confiable, reautorización y
+  comparación de contexto tras la respuesta, salida validada (ids del paquete, cuerpo válido del tipo), cero
+  escrituras (evals `evals/brando-marketing.json` con inyección), procedencia `AI_ASSISTED` sólo con prueba de un solo
+  uso ligada a persona, marca, tipo, oferta y contexto sin cambios. Panel en el editor: ayuda contextual, propuesta con
+  por qué, fuentes, lo que falta y preguntas; «Usar esta propuesta» rellena el formulario, nunca guarda ni aprueba.
+  DEMO etiquetado; Live AI no ejecutado para esta superficie.
+- Revisión de seguridad independiente (sólo lectura; sin BLOCKER ni HIGH): MEDIUM prueba no ligada a contexto/oferta
+  (corregido), LOW clave de publicación reutilizada con otro enlace (409), LOW expulsión de pruebas de otras personas
+  (tope por persona), LOW publicación en material retirado (bloqueada); regresiones añadidas.
+
+**Comprobado sobre ese mismo árbol (salida real, secuencial, un worker):** typecheck PASS; lint PASS; Foundation 0
+errores (37 schemas); `git diff --check` limpio; pnpm test 19 archivos / 432 PASS; **test:e2e 255 pruebas: 242 PASS
+· 13 SKIP intencionales por tamaño de pantalla · 0 FAIL** en la ejecución final (wide 50/1, desktop 50/1, compact
+50/1, tablet 46/5, mobile 46/5). **Intermitencia registrada:** en una primera pasada de `wide`, `m1.spec.ts` «human
+connected proof…» falló una vez (tras «Guardar contexto» se mostraba la decisión); repetido 3/3 aislado y `wide`
+completo repetido 50/1 sin fallos; causa no determinada, queda en observación. test:visual PASS (estructura; no
+compara píxeles); comparación real de píxeles: las mismas 10 capturas canónicas difieren por el menú de Fase 4, «Tu
+prioridad» y datos de demo, 7 idénticas; archivos canónicos sin modificar, pendientes de decisión humana. UI
+validator PASS; **test:pilot:e2e 10/10**.
+
+**Parcial / pendiente:** aceptación con invitado real (portal, comentarios, revisión compartida) hasta implementar y
+probar Colaboración; la vista «Lo que recibe el cliente» es revisión interna, no un portal operativo. Exportación
+PPTX/DOCX/PDF y Canva (bloque de integraciones).
+
 ## 2026-10-10 · PHASE 4 · bloque 3 · navegación de siete entradas · corrección sobre la evidencia visual
 
 **Vínculo de evidencia:** el commit `0fd3e6f` contiene exactamente el código del árbol probado

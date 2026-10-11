@@ -35,6 +35,7 @@ import { phase4Cases } from './phase4-cases.js';
 import { offersCases } from './offers-cases.js';
 import { planCases } from './plan-cases.js';
 import { deliverablesCases } from './deliverables-cases.js';
+import { brandoMarketingCases } from './brando-marketing-cases.js';
 let local:Awaited<ReturnType<typeof startLocalDb>>,connection:ReturnType<typeof connect>,engine:Engine;
 brandoCases(()=>connection);
 pilotCases(()=>connection);
@@ -54,6 +55,7 @@ phase4Cases(()=>connection);
 offersCases(()=>connection);
 planCases(()=>connection);
 deliverablesCases(()=>connection);
+brandoMarketingCases(()=>connection);
 beforeAll(async()=>{
   local=await startLocalDb(true);
   const name=`m1_${randomUUID().replaceAll('-','')}`;

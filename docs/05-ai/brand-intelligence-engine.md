@@ -76,3 +76,26 @@ curso, estancados y no concluyentes, señales sin interpretar, aprendizajes pend
 calidad de plan y la siguiente validación recomendada. Strategic Intelligence añade
 `VALIDATION_CHALLENGES_DECISION`. Ambas son puras: leer no escribe. Brando B3 (`brando-contextual-v6`)
 recibe aprendizajes candidatos como `CANDIDATE_NOT_ACCEPTED`.
+
+## Fase 4 · Brando para marketing · ADR-0030 (2026-10-10)
+
+Superficie de **propuesta** dentro de B2 (sin B4): borradores de los cinco tipos de entregable. Implementación:
+`POST /api/brando/marketing` → `Engine.proposeDeliverable` → mismo Model Gateway (tarea `BRANDO_MARKETING`,
+prompt versionado `prompts/brando-marketing-v1.md`, schema de salida `marketing-proposal-v1`, método opcional
+`propose` del proveedor; uno sin él responde `UNAVAILABLE` y la edición manual sigue).
+
+- **Contexto mínimo autorizado** (una marca, ADMIN o MEMBER asignado): nombre de la marca, versiones vigentes de
+  las decisiones, ofertas activas **aprobadas** (versión aprobada) y prioridades de 90 días activas del año en
+  curso. Nunca borradores, otras marcas, Mi aprendizaje, comentarios, credenciales ni datos de invitados. El texto
+  de la persona viaja como `UNTRUSTED_USER_TEXT` (máx. 1000 caracteres).
+- **Controles:** la llamada al proveedor ocurre fuera de transacción; tras la respuesta se vuelve a autorizar y se
+  compara la huella del contexto (cambio → 409, nada se devuelve). La salida se valida contra el schema, sólo puede
+  citar ids del paquete y su cuerpo debe ser un borrador válido del tipo pedido (`deliverable-version` v1); si no,
+  `INVALID_OUTPUT`. Misma ruta que las demás llamadas de IA: limitador, aviso de datos de IA y tope diario.
+- **Sin escrituras:** pedir una propuesta no crea entregables, versiones, aprobaciones, publicaciones ni auditoría
+  (evals `evals/brando-marketing.json`, casos de inyección incluidos, con cero escrituras).
+- **Procedencia decidida por el servidor:** sólo una prueba en memoria, de un solo uso, emitida a esa persona para
+  esa marca y ese tipo, marca el borrador creado como `AI_ASSISTED`; cualquier otro caso es `MANUAL`. La prueba nunca
+  se envía al proveedor ni concede autoridad.
+- **DEMO:** propuesta determinista construida sólo con el paquete, etiquetada «Propuesta de ejemplo (modo DEMO, no
+  generada por IA)». Live AI no se ha ejecutado para esta superficie.

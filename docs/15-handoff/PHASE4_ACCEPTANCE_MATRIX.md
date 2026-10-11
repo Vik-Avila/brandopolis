@@ -274,6 +274,16 @@ Evidencia sobre el árbol de trabajo `217ac4d7…` (ver SESSION_STATE): test:e2e
 | Implementado · verificado en DEMO | PLN-001, PLN-002, PLN-003 (U `tests/plan-cases.ts`, `tests/plan-views.test.ts`; E `tests/browser/phase4-plan.spec.ts`); calendario como vista de los mismos registros (§4.2) |
 | Parcial | Lectura del cliente: separada y limitada a la versión aprobada y su avance; la verificación con identidad de invitado queda para IVT/PRT al existir el portal (ADR-0033) |
 
+## Estado de implementación · bloque 3 (navegación, entregables y Brando, 2026-10-10)
+
+Evidencia sobre el árbol `1f374eb2…` (ver SESSION_STATE): test:e2e 242 PASS · 13 SKIP · 0 FAIL, PILOT 10/10.
+
+| Estado | Criterios |
+|---|---|
+| Implementado · verificado en DEMO | Navegación de siete entradas (§3); entregables §4.4 con MKT-001/003/004/005, VER-001/002 y APR-001/002 aplicados (U `tests/deliverables-cases.ts`, E `tests/browser/phase4-deliverables.spec.ts`); BRN-001 y BRN-002 para la superficie de marketing (U `tests/brando-marketing-cases.ts`, evals `evals/brando-marketing.json`; DEMO, sin Live AI) |
+| Parcial | Exportaciones: sólo texto (EXP-001…005 pendientes); revisión de entregables por invitado (ADR-0033) hasta Colaboración |
+| Pendiente | CNV-001/002 (Canva), marca y recursos, colaboración, resultados |
+
 ## Gates por bloque
 
 Matriz de brandopolis-review según archivos tocados: typecheck, lint, `pnpm test` (incluye INV-001..010, VAL, WS,
@@ -295,3 +305,4 @@ Ninguna prueba se debilita para pasar.
 | v7 | 2026-10-10 | Bloque 3 (avance): prioridad de trabajo y ofertas; sección «Estado de implementación · bloque 3» |
 | v8 | 2026-10-10 | Bloque 3: revisión de seguridad de ofertas y Plan de Marketing; sección de estado correspondiente |
 | v9 | 2026-10-10 | Bloque 3: PLN-001…003 y calendario implementados; sección de estado correspondiente |
+| v10 | 2026-10-10 | Bloque 3: navegación de siete entradas, entregables y Brando para marketing; sección de estado correspondiente |
