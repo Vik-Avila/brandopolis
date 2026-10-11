@@ -1,3 +1,19 @@
+## 2026-10-11 · PHASE 4 · cuatro capturas pendientes: diagnóstico y comparación corregida
+
+- **Mapa estratégico (blueprint-desktop/mobile):** defecto de navegación confirmado con sonda de navegador: al pasar
+  a Mapa estratégico o Validación, la última decisión visitada conservaba `aria-current`. Corregido en `b2122ca`
+  (fuera de una decisión ningún paso es la página actual; indicadores de estado conservados) con regresión E2E en los
+  5 proyectos.
+- **Móviles (m1-guided-review / m1-needs-review):** en el instante de la captura el DOM sólo marca Posicionamiento
+  (sin `:hover`, `:focus` ni `:active` en otros pasos; `elementsFromPoint` sin fondo en esa zona; también aparece en
+  captura de pantalla visible y con animaciones desactivadas; el resaltado de toque no influye). Al mover el puntero a
+  una esquina antes de capturar desaparece: efecto de la posición del puntero durante la captura, no del producto. Se
+  estabiliza en `tests/visual/canonical.spec.ts` (puntero aparcado); estilos, foco y estados de interacción sin cambio
+  (se descartó un cambio de CSS probado durante el diagnóstico).
+- Comparación de píxeles: las otras 13 idénticas; las cuatro corregidas en
+  `Brandopolis_Fase4_capturas_canonicas_comparacion_v5_2026-10-11.zip` (SHA-256
+  `11f4a250f39e6a2593f7dfb0627583b3199191637cf4b7a43098293d03e2096a`), pendientes de revisión; canónicas sin cambiar.
+
 ## 2026-10-11 · PHASE 4 · capturas v4 (seis aplicadas) y corrección del recuento E2E
 
 **Capturas:** decisión de Codex sobre el ZIP v4 (SHA-256 `ce4683d7…7d48c5`, verificado): aplicados los `-current.png`
