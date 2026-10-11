@@ -114,8 +114,8 @@ test('Left navigation collapses to icons with tooltips, keeps the draft and the 
  await expect(page.locator('#journey .nav-label').first()).toHaveCSS('position','absolute');
  expect(await width(),'the centre gains space').toBeGreaterThan(before);
  await expect(page.locator('#strategy-toggle')).toHaveClass(/contains-current/);
- await page.locator('#learning-loop').hover();
- await expect.poll(()=>page.locator('#learning-loop').evaluate(el=>getComputedStyle(el,'::after').content)).toContain('Validación');
+ await page.locator('#offers').hover();
+ await expect.poll(()=>page.locator('#offers').evaluate(el=>getComputedStyle(el,'::after').content)).toContain('Productos y servicios');
  // Keyboard: Tab onto an icon-only item shows the same tooltip (focus-visible).
  await page.locator('#home').focus();await page.keyboard.press('Tab');
  await expect.poll(()=>page.evaluate(()=>getComputedStyle(document.activeElement!,'::after').content)).not.toBe('none');

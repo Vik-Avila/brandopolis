@@ -101,6 +101,11 @@ body[data-live-ai="true"].app header #mode-badge { background: var(--bp-success-
 #journey #strategy-toggle[aria-expanded="false"] .nav-chevron { transform: rotate(-90deg); }
 #journey .strategy-list { position: relative; margin: 2px 0 6px 22px; padding-left: 14px; border-left: 1px solid var(--ws-line); }
 #journey .strategy-list[hidden] { display: none; }
+/* PHASE4_SPEC §3 · Validación and Mapa estratégico inside the Estrategia group, folded with the nine decisions. */
+#journey .strategy-more { margin: 0 0 6px 22px; padding-left: 14px; border-left: 1px solid var(--ws-line); }
+#journey .strategy-more[hidden] { display: none; }
+#journey .nav-subitem { min-height: 40px; padding: 4px 10px; font-size: 14px; }
+#journey .nav-subitem .ico { width: 19px; height: 19px; flex-basis: 19px; }
 #journey .strategy-list button[data-module] { min-height: 38px; padding: 4px 10px; font-size: 14px; gap: 10px; border-radius: 10px; color: var(--bp-neutral-800); }
 #journey .strategy-list button[data-module] + button[data-module]::before { display: none; }
 #journey .strategy-list button[data-module] > span {
@@ -144,7 +149,7 @@ body[data-live-ai="true"].app header #mode-badge { background: var(--bp-success-
   body.left-collapsed #journey .soon-pill,
   body.left-collapsed #journey .nav-principle,
   body.left-collapsed #journey .nav-divider { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  body.left-collapsed #journey .strategy-list { display: none; }
+  body.left-collapsed #journey .strategy-list, body.left-collapsed #journey .strategy-more { display: none; }
   body.left-collapsed #journey .nav-item { width: 52px; min-height: 48px; justify-content: center; padding: 0; }
   body.left-collapsed #journey .nav-item.contains-current { background: var(--bp-success-bg); box-shadow: inset 3px 0 0 var(--bp-brand-emerald); }
 }

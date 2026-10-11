@@ -1,3 +1,8 @@
+## 2026-10-10 · Phase 4 — bloque 3: navegación de siete entradas; corrección de la evidencia visual
+
+- Navegación: siete entradas; Validación y Mapa estratégico dentro de Estrategia (plegado fuera de esa área); Marca y recursos, Colaboración y Resultados «Próximamente».
+- Corrección: test:visual no compara píxeles; las menciones anteriores a «sin diferencias» no están acreditadas. Comparación real: 10 capturas canónicas difieren (menú de Fase 4, «Tu prioridad», datos de demo); siguen sin actualizar hasta decisión humana.
+
 ## 2026-10-10 · Phase 4 — bloque 3: versión compartida del plan, avance y calendario
 
 - PLN-001…003: versión fija del plan revisada y aprobada sobre su contenido exacto; el avance se comparte aparte sin nueva aprobación; migración aditiva 0021, schema plan-snapshot v1.

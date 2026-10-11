@@ -90,20 +90,32 @@ test('a failed generation clears the local state, keeps the draft and allows a r
 });
 
 test('navigation keeps every destination reachable at laptop height; preparation stays outside the decisions', async ({ page }, testInfo) => {
-  // ADR-0027 (owner decision 2026-10-08): Inicio · Estrategia (nine decisions) · Validación · three «Próximamente» ·
-  // Mi aprendizaje · Mapa estratégico · Configuración de marca (ADR-0029) · Ayuda. Entorno competitivo and Contexto estratégico live in the rail's
+  // PHASE4_SPEC §3 (owner approval 2026-10-10): Inicio · Estrategia (nine decisions, Validación, Mapa estratégico) ·
+  // Productos y servicios · Marketing · Marca y recursos · Colaboración · Resultados; footer Mi aprendizaje ·
+  // Configuración de marca (ADR-0029) · Ayuda. Entorno competitivo and Contexto estratégico live in the rail's
   // Contexto tool: preparation and context, never decisions.
   await page.setViewportSize({ width: 1366, height: 768 });
   await signIn(page, `Nav density ${testInfo.project.name} ${Date.now()}`);
   const menu = page.getByRole('button', { name: 'Abrir navegación', exact: true });
   if (await menu.isVisible()) await menu.click();
   const labels = await page.locator('#journey .nav-label').evaluateAll(nodes => nodes.map(n => (n.firstChild?.textContent ?? '').trim()));
-  expect(labels).toEqual(['Inicio', 'Estrategia', 'Productos y servicios', 'Validación', 'Marketing', 'Resultados', 'Mi aprendizaje', 'Mapa estratégico', 'Configuración de marca', 'Ayuda']);
+  // PHASE4_SPEC §3: seven entries; Validación and Mapa estratégico are folded inside Estrategia.
+  expect(labels).toEqual(['Inicio', 'Estrategia', 'Validación', 'Mapa estratégico', 'Productos y servicios', 'Marketing', 'Marca y recursos', 'Colaboración', 'Resultados', 'Mi aprendizaje', 'Configuración de marca', 'Ayuda']);
+  // Inside Estrategia (a new brand opens on a decision) the group is open; elsewhere it folds and the menu fits
+  // 1366×768 without scrolling.
+  await expect(page.locator('#strategy-toggle')).toHaveAttribute('aria-expanded', 'true');
+  await navigate(page, 'Inicio');
+  if (await menu.isVisible()) await menu.click();
+  await expect(page.locator('#strategy-toggle')).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#strategy-list')).toBeHidden();
+  expect(await page.locator('#journey').evaluate(nav => nav.scrollHeight <= nav.clientHeight + 1), 'no menu scroll at 1366×768').toBe(true);
+  await page.locator('#strategy-toggle').click();
+  await expect(page.locator('#strategy-toggle')).toHaveAttribute('aria-expanded', 'true');
   await expect(page.locator('#journey [data-module]')).toHaveCount(9);
   await expect(page.locator('#journey #competitive-context')).toHaveCount(0);
   await expect(page.locator('#rail-panel #competitive-context')).not.toHaveAttribute('data-module');
   // Every destination is reachable: when the nine decisions do not fit, the column scrolls instead of clipping.
-  for (const id of ['#home', '#strategy-toggle', '#learning-loop', '#practice', '#blueprint', '#brand-settings', '#help']) {
+  for (const id of ['#home', '#strategy-toggle', '#learning-loop', '#blueprint', '#offers', '#marketing', '#practice', '#brand-settings', '#help']) {
     await page.locator(id).scrollIntoViewIfNeeded();
     await expect(page.locator(id)).toBeVisible();
     expect((await page.locator(id).boundingBox())!.height, `${id} target`).toBeGreaterThanOrEqual(36);

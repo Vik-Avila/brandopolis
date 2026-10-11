@@ -264,12 +264,18 @@ describe('production verification hotfix', () => {
       expect(app, stage).toContain(stage);
   });
 
-  it('keeps the owner-approved navigation: Inicio, nine decisions, Validación, Productos y servicios, Marketing, «Próximamente» and secondary access (ADR-0027/0029/0030)', () => {
+  it('keeps the owner-approved navigation: seven entries, Estrategia group (nine decisions, Validación, Mapa), «Próximamente» and secondary access (ADR-0027/0029/0030, PHASE4_SPEC §3)', () => {
     // The public header has its own <nav>, so the closing tag must be found after this one opens.
     const navStart = html.indexOf('<nav id="journey"');
     const nav = html.slice(navStart, html.indexOf('</nav>', navStart));
     const labels = [...nav.matchAll(/<span class="nav-label">([^<]+)/g)].map(m => m[1]);
-    expect(labels).toEqual(['Inicio', 'Estrategia', 'Productos y servicios', 'Validación', 'Marketing', 'Resultados', 'Mi aprendizaje', 'Mapa estratégico', 'Configuración de marca', 'Ayuda']);
+    expect(labels).toEqual(['Inicio', 'Estrategia', 'Validación', 'Mapa estratégico', 'Productos y servicios', 'Marketing', 'Marca y recursos', 'Colaboración', 'Resultados', 'Mi aprendizaje', 'Configuración de marca', 'Ayuda']);
+    // PHASE4_SPEC §3: seven main entries; Validación and Mapa estratégico are sub-items folded inside Estrategia.
+    const main = [...nav.matchAll(/<button type="button"[^>]*class="nav-item(?: is-soon)?"[^>]*>.*?<span class="nav-label">([^<]+)/g)].map(m => m[1]);
+    expect(main.slice(0, 7)).toEqual(['Inicio', 'Estrategia', 'Productos y servicios', 'Marketing', 'Marca y recursos', 'Colaboración', 'Resultados']);
+    const more = nav.slice(nav.indexOf('id="strategy-more"'), nav.indexOf('</div>', nav.indexOf('id="strategy-more"')));
+    expect([...more.matchAll(/id="([a-z-]+)" class="nav-item nav-subitem"/g)].map(m => m[1])).toEqual(['learning-loop', 'blueprint']);
+    expect(nav).toContain('aria-controls="strategy-list strategy-more"');
     // The Decision Spine keeps exactly the nine journey sections, in canonical order, inside the Estrategia group.
     const group = nav.slice(nav.indexOf('id="strategy-list"'), nav.indexOf('</div></div>', nav.indexOf('id="strategy-list"')));
     expect([...group.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(['Strategic Objective', 'Market Arena', 'Primary Customer', 'Value Mechanism', 'Positioning', 'Brand Promise', 'Core Message', 'GTM Priority', 'Priority Experiment']);
@@ -278,10 +284,11 @@ describe('production verification hotfix', () => {
     // «Próximamente» destinations are announced and disabled, never a navigation target.
     const soon = [...nav.matchAll(/<button[^>]*data-soon="([^"]+)"[^>]*>/g)];
     // ADR-0030 (Phase 4, owner-approved 2026-10-10): «Productos y servicios» is a real destination, never a soon pill.
-    // PHASE4_SPEC §4.2: Marketing (Plan de Marketing) is a real destination too; only Resultados stays announced.
-    expect(soon.map(m => m[1])).toEqual(['results']);
+    // PHASE4_SPEC §4.2: Marketing (Plan de Marketing) is a real destination too. Marca y recursos, Colaboración and
+    // Resultados are announced until their blocks exist (never a fake destination).
+    expect(soon.map(m => m[1])).toEqual(['brand-resources', 'collaboration', 'results']);
     for (const m of soon) { expect(m[0]).toContain('aria-disabled="true"'); expect(m[0]).not.toContain('data-module'); expect(m[0]).not.toMatch(/id="/); }
-    expect(nav.match(/Próximamente<\/span>/g)).toHaveLength(1);
+    expect(nav.match(/Próximamente<\/span>/g)).toHaveLength(3);
     const offers = nav.match(/<button[^>]*id="offers"[^>]*>/)?.[0] ?? '';
     expect(offers).not.toContain('aria-disabled');
     expect(offers).not.toContain('data-soon');
@@ -299,7 +306,9 @@ describe('production verification hotfix', () => {
     }
     expect(nav).toContain('id="learning-loop"');
     expect(nav.indexOf('id="practice"')).toBeGreaterThan(nav.indexOf('class="nav-divider"'));
-    expect(nav.indexOf('id="blueprint"')).toBeGreaterThan(nav.indexOf('id="practice"'));
+    // PHASE4_SPEC §3: Mapa estratégico moved into the Estrategia group; the footer keeps Mi aprendizaje, Configuración and Ayuda.
+    expect(nav.indexOf('id="blueprint"')).toBeLessThan(nav.indexOf('class="nav-divider"'));
+    expect(nav.indexOf('id="brand-settings"')).toBeGreaterThan(nav.indexOf('id="practice"'));
   });
 
   it('mirrors one AI activity state beside the control that started it', () => {

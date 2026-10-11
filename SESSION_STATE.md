@@ -1,3 +1,27 @@
+## 2026-10-10 · PHASE 4 · bloque 3 · navegación de siete entradas · corrección sobre la evidencia visual
+
+**Vínculo de evidencia:** el commit `0fd3e6f` contiene exactamente el código del árbol probado
+`217ac4d7ada20ad662372f428507d299a6a20b32`; `git diff 217ac4d7 0fd3e6f^{tree}` sólo muestra los tres registros de
+evidencia (SESSION_STATE, CHANGELOG, matriz).
+
+**Corrección (no reescribe las entradas anteriores):** las entradas de bloque 3 que dicen «test:visual … sin
+diferencias» no están acreditadas. `tests/visual/canonical.spec.ts` no compara píxeles: escribe las capturas en
+`test-results/visual` (o en la carpeta canónica sólo con `UPDATE_CANONICAL_SCREENSHOTS=1`) y comprueba desbordes,
+imágenes decodificadas y acciones visibles. Lo acreditado es «test:visual PASS (estructura) y archivos canónicos sin
+modificar». Comparación real de píxeles (Chrome de Playwright, sin dependencias nuevas) tras la navegación nueva:
+7 capturas idénticas (blueprint-mobile, login ×2, public-gateway ×2, request-access ×2) y 10 distintas
+(blueprint-desktop, decision-card-desktop, history-desktop, history-mobile, m1-guided-review-desktop/mobile,
+m1-needs-review-desktop/mobile, m1-workspace-desktop/mobile) por el menú aprobado de Fase 4, la tarjeta «Tu
+prioridad» de Inicio y datos variables de la demo (fecha, nombre de marca). Capturas canónicas sin actualizar,
+pendientes de decisión humana que nombre los archivos.
+
+**Navegación (PHASE4_SPEC §3):** siete entradas (Inicio, Estrategia, Productos y servicios, Marketing, Marca y
+recursos, Colaboración, Resultados); Validación y Mapa estratégico pasan a subapartados de Estrategia, plegados con
+las nueve decisiones; el grupo sigue al área actual (abierto dentro de Estrategia, plegado fuera) y se alterna a mano;
+Marca y recursos, Colaboración y Resultados como «Próximamente» sin destino; pie: Mi aprendizaje, Configuración de
+marca, Ayuda. Iconos de línea nuevos para Marca y recursos y Colaboración (sprite de la app; Brand Master intacto).
+En 1366×768 el menú cabe sin desplazamiento con el grupo plegado (prueba nueva).
+
 ## 2026-10-10 · PHASE 4 · bloque 3 · PLN-001…003, calendario y regresión completa
 
 Sobre `e33b343` más cambios sin commit (árbol de trabajo exacto `217ac4d7ada20ad662372f428507d299a6a20b32`, calculado

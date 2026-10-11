@@ -31,7 +31,7 @@ function nextPhase(){
    effort; switching tools never touches drafts, Brando's conversation, the open view or strategy, and never asks AI. */
 const panelKey='brandopolis:panels';
 const RAIL_TOOLS={brando:'Brando',context:'Contexto',attention:'Atención',history:'Historial'};
-let panels={left:false,right:true,tool:'context',strategy:true};
+let panels={left:false,right:true,tool:'context',strategy:false};
 try{panels={...panels,...JSON.parse(sessionStorage.getItem(panelKey)??'{}')};}catch{/* private mode: defaults */}
 if(!Object.hasOwn(RAIL_TOOLS,panels.tool))panels.tool='context';
 const desktopRail=matchMedia('(min-width:1001px)');
@@ -55,7 +55,7 @@ function applyPanels(){
  const right=document.querySelector('#toggle-rail');
  if(right){right.setAttribute('aria-expanded',String(!panels.right));const label=panels.right?'Abrir herramientas':'Contraer herramientas';right.setAttribute('aria-label',label);right.dataset.tip=label;right.querySelector('.panel-toggle-label').textContent=label;right.querySelector('use')?.setAttribute('href',panels.right?'#i-collapse':'#i-expand');}
  const strategy=document.querySelector('#strategy-toggle');
- if(strategy){strategy.setAttribute('aria-expanded',String(panels.strategy));document.querySelector('#strategy-list').hidden=!panels.strategy;}
+ if(strategy){strategy.setAttribute('aria-expanded',String(panels.strategy));document.querySelector('#strategy-list').hidden=!panels.strategy;document.querySelector('#strategy-more').hidden=!panels.strategy;}
  const label=document.querySelector('.focus-mode-label');if(label)label.hidden=!(panels.left&&panels.right&&desk);
  // Exactly one tool panel: the docked Brando dialog, or one rail section.
  const panel=document.querySelector('#rail-panel');
@@ -2302,7 +2302,18 @@ function composeDecision(q,d,v,reviews){
 }
 function bindStrategyLinks(){document.querySelectorAll('[data-strategy-module]').forEach(button=>button.addEventListener('click',()=>openModule(button.dataset.strategyModule)));}
 
-function setNavActive(selector){$('#decision').dataset.view=selector?.slice(1)??'decision';document.querySelectorAll('#journey [aria-current]').forEach(b=>b.removeAttribute('aria-current'));if(selector)$(selector).setAttribute('aria-current','page');$('#strategy-toggle')?.classList.toggle('contains-current',!selector);}
+// PHASE4_SPEC §3 · seven entries; the Estrategia group holds the nine decisions, Validación and Mapa estratégico.
+const STRATEGY_VIEWS=new Set(['#learning-loop','#blueprint']);
+let navArea=null;
+function setNavActive(selector){
+ $('#decision').dataset.view=selector?.slice(1)??'decision';
+ document.querySelectorAll('#journey [aria-current]').forEach(b=>b.removeAttribute('aria-current'));
+ if(selector)$(selector).setAttribute('aria-current','page');
+ const inStrategy=!selector||STRATEGY_VIEWS.has(selector);
+ $('#strategy-toggle')?.classList.toggle('contains-current',inStrategy);
+ const area=inStrategy?'strategy':selector;
+ if(area!==navArea){navArea=area;if(panels.strategy!==inStrategy){panels.strategy=inStrategy;applyPanels();}}
+}
 
 /** Completion hand-off: what to do next, in the page, on every viewport. Shows a continuation only
  *  when a next phase genuinely exists, so it can never point nowhere. Copy is a parameter so every
