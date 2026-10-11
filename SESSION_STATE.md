@@ -5,18 +5,18 @@
 - **test:e2e 260 pruebas: 247 PASS · 13 SKIP intencionales por tamaño de pantalla · 0 FAIL** (wide 51/1, desktop 51/1,
   compact 51/1, tablet 47/5, mobile 47/5). `m1.spec` pasó en esta ejecución; la intermitencia sigue **pendiente de
   diagnóstico** (no reproducida, causa no identificada).
-- test:visual PASS (estructura). Comparación real de píxeles contra las canónicas recién aprobadas: 12 idénticas y 5
-  de escritorio distintas (blueprint 0,09 %, decision-card 0,11 %, history 0,11 %, m1-guided-review 0,06 %,
-  m1-needs-review 0,07 %, m1-workspace 0,51 %… ver nota) sólo porque «Marca y recursos» dejó de ser «Próximamente»
-  en `71fb8a4`, después del ZIP revisado. Esa aprobación no cubre el cambio posterior: no se actualizan; nueva
-  comparación en `Brandopolis_Fase4_capturas_canonicas_comparacion_v3_2026-10-10.zip` (SHA-256
-  `c7d09530c6edb0139755b27902720c91f4c8ee240f802ddb1a024ef5a4570661`), pendiente de decisión.
+- test:visual PASS (estructura). Comparación real de píxeles contra las canónicas recién aprobadas: **11 idénticas y
+  6 de escritorio distintas** (blueprint 0,09 %, decision-card 0,11 %, history 0,11 %, m1-guided-review 0,06 %,
+  m1-needs-review 0,07 %, m1-workspace 0,51 %) sólo porque «Marca y recursos» dejó de ser «Próximamente» en
+  `71fb8a4`, después del ZIP revisado; m1-workspace-mobile coincide (menú en cajón cerrado). Esa aprobación no cubre
+  el cambio posterior: no se actualizan. Nueva comparación en
+  `Brandopolis_Fase4_capturas_canonicas_comparacion_v3_2026-10-10.zip` (SHA-256
+  `17b1587c597779881f82cf018258bcb53155d9f869a8a3896be4d4bf2c873347`), pendiente de decisión. (Corrige el recuento
+  «12 y 5» y el SHA anterior de este mismo registro, escritos antes de revisarlo.)
 - **test:pilot:e2e 10/10.**
 - UI validator: en `eca854f` **fallaba** por el hash del README de capturas (editado para documentar el método después
   de validar). Corregido en el commit siguiente actualizando sólo esa entrada del registro; después PASS.
 
-Nota: las seis cifras corresponden a cinco archivos más m1-workspace-desktop; m1-workspace-mobile coincide (el menú
-móvil está en un cajón cerrado).
 
 ## 2026-10-10 · PHASE 4 · verificación de `85ec322` y capturas canónicas aprobadas
 
