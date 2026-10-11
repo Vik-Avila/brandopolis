@@ -473,8 +473,8 @@ body.left-collapsed #journey .nav-item[data-tip]:hover::after, body.left-collaps
 .strategy-tab[aria-current] { color: var(--bp-brand-emerald-deep); border-bottom-color: var(--bp-brand-emerald); }
 .strategy-tab:hover { background: none; color: var(--bp-brand-emerald-deep); }
 .strategy-nav .strategy-list { position: relative; display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 4px; margin: 0; padding: 0; border: 0; }
-.strategy-nav .strategy-list::before { content: ""; position: absolute; top: 22px; left: 5%; right: 5%; height: 1px; background: var(--ws-line); }
-.strategy-nav .strategy-list button[data-module] { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 44px; padding: 4px 2px 6px; border: 0; border-radius: 10px; background: none; box-shadow: none; color: var(--bp-neutral-700); font-size: 12.5px; line-height: 1.2; text-align: center; }
+.strategy-nav .strategy-list::before { content: ""; position: absolute; top: 19px; left: 5%; right: 5%; height: 1px; background: var(--ws-line); }
+.strategy-nav .strategy-list button[data-module] { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; align-self: start; gap: 4px; min-height: 44px; padding: 4px 2px 6px; border: 0; border-radius: 10px; background: none; box-shadow: none; color: var(--bp-neutral-700); font-size: 12.5px; line-height: 1.2; text-align: center; }
 .strategy-nav .strategy-list button[data-module] > span { position: relative; z-index: 1; display: inline-grid; place-items: center; width: 30px; height: 30px; border: 1px solid var(--ws-line); border-radius: 50%; background: var(--surface-card); font-size: 12px; font-weight: 650; color: var(--bp-neutral-700); }
 .strategy-nav .strategy-list button[data-module].is-decided > span { background: var(--bp-success-bg); border-color: var(--bp-brando-emerald-ring); color: var(--bp-brand-emerald-deep); }
 .strategy-nav .strategy-list button[data-module][aria-current] { color: var(--bp-brand-emerald-deep); font-weight: 650; background: var(--bp-success-bg); }
@@ -482,6 +482,7 @@ body.left-collapsed #journey .nav-item[data-tip]:hover::after, body.left-collaps
 .strategy-nav .strategy-list button[data-module].needs-attention::after { content: "!"; position: absolute; top: 2px; right: 8px; display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--bp-warning-bg); color: var(--bp-neutral-800); font-size: 11px; font-weight: 700; }
 .strategy-nav .strategy-list button[data-module]:hover { background: var(--bp-success-bg); }
 @media (max-width: 900px) { .strategy-nav .strategy-list { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 8px; } .strategy-nav .strategy-list::before { display: none; } }
+@media (max-width: 480px) { .strategy-tabs { gap: 0; flex-wrap: nowrap; } .strategy-tab { padding: 8px 8px; gap: 5px; font-size: 14px; white-space: nowrap; } .strategy-tab .ico { width: 16px; height: 16px; } }
 /* PHASE4_SPEC §4.1 · Productos y servicios. */
 .offer-list { display: grid; gap: 16px; margin-top: 18px; }
 .offer-card { padding: 20px 22px; border: 1px solid var(--ws-line); border-radius: 18px; background: var(--surface-card); }

@@ -45,6 +45,8 @@ async function shot(page:Page,name:string){await page.evaluate(async()=>{await d
 async function nav(page:Page,id:string){await page.evaluate(()=>scrollTo(0,0));
  // ADR-0027: Contexto estratégico and Entorno competitivo are reached from the rail's Contexto tool.
  if(['#brand-context','#competitive-context'].includes(id)){const desk=page.locator('.rail-tools [data-rail-tool="context"]');if(await desk.isVisible()){if((await desk.getAttribute('aria-pressed'))!=='true')await desk.click();}else await page.locator('.mobile-tools [data-rail-tool="context"]').click();await page.locator(id).click();await page.waitForLoadState('networkidle');await expect(page.locator('#decision h2')).toBeVisible();return;}
+ // PHASE4_SPEC §3: Validación and Mapa estratégico are in Estrategia's inner navigation, shown inside that area.
+ if(['#learning-loop','#blueprint'].includes(id)){if(!(await page.locator(id).isVisible())){if(await page.locator('#menu').isVisible())await page.locator('#menu').click();await page.locator('#strategy-toggle').click();await page.locator('#strategy-nav').waitFor();}await page.locator(id).click();await page.waitForLoadState('networkidle');await expect(page.locator('#decision h2')).toBeVisible();return;}
  if(await page.locator('#menu').isVisible())await page.locator('#menu').click();await page.locator(id).click();await page.waitForLoadState('networkidle');await expect(page.locator('#decision h2')).toBeVisible();}
 test('Phase10A complete real browser evidence',async({browser,request})=>{
  const seeded=await seed(request);
