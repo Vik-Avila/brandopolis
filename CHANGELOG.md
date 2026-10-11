@@ -1,3 +1,12 @@
+## 2026-10-11 · Phase 4 — Sitio web en Marketing (migraciones aditivas 0028 y 0029)
+
+- Marketing › Sitio web: objetivo, lo que ya existe, propuesta de Brando con procedencia (sólo se guarda si la incorporas), edición por secciones de un catálogo cerrado, guardar y retomar, comprobaciones antes de publicar.
+- Vista previa autenticada en otro origen (código de un solo uso ligado al navegador; el invitado sólo ve la versión compartida); revisión con criterio; publicación de la versión exacta con permiso y confirmación; restaurar crea una publicación nueva.
+- Sitio publicado en un servidor aparte, sin cookies ni JavaScript; el formulario guarda la solicitud en Clientes con su origen, una sola vez aunque se reintente o se vuelva atrás.
+- Dominio propio verificado por registro TXT; un dominio sin verificar no bloquea al dueño real (corrección de seguridad). Nada se compra ni se cambia en DNS.
+- Evidencia: unitarias 503; E2E del recorrido en tres tamaños; afectadas 7/7; PILOT 10/10; capturas idénticas. Medición real, HTTPS por dominio, ZIP y publicación real siguen pendientes.
+
+
 ## 2026-10-11 · Phase 4 — Seguridad: decodificación PNG acotada en exportaciones
 
 - La descompresión PNG se limita al tamaño que exigen sus dimensiones; imágenes subidas de más de 12 Mpx o dañadas se omiten con aviso. Evita agotar la memoria con un logotipo manipulado. Unitarias 494.

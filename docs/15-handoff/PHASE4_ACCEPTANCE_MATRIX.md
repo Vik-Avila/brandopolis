@@ -539,6 +539,27 @@ Chrome/Edge no se verificó.
 | Parcial | EXP-001 (aplicación de destino de los clientes sin confirmar por el propietario, EXT-REQ-12; verificado en PowerPoint 16.0.16026), EXP-002 y EXP-005 (la guía y los materiales usan colores, tipografía y logotipo del kit; falta la comparación renderizada de dos marcas como prueba automática) |
 | Pendiente | ZIP del sitio (bloque de sitios), PDF de la guía en el portal del invitado (no se amplían sus facultades), OTF/CFF y WOFF2 incrustados, presentación PPTX de otros tipos de material |
 
+## Estado de implementación · sitios (bloque 7, 2026-10-11)
+
+Código: `src/domain/site.ts` (catálogo cerrado, normalización, enlaces, preflight, huella de medición),
+`src/domain/site-render.ts` (renderizador determinista sin JavaScript), `src/application/sites.ts` y `site-config.ts`,
+`src/transport/{site-files,sites-public,sites-preview}.ts` y `scripts/sites-server.ts`. Migraciones aditivas 0028
+(siete tablas de sitios) y 0029 (reserva del dominio sólo al verificarlo), aplicadas únicamente en bases aisladas.
+Pruebas: `tests/site-cases.ts` (9 casos) y `tests/browser/phase4-sites.spec.ts` (recorrido DEMO completo en escritorio,
+tableta y móvil con la app aislada, el servidor público en 3101 y la vista previa en `127.0.0.2:3201`).
+
+| Estado | Criterios |
+|---|---|
+| Implementado · validado en DEMO | SITE-001, SITE-002, SITE-003, SITE-005, SITE-007, SITE-008, SITE-009, SITE-010; SITE-006 (campo trampa, cuerpo limitado, límite por visitante y por sitio, guardado por la captura de Clientes; un reintento o volver atrás conserva una sola oportunidad); DOM-001, DOM-002 (ver nota), DOM-005 (cerrar la marca borra sitios, versiones, dominios e instantáneas), DOM-006; CNS-004 y MEA-006/007/008/012/013 como reglas de huella y estado de la medición, sin medición real conectada |
+| Parcial | SITE-004 (catálogo cerrado y escape validados; el catálogo no tiene testimonios ni cifras, así que «sólo con fuente» todavía no tiene superficie); DOM-004 (retirar deja de servir y libera; la pérdida del registro se detecta al comprobar, todavía sin comprobación periódica automática); vista previa escritorio/móvil (la página se adapta al navegador; no hay conmutador de tamaño) |
+| Pendiente de decisión o proveedor | DOM-003 (HTTPS por dominio: depende del alojamiento definitivo); MEA-001…005 y MEA-009…011 (medición real, etiquetas y cuentas conectadas); CNS-001…003 (sin etiquetas reales no se carga nada; el texto final depende de la privacidad definitiva); publicación en un dominio real (despliegue no autorizado) |
+| Pendiente | ZIP del sitio (portabilidad); regresión E2E completa de cinco proyectos con este bloque |
+
+Nota sobre DOM-002: un dominio pendiente de verificación no queda asociado; sólo la verificación lo reserva. Así una
+marca no puede bloquear el dominio de otra añadiéndolo sin controlarlo (corrección `562e32a`, hallada por la revisión
+de seguridad del commit). Mientras la marca que lo tiene verificado conserve su registro, ninguna otra lo verifica, y
+la respuesta no revela cuál lo tiene.
+
 ## Historial de revisiones
 
 | Versión | Fecha | Cambio |
@@ -562,3 +583,4 @@ Chrome/Edge no se verificó.
 | v17 | 2026-10-11 | Verificación completa de Clientes y Resultados: CLI-10, SEC-05, SEC-08, UI-02, RES-02 y RES-04 validados en DEMO; UI-03 parcial (aprobación visual) |
 | v18 | 2026-10-11 | Capturas aprobadas aplicadas: I10-UI-03 validado en DEMO; aceptación visual del bloque Clientes y Resultados satisfecha (no cierra Fase 4) |
 | v19 | 2026-10-11 | Exportaciones (bloque 6): estado de EXP-001…005 con aplicaciones de verificación |
+| v20 | 2026-10-11 | Sitios (bloque 7): estado de SITE, DOM, MEA y CNS con evidencia de DEMO; nota de DOM-002 (reserva al verificar) |

@@ -166,6 +166,14 @@ vista previa autenticada escritorio/móvil; borradores, versiones y revisión; p
 sitemap, alternativas de imagen, contraste de parejas usadas, enlaces y formulario con destino comprobado;
 medición por destino. Exportar ZIP como portabilidad.
 
+**Estado (2026-10-11, bloque 7):** implementado y validado en DEMO, dentro de Marketing › Sitio web y sin entrada
+nueva en el lateral. Recorrido: objetivo → lo que ya existe → propuesta determinista de Brando con procedencia
+(sólo cambia el borrador si la persona la incorpora) → edición por secciones del catálogo cerrado → comprobaciones
+→ vista previa autenticada → revisión con criterio → publicación de la versión exacta con `PUBLISH_SITE` y
+confirmación → restauración como publicación nueva. El formulario guarda la solicitud en Clientes. Dominio propio
+verificado por TXT, sin compra ni cambio de DNS. Pendiente: ZIP, medición real y consentimiento con etiquetas reales,
+HTTPS por dominio y publicación real. Estado por criterio en la matriz (v20).
+
 ### 4.6 Google Ads y Meta Ads (ADR-0031)
 
 Objetivo → oferta/página de destino → audiencia o palabras clave → piezas (con el kit cuando el formato lo usa) →
@@ -695,3 +703,4 @@ supuesto a recalibrar con el tiempo real informado en SESSION_STATE).
 | v4 | 2026-10-10 | Dictamen v3: precisiones C1 (envío tardío tras `DISPATCHING`) y C3 (compatibilidad de publicación); la pregunta de prioridad pasa a requisito confirmado de alcance base (§4.9) separada del inicio guiado completo propuesto (§4.10); escenarios de estimación y asignación al bloque 3 sin doble cómputo |
 | v5 · aprobada | 2026-10-10 | Aprobación del propietario (14:49): ADR aceptados con C1; inicio guiado completo, dominio propio, invitaciones y controles de consentimiento incluidos; §10 actualizado y §11 nuevo; desarrollo autorizado fuera de producción |
 | v6 | 2026-10-11 | Issue #10 y plan de Clientes/Resultados v5 (paquete de reconciliación revisión 3): resolución en §1, ocho áreas propuestas en §3, filas nuevas en §10 y §12 nuevo (captura F4, Resultados ampliados, permisos, flujo y Brando, atribución/ROAS/asesores/metas/históricos/forecast, reparto F4/F5/F6, Atomic/Chatwoot, orden de trabajo). El resto de la especificación no cambia |
+| v7 | 2026-10-11 | §4.5: estado de implementación de sitios (bloque 7); sin cambio de alcance |

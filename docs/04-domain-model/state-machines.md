@@ -100,3 +100,38 @@ stateDiagram-v2
   ACTIVE --> DISABLED: el equipo con PUBLISH_SITE lo desactiva
  }
 ```
+
+## Site, SiteVersion, SitePublication y SiteDomain (ADR-0032 · Sitios, Fase 4)
+
+Sólo hay un borrador por sitio, editable con revisión (409 ante una revisión antigua). Enviarlo a revisión lo fija.
+Aprobar o pedir cambios exige un criterio de al menos diez caracteres y la huella exacta de la versión. Aprobar no
+publica: publicar es otra acción, exige `PUBLISH_SITE` y una confirmación con sitio, versión y dirección. Una
+publicación nueva reemplaza a la anterior y restaurar crea otra publicación. Las versiones aprobadas y las
+publicaciones son inmutables (triggers de la migración 0028). Un dominio propio sólo reserva su host cuando se
+verifica (migración 0029).
+
+```mermaid
+stateDiagram-v2
+ state SiteVersion {
+  [*] --> DRAFT: crear sitio o versión nueva
+  DRAFT --> IN_REVIEW: enviar a revisión
+  IN_REVIEW --> APPROVED: aprobar con criterio
+  IN_REVIEW --> CHANGES_REQUESTED: pedir cambios con criterio
+  APPROVED --> SUPERSEDED: otra versión aprobada
+ }
+ state SitePublication {
+  [*] --> PENDING: publicar o restaurar una versión aprobada
+  PENDING --> PUBLISHED: instantánea escrita
+  PENDING --> FAILED: error al escribir (la anterior sigue en línea)
+  PUBLISHED --> REPLACED: otra publicación
+ }
+ state SiteDomain {
+  [*] --> PENDING_VERIFICATION: añadir dominio propio
+  PENDING_VERIFICATION --> VERIFIED: registro TXT propio encontrado
+  VERIFIED --> FAILED: registro perdido u otro titular lo demuestra
+  FAILED --> VERIFIED: registro encontrado de nuevo
+  PENDING_VERIFICATION --> REMOVED: retirar
+  VERIFIED --> REMOVED: retirar
+  FAILED --> REMOVED: retirar
+ }
+```

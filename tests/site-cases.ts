@@ -14,6 +14,7 @@ import { linkTarget, measurementFingerprint, measurementStatus, normalizeSite, p
 import { renderSite, SUBMISSION_PLACEHOLDER } from '../src/domain/site-render.js';
 import { buildSiteFiles, snapshotDir, writeSnapshot } from '../src/transport/site-files.js';
 import { createPublicSiteServer } from '../src/transport/sites-public.js';
+import type { RateLimiter } from '../src/transport/http.js';
 import { createPreviewServer } from '../src/transport/sites-preview.js';
 import type { KitAssetInfo } from '../src/domain/kit-assets.js';
 
@@ -304,6 +305,23 @@ export function siteCases(connection: () => ReturnType<typeof connect>) {
         expect(d.status).toBe('REMOVED');
         expect(await x.cmd('domain-add', { siteId: first.siteId, hostname: 'www.cafe-nandu.mx', idempotencyKey: randomUUID() })).toMatchObject({ replayed: false });
         for (const bad of ['localhost', 'tienda.localhost:3999', 'x.brandopolis.ai', 'no valido', 'a.b']) await expect(x.cmd('domain-add', { siteId: first.siteId, hostname: bad, idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'INVALID' });
+      } finally { server.close(); }
+    }));
+
+    it('SITE-006 · the public form is rate limited per visitor and per site; a refused submission stores nothing', async () => withRoots(async () => {
+      const x = await setup();
+      const first = await approvedSite(x);
+      const host = first.site.domains[0].hostname;
+      await x.engine.publishSite(x.who.token, { brandId: x.brand.id, siteId: first.siteId, versionId: first.versionId, confirm: { siteName: 'Sitio de café', sequence: 1, host }, idempotencyKey: randomUUID() }, writer(x.engine));
+      const keys: string[] = [];
+      const limiter = { allow: (k: string) => { keys.push(k); return false; } } as unknown as RateLimiter;
+      const server = createPublicSiteServer(x.engine, { limiter }), base = await serve(server);
+      try {
+        const body = new URLSearchParams({ submission: randomUUID(), website: '', name: 'Ana', email: 'ana@example.com', need: 'Precios', contactPurpose: 'yes' });
+        const r = await hostFetch(base + '/__form', { method: 'POST', headers: { Host: host, 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() });
+        expect(r.status).toBe(429);
+        expect(keys[0]).toMatch(/^site-form:/);
+        expect((await x.engine.clients(x.who.token, x.brand.id)).opportunities).toHaveLength(0);
       } finally { server.close(); }
     }));
 

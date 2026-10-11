@@ -1,3 +1,48 @@
+## 2026-10-11 · PHASE 4 · sitios web (bloque 7) y corrección de seguridad de dominios
+
+**Commits locales (sin push ni despliegue):** `8d00287` (sitios, migración aditiva 0028), `562e32a` (corrección de
+seguridad: reserva del dominio al verificarlo, migración aditiva 0029; caché del HTML público), `897e61a` (E2E del
+recorrido) y el commit de documentación de este bloque. Las migraciones 0028 y 0029 sólo se aplicaron en bases
+aisladas (pruebas 55432 y app aislada 55434).
+
+**Qué hay:** Marketing › Sitio web (sin entrada nueva en el lateral; «Mi sitio web» en Inicio lleva a la pestaña). El
+recorrido va así: objetivo y nombre, «lo que ya tenemos», propuesta determinista de Brando (`DETERMINISTIC_DEMO`, con
+procedencia por sección; no escribe hasta que la persona la incorpora, y entonces el borrador queda `AI_ASSISTED`), y
+edición por páginas y secciones del catálogo cerrado (subir, bajar, quitar, añadir). Siguen el guardado con revisión
+(409) para salir y retomar, las comprobaciones previas y la vista previa autenticada en otro origen. Después vienen
+revisión con criterio, publicación de la versión exacta con `PUBLISH_SITE` y confirmación, restauración como
+publicación nueva, y dominios (dirección de Brandopolis verificada y dominio propio con TXT; nada se compra ni se
+cambia en DNS). El formulario del sitio guarda la solicitud con la captura de Clientes (origen, UTM, identificadores
+de clic; éxito sólo después de guardar). Kit según ADR-0034 (colores con contraste comprobado; fuentes web sólo con
+permiso de incrustación web; imágenes validadas con los límites de las exportaciones). Las versiones de sitio se
+pueden compartir con el invitado (lee y comenta; no aprueba sitios ni publica). Servidores de desarrollo:
+`pnpm sites:public --isolated` (3101) y `pnpm sites:preview --isolated` (`127.0.0.2:3201`).
+
+**Corrección de seguridad (`562e32a`):** la revisión automática del commit `8d00287` señaló que un dominio añadido
+sin verificar quedaba reservado y otra marca podía bloquear el dominio real de un cliente. Causa confirmada: el índice
+único parcial cubría también `PENDING_VERIFICATION`. Ahora sólo `VERIFIED` reserva, cada intento tiene su token, y
+quien lo tiene verificado lo conserva mientras su registro siga publicado. Prueba nueva en `tests/site-cases.ts`. No
+hubo exposición: este código no está desplegado.
+
+**Defecto propio hallado en navegador y corregido:** volver atrás en el formulario público y enviarlo otra vez creaba
+una segunda oportunidad (el HTML `no-store` se volvía a pedir con otro identificador). Ahora es `private, no-cache`.
+
+**Resultados:** `pnpm test` **503 PASS**; typecheck y lint 0 errores; E2E nueva `phase4-sites` PASS en escritorio,
+tableta y móvil; afectadas `phase4-deliverables`, `phase4-collaboration`, `phase4-priority` y `phase4-clients` en
+escritorio 7/7; `test:visual` 10 PASS · 1 SKIP; 36 capturas canónicas idénticas al píxel (ninguna canónica cambiada);
+`pnpm test:pilot:e2e` 10/10; Foundation 0 errores; validador de UI PASS.
+
+**Estado por tipo (matriz v20):** implementado y validado en DEMO: SITE-001…003, SITE-005…010, DOM-001/002/005/006,
+reglas CNS-004 y MEA-006/007/008/012/013. Parcial: SITE-004 (sin testimonios ni cifras en el catálogo), DOM-004 (sin
+comprobación periódica automática), conmutador escritorio/móvil en la vista previa. Pendiente de decisión o
+proveedor: HTTPS por dominio (DOM-003), medición real y etiquetas (MEA-001…005, 009…011), aviso de consentimiento
+con etiquetas reales (CNS-001…003), publicación en un dominio real. Pendiente: ZIP del sitio y regresión E2E completa
+de cinco proyectos con este bloque (la lista de specs ya incluye `phase4-sites` y necesita los dos servidores de
+sitios levantados).
+
+**Sin cambios:** producción, DNS, proveedores, correo y privacidad definitiva. ADR-0035 sigue propuesto. El 503 de
+`phase3.spec.ts:58` sigue en observación, sin causa confirmada. **Not release-ready.**
+
 ## 2026-10-11 · PHASE 4 · corrección de seguridad en exportaciones (imágenes subidas)
 
 La revisión automática de seguridad del commit `d806ae2` señaló un riesgo de denegación de servicio en

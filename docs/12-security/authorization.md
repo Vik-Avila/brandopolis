@@ -50,6 +50,10 @@ Fase 4 · bloque 2 (2026-10-10, [ADR-0033](../14-decisions/ADR-0033.md), [ADR-00
 | Abrir o desactivar un formulario web de la marca (`/api/clients/{form,disable-form}`) | sí | sólo con `PUBLISH_SITE` | no | no |
 | Leer Resultados de la marca (`/api/results`): cifras calculadas en servidor con el ámbito del usuario | sí | sí | **no** | no |
 | Formulario web público (`GET /api/forms/public`, `POST /api/forms/submit`): sin sesión, mismo origen, cuerpo limitado, límites por cliente y por formulario; la marca sale del formulario activo, nunca del navegador; el contenido no va a logs ni telemetría | — | — | — | — (visitante anónimo: sólo enviar) |
+| Sitios ([ADR-0032](../14-decisions/ADR-0032.md)): leer, crear, editar el borrador con revisión (409), pedir propuesta (no escribe), enviar a revisión, aprobar o pedir cambios con criterio (`/api/sites`, `/api/sites/{create,draft,propose,submit,decide,new-draft}`) | sí | sí | **no** (404) | proponer: sí, sólo lectura; nunca guarda |
+| Publicar o restaurar una versión aprobada, añadir, comprobar o retirar un dominio propio (`/api/sites/{publish,domain-add,domain-check,domain-remove}`): confirmación con sitio, versión y dirección; nunca compra dominios ni cambia DNS | sí | sólo con `PUBLISH_SITE` | no | no |
+| Vista previa autenticada (`POST /api/site-preview/code` en la app; canje en el origen de vista previa): código de un solo uso para la sesión propia, ligado a `state` y verificador del navegador; cada petición se autoriza de nuevo | sí (cualquier versión de la marca) | sí | sólo la versión de sitio compartida activa | no |
+| Sitio publicado (servidor público aparte): sólo instantáneas publicadas en hosts verificados; sin cookies; formulario guardado por la captura de Clientes con límites por visitante y por sitio | — | — | — | — (visitante anónimo: leer y enviar) |
 
 El actor y sus capacidades se resuelven en servidor (`Engine.withBrandActor`: sesión, membresía activa, Brand bajo
 Workspace y asignación). Otra organización → 404; un MEMBER sin asignación → 403. Ejecutar un paso externo revalida

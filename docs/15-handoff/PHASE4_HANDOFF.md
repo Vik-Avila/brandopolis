@@ -134,3 +134,10 @@ trabajo: exportaciones.
 PowerPoint/Word 16.0.16026 y pdf.js (ver SESSION_STATE y PHASE4_EXPORTS_EVALUATION §5). Siguiente bloque de la Fase 4:
 sitios (renderizador, vista previa autenticada, formularios con el formulario nativo de Clientes, medición), sin
 publicación real ni dominio hasta su decisión.
+
+**Actualización · sitios web (2026-10-11, bloque 7).** Marketing › Sitio web implementado y validado en DEMO
+(`8d00287`, `562e32a`, `897e61a`): crear, propuesta de Brando, edición por secciones, vista previa autenticada,
+publicación y restauración en el servidor aislado, formulario hacia Clientes y dominio propio por TXT. Para probarlo:
+`pnpm competition:start --isolated`, `pnpm sites:public --isolated` y `pnpm sites:preview --isolated`. Estado por
+criterio en la matriz (v20) y en SESSION_STATE. Pendiente de decisión: dominio de publicación, HTTPS por dominio,
+medición y consentimiento con etiquetas reales; pendiente técnico: ZIP del sitio y regresión completa.
