@@ -931,7 +931,9 @@ export class Engine {
         // until they are reconciled, paused or handed over (brand closure).
         if(await ExternalOperations.unresolvedForBrand(tx,s.workspaceId,s.brandId))throw new AppError('CONFLICT','This brand has external operations that must be resolved before deleting it');
         const documents=await tx.select({id:t.sourceDocuments.id}).from(t.sourceDocuments).where(inScope(t.sourceDocuments,s));
-        const storagePrefix=documents.length?`${s.workspaceId}/${s.brandId}`:null;
+        // ADR-0034 / DEL-005 · brand kit originals live under the same prefix and must be purged too.
+        const kitFiles=await tx.select({id:t.kitAssets.id}).from(t.kitAssets).where(inScope(t.kitAssets,s));
+        const storagePrefix=documents.length||kitFiles.length?`${s.workspaceId}/${s.brandId}`:null;
         const record={id:id(),workspaceId:s.workspaceId,brandId:s.brandId,actorUserId:s.userId,idempotencyKey,status:storagePrefix?'FILES_PENDING':'DELETED',storagePrefix,createdAt:new Date(),completedAt:storagePrefix?null:new Date()};
         // Inserted first: the history guards (migration 0015) only allow deleting versions/audit of a Brand whose
         // deletion record was written by this same transaction.

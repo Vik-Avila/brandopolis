@@ -1,3 +1,14 @@
+## 2026-10-10 · PHASE 4 · bloque 4 · revisión automática de seguridad del commit `71fb8a4`
+
+Dos hallazgos verificados en el código y corregidos:
+- **Retención de datos (DEL-005):** `deleteBrand` sólo programaba la purga de archivos si la marca tenía documentos
+  fuente; una marca con archivos del kit y sin documentos los dejaba en disco. Ahora también cuenta `kit_assets`.
+  Regresión añadida en `tests/brand-kit-cases.ts`.
+- **Archivos huérfanos:** si el registro de un archivo del kit falla después de escribirlo (rol y formato
+  incompatibles, acceso perdido), ahora se borra su carpeta.
+Comprobado: typecheck y lint PASS. **No ejecutado:** `pnpm test` (la base local de desarrollo fue detenida por
+memoria baja del equipo y no se relanza sin indicación); queda pendiente junto con la regresión completa.
+
 ## 2026-10-10 · PHASE 4 · bloque 4 (identidad visual) en curso · base del kit de marca
 
 Sin commit todavía sobre `05cc07f`; sin push ni deploy; producción sin cambios. Migración aditiva `0023` sólo en la

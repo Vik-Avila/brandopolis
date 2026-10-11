@@ -301,7 +301,10 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           const target=resolveDocumentStoragePath(storageKey);
           await mkdir(dirname(target),{recursive:true});
           await writeFile(target,data,{flag:'wx'});
-          const result=await engine.registerKitAsset(token,brandId,{id:assetId,role,originalName,info,bytes:data.length,sha256:createHash('sha256').update(data).digest('hex'),storageKey});
+          let result:{assetId:string;reused:boolean};
+          // A refused registration (role/format mismatch, lost access) never leaves an orphan file on disk.
+          try{result=await engine.registerKitAsset(token,brandId,{id:assetId,role,originalName,info,bytes:data.length,sha256:createHash('sha256').update(data).digest('hex'),storageKey});}
+          catch(error){await rm(dirname(target),{recursive:true,force:true});throw error;}
           if(result.reused)await rm(dirname(target),{recursive:true,force:true});
           return send(res,result.reused?200:201,{...result,format:info.format,width:info.width,height:info.height,alpha:info.alpha});
         }

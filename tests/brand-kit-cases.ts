@@ -117,5 +117,13 @@ export function brandKitCases(connection: () => ReturnType<typeof connect>) {
       const again = await x.engine.registerKitAsset(x.who.token, x.brand.id, { id: randomUUID(), role: 'LOGO', originalName: 'otra.png', info: { format: 'PNG', kind: 'RASTER', mediaType: 'image/png', width: 10, height: 10, alpha: false, previewable: true }, bytes: 10, sha256: logo.sha256, storageKey: 'y' });
       expect(again).toEqual({ assetId: logo.assetId, reused: true });
     });
+
+    it('DEL-005 (security review): deleting a brand that only has kit files still schedules the purge of its files', async () => {
+      const x = await setup();
+      await x.upload('LOGO');
+      const r = await x.engine.deleteBrand(x.who.token, { brandId: x.brand.id, confirmName: 'Marca con identidad', idempotencyKey: randomUUID() });
+      expect(r).toMatchObject({ status: 'FILES_PENDING', storagePrefix: `${x.who.workspaceId}/${x.brand.id}` });
+      expect(await x.db.select().from(t.kitAssets).where(eq(t.kitAssets.brandId, x.brand.id))).toEqual([]);
+    });
   });
 }
