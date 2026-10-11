@@ -86,9 +86,11 @@ describe('final pre-tester workspace UX', () => {
       expect(html, value).toContain(`value="${value}"`);
     // Never required: a missing declaration must not block creating a brand.
     expect(html).not.toMatch(/<select id="brand-geography"[^>]*\srequired/);
-    expect(app).toContain("api('/api/brands/geography'");
-    // The seed never runs this path; only the participant's own creation does.
-    expect(app).toContain('await saveBrandGeography(brand.id);');
+    // PHASE4_SPEC §4.10: the dialog is the ficha of the guided start; its geography travels as a draft field and is
+    // recorded once, by the confirmation (engine → brand_profiles), never by a second persistence path.
+    expect(app).toContain("put('geography',$('#brand-geography').value)");
+    expect(app).toContain("api('/api/brand-setup/confirm'");
+    expect(app).not.toContain('saveBrandGeography');
   });
 
   it('offers AI possibilities as an optional path beside the participant own answer', () => {

@@ -1,3 +1,12 @@
+## 2026-10-11 · Phase 4 — inicio guiado (ficha y guía sobre un solo borrador)
+
+- Paso 1 «Tu marca» en el diálogo: nombre, de quién es la marca, prioridad y tres salidas («Empezar con preguntas», «Tengo materiales», «Completar ficha»).
+- Pasos 2–4 en el espacio: sólo se pregunta lo que falta para la prioridad, propuestas de documentos con origen y conflictos visibles, identidad con las tres entradas, resumen confirmado / propuesto / pendiente y confirmación que sólo registra contexto declarado.
+- Guardar y retomar desde Inicio; guía ↔ ficha sin pérdida; ficha de marcas existentes desde Configuración de marca.
+- Reintentos sin duplicados: la marca se crea una vez desde su borrador y el mismo archivo se guarda una vez por marca.
+- Migración aditiva 0025 (`brand_setup_drafts`, con trigger de estados); la proyección del contexto declarado usa el valor más reciente.
+- Evidencia: pnpm test 458 PASS; test:e2e 267 PASS · 13 SKIP · 0 FAIL (280); PILOT 10/10; test:visual PASS (4 diferencias v5 pendientes).
+
 ## 2026-10-11 · Phase 4 — capturas v4 aplicadas (seis) y corrección del recuento E2E
 
 - Seis capturas canónicas actualizadas con las imágenes exactas del ZIP v4; cuatro pendientes de comparación corregida.

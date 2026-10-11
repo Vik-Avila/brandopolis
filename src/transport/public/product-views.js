@@ -889,3 +889,75 @@ export function identityDirectionsHtml(r){
  const card=(d,i)=>`<article class="kit-direction"><p class="eyebrow">Dirección ${i+1}</p><h4>${escape(d.name)}</h4><p>${escape(d.intent)}</p><ul class="kit-direction-colors">${d.palette.map(c=>`<li><span class="kit-swatch" data-hex="${escape(c.hex)}" aria-hidden="true"></span>${escape(c.name)} · ${escape(c.hex)} · ${escape(ROLE_WORDS[c.role]??'')}</li>`).join('')}</ul><p><strong>Tipografías:</strong> ${d.typography.map(f=>`${escape(f.family)} (${escape(USE_WORDS[f.use]??'')})`).join(', ')}</p><p class="hint">${d.typography.map(f=>escape(f.licenseNote)).filter(Boolean).join(' · ')}</p>${d.imagery?`<p><strong>Imágenes:</strong> ${escape(d.imagery)}</p>`:''}${d.examples.length?`<p class="brando-list-title">Ejemplos de uso</p><ul>${d.examples.map(e=>`<li>${escape(e)}</li>`).join('')}</ul>`:''}${d.toConfirm.length?`<p class="brando-list-title">Antes de adoptar, confirma</p><ul>${d.toConfirm.map(e=>`<li>${escape(e)}</li>`).join('')}</ul>`:''}<div class="actions"><button type="button" class="secondary" data-direction-index="${i}">Usar esta dirección en el borrador</button></div></article>`;
  return `<p class="eyebrow">${r.demo?'Direcciones de ejemplo (modo DEMO, no generadas por IA)':'Direcciones propuestas por Brando · sin adoptar'}</p><div class="kit-directions">${r.directions.map(card).join('')}</div>${r.missing.length?`<p class="brando-list-title">Lo que falta para afinarlas</p><ul>${r.missing.map(m=>`<li>${escape(m)}</li>`).join('')}</ul>`:''}${r.questions.length?`<p class="brando-list-title">Preguntas para ti</p><ul>${r.questions.map(m=>`<li>${escape(m)}</li>`).join('')}</ul>`:''}<p class="hint">Al usar una dirección, sus colores y tipografías entran al borrador como «Propuesto, sin adoptar». Revísalos, ajústalos y adopta los que confirmes.</p>`;
 }
+
+// PHASE4_SPEC §4.10 · guided start. Pure projections over the draft returned by the server; guide and ficha show the
+// same fields. Real stages (never a percentage); confirming the ficha approves no strategy, kit or plan.
+export const SETUP_STAGES=['Tu marca','Lo que ya sabemos','Tu identidad','Revisa y comienza'];
+export const SETUP_LABELS={name:'Nombre',ownership:'De quién es la marca',stage:'Punto de partida',offer:'Qué ofreces',audience:'A quién atiendes',geography:'Dónde compite',market:'Mercado principal',goal:'Qué buscas primero',references:'Referencias competitivas'};
+const SETUP_CHOICES={ownership:{OWN:'Es mi marca',CLIENT:'Es la marca de un cliente'},stage:{IDEA:'Tengo una idea',EXISTING:'Mi marca ya existe'},geography:{LOCAL:'Local / ciudad',REGIONAL:'Regional',STATE:'Estatal',NATIONAL:'Nacional',LATAM:'LATAM',GLOBAL:'Global'}};
+const SETUP_QUESTIONS={
+ offer:{q:'¿Qué ofreces?',hint:'Tus productos o servicios, en tus palabras.'},
+ audience:{q:'¿A quién atiendes?',hint:'Las personas o empresas que hoy te compran o quieres que te compren.'},
+ geography:{q:'¿Dónde compite tu marca?',hint:'La ubicación de tu empresa no siempre es el mercado donde compite tu marca.'},
+ goal:{q:'¿Qué buscas primero?',hint:'Lo que necesitas lograr ahora. No es tu Objetivo estratégico: ese se decide en Estrategia.'},
+ stage:{q:'¿Tu marca ya existe o es una idea?',hint:''},
+ ownership:{q:'¿De quién es esta marca?',hint:''},
+ references:{q:'¿Qué competidores o marcas de referencia tienes en mente?',hint:''},
+ market:{q:'Mercado principal',hint:''},
+ name:{q:'Nombre de tu marca',hint:''}
+};
+export const setupValueText=(field,f)=>!f?'':f.state==='UNKNOWN'?'No lo sé todavía':(SETUP_CHOICES[field]?.[f.value]??f.value??'');
+/** Stages as an ordered list with a word for each state (Hecho / Ahora / Pendiente), never colour alone. */
+export function setupStagesHtml(step){
+ return `<ol class="setup-stages" aria-label="Etapas de preparación">${SETUP_STAGES.map((label,i)=>{const n=i+1,state=n<step?'Hecho':n===step?'Ahora':'Pendiente';return `<li class="setup-stage is-${n<step?'done':n===step?'current':'pending'}"${n===step?' aria-current="step"':''}><span class="setup-stage-n">${n}</span> <span>${escape(label)}</span> <span class="setup-stage-state">${state}</span></li>`;}).join('')}</ol>`;
+}
+/** One input for a field (select for closed answers, textarea for open ones). `id` keeps the control unique. */
+function setupInputHtml(field,f,id){
+ const value=f?.state==='CONFIRMED'?f.value:'';
+ if(SETUP_CHOICES[field])return `<select id="${id}" name="${field}"><option value="">Elige una opción</option>${Object.entries(SETUP_CHOICES[field]).map(([k,label])=>`<option value="${k}"${value===k?' selected':''}>${escape(label)}</option>`).join('')}</select>`;
+ if(field==='name'||field==='market')return `<input id="${id}" name="${field}" maxlength="160" value="${escape(value??'')}">`;
+ return `<textarea id="${id}" name="${field}" maxlength="${field==='offer'?6000:field==='references'?2500:2000}">${escape(value??'')}</textarea>`;
+}
+/** The guide asks one thing at a time: the first field the priority still needs. */
+export function setupQuestionHtml(draft){
+ const field=draft.missing[0];
+ if(!field)return `<section class="setup-question" aria-labelledby="setup-question-title"><h3 id="setup-question-title">Ya tenemos lo que tu prioridad necesita.</h3><p>Puedes revisar o completar el resto en la ficha cuando quieras.</p><div class="actions"><button type="button" id="setup-next" data-step="3">Continuar a Tu identidad</button></div></section>`;
+ const {q,hint}=SETUP_QUESTIONS[field];
+ const market=field==='geography'?`<label for="setup-answer-market">Mercado principal <span class="hint">opcional</span></label>${setupInputHtml('market',draft.fields.market,'setup-answer-market')}`:'';
+ return `<form id="setup-question" class="setup-question" data-field="${field}" aria-labelledby="setup-question-title"><p class="eyebrow">Lo que falta para tu prioridad · ${draft.missing.length===1?'última pregunta':`${draft.missing.length} preguntas`}</p><h3 id="setup-question-title"><label for="setup-answer">${escape(q)}</label></h3>${hint?`<p class="hint">${escape(hint)}</p>`:''}${setupInputHtml(field,draft.fields[field],'setup-answer')}${market}<div class="actions"><button type="button" class="secondary" id="setup-unknown">No lo sé todavía</button><button type="submit">Guardar y seguir</button></div></form>`;
+}
+/** Values proposed by the brand's documents, with their origin; conflicts between documents stay visible. */
+export function setupProposalsHtml(draft){
+ if(!draft.proposals.length)return '';
+ const fields=[...new Set(draft.proposals.map(p=>p.field))];
+ return `<section class="setup-proposals" aria-labelledby="setup-proposals-title"><h3 id="setup-proposals-title">Lo que encontramos en tus documentos</h3><p class="hint">Son propuestas: nada pasa a tu ficha hasta que eliges una o escribes la tuya.</p>${fields.map(field=>`<div class="setup-proposal-group" data-field="${field}"><h4>${escape(SETUP_LABELS[field])}</h4>${draft.conflicts.includes(field)?`<p class="setup-conflict" role="note">Tus documentos no coinciden. Elige la que corresponde o escribe la tuya.</p>`:''}<ul>${draft.proposals.filter(p=>p.field===field).map(p=>`<li class="setup-proposal"><p>«${escape(p.statement)}»</p><p class="hint">Desde ${escape(p.documentName)}</p><button type="button" class="secondary" data-use-proposal="${escape(p.claimId)}">Usar esta</button></li>`).join('')}</ul></div>`).join('')}</section>`;
+}
+/** Documents for this brand (stored once per file) and the extraction of proposals. */
+export function setupDocumentsHtml(documents){
+ return `<section class="setup-documents" aria-labelledby="setup-documents-title"><h3 id="setup-documents-title">Tus materiales</h3>${documents.length?`<ul class="setup-document-list">${documents.map(d=>`<li>${escape(d.originalName)}</li>`).join('')}</ul>`:'<p>Aún no has aportado documentos.</p>'}<label for="setup-files">Aportar documentos <span class="hint">PDF, DOCX, PPTX o TXT · máximo 20 MB por archivo</span></label><input id="setup-files" type="file" multiple accept=".pdf,.docx,.pptx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain"><p class="hint">Cada archivo se guarda una sola vez: si ya lo subiste, se reutiliza.</p><div class="actions"><button type="button" class="secondary" id="setup-upload">Subir documentos</button>${documents.length?'<button type="button" class="secondary" id="setup-extract">Buscar propuestas en mis documentos</button>':''}</div></section>`;
+}
+/** Step 3: the three identity entries of ADR-0034, postponable when the priority does not need it. */
+export function setupIdentityHtml(draft){
+ const choice=draft.identityChoice;
+ const option=(value,title,text)=>`<button type="button" class="setup-identity-option${choice===value?' is-chosen':''}" data-identity="${value}" aria-pressed="${choice===value}"><strong>${escape(title)}</strong><span>${escape(text)}</span></button>`;
+ return `<section class="setup-identity" aria-labelledby="setup-identity-title"><h3 id="setup-identity-title">¿Cómo está tu identidad visual?</h3><p class="hint">El desarrollo completo sigue en Marca y recursos. Los documentos que ya aportaste se pueden reutilizar allí.</p><div class="setup-identity-options">${option('HAVE','Ya tengo identidad','Incorpora logotipo, colores y tipografías que ya existen.')}${option('COMPLETE','Quiero completarla','Tengo una parte y quiero completar lo que falta.')}${option('CREATE','Quiero crearla','Brando te propone direcciones; tú decides.')}${draft.identityPostponable?option('LATER','Más adelante','Tu prioridad no la necesita ahora.'):''}</div>${draft.identityPostponable?'':'<p class="hint">Tu prioridad es la identidad visual, así que conviene definir por dónde empezar.</p>'}</section>`;
+}
+/** The ficha: every field, editable, with its origin. The brand name is changed in brand settings once created. */
+export function setupFichaHtml(draft){
+ const row=field=>{const f=draft.fields[field],locked=field==='name'&&draft.brandId;const source=f?.source?`<p class="hint">Desde ${escape(f.source.documentName)}</p>`:'';return `<div class="setup-ficha-row" data-field="${field}"><label for="ficha-${field}">${escape(SETUP_LABELS[field])}</label>${locked?`<p id="ficha-${field}" class="setup-locked">${escape(f?.value??'')}</p>`:setupInputHtml(field,f,`ficha-${field}`)}${f?.state==='UNKNOWN'?'<p class="hint">Marcado como «No lo sé todavía».</p>':''}${source}</div>`;};
+ return `<form id="setup-ficha" class="setup-ficha" aria-labelledby="setup-ficha-title"><h3 id="setup-ficha-title">Ficha de marca</h3><p class="hint">Es la misma información que reúne la guía. Un campo vacío queda pendiente.</p>${Object.keys(SETUP_LABELS).map(row).join('')}<div class="actions"><button type="submit">Guardar ficha</button></div></form>`;
+}
+/** Step 4 summary: confirmed, proposed and pending, plus what confirming does and does not do. */
+export function setupSummaryHtml(draft){
+ const list=(title,fields,cls,empty)=>`<div class="setup-summary-group ${cls}"><h4>${title}</h4>${fields.length?`<ul>${fields.map(f=>`<li><strong>${escape(SETUP_LABELS[f])}</strong>${cls==='is-confirmed'?`: ${escape(setupValueText(f,draft.fields[f]))}`:''}</li>`).join('')}</ul>`:`<p class="hint">${empty}</p>`}</div>`;
+ const {confirmed,proposed,pending}=draft.summary;
+ return `<section class="setup-summary" aria-labelledby="setup-summary-title"><h3 id="setup-summary-title">Revisa y comienza</h3><div class="setup-summary-groups">${list('Confirmado',confirmed,'is-confirmed','Nada confirmado todavía.')}${list('Propuesto por tus documentos',proposed,'is-proposed','Sin propuestas pendientes.')}${list('Pendiente',pending,'is-pending','Nada pendiente para tu prioridad.')}</div><p class="setup-note">Confirmar la ficha guarda este contexto de tu marca. No aprueba estrategia, kit ni plan, y las propuestas sin elegir no se guardan.</p><div class="actions"><button type="button" id="setup-confirm">Confirmar ficha y comenzar</button></div></section>`;
+}
+/** Whole guided start view. `mode` is 'guide' or 'ficha'; both read and write the same draft. */
+export function setupHtml(draft,brandName,mode,documents=[]){
+ const body=mode==='ficha'?`${setupFichaHtml(draft)}${draft.brandId?setupSummaryHtml(draft):''}`
+  :draft.step<=2?`${setupDocumentsHtml(documents)}${setupProposalsHtml(draft)}${setupQuestionHtml(draft)}`
+  :draft.step===3?`${setupIdentityHtml(draft)}<div class="actions"><button type="button" class="secondary" id="setup-back" data-step="2">Volver</button><button type="button" id="setup-next" data-step="4">Continuar</button></div>`
+  :`${setupSummaryHtml(draft)}<div class="actions"><button type="button" class="secondary" id="setup-back" data-step="3">Volver</button></div>`;
+ return `<p class="eyebrow">Preparar tu marca</p><h2>${escape(brandName)}</h2>${setupStagesHtml(draft.step)}<div class="setup-modes" role="group" aria-label="Forma de completar"><button type="button" class="secondary" data-setup-mode="guide" aria-pressed="${mode!=='ficha'}">Guía</button><button type="button" class="secondary" data-setup-mode="ficha" aria-pressed="${mode==='ficha'}">Ficha completa</button></div><div class="setup-body">${body}</div><div class="setup-footer actions"><button type="button" class="secondary" id="setup-leave">Guardar y salir</button><button type="button" class="secondary" id="setup-abandon">Descartar borrador</button></div><p id="setup-status" class="hint" role="status" aria-live="polite"></p>`;
+}

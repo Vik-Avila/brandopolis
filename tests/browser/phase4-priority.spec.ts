@@ -17,7 +17,7 @@ test('INT-001/002/005: the priority chosen at creation is saved with its brand, 
   const calls = aiCalls(page);
   await openSession(page);
   await page.locator('#new-brand').click();
-  await page.getByLabel('Nueva marca', { exact: true }).fill(`Prioridad ${info.project.name} ${Date.now()}`);
+  await page.getByLabel('Nueva marca', { exact: true }).fill(`Prioridad ${info.project.name} ${Date.now()}`); await page.locator('#brand-ficha summary').click();
   await expect(page.locator('#create-brand .work-intent legend')).toHaveText('¿Qué te gustaría trabajar primero con tu marca?');
   await expect(page.locator('#create-brand input[name="brand-intent"]')).toHaveCount(11);
   await expect(page.locator('#create-brand .work-intent-note')).toBeHidden();
@@ -56,7 +56,7 @@ test('INT-001/002/005: the priority chosen at creation is saved with its brand, 
 test('INT-007: the radio group works with the keyboard and the brand can be created without choosing', async ({ page }, info) => {
   await openSession(page);
   await page.locator('#new-brand').click();
-  await page.getByLabel('Nueva marca', { exact: true }).fill(`Sin prioridad ${info.project.name} ${Date.now()}`);
+  await page.getByLabel('Nueva marca', { exact: true }).fill(`Sin prioridad ${info.project.name} ${Date.now()}`); await page.locator('#brand-ficha summary').click();
   const first = page.locator('#create-brand input[name="brand-intent"]').first();
   await first.focus(); await page.keyboard.press('ArrowDown');
   await expect(page.locator('#create-brand input[name="brand-intent"]:checked')).toHaveValue('STRATEGY_POINT');

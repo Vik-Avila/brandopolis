@@ -197,17 +197,27 @@
   <div id="brando-conversation"></div><div id="brando-consent" hidden></div>
  </div>
  <div class="brando-composer"><p id="brando-status" role="status" aria-live="polite"></p><form id="brando-form"><label for="brando-message">Pregunta sobre esta marca o decisión</label><div class="brando-compose-row"><textarea id="brando-message" maxlength="2000" required rows="2" placeholder="¿Qué conviene revisar antes de decidir?"></textarea><button type="submit" id="brando-submit"><span class="brando-thinking-mark" aria-hidden="true" hidden></span><span id="brando-submit-label">Consultar</span></button></div><div class="brando-actions"><button type="button" id="clear-brando" class="tertiary">Borrar conversación</button><button type="button" id="brando-motion-toggle" class="tertiary" aria-pressed="false">Pausar animación</button></div></form><p class="brando-authority">La IA propone. Tú decides. Conversación temporal.</p></div>
-</dialog><dialog id="brand-dialog" aria-labelledby="brand-dialog-title"><p class="eyebrow">Un nuevo punto de partida</p><h2 id="brand-dialog-title">Dale un espacio a tu marca.</h2><p>Cada marca conserva sus propias decisiones, contexto e historial.</p><form id="create-brand" class="new-brand">
+</dialog><dialog id="brand-dialog" aria-labelledby="brand-dialog-title"><p class="eyebrow">Paso 1 de 4 · Tu marca</p><h2 id="brand-dialog-title">Vamos a preparar tu marca.</h2><p>Trae los materiales que ya tienes o responde algunas preguntas. Brando te ayudará a completar lo que falte.</p><div id="brand-resume" class="brand-resume" role="status" hidden></div><form id="create-brand" class="new-brand">
+
+<label for="brand-name">Nombre de tu marca</label>
+<input id="brand-name" name="name" maxlength="160" placeholder="Nombre de tu marca" aria-label="Nueva marca" required>
+<fieldset class="brand-ownership"><legend>¿De quién es esta marca? <span class="hint">opcional</span></legend><label><input type="radio" name="brand-ownership" value="OWN"> Es mi marca</label><label><input type="radio" name="brand-ownership" value="CLIENT"> Es la marca de un cliente</label></fieldset>
+<div id="brand-work-intent"></div>
+
+<div class="actions setup-start">
+<button type="button" id="cancel-brand" class="secondary">Cancelar</button>
+<button type="button" id="setup-materials" class="secondary">Tengo materiales</button>
+<button type="button" id="setup-questions">Empezar con preguntas</button>
+</div>
+
+<details id="brand-ficha" class="brand-ficha"><summary>Completar ficha</summary>
+<p class="hint">Si prefieres, completa ahora la ficha de tu marca. Es la misma información que reúne la guía y podrás editarla después.</p>
 
 <label for="brand-stage">Tu punto de partida</label>
 <select id="brand-stage">
 <option value="idea">Tengo una idea</option>
 <option value="existing">Mi marca ya existe</option>
 </select>
-
-<label for="brand-name">Nombre de tu marca</label>
-<input id="brand-name" name="name" maxlength="160" placeholder="Nombre de tu marca" aria-label="Nueva marca" required>
-<div id="brand-work-intent"></div>
 
 <label for="initial-context">¿Qué estás construyendo?</label>
 <textarea id="initial-context" maxlength="3000" placeholder="Qué ofreces y para quién" aria-describedby="initial-context-hint"></textarea>
@@ -274,9 +284,9 @@ Complementar con investigación
 </fieldset>
 
 <div class="actions">
-<button type="button" id="cancel-brand" class="secondary">Cancelar</button>
 <button type="submit">Crear marca</button>
 </div>
+</details>
 
 </form></dialog><dialog id="brando-feedback-dialog" aria-labelledby="brando-feedback-title"><button type="button" id="close-brando-feedback" class="secondary" aria-label="Cerrar revisión de sugerencia">×</button><h2 id="brando-feedback-title">Revisar sugerencia</h2><form id="brando-feedback-form"><p id="brando-feedback-text"></p><div id="brando-target-field"><label for="brando-target">Sección que quieres cambiar</label><select id="brando-target"></select></div><label for="brando-feedback-rationale">¿Por qué tomas esta decisión?</label><textarea id="brando-feedback-rationale" required minlength="10" maxlength="2000" rows="3"></textarea><p id="brando-feedback-boundary" class="hint"></p><p id="brando-feedback-status" role="status" aria-live="polite"></p><button type="submit" id="brando-feedback-save">Continuar a revisión</button></form></dialog><div id="nav-backdrop" hidden></div><div class="layout"><nav id="journey" aria-label="Navegación de tu marca">
 <div class="nav-head"><span class="nav-title">Mi marca</span><button type="button" id="toggle-journey" class="panel-toggle nav-collapse" aria-controls="journey" aria-expanded="true" aria-label="Contraer navegación" data-tip="Contraer navegación"><span class="panel-toggle-icon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#i-collapse"/></svg></span><span class="panel-toggle-label visually-hidden">Contraer navegación</span></button><button id="close-menu" class="secondary" aria-label="Cerrar navegación">Cerrar ×</button></div>

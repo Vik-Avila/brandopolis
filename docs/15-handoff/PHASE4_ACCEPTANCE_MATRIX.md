@@ -301,6 +301,17 @@ Master, `/security-review` para endpoints, permisos, OAuth, sitio público, vist
 y acciones externas; Live AI según el procedimiento existente con la clave introducida por el propietario.
 Ninguna prueba se debilita para pasar.
 
+## Estado de implementación · inicio guiado (2026-10-11)
+
+Regresión sobre el árbol de este cambio: `pnpm test` 458 PASS; test:e2e 280 pruebas, 267 PASS · 13 SKIP · 0 FAIL
+(5 proyectos); test:visual estructura PASS (las 4 diferencias de píxeles son las de la comparación v5 pendiente);
+test:pilot:e2e 10/10. Todo en DEMO aislada; ninguna IA real interviene.
+
+| Estado | Criterios |
+|---|---|
+| Implementado · verificado en DEMO | ONB-005 (U `tests/brand-setup-cases.ts`, E `tests/browser/phase4-setup.spec.ts`: sólo se pregunta lo que falta para la prioridad, una pregunta a la vez, «No lo sé todavía»), ONB-008 (U: inicio idempotente, una sola marca al reintentar, prioridad una vez, 409, mismo archivo guardado una vez por marca; E: guardar y salir, retomar desde Inicio, guía ↔ ficha sin pérdida, archivo reutilizado), ONB-010 (U: confirmar sólo registra contexto declarado distinto del vigente; sin versiones, kit, plan ni aprobaciones; E: resumen confirmado / propuesto / pendiente), ONB-012 (E: cuatro etapas con palabra Hecho / Ahora / Pendiente, sin porcentajes) |
+| Parcial | ONB-006 (U: propuestas OFFER/AUDIENCE de los documentos con su origen, conflictos visibles, origen falsificado rechazado; falta reutilizar en Identidad visual los archivos ya cargados y la E con extracción real), ONB-007 (U/E: nada propuesto se confirma sin elegirlo y la ficha corrige; falta la parte de identidad parcial), ONB-009 (E: sin extractor o IA la ficha y las preguntas siguen y el archivo se conserva; sin prueba con un proveedor real que falle), ONB-011 (U: borrador privado de su autor, aislado por workspace y marca, sin permiso de alta no se inicia; el portal del invitado no existe todavía) |
+
 ## Historial de revisiones
 
 | Versión | Fecha | Cambio |
@@ -316,3 +327,4 @@ Ninguna prueba se debilita para pasar.
 | v9 | 2026-10-10 | Bloque 3: PLN-001…003 y calendario implementados; sección de estado correspondiente |
 | v10 | 2026-10-10 | Bloque 3: navegación de siete entradas, entregables y Brando para marketing; sección de estado correspondiente |
 | v11 | 2026-10-10 | Bloque 4: base del kit de marca y verificación de seguridad; sección de estado correspondiente |
+| v12 | 2026-10-11 | Inicio guiado: borrador `BrandSetupDraft` (migración 0025), guía de cuatro etapas y ficha; sección de estado correspondiente |

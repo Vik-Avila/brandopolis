@@ -1,3 +1,28 @@
+## 2026-10-11 · PHASE 4 · inicio guiado (2/2): borrador, guía de cuatro etapas y ficha
+
+- **Datos:** `brand_setup_drafts` (migración aditiva `0025`), schema `brand-setup-draft` v1. Borrador de su autor en
+  su workspace; uno abierto sin marca por persona y uno abierto por marca; ligado a la marca una vez al crearla.
+  Trigger: IN_PROGRESS → CONFIRMED / ABANDONED, cerrado inmutable, autor/marca inmutables, versión +1, borrado sólo
+  dentro del borrado registrado de su marca (incluido en ADR-0029).
+- **Motor:** `setupDraft`, `startSetupDraft`, `saveSetupDraft` (409), `createBrandFromDraft` (marca y prioridad en la
+  misma transacción, reintento sin duplicado), `confirmSetupDraft` (sólo registra lo que difiere del contexto
+  declarado vigente y la geografía; sin versiones), `abandonSetupDraft`. Documentos: mismo SHA-256 en la misma marca
+  devuelve el existente y la ruta borra la copia nueva. La proyección de Strategic Intelligence toma el último valor
+  declarado por prefijo (antes el primero según un id aleatorio).
+- **Interfaz:** diálogo como paso 1 (ficha completa en «Completar ficha»); vista «Preparar tu marca» con etapas reales,
+  una pregunta a la vez y «No lo sé todavía», propuestas con origen y conflictos, identidad (posponible salvo
+  prioridad de identidad), resumen y confirmación; Inicio ofrece retomar; Configuración de marca abre la ficha.
+  Revisión visual de la guía en escritorio y móvil (sonda de capturas en el scratchpad; un título corregido).
+- **Pruebas:** `tests/brand-setup-cases.ts` (7) y `tests/browser/phase4-setup.spec.ts` (3 × 5 proyectos); 13 suites
+  E2E abren «Completar ficha» antes de crear; `m1.spec` intercepta la creación nueva; la prueba de teclado del
+  PILOT entra por «Empezar con preguntas»; `pre-tester.test.ts` comprueba la geografía por la confirmación.
+- **Resultados:** typecheck, lint, Foundation 0 errores, validador de UI PASS; `pnpm test` 458 PASS; test:e2e 280
+  pruebas, 267 PASS · 13 SKIP · 0 FAIL (desktop, wide y compact 55/1; tablet y mobile 51/5); test:visual
+  estructura PASS y píxeles: 13 idénticas, 4 = comparación v5 pendiente; test:pilot:e2e 10/10.
+- **Pendiente del inicio guiado:** reutilizar en Identidad visual los archivos ya cargados (ONB-006), identidad
+  parcial (ONB-007), fallo real de proveedor (ONB-009), portal del invitado (ONB-011). Brando no hace las preguntas
+  con IA: son preguntas deterministas por prioridad; la IA real sigue sin verificar.
+
 ## 2026-10-11 · PHASE 4 · inicio guiado (1/2): once prioridades de trabajo
 
 Migración aditiva `0024` (amplía la restricción de valores; el historial append-only no se toca): STRATEGY_FULL,

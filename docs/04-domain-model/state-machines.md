@@ -39,3 +39,17 @@ stateDiagram-v2
  DECIDED --> REOPENED: cambio humano
  REOPENED --> IN_ANALYSIS
 ```
+
+## BrandSetupDraft (PHASE4_SPEC §4.10 · inicio guiado)
+
+Borrador del inicio guiado de su autor, dentro de su workspace. Se liga una sola vez a la marca al crearla
+(idempotente). Un borrador abierto por persona sin marca y uno por marca. Confirmar registra contexto declarado
+(sólo lo que difiere del vigente) y la geografía; no crea versiones de decisiones ni aprueba estrategia, kit o plan.
+Un borrador cerrado es inmutable (trigger); cada guardado avanza la versión en uno (409 si la pantalla es antigua).
+
+```mermaid
+stateDiagram-v2
+ [*] --> IN_PROGRESS
+ IN_PROGRESS --> CONFIRMED: la persona confirma la ficha (requiere marca)
+ IN_PROGRESS --> ABANDONED: la persona descarta el borrador
+```

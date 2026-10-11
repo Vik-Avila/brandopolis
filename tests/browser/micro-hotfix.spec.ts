@@ -19,7 +19,7 @@ async function signIn(page: Page, brand: string) {
   await page.getByRole('button', { name: 'Entrar al espacio estratégico' }).click();
   await page.locator('#workspace').waitFor();
   await page.locator('#new-brand').click();
-  await page.getByLabel('Nueva marca', { exact: true }).fill(brand);
+  await page.getByLabel('Nueva marca', { exact: true }).fill(brand); await page.locator('#brand-ficha summary').click();
   await page.getByRole('button', { name: 'Crear marca', exact: true }).click();
   await expect(page.locator('#decision')).toContainText('Por decidir');
 }

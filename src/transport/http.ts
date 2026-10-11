@@ -372,6 +372,8 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
               }
             );
 
+            // The brand already keeps this exact file: drop the new copy and return the kept document.
+            if(result.reused){await rm(directory,{recursive:true,force:true});return send(res,200,result);}
             return send(res,201,result);
           } catch(error) {
             await rm(directory,{recursive:true,force:true});
@@ -409,6 +411,12 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           return send(res,200,{status,brandId:deleted.brandId});
         }
         // PHASE4_SPEC §4.9 · work priority (append-only) and ADR-0033 per-brand capabilities: authorization in the engine.
+        // PHASE4_SPEC §4.10 · guided start draft of its author; ownership, scope, 409 and idempotency in the engine.
+        if(path==='/api/brand-setup/start') return send(res,201,await engine.startSetupDraft(token,{startKey:input.startKey,brandId:input.brandId,fields:input.fields}));
+        if(path==='/api/brand-setup/save') return send(res,200,await engine.saveSetupDraft(token,{draftId:input.draftId,expectedVersion:input.expectedVersion,fields:input.fields,step:input.step,identityChoice:input.identityChoice}));
+        if(path==='/api/brand-setup/create-brand') return send(res,201,await engine.createBrandFromDraft(token,{draftId:input.draftId,expectedVersion:input.expectedVersion,intent:input.intent,note:input.note}));
+        if(path==='/api/brand-setup/confirm') return send(res,200,await engine.confirmSetupDraft(token,{draftId:input.draftId,expectedVersion:input.expectedVersion}));
+        if(path==='/api/brand-setup/abandon') return send(res,200,await engine.abandonSetupDraft(token,{draftId:input.draftId,expectedVersion:input.expectedVersion}));
         if(path==='/api/brands/work-priority') return send(res,201,await engine.setWorkPriority(token,{brandId:input.brandId,intent:input.intent,note:input.note,idempotencyKey:input.idempotencyKey}));
         // PHASE4_SPEC §4.1 · offers: one path per operation; authorization, concurrency and audit in the engine.
         // ADR-0034 · candidates from a brand manual (PDF) through the existing extractor; DECLARED, never adopted.
@@ -699,6 +707,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         }
         if(path==='/api/deliverables') return send(res,200,await engine.deliverables(token,string(url.searchParams.get('brandId')),url.searchParams.get('types')?.split(',').filter(Boolean).slice(0,5)??null));
         if(path==='/api/plan/shared') return send(res,200,await engine.sharedPlan(token,string(url.searchParams.get('brandId')),Number(url.searchParams.get('year'))));
+        if(path==='/api/brand-setup') return send(res,200,await engine.setupDraft(token,url.searchParams.get('brandId')||null));
         if(path==='/api/brands/work-priority') return send(res,200,await engine.workPriority(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/brands/capabilities') return send(res,200,await engine.brandCapabilities(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/brands') return send(res,200,await engine.listBrands(token));

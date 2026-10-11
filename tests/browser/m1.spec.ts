@@ -18,7 +18,7 @@ test('human connected proof survives reload without console errors or overflow',
     await page.keyboard.press('Escape');await expect(menu).toBeFocused();await expect(menu).toHaveAttribute('aria-expanded','false');
     await menu.click();await page.locator('#nav-backdrop').click({position:{x:(page.viewportSize()?.width??390)-10,y:150}});await expect(menu).toHaveAttribute('aria-expanded','false');
   }
-  await page.locator('#new-brand').click();await expect(page.locator('#brand-dialog')).toBeVisible();await page.getByLabel('Nueva marca',{exact:true}).fill(`Browser DEMO ${testInfo.project.name} ${Date.now()}`);
+  await page.locator('#new-brand').click();await expect(page.locator('#brand-dialog')).toBeVisible();await page.getByLabel('Nueva marca',{exact:true}).fill(`Browser DEMO ${testInfo.project.name} ${Date.now()}`); await page.locator('#brand-ficha summary').click();
   await page.getByRole('button',{name:'Crear marca',exact:true}).click();
   await expect(page.locator('#decision')).toContainText('Por decidir');
   // ADR-0021 (D5): a new brand starts its journey at Objetivo estratégico.
@@ -88,7 +88,7 @@ test('human connected proof survives reload without console errors or overflow',
 test('two human tabs cannot silently overwrite a newer version',async({page,context})=>{
   const session=JSON.parse(readFileSync(process.env.BRANDOPOLIS_SESSION_FILE??'.local/demo-session.json','utf8'));
   await page.goto('/');await page.getByLabel('Token de sesión local').fill(session.token);await page.getByRole('button',{name:'Entrar al espacio estratégico'}).click();
-  await page.locator('#new-brand').click();await expect(page.locator('#brand-dialog')).toBeVisible();await page.getByLabel('Nueva marca',{exact:true}).fill(`Concurrency DEMO ${Date.now()}`);await page.getByRole('button',{name:'Crear marca',exact:true}).click();await expect(page.locator('#decision')).toContainText('Por decidir');
+  await page.locator('#new-brand').click();await expect(page.locator('#brand-dialog')).toBeVisible();await page.getByLabel('Nueva marca',{exact:true}).fill(`Concurrency DEMO ${Date.now()}`);await page.locator('#brand-ficha summary').click();await page.getByRole('button',{name:'Crear marca',exact:true}).click();await expect(page.locator('#decision')).toContainText('Por decidir');
   await page.getByRole('button',{name:'Preparar decisión',exact:true}).click();await page.getByLabel('Tu decisión',{exact:true}).fill('Original');await page.getByLabel('¿Por qué eliges esta opción?').fill('Original rationale');await page.getByRole('button',{name:'Aprobar decisión',exact:true}).click();await expect(page.locator('#decision .current')).toHaveText('Original');
   const second=await context.newPage();await second.goto(page.url());await expect(second.locator('#decision .current')).toHaveText('Original');
   await page.getByRole('button',{name:'Preparar nueva versión',exact:true}).click();await second.getByRole('button',{name:'Preparar nueva versión',exact:true}).click();
@@ -102,7 +102,7 @@ test('two human tabs cannot silently overwrite a newer version',async({page,cont
 test('DEMO recommendation can be rejected and then explicitly approved',async({page},info)=>{
  const session=JSON.parse(readFileSync(process.env.BRANDOPOLIS_SESSION_FILE??'.local/demo-session.json','utf8'));
  await page.goto('/');await page.getByLabel('Token de sesión local').fill(session.token);await page.getByRole('button',{name:'Entrar al espacio estratégico'}).click();
- await page.locator('#new-brand').click();await expect(page.locator('#brand-dialog')).toBeVisible();await page.getByLabel('Nueva marca',{exact:true}).fill(`Analysis DEMO ${info.project.name} ${Date.now()}`);await page.getByRole('button',{name:'Crear marca',exact:true}).click();await expect(page.locator('#decision')).toContainText('Por decidir');
+ await page.locator('#new-brand').click();await expect(page.locator('#brand-dialog')).toBeVisible();await page.getByLabel('Nueva marca',{exact:true}).fill(`Analysis DEMO ${info.project.name} ${Date.now()}`);await page.locator('#brand-ficha summary').click();await page.getByRole('button',{name:'Crear marca',exact:true}).click();await expect(page.locator('#decision')).toContainText('Por decidir');
  // A new brand opens on Objetivo estratégico (ADR-0021); this flow exercises the Customer DEMO options.
  await navigate(page,'03 Cliente principal');await expect(page.locator('#decision')).toContainText('Por decidir');
  await page.getByRole('tab',{name:'Opciones',exact:true}).click();await page.getByRole('button',{name:'Ayúdame a generar posibilidades',exact:true}).click();await expect(page.getByRole('heading',{name:'Compara antes de decidir'})).toBeVisible();
@@ -126,19 +126,20 @@ test('DEMO recommendation can be rejected and then explicitly approved',async({p
 test('intake and brand switch preserve isolated context and human draft',async({page},info)=>{
  const session=JSON.parse(readFileSync(process.env.BRANDOPOLIS_SESSION_FILE??'.local/demo-session.json','utf8'));
  await page.goto('/');await page.getByLabel('Token de sesión local').fill(session.token);await page.getByRole('button',{name:'Entrar al espacio estratégico'}).click();
- await page.locator('#new-brand').click();await expect(page.locator('#brand-dialog')).toBeVisible();await page.getByLabel('Nueva marca',{exact:true}).fill(`Intake A ${info.project.name} ${Date.now()}`);await page.getByLabel('¿Qué estás construyendo?').fill('Contexto exclusivo A');await page.getByRole('button',{name:'Crear marca',exact:true}).click();await expect(page.getByRole('status')).toContainText('Marca creada');const a=await page.getByLabel('Marca activa').inputValue();
+ await page.locator('#new-brand').click();await expect(page.locator('#brand-dialog')).toBeVisible();await page.getByLabel('Nueva marca',{exact:true}).fill(`Intake A ${info.project.name} ${Date.now()}`);await page.locator('#brand-ficha summary').click();await page.getByLabel('¿Qué estás construyendo?').fill('Contexto exclusivo A');await page.getByRole('button',{name:'Crear marca',exact:true}).click();await expect(page.getByRole('status')).toContainText('Marca creada');const a=await page.getByLabel('Marca activa').inputValue();
  await navigate(page,'Contexto estratégico');await expect(page.locator('#decision')).toContainText('Contexto exclusivo A');
- await page.locator('#new-brand').click();await expect(page.locator('#brand-dialog')).toBeVisible();await page.getByLabel('Nueva marca',{exact:true}).fill(`Intake B ${info.project.name} ${Date.now()}`);await page.getByRole('button',{name:'Crear marca',exact:true}).click();await expect(page.getByRole('status')).toContainText('Marca creada');await expect(page.getByLabel('Marca activa')).not.toHaveValue(a);const b=await page.getByLabel('Marca activa').inputValue();
+ await page.locator('#new-brand').click();await expect(page.locator('#brand-dialog')).toBeVisible();await page.getByLabel('Nueva marca',{exact:true}).fill(`Intake B ${info.project.name} ${Date.now()}`);await page.locator('#brand-ficha summary').click();await page.getByRole('button',{name:'Crear marca',exact:true}).click();await expect(page.getByRole('status')).toContainText('Marca creada');await expect(page.getByLabel('Marca activa')).not.toHaveValue(a);const b=await page.getByLabel('Marca activa').inputValue();
  await navigate(page,'Contexto estratégico');await expect(page.locator('#decision')).not.toContainText('Contexto exclusivo A');await page.getByLabel('Marca activa').selectOption(a);await page.getByRole('button',{name:'Preparar decisión',exact:true}).click();await page.getByLabel('Tu decisión',{exact:true}).fill('Borrador exclusivo A');await page.getByLabel('Marca activa').selectOption(b);await expect(page.locator('#decision')).not.toContainText('Borrador exclusivo A');await page.getByLabel('Marca activa').selectOption(a);await page.getByRole('button',{name:'Ver borrador conservado',exact:true}).click();await expect(page.getByRole('status')).toContainText('Borrador exclusivo A');
 });
 test('RC handles double submit, offline mutation and expired session without raw errors',async({page},info)=>{
  const session=JSON.parse(readFileSync(process.env.BRANDOPOLIS_SESSION_FILE??'.local/demo-session.json','utf8'));
  await page.goto('/');await page.getByLabel('Token de sesión local').fill(session.token);await page.getByRole('button',{name:'Entrar al espacio estratégico'}).click();await expect(page.locator('#new-brand')).toBeVisible();
  let requests=0,release!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve;});
- await page.route('**/api/brands',async route=>{if(route.request().method()==='POST'){requests++;await gate;}await route.continue();});
- await page.locator('#new-brand').click();await expect(page.locator('#brand-dialog')).toBeVisible();await page.getByLabel('Nueva marca',{exact:true}).fill(`RC double ${info.project.name} ${Date.now()}`);
+ // PHASE4_SPEC §4.10: the brand is created from its draft; the double submit must still create it once.
+ await page.route('**/api/brand-setup/create-brand',async route=>{if(route.request().method()==='POST'){requests++;await gate;}await route.continue();});
+ await page.locator('#new-brand').click();await expect(page.locator('#brand-dialog')).toBeVisible();await page.getByLabel('Nueva marca',{exact:true}).fill(`RC double ${info.project.name} ${Date.now()}`); await page.locator('#brand-ficha summary').click();
  await page.locator('#create-brand').evaluate((form:HTMLFormElement)=>{form.requestSubmit();form.requestSubmit();});
- await expect.poll(()=>requests).toBe(1);await expect(page.getByRole('button',{name:'Crear marca',exact:true})).toBeDisabled();await expect(page.getByRole('status')).toContainText('Procesando');release();await expect(page.getByRole('status')).toContainText('Marca creada');expect(requests).toBe(1);await page.unroute('**/api/brands');
+ await expect.poll(()=>requests).toBe(1);await expect(page.getByRole('button',{name:'Crear marca',exact:true})).toBeDisabled();await expect(page.getByRole('status')).toContainText('Procesando');release();await expect(page.getByRole('status')).toContainText('Marca creada');expect(requests).toBe(1);await page.unroute('**/api/brand-setup/create-brand');
  await page.getByRole('button',{name:'Preparar decisión',exact:true}).click();await page.getByLabel('Tu decisión',{exact:true}).fill('Borrador ante desconexión');await page.getByLabel('¿Por qué eliges esta opción?').fill('Conservar criterio humano');
  await page.route('**/api/decisions/commit',route=>route.abort('failed'));await page.getByRole('button',{name:'Aprobar decisión',exact:true}).click();await expect(page.getByRole('status')).toContainText('No recibimos confirmación');await expect(page.getByLabel('Tu decisión',{exact:true})).toHaveValue('Borrador ante desconexión');await expect(page.getByRole('button',{name:'Aprobar decisión',exact:true})).toBeEnabled();await page.unroute('**/api/decisions/commit');
  await page.getByRole('button',{name:'Aprobar decisión',exact:true}).click();await expect(page.locator('#decision .current')).toHaveText('Borrador ante desconexión');
@@ -158,7 +159,7 @@ test('competitive context survives reload and records human learning',async({pag
 
  await page.getByLabel('Nueva marca',{exact:true}).fill(
   `Competitive DEMO ${info.project.name} ${Date.now()}`
- );
+ ); await page.locator('#brand-ficha summary').click();
 
  await page.getByLabel('¿Qué estás construyendo?').fill('Servicio estratégico para marcas');
  await page.getByLabel('¿Qué necesitas lograr ahora?').fill('Definir una posición diferenciada');
@@ -214,7 +215,7 @@ test('competitive context survives reload and records human learning',async({pag
 test('ADR-0022: a Promise change during a pending Message review shows its context in that single review',async({page},info)=>{
  const session=JSON.parse(readFileSync(process.env.BRANDOPOLIS_SESSION_FILE??'.local/demo-session.json','utf8'));
  await page.goto('/');await page.getByLabel('Token de sesión local').fill(session.token);await page.getByRole('button',{name:'Entrar al espacio estratégico'}).click();
- await page.locator('#new-brand').click();await page.getByLabel('Nueva marca',{exact:true}).fill(`Promesa contexto ${info.project.name} ${Date.now()}`);await page.getByRole('button',{name:'Crear marca',exact:true}).click();
+ await page.locator('#new-brand').click();await page.getByLabel('Nueva marca',{exact:true}).fill(`Promesa contexto ${info.project.name} ${Date.now()}`);await page.locator('#brand-ficha summary').click();await page.getByRole('button',{name:'Crear marca',exact:true}).click();
  await expect(page.locator('#decision')).toContainText('Por decidir');
  async function decide(section:string,option:string,button='Preparar decisión'){
   await navigate(page,section);await page.getByRole('button',{name:button,exact:true}).click();

@@ -176,6 +176,13 @@
       "when": 1791707635118,
       "tag": "0024_work_priority_intents",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791708257483,
+      "tag": "0025_brand_setup_drafts",
+      "breakpoints": true
     }
   ]
 }

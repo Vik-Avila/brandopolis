@@ -1,7 +1,7 @@
 import {BrandoSuggestions,BrandoAssistance} from '../domain/brando-suggestions.js';
 import { attentionFor, brandoPacket,brandoSuggestionActions, validBrandoReferences } from '../domain/brando.js';
 import { randomUUID, createHash } from 'node:crypto';
-import { inArray, and, eq, ne, asc, desc, sql } from 'drizzle-orm';
+import { inArray, and, eq, ne, asc, desc, sql, isNull } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { AppError, validate, rules, reviewsOnFirstUpstreamVersion, transition, reviewOrder, type CommitCommand } from '../domain/contracts.js';
 import type { Database, Transaction } from '../persistence/database.js';
@@ -13,6 +13,8 @@ import { HYPOTHESIS_TRANSITIONS,RESOLVED_STATUSES,validationSnapshot,validationC
 import { GEOGRAPHIC_INFLUENCE,type GeographicInfluence } from '../domain/brand-context.js';
 import { ModelGateway, DemoProvider, evaluate, type Recommendation } from '../domain/analysis.js';
 import { effectiveCapabilities } from '../domain/brand-capabilities.js';
+import { draftView, expectVersion, lockDraft, resolveSources } from './brand-setup.js';
+import { DECLARED_PREFIX, IDENTITY_CHOICES, declaredStatements, fieldsFromDeclared, latestDeclared, mergeFields, type SetupFields } from '../domain/brand-setup.js';
 import { changeCapability, grantedCapabilities, listCapabilityGrants, readWorkPriority, recordWorkPriority, type BrandActor } from './brand-access.js';
 import { ExternalOperations } from './external-operations.js';
 import { actionStatus, addAction, addObjective, createPlan, createSnapshot, decideSnapshot, readPlan, readSharedPlan, updateAction, updateObjective, updatePlan } from './marketing-plan.js';
@@ -355,6 +357,10 @@ export class Engine {
     return this.db.transaction(async tx=>{
       const s=await this.scope(tx,token,brandId);
       const now=new Date();
+      // PHASE4_SPEC §4.10 (ONB-008): the same file is never stored twice for a brand; a retry or a second upload
+      // returns the document already kept (the brand row lock serializes concurrent uploads).
+      const [same]=await tx.select().from(t.sourceDocuments).where(and(eq(t.sourceDocuments.workspaceId,s.workspaceId),eq(t.sourceDocuments.brandId,s.brandId),eq(t.sourceDocuments.sha256,input.sha256.toLowerCase())));
+      if(same)return {id:same.id,brandId:same.brandId,originalName:same.originalName,mediaType:same.mediaType,bytes:same.bytes,sha256:same.sha256,status:same.status,uploadedBy:same.uploadedBy,uploadedAt:same.uploadedAt.toISOString(),reused:true};
 
       const row={
         id:input.id,
@@ -389,7 +395,8 @@ export class Engine {
         sha256:row.sha256,
         status:row.status,
         uploadedBy:row.uploadedBy,
-        uploadedAt:row.uploadedAt.toISOString()
+        uploadedAt:row.uploadedAt.toISOString(),
+        reused:false
       };
     });
   }
@@ -911,15 +918,7 @@ export class Engine {
     if(initialContext!==undefined&&(typeof initialContext!=='string'||initialContext.length>6000))throw new AppError('INVALID','Invalid initial context');
     return this.db.transaction(async tx=>{
       const who=await this.identity(tx,token);
-      if(who.member.role!=='ADMIN'&&!who.member.canCreateBrand) throw new AppError('FORBIDDEN','Cannot create Brand');
-      const [pilotWorkspace]=await tx.select().from(t.pilotWorkspaces).where(eq(t.pilotWorkspaces.workspaceId,who.workspaceId));
-      const brand={id:id(),workspaceId:who.workspaceId,name:name.trim(),dataClass:pilotWorkspace?'PILOT':'DEMO'};
-      await tx.insert(t.brands).values(brand);
-      await tx.insert(t.assignments).values({workspaceId:who.workspaceId,brandId:brand.id,userId:who.userId});
-      for(const {primaryDecision:module,primaryQuestion:text} of journey) {
-        await tx.insert(t.questions).values({id:id(),workspaceId:who.workspaceId,brandId:brand.id,module,text,status:'OPEN'});
-      }
-      const s={workspaceId:who.workspaceId,brandId:brand.id,userId:who.userId,sessionId:who.sessionId};
+      const {brand,s,pilotWorkspace}=await this.insertBrand(tx,who,name);
       if(initialContext?.trim()) {
         const now=new Date(),payload={id:id(),brandId:brand.id,statement:initialContext.trim(),createdBy:who.userId,createdAt:now.toISOString()};validate('user-input',payload);
         await tx.insert(t.userInputs).values({id:payload.id,workspaceId:who.workspaceId,brandId:brand.id,payload,createdBy:who.userId,createdAt:now});
@@ -929,6 +928,185 @@ export class Engine {
       await this.event(tx,s,'brand_created');
       if(initialContext?.trim()&&pilotWorkspace)await this.event(tx,s,'meaningful_context_supplied');
       return brand;
+    });
+  }
+  /** Brand row, assignment and the nine open questions; shared by brand creation and the guided start (one tx). */
+  private async insertBrand(tx:Transaction,who:Awaited<ReturnType<Engine['identity']>>,name:string) {
+    if(who.member.role!=='ADMIN'&&!who.member.canCreateBrand) throw new AppError('FORBIDDEN','Cannot create Brand');
+    const [pilotWorkspace]=await tx.select().from(t.pilotWorkspaces).where(eq(t.pilotWorkspaces.workspaceId,who.workspaceId));
+    const brand={id:id(),workspaceId:who.workspaceId,name:name.trim(),dataClass:pilotWorkspace?'PILOT':'DEMO'};
+    await tx.insert(t.brands).values(brand);
+    await tx.insert(t.assignments).values({workspaceId:who.workspaceId,brandId:brand.id,userId:who.userId});
+    for(const {primaryDecision:module,primaryQuestion:text} of journey) {
+      await tx.insert(t.questions).values({id:id(),workspaceId:who.workspaceId,brandId:brand.id,module,text,status:'OPEN'});
+    }
+    const s={workspaceId:who.workspaceId,brandId:brand.id,userId:who.userId,sessionId:who.sessionId};
+    return {brand,s,pilotWorkspace};
+  }
+  /**
+   * PHASE4_SPEC §4.10 · the author's open draft: for a brand (or, without one, the draft of a brand not created yet).
+   * An existing brand without an open draft of this person returns its ficha read back from declared context.
+   * Reading never writes.
+   */
+  async setupDraft(token:string,brandId?:string|null) {
+    return this.db.transaction(async tx=>{
+      const who=await this.identity(tx,token);
+      if(!brandId){
+        const [row]=await tx.select().from(t.brandSetupDrafts).where(and(eq(t.brandSetupDrafts.workspaceId,who.workspaceId),eq(t.brandSetupDrafts.createdBy,who.userId),eq(t.brandSetupDrafts.status,'IN_PROGRESS'),isNull(t.brandSetupDrafts.brandId)));
+        return {draft:row?await draftView(tx,row):null,ficha:null,otherOpen:false};
+      }
+      const s=await this.scope(tx,token,brandId,false);
+      const [row]=await tx.select().from(t.brandSetupDrafts).where(and(eq(t.brandSetupDrafts.workspaceId,s.workspaceId),eq(t.brandSetupDrafts.brandId,s.brandId),eq(t.brandSetupDrafts.status,'IN_PROGRESS')));
+      // Another person's open draft stays private: they see the ficha of the brand, never the draft.
+      if(row&&row.createdBy===who.userId)return {draft:await draftView(tx,row),ficha:null,otherOpen:false};
+      return {draft:null,ficha:await this.fichaOf(tx,s),otherOpen:!!row};
+    });
+  }
+  private async fichaOf(tx:Transaction,s:Scope) {
+    const [brand]=await tx.select().from(t.brands).where(and(eq(t.brands.workspaceId,s.workspaceId),eq(t.brands.id,s.brandId)));
+    const inputs=(await tx.select().from(t.userInputs).where(inScope(t.userInputs,s))).map(r=>r.payload as Record<string,unknown>);
+    const [profile]=await tx.select().from(t.brandProfiles).where(and(eq(t.brandProfiles.workspaceId,s.workspaceId),eq(t.brandProfiles.brandId,s.brandId)));
+    return fieldsFromDeclared(brand.name,latestDeclared(inputs),{influence:profile?.geographicInfluence??null,market:profile?.primaryMarket??null});
+  }
+  /**
+   * Starts (or resumes) a draft. Without a brand: the author's single open unlinked draft, idempotent per startKey.
+   * With a brand: a draft prefilled from its current declared context (one open draft per brand).
+   */
+  async startSetupDraft(token:string,input:{startKey?:unknown;brandId?:unknown;fields?:unknown}) {
+    if(!input||typeof input!=='object'||Array.isArray(input))throw new AppError('INVALID','Invalid draft request');
+    const startKey=input.startKey;
+    if(typeof startKey!=='string'||!startKey.trim()||startKey.length>200)throw new AppError('INVALID','Invalid idempotency key');
+    return this.db.transaction(async tx=>{
+      const who=await this.identity(tx,token);
+      const now=new Date();
+      let brandId:string|null=null,fields:SetupFields={},step=1;
+      if(input.brandId!==undefined&&input.brandId!==null){
+        const s=await this.scope(tx,token,String(input.brandId));
+        const [open]=await tx.select().from(t.brandSetupDrafts).where(and(eq(t.brandSetupDrafts.workspaceId,s.workspaceId),eq(t.brandSetupDrafts.brandId,s.brandId),eq(t.brandSetupDrafts.status,'IN_PROGRESS')));
+        if(open){if(open.createdBy!==who.userId)throw new AppError('CONFLICT','Someone else is preparing this brand');return {...await draftView(tx,open),replayed:true};}
+        brandId=s.brandId;fields=await this.fichaOf(tx,s);step=2;
+      } else {
+        if(who.member.role!=='ADMIN'&&!who.member.canCreateBrand) throw new AppError('FORBIDDEN','Cannot create Brand');
+        const [same]=await tx.select().from(t.brandSetupDrafts).where(and(eq(t.brandSetupDrafts.workspaceId,who.workspaceId),eq(t.brandSetupDrafts.createdBy,who.userId),eq(t.brandSetupDrafts.startKey,startKey)));
+        if(same)return {...await draftView(tx,same),replayed:true};
+        const [open]=await tx.select().from(t.brandSetupDrafts).where(and(eq(t.brandSetupDrafts.workspaceId,who.workspaceId),eq(t.brandSetupDrafts.createdBy,who.userId),eq(t.brandSetupDrafts.status,'IN_PROGRESS'),isNull(t.brandSetupDrafts.brandId)));
+        if(open)return {...await draftView(tx,open),replayed:true};
+        if(input.fields!==undefined)fields=mergeFields({},input.fields);
+        if(Object.values(fields).some(f=>f?.source))throw new AppError('INVALID','Documents belong to a created brand');
+      }
+      const row={id:id(),workspaceId:who.workspaceId,brandId,createdBy:who.userId,status:'IN_PROGRESS',step,fields,identityChoice:null,version:1,startKey,createdAt:now,updatedAt:now};
+      const inserted=await tx.insert(t.brandSetupDrafts).values(row).onConflictDoNothing().returning();
+      if(!inserted.length)throw new AppError('CONFLICT','A draft was started at the same time; reload');
+      if(brandId)await this.audit(tx,{workspaceId:who.workspaceId,brandId,userId:who.userId,sessionId:who.sessionId},{operation:'BRAND_SETUP_STARTED',idempotencyKey:row.id});
+      return {...await draftView(tx,inserted[0]),replayed:false};
+    });
+  }
+  /** Saves fields, step or the identity choice (409 on a stale version). Never writes context until confirmation. */
+  async saveSetupDraft(token:string,input:{draftId?:unknown;expectedVersion?:unknown;fields?:unknown;step?:unknown;identityChoice?:unknown}) {
+    if(!input||typeof input!=='object'||Array.isArray(input))throw new AppError('INVALID','Invalid draft request');
+    return this.db.transaction(async tx=>{
+      const who=await this.identity(tx,token);
+      const row=await lockDraft(tx,who.workspaceId,who.userId,input.draftId);
+      expectVersion(row,input.expectedVersion);
+      if(row.brandId)await this.scope(tx,token,row.brandId,false);
+      let fields=row.fields as SetupFields;
+      if(input.fields!==undefined){
+        const patch=input.fields as Record<string,unknown>;
+        if(row.brandId&&patch&&typeof patch==='object'&&'name' in patch&&(patch.name as {value?:unknown}|null)?.value!==fields.name?.value)throw new AppError('INVALID','The brand name is changed in brand settings');
+        fields=await resolveSources(tx,who.workspaceId,row.brandId,mergeFields(fields,input.fields));
+      }
+      const step=input.step===undefined?row.step:input.step;
+      if(typeof step!=='number'||!Number.isInteger(step)||step<1||step>4||(!row.brandId&&step>1))throw new AppError('INVALID','Invalid step');
+      const identityChoice=input.identityChoice===undefined?row.identityChoice:input.identityChoice;
+      if(identityChoice!==null&&!(IDENTITY_CHOICES as readonly unknown[]).includes(identityChoice))throw new AppError('INVALID','Invalid identity choice');
+      const [saved]=await tx.update(t.brandSetupDrafts).set({fields,step,identityChoice:identityChoice as string|null,version:row.version+1,updatedAt:new Date()}).where(eq(t.brandSetupDrafts.id,row.id)).returning();
+      return draftView(tx,saved);
+    });
+  }
+  /**
+   * Creates the brand of an unlinked draft and links it, in one transaction; a retry returns the same brand (never a
+   * duplicate). The optional work priority is recorded with it, idempotent per draft.
+   */
+  async createBrandFromDraft(token:string,input:{draftId?:unknown;expectedVersion?:unknown;intent?:unknown;note?:unknown}) {
+    if(!input||typeof input!=='object'||Array.isArray(input))throw new AppError('INVALID','Invalid draft request');
+    return this.db.transaction(async tx=>{
+      const who=await this.identity(tx,token);
+      const row=await lockDraft(tx,who.workspaceId,who.userId,input.draftId);
+      if(row.brandId){
+        const [brand]=await tx.select().from(t.brands).where(and(eq(t.brands.workspaceId,row.workspaceId),eq(t.brands.id,row.brandId)));
+        return {brand,draft:await draftView(tx,row),replayed:true};
+      }
+      expectVersion(row,input.expectedVersion);
+      const name=(row.fields as SetupFields).name?.value;
+      if(!name)throw new AppError('INVALID','Brand name required');
+      const {brand,s}=await this.insertBrand(tx,who,name);
+      await this.audit(tx,s,{operation:'BRAND_CREATED',idempotencyKey:brand.id});
+      await this.event(tx,s,'brand_created');
+      if(input.intent!==undefined&&input.intent!==null){
+        const capabilities=effectiveCapabilities(who.member.role,await grantedCapabilities(tx,s.workspaceId,s.brandId,s.userId));
+        const saved=await recordWorkPriority(tx,{workspaceId:s.workspaceId,brandId:s.brandId,userId:s.userId,role:who.member.role,capabilities},{intent:input.intent,note:input.note,idempotencyKey:`setup:${row.id}`});
+        if(!saved.replayed)await this.audit(tx,s,{operation:'WORK_PRIORITY_SET',idempotencyKey:`setup:${row.id}`});
+      }
+      const [linked]=await tx.update(t.brandSetupDrafts).set({brandId:brand.id,step:Math.max(row.step,2),version:row.version+1,updatedAt:new Date()}).where(eq(t.brandSetupDrafts.id,row.id)).returning();
+      await this.audit(tx,s,{operation:'BRAND_SETUP_STARTED',idempotencyKey:row.id});
+      return {brand,draft:await draftView(tx,linked),replayed:false};
+    });
+  }
+  /**
+   * «Revisa y comienza»: records each confirmed field that differs from the brand's current declared context (and its
+   * geography). It creates no decision, version, kit or plan approval. Proposals not chosen are never recorded.
+   */
+  async confirmSetupDraft(token:string,input:{draftId?:unknown;expectedVersion?:unknown}) {
+    if(!input||typeof input!=='object'||Array.isArray(input))throw new AppError('INVALID','Invalid draft request');
+    return this.db.transaction(async tx=>{
+      const who=await this.identity(tx,token);
+      const row=await lockDraft(tx,who.workspaceId,who.userId,input.draftId);
+      if(row.status==='CONFIRMED'&&input.expectedVersion===row.version-1)return {...await draftView(tx,row),recorded:0,replayed:true};
+      expectVersion(row,input.expectedVersion);
+      if(!row.brandId)throw new AppError('INVALID','Create the brand before confirming');
+      const s=await this.scope(tx,token,row.brandId);
+      const fields=row.fields as SetupFields;
+      const inputs=(await tx.select().from(t.userInputs).where(inScope(t.userInputs,s))).map(r=>r.payload as Record<string,unknown>);
+      const current=latestDeclared(inputs);
+      let recorded=0;
+      for(const {field,statement} of declaredStatements(fields)){
+        if(current[field]===statement.slice(DECLARED_PREFIX[field].length).trim())continue;
+        const now=new Date(),payload={id:id(),brandId:s.brandId,statement,createdBy:who.userId,createdAt:now.toISOString()};validate('user-input',payload);
+        await tx.insert(t.userInputs).values({id:payload.id,workspaceId:s.workspaceId,brandId:s.brandId,payload,createdBy:who.userId,createdAt:now});
+        await this.audit(tx,s,{operation:'CONTEXT_USER-INPUT_CAPTURED',idempotencyKey:payload.id});
+        recorded++;
+      }
+      const influence=fields.geography?.state==='CONFIRMED'?fields.geography.value as GeographicInfluence:null;
+      if(influence){
+        const market=fields.market?.state==='CONFIRMED'?fields.market.value:null;
+        const [before]=await tx.select().from(t.brandProfiles).where(and(eq(t.brandProfiles.workspaceId,s.workspaceId),eq(t.brandProfiles.brandId,s.brandId)));
+        if(before?.geographicInfluence!==influence||(before?.primaryMarket??null)!==market){
+          await tx.insert(t.brandProfiles).values({workspaceId:s.workspaceId,brandId:s.brandId,isDemo:false,geographicInfluence:influence,primaryMarket:market})
+            .onConflictDoUpdate({target:[t.brandProfiles.workspaceId,t.brandProfiles.brandId],set:{geographicInfluence:influence,primaryMarket:market}});
+          await this.audit(tx,s,{operation:'BRAND_CONTEXT_UPDATED',idempotencyKey:id()});
+          recorded++;
+        }
+      }
+      const now=new Date();
+      const [saved]=await tx.update(t.brandSetupDrafts).set({status:'CONFIRMED',step:4,version:row.version+1,updatedAt:now,confirmedAt:now}).where(eq(t.brandSetupDrafts.id,row.id)).returning();
+      await this.audit(tx,s,{operation:'BRAND_SETUP_CONFIRMED',idempotencyKey:row.id});
+      const [pilotWorkspace]=await tx.select().from(t.pilotWorkspaces).where(eq(t.pilotWorkspaces.workspaceId,s.workspaceId));
+      if(pilotWorkspace&&recorded&&fields.offer?.state==='CONFIRMED')await this.event(tx,s,'meaningful_context_supplied');
+      return {...await draftView(tx,saved),recorded,replayed:false};
+    });
+  }
+  /** Leaves an open draft (a created brand stays; nothing already recorded is undone). */
+  async abandonSetupDraft(token:string,input:{draftId?:unknown;expectedVersion?:unknown}) {
+    if(!input||typeof input!=='object'||Array.isArray(input))throw new AppError('INVALID','Invalid draft request');
+    return this.db.transaction(async tx=>{
+      const who=await this.identity(tx,token);
+      const row=await lockDraft(tx,who.workspaceId,who.userId,input.draftId);
+      if(row.status==='ABANDONED'&&input.expectedVersion===row.version-1)return {id:row.id,status:row.status,replayed:true};
+      expectVersion(row,input.expectedVersion);
+      const now=new Date();
+      await tx.update(t.brandSetupDrafts).set({status:'ABANDONED',version:row.version+1,updatedAt:now,abandonedAt:now}).where(eq(t.brandSetupDrafts.id,row.id));
+      if(row.brandId)await this.audit(tx,{workspaceId:row.workspaceId,brandId:row.brandId,userId:who.userId,sessionId:who.sessionId},{operation:'BRAND_SETUP_ABANDONED',idempotencyKey:row.id});
+      return {id:row.id,status:'ABANDONED',replayed:false};
     });
   }
   /**
@@ -986,7 +1164,7 @@ export class Engine {
         // before decisions; the self reference of versions is satisfied because the whole chain goes in one statement.
         // Phase 4 rows of this Brand (append-only tables allow it only inside this registered deletion). Workspace
         // connections are NOT deleted here: only this Brand's links to them (a credential may serve other brands).
-        for(const table of [t.brandKitPublications,t.brandKitApprovals,t.brandKitVersions,t.brandKits,t.kitAssets,t.deliverablePublications,t.deliverableApprovals,t.deliverableVersions,t.deliverables,t.planProgressUpdates,t.planSnapshotApprovals,t.planSnapshots,t.planChanges,t.planActions,t.planObjectives,t.marketingPlans,t.offerApprovals,t.offerVersions,t.offers,t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
+        for(const table of [t.brandSetupDrafts,t.brandKitPublications,t.brandKitApprovals,t.brandKitVersions,t.brandKits,t.kitAssets,t.deliverablePublications,t.deliverableApprovals,t.deliverableVersions,t.deliverables,t.planProgressUpdates,t.planSnapshotApprovals,t.planSnapshots,t.planChanges,t.planActions,t.planObjectives,t.marketingPlans,t.offerApprovals,t.offerVersions,t.offers,t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));
         for(const table of [t.audits,t.telemetry,t.idempotency,t.reviewReceipts,t.reviews,t.impacts,t.dependencies,t.learningSignals,t.signals,t.learnings,t.experiments,t.analyses,t.documentClaims,t.documentExtractions,t.sourceDocuments,t.versions,t.decisions,t.recommendations,t.questions,t.userInputs,t.evidence,t.hypotheses,t.openQuestions,t.brandProfiles,t.assignments] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));

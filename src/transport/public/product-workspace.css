@@ -892,3 +892,51 @@ button.danger { background: #9B2C20; border-color: #9B2C20; color: #FFFFFF; }
 button.danger:hover:not(:disabled) { background: #7E2219; }
 button.danger:disabled { background: #E8D5D2; border-color: #E8D5D2; color: #6E5552; cursor: not-allowed; }
 @media (max-width: 600px) { .settings-data { grid-template-columns: 1fr; } }
+
+/* PHASE4_SPEC §4.10 · guided start: step 1 in the brand dialog, steps 2–4 in the workspace. Real stages, words not colour. */
+.brand-resume { margin: 12px 0 0; padding: 12px 14px; border: 1px solid var(--ws-line); border-radius: 12px; background: var(--bp-success-bg); }
+.brand-resume[hidden] { display: none; }
+.brand-resume p { margin: 0 0 8px; }
+.brand-ownership { margin: 18px 0 4px; padding: 0; border: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.brand-ownership legend { padding: 0; margin-bottom: 8px; font-weight: 650; color: var(--bp-neutral-800); }
+.new-brand .brand-ownership label { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: 0; padding: 8px 12px; border: 1px solid var(--ws-line); border-radius: 12px; background: var(--surface-card); font-weight: 500; cursor: pointer; }
+.brand-ownership label:has(input:checked) { border-color: var(--bp-brand-emerald); box-shadow: 0 0 0 1px var(--bp-brand-emerald) inset; }
+.brand-ownership input { width: 18px; height: 18px; margin: 0; }
+.new-brand .setup-start { flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.new-brand .setup-start button { min-height: 44px; }
+.brand-ficha { margin-top: 14px; border-top: 1px solid var(--ws-line); padding-top: 6px; }
+.brand-ficha > summary { cursor: pointer; font-weight: 650; color: var(--bp-brand-emerald); min-height: 44px; display: flex; align-items: center; }
+.setup-stages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 14px 0 16px; padding: 0; list-style: none; }
+.setup-stage { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 10px 12px; border: 1px solid var(--ws-line); border-radius: 12px; background: var(--surface-card); color: var(--ws-ink-soft); font-size: 14px; }
+.setup-stage-n { display: inline-grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--ws-line); border-radius: 50%; font-weight: 650; }
+.setup-stage-state { width: 100%; font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; }
+.setup-stage.is-done .setup-stage-n { background: var(--bp-success-bg); border-color: var(--bp-brando-emerald-ring); }
+.setup-stage.is-current { border-color: var(--bp-brand-emerald-deep); color: var(--bp-brand-emerald-deep); font-weight: 650; background: var(--bp-success-bg); }
+.setup-stage.is-current .setup-stage-n { border: 2px solid var(--bp-brand-emerald-deep); }
+.setup-modes { display: flex; gap: 8px; margin: 0 0 14px; }
+.setup-modes button { min-height: 44px; }
+.setup-modes button[aria-pressed="true"] { border-color: var(--bp-brand-emerald-deep); color: var(--bp-brand-emerald-deep); box-shadow: 0 0 0 1px var(--bp-brand-emerald-deep) inset; }
+.setup-body > section, .setup-body > form, .setup-resume { margin: 0 0 14px; padding: 18px 20px; border: 1px solid var(--ws-line); border-radius: 18px; background: var(--surface-card); }
+.setup-body h3, .setup-resume h3 { margin: 0 0 6px; font: 500 22px/1.25 var(--font-display); }
+.setup-body h4 { margin: 12px 0 6px; font-size: 15px; }
+.setup-body textarea, .setup-body input:not([type]), .setup-body input[type="file"], .setup-body select { width: 100%; max-width: 70ch; }
+.setup-body .actions, .setup-footer, .setup-resume .actions { flex-wrap: wrap; gap: 8px; }
+.setup-body .actions button, .setup-footer button, .setup-resume button { min-height: 44px; }
+.setup-document-list, .setup-proposals ul, .setup-summary-group ul { margin: 6px 0 10px; padding-left: 20px; }
+.setup-proposal { margin: 0 0 10px; }
+.setup-proposal p { margin: 0 0 4px; }
+.setup-conflict { margin: 4px 0 8px; padding: 8px 12px; border-left: 3px solid var(--bp-brand-champagne); background: var(--surface-muted); }
+.setup-identity-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-top: 10px; }
+.setup-identity-option { display: grid; gap: 4px; text-align: left; min-height: 72px; padding: 12px 14px; border: 1px solid var(--ws-line); border-radius: 12px; background: var(--surface-card); color: var(--bp-neutral-800); }
+.setup-identity-option span { font-weight: 400; color: var(--ws-ink-soft); }
+.setup-identity-option.is-chosen { border-color: var(--bp-brand-emerald-deep); box-shadow: 0 0 0 1px var(--bp-brand-emerald-deep) inset; }
+.setup-identity-option.is-chosen strong::after { content: " · Elegida"; }
+.setup-ficha-row { margin: 0 0 12px; }
+.setup-ficha-row label { display: block; margin-bottom: 6px; font-weight: 650; }
+.setup-locked { margin: 0; }
+.setup-summary-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.setup-note { margin: 12px 0; max-width: 70ch; color: var(--ws-ink-soft); }
+@media (max-width: 700px) {
+  .setup-stages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.setup-question h3 label { display: inline; margin: 0; font: inherit; color: inherit; }

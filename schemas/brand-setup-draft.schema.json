@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/brand-setup-draft.v1",
+  "title": "brand-setup-draft",
+  "x-version": "v1",
+  "description": "PHASE4_SPEC §4.10 · guided start draft of the person creating a brand, inside their workspace. Guide and ficha read and write these same fields. Linked to its brand once (idempotently). Confirming records declared context; it never creates decision versions, approves strategy, a kit or a plan. The work priority is not stored here (work-priority).",
+  "$defs": {
+    "source": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "documentId": { "type": "string", "minLength": 1 },
+        "claimId": { "type": "string", "minLength": 1 },
+        "documentName": { "type": "string", "maxLength": 300 }
+      },
+      "required": ["documentId", "claimId", "documentName"]
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "CONFIRMED: written or chosen by the person (a document source is kept when the value came from one). UNKNOWN: «No lo sé todavía» (pending, never asked again as new). An absent field is pending.",
+      "properties": {
+        "value": { "type": ["string", "null"], "maxLength": 6000 },
+        "state": { "type": "string", "enum": ["CONFIRMED", "UNKNOWN"] },
+        "source": { "$ref": "#/$defs/source" }
+      },
+      "required": ["value", "state", "source"]
+    }
+  },
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "brandId": { "type": ["string", "null"] },
+    "status": { "type": "string", "enum": ["IN_PROGRESS", "CONFIRMED", "ABANDONED"] },
+    "step": { "type": "integer", "minimum": 1, "maximum": 4 },
+    "fields": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "$ref": "#/$defs/field" },
+        "ownership": { "$ref": "#/$defs/field" },
+        "stage": { "$ref": "#/$defs/field" },
+        "offer": { "$ref": "#/$defs/field" },
+        "audience": { "$ref": "#/$defs/field" },
+        "geography": { "$ref": "#/$defs/field" },
+        "market": { "$ref": "#/$defs/field" },
+        "goal": { "$ref": "#/$defs/field" },
+        "references": { "$ref": "#/$defs/field" }
+      }
+    },
+    "identityChoice": { "type": ["string", "null"], "enum": ["HAVE", "COMPLETE", "CREATE", "LATER", null] },
+    "version": { "type": "integer", "minimum": 1 },
+    "createdBy": { "type": "string", "minLength": 1 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  },
+  "required": ["id", "brandId", "status", "step", "fields", "identityChoice", "version", "createdBy", "createdAt", "updatedAt"],
+  "examples": [
+    {
+      "id": "sd-1", "brandId": "b-1", "status": "IN_PROGRESS", "step": 2,
+      "fields": {
+        "name": { "value": "CoffeePolis", "state": "CONFIRMED", "source": null },
+        "ownership": { "value": "CLIENT", "state": "CONFIRMED", "source": null },
+        "offer": { "value": "Café de especialidad por suscripción", "state": "CONFIRMED", "source": { "documentId": "doc-1", "claimId": "cl-1", "documentName": "catalogo.pdf" } },
+        "audience": { "value": null, "state": "UNKNOWN", "source": null }
+      },
+      "identityChoice": null, "version": 3, "createdBy": "u-1", "createdAt": "2026-10-11T12:00:00Z", "updatedAt": "2026-10-11T12:05:00Z"
+    }
+  ]
+}

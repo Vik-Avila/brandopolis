@@ -1,6 +1,6 @@
 import {createBrandoPresence} from './brando-presence.js';
 const $=s=>document.querySelector(s);
-import {identityDirectionsHtml,identityHtml,kitFormHtml,brandoProposalHtml,areaTabsHtml,deliverablesHtml,deliverableFormHtml,deliverableText,AREA_TYPES,planHtml,sharedPlanHtml,objectiveFormHtml,focusFormHtml,actionFormHtml,offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
+import {setupHtml,SETUP_LABELS,SETUP_STAGES,identityDirectionsHtml,identityHtml,kitFormHtml,brandoProposalHtml,areaTabsHtml,deliverablesHtml,deliverableFormHtml,deliverableText,AREA_TYPES,planHtml,sharedPlanHtml,objectiveFormHtml,focusFormHtml,actionFormHtml,offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
 import {trapFocus,decisionTabs,viewTabs} from './product-interactions.js';
 import * as analytics from './analytics.js';
 import {PILOT_EVENTS} from './analytics.js';
@@ -249,7 +249,7 @@ async function api(path,input,timeoutOverrideMs) {
     preserveDraft();throw new Error(input===undefined?(pilotMode?'No pudimos conectar con Brandopolis. Revisa tu conexión y vuelve a intentar.':'No pudimos conectar con la demo local. Comprueba que la terminal siga abierta y vuelve a intentar.'):'No recibimos confirmación. Tu borrador se conserva. Revisa el estado antes de repetir la acción para evitar duplicados.');
   }
   if(!response.ok) {
-    const conflict=path.includes('/learning/')?'Este registro cambió o no permite esa acción. Vuelve a abrir Validación para revisar su estado.':path.includes('/recommendations/')?'La propuesta ya no corresponde al contexto actual. Vuelve a abrir la decisión y compara opciones de nuevo.':'Esta decisión cambió mientras la estabas editando. Revisa la versión más reciente antes de aprobar. Si usaste una recomendación, genera otra con el contexto actual.';
+    const conflict=path.includes('/brand-setup/')?'Tu borrador cambió en otra pestaña o ya se cerró. Vuelve a abrir «Preparar tu marca» para ver la versión más reciente.':path.includes('/learning/')?'Este registro cambió o no permite esa acción. Vuelve a abrir Validación para revisar su estado.':path.includes('/recommendations/')?'La propuesta ya no corresponde al contexto actual. Vuelve a abrir la decisión y compara opciones de nuevo.':'Esta decisión cambió mientras la estabas editando. Revisa la versión más reciente antes de aprobar. Si usaste una recomendación, genera otra con el contexto actual.';
     const messages={CONFLICT:conflict,UNAUTHORIZED:pilotMode?'Tu sesión venció. Vuelve a entrar al piloto.':'Tu sesión DEMO venció o no está disponible. Vuelve a entrar con la sesión local vigente.',FORBIDDEN:pilotMode?'No tienes permiso para esta acción o esta marca.':'No tienes permiso para esta acción. Revisa que hayas entrado con la sesión DEMO correcta.',UNAVAILABLE:pilotMode?'El servicio no está disponible por el momento. Tu borrador se conserva; vuelve a intentar en unos minutos.':'La demo local no está disponible. Conserva tu borrador y comprueba que la terminal siga abierta.',RATE_LIMITED:'Demasiadas solicitudes seguidas. Espera un momento y vuelve a intentar.',AI_CAP_REACHED:'Se alcanzó el límite diario de propuestas IA. Puedes continuar con tu decisión y volver a pedir propuestas mañana.',AI_CONSENT_REQUIRED:'Antes de pedir una propuesta, confirma el aviso sobre el uso de datos con IA.',INVALID:'Revisa los campos requeridos y el contexto disponible antes de continuar.',NOT_FOUND:'La marca o el registro ya no está disponible para esta sesión. Selecciona una marca accesible.'};
     if(data.code==='UNAUTHORIZED'){resetBrando();$('#brando-dialog').close();preserveDraft();document.body.classList.remove('app');$('#login').hidden=false;$('#workspace').hidden=true;$('#logout').hidden=true;$('#menu').hidden=true;$('.header-brand-control').hidden=true;$('#new-brand').hidden=true;$('#mode-badge').hidden=true;}
     throw Object.assign(new Error(messages[data.code]??'No se pudo completar la operación. Conserva tus datos y revisa el estado antes de reintentar.'),{code:data.code});
@@ -969,115 +969,209 @@ function render() {
 }
 $('#login-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{await api('/api/session',{token:$('#token').value});$('#token').value='';await enterWorkspace();notice('Workspace disponible.');},event.submitter);});
 $('#logout').addEventListener('click',event=>run(async()=>{resetBrando();await api('/api/logout',{});location.reload();},event.currentTarget));
-$('#create-brand').addEventListener('submit',event=>{event.preventDefault();run(async()=>{
- preserveDraft();
-
- const stage=$('#brand-stage').value;
- const initialContext=$('#initial-context').value.trim();
- const goal=$('#brand-goal').value.trim();
- const competitiveReferences=$('#competitive-references').value.trim();
- const competitiveResearch=$('#competitive-research').checked;
- const brandDocuments=[...$('#brand-documents').files];
- const workIntent=selectedWorkIntent($('#create-brand'),'brand');
-
- for(const file of brandDocuments){
-  const validation=documentFileError(file);
-  if(validation)
-   throw Object.assign(
-    new Error(`${file.name}: ${validation}`),
-    {code:'INVALID'}
-   );
- }
-
- const brand=await api('/api/brands',{
-  name:$('#brand-name').value,
-  initialContext:initialContext?`Qué está construyendo: ${initialContext}`:undefined
- });
- // Declared geography is context for Market Arena (ADR-0025): store it before the brand loads, whatever path follows.
- await saveBrandGeography(brand.id);
-
- const captures=[
-  {
-   kind:'user-input',
-   entity:{
-    statement:`Punto de partida declarado: ${stage==='existing'?'Mi marca ya existe.':'Tengo una idea.'}`
-   }
-  },
-  ...(goal?[{
-   kind:'user-input',
-   entity:{
-    statement:`Objetivo inmediato: ${goal}`
-   }
-  }]:[]),
-  ...(competitiveReferences?[{
-   kind:'user-input',
-   entity:{
-    statement:`Entorno competitivo — referencias aportadas por el usuario: ${competitiveReferences}`
-   }
-  }]:[]),
-  ...(competitiveResearch?[{
-   kind:'open-question',
-   entity:{
-    text:'Entorno competitivo — investigación pendiente: complementar el aporte del usuario e identificar competidores, alternativas y patrones relevantes mediante fuentes públicas.',
-    relatedHypothesisId:null
-   }
-  }]:[])
- ];
-
- for(const capture of captures){
-  await api('/api/context/capture',{
-   brandId:brand.id,
-   kind:capture.kind,
-   entity:capture.entity
-  });
- }
-
- if(brandDocuments.length)
-  await uploadSourceDocuments(brand.id,brandDocuments);
- // PHASE4_SPEC §4.9 · optional work priority, saved with its brand (append-only). Never a decision or permission.
- if(workIntent)await api('/api/brands/work-priority',{brandId:brand.id,intent:workIntent,note:selectedWorkNote($('#create-brand'),'brand'),idempotencyKey:crypto.randomUUID()});
-
- $('#brand-name').value='';
- $('#brand-stage').value='idea';
- $('#initial-context').value='';
- $('#brand-goal').value='';
- $('#competitive-references').value='';
- $('#competitive-research').checked=false;
- $('#brand-documents').value='';
+// PHASE4_SPEC §4.10 · step 1 «Tu marca» (dialog). Guide and ficha share one draft; the brand is created from it once.
+let brandDraft=null,brandStartKey=null,createdFromDialog=null;
+const confirmedValue=value=>({value,state:'CONFIRMED'});
+/** Dialog values as draft fields; empty ficha fields go back to pending (null). The stage only with the full ficha. */
+function dialogFields(full){
+ const fields={},put=(key,value)=>{fields[key]=value?confirmedValue(value):null;};
+ const name=$('#brand-name').value.trim();if(name)fields.name=confirmedValue(name);
+ put('ownership',document.querySelector('input[name="brand-ownership"]:checked')?.value??'');
+ put('offer',$('#initial-context').value.trim());put('goal',$('#brand-goal').value.trim());
+ put('references',$('#competitive-references').value.trim());put('geography',$('#brand-geography').value);put('market',$('#brand-market').value.trim());
+ if(full||$('#brand-ficha').open)fields.stage=confirmedValue($('#brand-stage').value==='existing'?'EXISTING':'IDEA');
+ return fields;
+}
+function fillDialog(d){
+ const v=key=>d.fields[key]?.state==='CONFIRMED'?d.fields[key].value:'';
+ $('#brand-name').value=v('name');
+ document.querySelectorAll('input[name="brand-ownership"]').forEach(r=>{r.checked=r.value===v('ownership');});
+ $('#initial-context').value=v('offer');$('#brand-goal').value=v('goal');$('#competitive-references').value=v('references');
+ $('#brand-geography').value=v('geography');$('#brand-market').value=v('market');
+ if(v('stage'))$('#brand-stage').value=v('stage')==='EXISTING'?'existing':'idea';
+ if(['offer','goal','references','geography','market','stage'].some(k=>d.fields[k]))$('#brand-ficha').open=true;
+}
+function resetBrandDialog(){
+ $('#create-brand').reset();
  $('#brand-document-selection').innerHTML=selectedDocumentsHtml([]);
  $('#brand-work-intent').innerHTML=workIntentFieldsHtml('brand');
-
+ $('#brand-ficha').open=false;$('#brand-resume').hidden=true;$('#brand-resume').innerHTML='';
+ brandDraft=null;brandStartKey=null;createdFromDialog=null;
+}
+/** Saves the dialog into the draft (starting it once per dialog, idempotently) and returns it. */
+async function saveDialogDraft(full){
+ const fields=dialogFields(full);
+ if(!fields.name){$('#brand-name').reportValidity();throw Object.assign(new Error('Escribe el nombre de tu marca.'),{code:'INVALID'});}
+ if(!brandDraft){
+  brandStartKey??=crypto.randomUUID();
+  brandDraft=await api('/api/brand-setup/start',{startKey:brandStartKey,fields:Object.fromEntries(Object.entries(fields).filter(([,f])=>f))});
+  if(!brandDraft.replayed)return brandDraft;
+ }
+ if(brandDraft.brandId)delete fields.name;
+ brandDraft=await api('/api/brand-setup/save',{draftId:brandDraft.id,expectedVersion:brandDraft.version,fields});
+ return brandDraft;
+}
+/** Creates the brand from the dialog draft (a retry returns the same brand) with the optional work priority. */
+async function createBrandFromDialog(full){
+ if(createdFromDialog)return createdFromDialog;
+ const d=await saveDialogDraft(full);
+ const created=await api('/api/brand-setup/create-brand',{draftId:d.id,expectedVersion:d.version,intent:selectedWorkIntent($('#create-brand'),'brand'),note:selectedWorkNote($('#create-brand'),'brand')});
+ brandDraft=created.draft;createdFromDialog=created;
+ return created;
+}
+// «Completar ficha» → «Crear marca»: the ficha is reviewed in one go, so the draft is confirmed right away.
+$('#create-brand').addEventListener('submit',event=>{event.preventDefault();run(async()=>{
+ preserveDraft();
+ const competitiveResearch=$('#competitive-research').checked;
+ const brandDocuments=[...$('#brand-documents').files];
+ for(const file of brandDocuments){
+  const validation=documentFileError(file);
+  if(validation)throw Object.assign(new Error(`${file.name}: ${validation}`),{code:'INVALID'});
+ }
+ const {brand}=await createBrandFromDialog(true);
+ if(brandDraft.status==='IN_PROGRESS')brandDraft=await api('/api/brand-setup/confirm',{draftId:brandDraft.id,expectedVersion:brandDraft.version});
+ if(competitiveResearch)
+  await api('/api/context/capture',{brandId:brand.id,kind:'open-question',entity:{text:'Entorno competitivo — investigación pendiente: complementar el aporte del usuario e identificar competidores, alternativas y patrones relevantes mediante fuentes públicas.',relatedHypothesisId:null}});
+ if(brandDocuments.length)await uploadSourceDocuments(brand.id,brandDocuments);
+ resetBrandDialog();
  $('#brand-dialog').close();
  // New brands start the journey at its first section (ADR-0021); existing brands are never redirected.
  selected='Strategic Objective';
  await loadBrands(brand.id);
-
  if(competitiveResearch){
   await showCompetitiveContext();
   await startCompetitiveResearch(brand.id);
+ }else if(brandDocuments.length){
+  await showHome();
+  notice(`Marca creada. ${brandDocuments.length} documento${brandDocuments.length===1?' quedó guardado':'s quedaron guardados'}. Revisa «Qué necesita atención» para continuar con su procesamiento.`);
  }else{
-  if(brandDocuments.length){
-   await showHome();
-   notice(
-    `Marca creada. ${brandDocuments.length} documento${brandDocuments.length===1?' quedó guardado':'s quedaron guardados'}. Revisa «Qué necesita atención» para continuar con su procesamiento.`
-   );
-  }else{
-   analytics.send(PILOT_EVENTS.brandCreated,{pilot_stage:'brand_created'});
-   notice('Marca creada. Tu contexto inicial quedó guardado. Comienza con tu objetivo estratégico.');
-  }
+  analytics.send(PILOT_EVENTS.brandCreated,{pilot_stage:'brand_created'});
+  notice('Marca creada. Tu contexto inicial quedó guardado. Comienza con tu objetivo estratégico.');
  }
 },event.submitter);});
+/** «Empezar con preguntas» / «Tengo materiales»: create the brand with the minimum and continue in the guide. */
+function startGuide(materials,button){run(async()=>{
+ const {brand}=await createBrandFromDialog(false);
+ resetBrandDialog();
+ $('#brand-dialog').close();
+ selected='Strategic Objective';
+ await loadBrands(brand.id);
+ analytics.send(PILOT_EVENTS.brandCreated,{pilot_stage:'brand_created'});
+ setupMode='guide';
+ await showSetup();
+ notice(materials?'Marca creada. Aporta tus documentos: lo que encontremos aparecerá como propuesta para que tú elijas.':'Marca creada. Responde sólo lo que tu prioridad necesita; puedes decir «No lo sé todavía».');
+ if(materials)$('#setup-files')?.focus();
+},button);}
+$('#setup-questions').addEventListener('click',event=>startGuide(false,event.currentTarget));
+$('#setup-materials').addEventListener('click',event=>startGuide(true,event.currentTarget));
 bindDocumentSelection('#brand-documents','#brand-document-selection');
-// Work priority radio group: «Otras necesidades» reveals its four options (keyboard and pointer alike).
 $('#brand-work-intent').innerHTML=workIntentFieldsHtml('brand');
 // «Otro» reveals an optional note (keyboard and pointer alike).
 document.addEventListener('change',event=>{const input=event.target;if(!(input instanceof HTMLInputElement)||input.type!=='radio')return;const group=input.closest('.work-intent');if(!group||input.name!==`${group.dataset.prefix}-intent`)return;const note=group.querySelector('.work-intent-note');if(note)note.hidden=input.value!=='OTHER';});
-/** Selected work intent of a radio group, or null (none chosen, or «Otras necesidades» without a choice). */
+/** Selected work intent of a radio group, or null when none is chosen. */
 function selectedWorkIntent(root,prefix){return root.querySelector(`input[name="${prefix}-intent"]:checked`)?.value??null;}
 /** The optional «Otro» note of a radio group (null when another option is chosen). */
 function selectedWorkNote(root,prefix){return selectedWorkIntent(root,prefix)==='OTHER'?(root.querySelector(`#${prefix}-intent-note`)?.value.trim()||null):null;}
-$('#new-brand').addEventListener('click',()=>{$('#brand-dialog').showModal();$('#brand-name').focus();});
+// Opening the dialog offers to resume an unfinished draft (never overwriting what the person already typed).
+$('#new-brand').addEventListener('click',()=>{
+ $('#brand-dialog').showModal();$('#brand-name').focus();
+ api('/api/brand-setup').then(view=>{
+  if(!view.draft||brandDraft||$('#brand-name').value.trim())return;
+  brandDraft=view.draft;fillDialog(view.draft);
+  const resume=$('#brand-resume');resume.hidden=false;
+  resume.innerHTML=`<p>Retomamos el borrador de «${escape(view.draft.fields.name?.value??'')}» que dejaste.</p><button type="button" class="secondary" id="discard-brand-draft">Descartar borrador</button>`;
+  $('#discard-brand-draft').addEventListener('click',event=>run(async()=>{await api('/api/brand-setup/abandon',{draftId:brandDraft.id,expectedVersion:brandDraft.version});resetBrandDialog();$('#brand-name').focus();notice('Borrador descartado.');},event.currentTarget));
+ }).catch(()=>{/* resuming is a convenience; the dialog works without it */});
+});
 $('#cancel-brand').addEventListener('click',()=>$('#brand-dialog').close());
+
+// PHASE4_SPEC §4.10 · steps 2–4 of the guided start, inside the workspace. One draft, two ways to fill it.
+let setupMode='guide',setupState=null;
+async function saveSetup(patch){
+ const d=setupState.draft;
+ setupState.draft=await api('/api/brand-setup/save',{draftId:d.id,expectedVersion:d.version,...patch});
+ return setupState.draft;
+}
+/** Values of the ficha form as a patch: unchanged values keep their document source; empty fields go back to pending. */
+function fichaPatch(){
+ const d=setupState.draft,patch={};
+ for(const field of Object.keys(SETUP_LABELS)){
+  const input=$(`#setup-ficha [name="${field}"]`);if(!input)continue;
+  const value=input.value.trim(),current=d.fields[field];
+  if(!value){if(current?.state!=='UNKNOWN'&&current)patch[field]=null;continue;}
+  if(current?.state==='CONFIRMED'&&current.value===value)continue;
+  patch[field]=confirmedValue(value);
+ }
+ return patch;
+}
+/** A typed but unsaved answer is kept when the person switches between guide and ficha. */
+async function keepSetupInput(){
+ if($('#setup-ficha')){const patch=fichaPatch();if(Object.keys(patch).length)await saveSetup({fields:patch});return;}
+ const form=$('#setup-question'),answer=$('#setup-answer')?.value.trim();
+ if(form&&answer)await saveSetup({fields:{[form.dataset.field]:confirmedValue(answer)}});
+}
+async function showSetup(){
+ if(!enterView('#home','Preparar tu marca'))return;
+ const view=await api(`/api/brand-setup?brandId=${encodeURIComponent(brandId)}`);
+ if(!view.draft){await showHome();return;}
+ setupState={draft:view.draft,documents:await api(`/api/documents?brandId=${encodeURIComponent(brandId)}`)};
+ renderSetup();
+}
+function renderSetup(focus){
+ const {draft,documents}=setupState,root=$('#decision');
+ root.innerHTML=setupHtml(draft,draft.fields.name?.value??'',setupMode,documents);
+ const status=text=>{$('#setup-status').textContent=text;};
+ root.querySelectorAll('[data-setup-mode]').forEach(b=>b.addEventListener('click',event=>run(async()=>{await keepSetupInput();setupMode=b.dataset.setupMode;renderSetup();},event.currentTarget)));
+ $('#setup-question')?.addEventListener('submit',event=>{event.preventDefault();run(async()=>{
+  const field=event.currentTarget.dataset.field,answer=$('#setup-answer').value.trim();
+  if(!answer)throw Object.assign(new Error('Escribe una respuesta o elige «No lo sé todavía».'),{code:'INVALID'});
+  const fields={[field]:confirmedValue(answer)},market=$('#setup-answer-market')?.value.trim();
+  if(market)fields.market=confirmedValue(market);
+  await saveSetup({fields});renderSetup('#setup-answer');status('Respuesta guardada.');
+ },event.submitter);});
+ $('#setup-unknown')?.addEventListener('click',event=>run(async()=>{await saveSetup({fields:{[$('#setup-question').dataset.field]:{value:null,state:'UNKNOWN'}}});renderSetup('#setup-answer');status('Queda pendiente. Puedes completarlo después en la ficha.');},event.currentTarget));
+ root.querySelectorAll('[data-use-proposal]').forEach(b=>b.addEventListener('click',event=>run(async()=>{
+  const p=setupState.draft.proposals.find(x=>x.claimId===b.dataset.useProposal);
+  await saveSetup({fields:{[p.field]:{value:p.statement,state:'CONFIRMED',source:{documentId:p.documentId,claimId:p.claimId}}}});
+  renderSetup();status(`Usaste la propuesta de ${p.documentName}. Puedes corregirla en la ficha.`);
+ },event.currentTarget)));
+ $('#setup-upload')?.addEventListener('click',event=>run(async()=>{
+  const files=[...$('#setup-files').files];
+  if(!files.length)throw Object.assign(new Error('Selecciona al menos un documento.'),{code:'INVALID'});
+  for(const file of files){const error=documentFileError(file);if(error)throw Object.assign(new Error(`${file.name}: ${error}`),{code:'INVALID'});}
+  let reused=0;for(const file of files)if((await uploadSourceDocument(brandId,file)).reused)reused++;
+  setupState.documents=await api(`/api/documents?brandId=${encodeURIComponent(brandId)}`);renderSetup('#setup-extract');
+  status(`${files.length-reused} documento${files.length-reused===1?' guardado':'s guardados'}${reused?` · ${reused} ya estaba${reused===1?'':'n'} guardado${reused===1?'':'s'} y se reutilizó`:''}.`);
+ },event.currentTarget));
+ $('#setup-extract')?.addEventListener('click',event=>run(async()=>{
+  // ONB-009: if extraction or the AI fails, the files stay and the questions and the ficha keep working.
+  let failed=0;
+  for(const document of setupState.documents){
+   try{await api('/api/documents/extract',{brandId,documentId:document.id});await api('/api/documents/claims',{brandId,documentId:document.id},60000);}
+   catch{failed++;}
+  }
+  const view=await api(`/api/brand-setup?brandId=${encodeURIComponent(brandId)}`);if(view.draft)setupState.draft=view.draft;
+  renderSetup();
+  status(failed?'No pudimos buscar propuestas en tus documentos ahora. Tus archivos quedaron guardados y puedes seguir con las preguntas o con la ficha.':setupState.draft.proposals.length?'Revisa las propuestas: nada pasa a tu ficha sin que lo elijas.':'No encontramos propuestas para tu ficha en estos documentos. Sigue con las preguntas.');
+ },event.currentTarget));
+ root.querySelectorAll('#setup-next,#setup-back').forEach(b=>b.addEventListener('click',event=>run(async()=>{await saveSetup({step:Number(b.dataset.step)});renderSetup();focusView();},event.currentTarget)));
+ root.querySelectorAll('[data-identity]').forEach(b=>b.addEventListener('click',event=>run(async()=>{await saveSetup({identityChoice:b.dataset.identity});renderSetup();status('Elección guardada. El desarrollo completo sigue en Marca y recursos.');},event.currentTarget)));
+ $('#setup-ficha')?.addEventListener('submit',event=>{event.preventDefault();run(async()=>{const patch=fichaPatch();if(Object.keys(patch).length)await saveSetup({fields:patch});renderSetup();status('Ficha guardada. Sigue siendo un borrador hasta que la confirmes.');},event.submitter);});
+ $('#setup-confirm')?.addEventListener('click',event=>run(async()=>{
+  await keepSetupInput();
+  const d=setupState.draft;
+  const done=await api('/api/brand-setup/confirm',{draftId:d.id,expectedVersion:d.version});
+  setupState=null;await showHome();
+  notice(`Ficha confirmada. ${done.entry?`Tu prioridad empieza en ${done.entry.area}${done.entry.section?` · ${done.entry.section}`:''}.`:'Tu siguiente paso aparece en Inicio.'} Confirmarla no aprobó estrategia, kit ni plan.`);
+ },event.currentTarget));
+ $('#setup-leave').addEventListener('click',event=>run(async()=>{await keepSetupInput();setupState=null;await showHome();notice('Tu borrador quedó guardado. Puedes retomarlo desde Inicio.');},event.currentTarget));
+ $('#setup-abandon').addEventListener('click',event=>{
+  const button=event.currentTarget;
+  if(button.dataset.confirm!=='1'){button.dataset.confirm='1';button.textContent='Sí, descartar el borrador';status('Se perderán las respuestas sin confirmar. Tu marca y lo ya confirmado se conservan.');return;}
+  run(async()=>{const d=setupState.draft;await api('/api/brand-setup/abandon',{draftId:d.id,expectedVersion:d.version});setupState=null;await showHome();notice('Borrador descartado. Tu marca y lo ya confirmado se conservan.');},button);
+ });
+ if(focus)$(focus)?.focus();
+}
 $('#brand-dialog').addEventListener('close',()=>$('#new-brand').focus());
 trapFocus($('#brand-dialog'));
 $('#brands').addEventListener('change',event=>run(async()=>{preserveDraft();resetBrando();brandId=event.target.value;activeDecisionTab='overview';draft=null;impactVisible=false;await refresh();notice('Marca activa actualizada. Su contexto permanece separado.');}));
@@ -1110,13 +1204,6 @@ const narrow=matchMedia('(max-width:1279px)');
 function drawerBackground(inert){for(const selector of ['#brando-card','#brando-suggestion','header','.skip','.workspace-head','#create-brand','#decision','#context','footer'])$(selector).inert=inert;}
 function closeMenu(returnFocus=true){const nav=$('#journey'),wasOpen=nav.classList.contains('open');nav.classList.remove('open');nav.removeAttribute('role');nav.removeAttribute('aria-modal');$('#nav-backdrop').hidden=true;$('#menu').setAttribute('aria-expanded','false');drawerBackground(false);nav.inert=narrow.matches;if(wasOpen&&returnFocus&&narrow.matches)$('#menu').focus();}
 /** Declared strategic market for a brand the participant just created. Optional, never inferred. */
-async function saveBrandGeography(id){
- const influence=$('#brand-geography')?.value??'';
- if(!influence)return;
- const market=$('#brand-market')?.value.trim()||null;
- try{await api('/api/brands/geography',{brandId:id,geographicInfluence:influence,primaryMarket:market});}
- catch{/* geography is context, never a reason to lose a created brand */}
-}
 $('#demo-create')?.addEventListener('click',()=>$('#new-brand').click());
 $('#menu').addEventListener('click',()=>{closeRailDrawer(false);$('#journey').inert=false;$('#journey').classList.add('open');$('#journey').setAttribute('role','dialog');$('#journey').setAttribute('aria-modal','true');$('#nav-backdrop').hidden=false;$('#menu').setAttribute('aria-expanded','true');drawerBackground(true);$('#close-menu').focus();});
 narrow.addEventListener('change',()=>closeMenu(false));$('#journey').inert=narrow.matches;
@@ -1985,6 +2072,12 @@ async function showHome(){
  // Areas that already exist in this build; the others are named as not available yet (never a fake button).
  $('#decision').innerHTML=homeHtml(context,documentState,priority.current,{SELL_OFFER:true,MARKETING_PLAN:true,CONTENT:true,CAMPAIGN:true,SOCIAL_MEDIA:true,SALES_MATERIALS:true,VISUAL_IDENTITY:true});
  bindWorkPriorityForm();
+ const setupView=await api(`/api/brand-setup?brandId=${encodeURIComponent(brandId)}`).catch(()=>null);
+ if(setupView?.draft){
+  const d=setupView.draft;
+  $('#decision .next-step')?.insertAdjacentHTML('afterend',`<section class="setup-resume" aria-labelledby="setup-resume-title"><h3 id="setup-resume-title">Continúa preparando tu marca</h3><p>Vas en la etapa ${d.step} de 4: ${escape(SETUP_STAGES[d.step-1])}. Tu borrador está guardado.</p><div class="actions"><button type="button" id="setup-resume">Continuar</button></div></section>`);
+  $('#setup-resume').addEventListener('click',event=>{setupMode='guide';run(showSetup,event.currentTarget);});
+ }
  $('#decision').querySelector('[data-priority-area="SELL_OFFER"]')?.addEventListener('click',()=>run(showOffers));
  $('#decision').querySelector('[data-priority-area="MARKETING_PLAN"]')?.addEventListener('click',()=>{marketingTab='plan';run(showMarketing);});
  $('#decision').querySelector('[data-priority-area="CONTENT"]')?.addEventListener('click',()=>{marketingTab='social';run(showMarketing);});
@@ -2353,11 +2446,19 @@ async function showBrandSettings(){
  const idempotencyKey=crypto.randomUUID();
  $('#decision').innerHTML=`<div class="ws-hero"><p class="eyebrow">Configuración de marca</p><h2>${escape(brand.name)}</h2><p class="ws-lead">Datos generales de esta marca y acciones que no forman parte del trabajo estratégico diario.</p></div>
  <section class="settings-card" aria-labelledby="settings-data-title"><h3 id="settings-data-title">Datos de la marca</h3><dl class="settings-data"><div><dt>Nombre</dt><dd>${escape(brand.name)}</dd></div><div><dt>Tipo</dt><dd>${brand.isDemo?'Marca demo · espacio de práctica':'Marca'}</dd></div></dl></section>
+ <section class="settings-card" aria-labelledby="settings-ficha-title"><h3 id="settings-ficha-title">Ficha de marca</h3><p>Lo que tu marca declaró sobre sí misma: qué ofrece, a quién atiende, dónde compite y qué busca primero. Editarla no cambia decisiones aprobadas.</p><p id="settings-ficha-state" class="hint"></p><div class="actions"><button type="button" id="settings-edit-ficha" class="secondary">Editar ficha de marca</button></div></section>
  <section class="danger-zone" aria-labelledby="danger-title"><h3 id="danger-title">Zona de peligro</h3><details id="delete-brand-details"><summary><span>Eliminar marca</span></summary>
  <form id="delete-brand-form" class="delete-brand-form" novalidate><p>Vas a eliminar <strong>${escape(brand.name)}</strong> de forma permanente.</p>
  <ul class="delete-consequences"><li>Se borran sus decisiones, versiones e historial, su contexto, hipótesis, experimentos, señales, aprendizajes y relaciones.</li><li>Se borran los documentos que subiste a esta marca y sus archivos.</li><li>Tú y cualquier persona con acceso a esta marca perderán el acceso de inmediato.</li><li>Las reflexiones personales se conservan para su autor, desvinculadas de esta marca. Tus otras marcas no cambian.</li><li>No podrás recuperarla desde Brandopolis. Las copias de seguridad externas pueden conservar datos hasta que caduquen.</li></ul>
  <label for="delete-confirm-name">Escribe el nombre exacto de la marca para confirmar</label><input id="delete-confirm-name" autocomplete="off" spellcheck="false" aria-describedby="delete-confirm-hint"><p class="hint" id="delete-confirm-hint">Debe coincidir exactamente: ${escape(brand.name)}</p>
  <div class="actions"><button type="submit" id="delete-brand" class="danger" disabled>Eliminar marca definitivamente</button><button type="button" id="delete-brand-cancel" class="secondary">Cancelar</button></div></form></details></section>`;
+ const setupView=await api(`/api/brand-setup?brandId=${encodeURIComponent(brand.id)}`).catch(()=>null);
+ if(setupView?.otherOpen){$('#settings-ficha-state').textContent='Otra persona está preparando esta marca; podrás editar la ficha cuando confirme o descarte su borrador.';$('#settings-edit-ficha').disabled=true;}
+ else if(setupView?.draft){$('#settings-ficha-state').textContent='Tienes un borrador abierto de la ficha.';$('#settings-edit-ficha').textContent='Continuar con la ficha';}
+ $('#settings-edit-ficha').addEventListener('click',event=>run(async()=>{
+  if(!setupView?.draft)await api('/api/brand-setup/start',{startKey:crypto.randomUUID(),brandId:brand.id});
+  setupMode='ficha';await showSetup();
+ },event.currentTarget));
  const input=$('#delete-confirm-name'),submit=$('#delete-brand');
  input.addEventListener('input',()=>{submit.disabled=input.value!==brand.name;});
  $('#delete-brand-cancel').addEventListener('click',()=>{input.value='';submit.disabled=true;$('#delete-brand-details').open=false;$('#delete-brand-details summary').focus();});

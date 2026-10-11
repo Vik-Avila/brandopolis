@@ -11,6 +11,7 @@
  *   DECLARED     – what the brand declared at onboarding (context, not a decision)
  * Anything missing is listed as «no documentado», never invented.
  */
+import { latestDeclared } from '../domain/brand-setup.js';
 import { createHash } from 'node:crypto';
 
 export const DECISION_ORDER = ['Strategic Objective','Market Arena','Primary Customer','Value Mechanism','Positioning','Brand Promise','Core Message','GTM Priority','Priority Experiment'] as const;
@@ -59,8 +60,10 @@ export function brandKnowledge(input: BrandDocumentInput) {
     };
   });
   const byModule = (m: string) => decisions.find(d => d.module === m);
+  // PHASE4_SPEC §4.10: the latest statement per prefix wins, so a corrected ficha is what the document shows.
+  const latest = latestDeclared(c.userInputs.map(i => ({ ...i })));
   const declared: Partial<Record<'building' | 'goal' | 'stage' | 'references', string>> = {};
-  for (const input of c.userInputs) { const s = str(input.statement); for (const o of ONBOARDING) if (s.startsWith(o.prefix) && !declared[o.key]) declared[o.key] = s.slice(o.prefix.length).trim(); }
+  for (const [key, value] of [['building', latest.offer], ['goal', latest.goal], ['stage', latest.stage], ['references', latest.references]] as const) if (value) declared[key] = value;
   const otherInputs = c.userInputs.map(i => str(i.statement)).filter(s => s && !ONBOARDING.some(o => s.startsWith(o.prefix)));
   const isCompetitive = (e: Row) => str(e.provenance).toLowerCase().includes(COMPETITIVE) || str(e.claim).startsWith('Entorno competitivo —');
   const evidence = c.evidence.map(e => ({ claim: str(e.claim).replace(/^Entorno competitivo — /, ''), source: str(e.source), date: str(e.sourceDate), provenance: str(e.provenance), limitations: Array.isArray(e.limitations) ? e.limitations.map(String) : [], competitive: isCompetitive(e) }));

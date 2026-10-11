@@ -9,7 +9,7 @@ async function signIn(page:Page,brand:string){
  const session=JSON.parse(readFileSync(process.env.BRANDOPOLIS_SESSION_FILE??'.local/demo-session.json','utf8'));
  await page.goto('/');await page.getByLabel('Token de sesión local').fill(session.token);await page.getByRole('button',{name:'Entrar al espacio estratégico'}).click();
  await page.locator('#workspace').waitFor();await page.locator('#new-brand').click();
- await page.getByLabel('Nueva marca',{exact:true}).fill(brand);
+ await page.getByLabel('Nueva marca',{exact:true}).fill(brand); await page.locator('#brand-ficha summary').click();
  await page.getByRole('button',{name:'Crear marca',exact:true}).click();
  await expect(page.locator('#decision')).toContainText('Por decidir');
 }
@@ -129,7 +129,7 @@ test('H · brand settings: the danger zone deletes only the confirmed synthetic 
  await signIn(page,keep);
  await decide(page,'01 Objetivo estratégico','Objetivo que debe sobrevivir');
  const doomed=`Eliminar ${info.project.name} ${Date.now()}`;
- await page.locator('#new-brand').click();await page.getByLabel('Nueva marca',{exact:true}).fill(doomed);await page.getByRole('button',{name:'Crear marca',exact:true}).click();
+ await page.locator('#new-brand').click();await page.getByLabel('Nueva marca',{exact:true}).fill(doomed);await page.locator('#brand-ficha summary').click();await page.getByRole('button',{name:'Crear marca',exact:true}).click();
  await expect(page.locator('#brands option:checked')).toHaveText(doomed);
  await navigate(page,'Configuración de marca');
  await expect(page.locator('#decision h2').first()).toHaveText(doomed);
