@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { compareSkillCopies, layoutProblems, listFiles, ROOT, rootProblems, runCli, SKILLS_COPY, SKILLS_SOURCE, syncSkillCopies } from '../scripts/skill-pack.js';
 
-const EXPECTED = ['brandopolis-brando', 'brandopolis-feature', 'brandopolis-review', 'brandopolis-security', 'brandopolis-ui'];
+const EXPECTED = ['brandopolis-brando', 'brandopolis-feature', 'brandopolis-marketing', 'brandopolis-review', 'brandopolis-security', 'brandopolis-ui'];
 const MAX_LINES = 100;
 const JUSTIFICATION = /<!--\s*line-limit-justification:\s*\S.*-->/;
 
@@ -21,7 +21,7 @@ const PRESENTATION_WORD = /(?<![\p{L}\p{N}_])(?:[Vv]igentes?|VIGENTES?|Current|C
 const DISPLAY_ONLY = /display relation|display[- ]only|presentation (?:word|vocabulary|relation)|never a (?:status|state)|not a (?:status|state)|nunca (?:un )?estado|sólo de presentación/i;
 // Acronyms and protocol names: identifiers, never lifecycle states. Never add a state here.
 const ACRONYMS = new Set(['AI', 'IA', 'UI', 'UX', 'API', 'CSS', 'DNS', 'SMTP', 'HEAD', 'PATH', 'MX', 'ADR', 'INV', 'ENG',
-  'OIDC', 'CSP', 'HTTP', 'SDK', 'RAG', 'DB', 'SQL', 'SHA', 'LF', 'ID', 'URL', 'RC']);
+  'OIDC', 'CSP', 'HTTP', 'SDK', 'RAG', 'DB', 'SQL', 'SHA', 'LF', 'ID', 'URL', 'RC', 'SEO']);
 // Lower-case nouns that name an object when they follow a state word ("a HARD dependency").
 const OBJECT_NOUNS: Record<string, RegExp> = {
   Dependency: /^\s+dependenc(?:y|ies)\b/i, Decision: /^\s+decisions?\b/i, DecisionVersion: /^\s+versions?\b/i,
@@ -138,7 +138,7 @@ const SECTIONS: [string, RegExp][] = [
 ];
 
 describe('Engineering Skill Pack · content', () => {
-  it('ships exactly the approved five skills, with no database, release or router skill', () => {
+  it('ships exactly the approved six skills, with no database, release or router skill', () => {
     expect(skillDirs()).toEqual(EXPECTED);
   });
 

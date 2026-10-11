@@ -19,4 +19,5 @@ Skills are procedures and gates, not sources of truth. Canonical copy: `.agents/
 | AI proposals, prompts, gateway, Brandopolis Intelligence / Brando | brandopolis-brando |
 | Auth, sessions, admin, tenancy, endpoints, secrets, logs | brandopolis-security |
 | Any new or changed HTTP endpoint / API route | brandopolis-feature + brandopolis-security |
+| Marketing copy, social posts, ads, campaign plans, site pages and SEO criteria (Claude's working criteria, not product scope) | brandopolis-marketing |
 | Review, checks before commit, commit/push/tag/merge/deploy gate | brandopolis-review |

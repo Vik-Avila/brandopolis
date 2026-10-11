@@ -1,3 +1,13 @@
+## 2026-10-11 · PHASE 4 · herramientas para agentes: criterios de marketing
+
+- El análisis adjunto con los enlaces no llegó a la sesión; los repositorios se identificaron por nombre público
+  («Claude SEO AI», «Web Builder», WhatsApp y Auto-CRM sin identificar con certeza). Detalle, selección y backlog:
+  `docs/15-handoff/PHASE4_AGENT_TOOLING_REVIEW_2026-10-11.md`.
+- Nueva skill `brandopolis-marketing` (instrucciones adaptadas de marketingskills 2.11.26 `1efedbc`, claude-seo 2.4.2
+  `4b99de2` y claude-ads 2.0.2 `ac21644`, MIT). No se instaló ningún plugin ni se ejecutó código de terceros.
+- Resultados: Foundation 0 errores, typecheck y lint 0, `pnpm test` 465 PASS (458 + 7 casos de la sexta skill),
+  `pnpm skills:check` idéntico. Sin efecto en runtime.
+
 ## 2026-10-11 · PHASE 4 · inicio guiado (2/2): borrador, guía de cuatro etapas y ficha
 
 - **Datos:** `brand_setup_drafts` (migración aditiva `0025`), schema `brand-setup-draft` v1. Borrador de su autor en

@@ -1,3 +1,9 @@
+## 2026-10-11 · Phase 4 — criterios de marketing para agentes (herramientas, sin efecto en runtime)
+
+- Evaluación de Marketing Skills, Claude SEO, Claude Ads y Scrapling con commit fijo, licencia, scripts y dependencias: `docs/15-handoff/PHASE4_AGENT_TOOLING_REVIEW_2026-10-11.md`.
+- Sexta skill `brandopolis-marketing` (textos, redes, anuncios, campañas Google/Meta, sitio y SEO) adaptada sólo como instrucciones, con procedencia y aviso MIT; ningún plugin, hook, script ni dependencia de terceros incorporado. Scrapling no se incorpora (sin necesidad documentada); WhatsApp y Auto-CRM quedan como propuesta.
+- `tests/skill-pack.test.ts` espera seis skills; ruta añadida en AGENTS.md. Evidencia: pnpm test 465 PASS; Foundation 0 errores; skills:check idéntico.
+
 ## 2026-10-11 · Phase 4 — inicio guiado (ficha y guía sobre un solo borrador)
 
 - Paso 1 «Tu marca» en el diálogo: nombre, de quién es la marca, prioridad y tres salidas («Empezar con preguntas», «Tengo materiales», «Completar ficha»).
