@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { demoBrando, type BrandoAnswer } from './brando.js';
 import { demoMarketingProposal, type MarketingPacket, type MarketingProposal } from './brando-marketing.js';
+import { demoIdentityProposal, type IdentityPacket, type IdentityProposal } from './brando-identity.js';
 import { validate } from './contracts.js';
 import type { assemble } from './context-assembler.js';
 export type ContextPacket=ReturnType<typeof assemble>;
@@ -9,31 +10,35 @@ export interface StrategicGatewayRequest {task:'STRATEGIC_ANALYSIS';module:strin
 export interface BrandoGatewayRequest extends Omit<StrategicGatewayRequest,'task'|'outputSchema'> {task:'BRANDO_CONTEXTUAL';outputSchema:'brando-answer'|'brando-answer-v2'}
 // ADR-0030 · Brando for marketing: propose-only, same gateway, minimum authorized packet of one brand.
 export interface MarketingGatewayRequest extends Omit<StrategicGatewayRequest,'task'|'outputSchema'|'input'> {task:'BRANDO_MARKETING';outputSchema:'marketing-proposal-v1';input:MarketingPacket}
+// ADR-0034 · Brando for «Quiero crearla»: propose-only visual directions through the same gateway.
+export interface IdentityGatewayRequest extends Omit<StrategicGatewayRequest,'task'|'outputSchema'|'input'> {task:'BRANDO_IDENTITY';outputSchema:'identity-directions-v1';input:IdentityPacket}
+export type ProposalGatewayRequest=MarketingGatewayRequest|IdentityGatewayRequest;
 export type GatewayRequest=StrategicGatewayRequest|BrandoGatewayRequest;
-export type AnyGatewayRequest=GatewayRequest|MarketingGatewayRequest;
+export type AnyGatewayRequest=GatewayRequest|ProposalGatewayRequest;
 type GatewayResponse<T>={error:GatewayError|null;result:T|null;traceId:string;provider:string;model:string;latencyMs:number;tokenIn:number|null;tokenOut:number|null;cost:null;promptVersion:string;contextVersion:string};
 export type GatewayError='UNAVAILABLE'|'TIMEOUT'|'INVALID_OUTPUT'|'RATE_LIMIT'|'BUDGET_EXCEEDED'|'PROVIDER_ERROR';
 export class ProviderFailure extends Error {constructor(readonly code:GatewayError){super(code);}}
 // `propose` serves the marketing surface (ADR-0030); a provider without it answers UNAVAILABLE and manual editing stays.
-export interface ModelProvider {name:string;model:string;generate(request:GatewayRequest):Promise<unknown>;generateMeasured?(request:GatewayRequest):Promise<{output:unknown;tokenIn:number|null;tokenOut:number|null}>;propose?(request:MarketingGatewayRequest):Promise<{output:unknown;tokenIn:number|null;tokenOut:number|null}>}
+export interface ModelProvider {name:string;model:string;generate(request:GatewayRequest):Promise<unknown>;generateMeasured?(request:GatewayRequest):Promise<{output:unknown;tokenIn:number|null;tokenOut:number|null}>;propose?(request:ProposalGatewayRequest):Promise<{output:unknown;tokenIn:number|null;tokenOut:number|null}>}
 export class ModelGateway {
   constructor(private provider:ModelProvider,readonly promptVersion='competition-demo-v1',readonly timeoutMs=5000) {}
   get providerName() {return this.provider.name;}
   invoke(request:StrategicGatewayRequest):Promise<GatewayResponse<Recommendation>>;
   invoke(request:BrandoGatewayRequest):Promise<GatewayResponse<BrandoAnswer>>;
   invoke(request:MarketingGatewayRequest):Promise<GatewayResponse<MarketingProposal>>;
-  invoke(request:AnyGatewayRequest):Promise<GatewayResponse<Recommendation|BrandoAnswer|MarketingProposal>>;
-  async invoke(request:AnyGatewayRequest):Promise<GatewayResponse<Recommendation|BrandoAnswer|MarketingProposal>> {
+  invoke(request:IdentityGatewayRequest):Promise<GatewayResponse<IdentityProposal>>;
+  invoke(request:AnyGatewayRequest):Promise<GatewayResponse<Recommendation|BrandoAnswer|MarketingProposal|IdentityProposal>>;
+  async invoke(request:AnyGatewayRequest):Promise<GatewayResponse<Recommendation|BrandoAnswer|MarketingProposal|IdentityProposal>> {
     const started=Date.now(),traceId=randomUUID();let timer:ReturnType<typeof setTimeout>|undefined;
     let tokenIn:number|null=null,tokenOut:number|null=null;
     const meta=()=>({traceId,provider:this.provider.name,model:this.provider.model,latencyMs:Date.now()-started,tokenIn,tokenOut,cost:null,promptVersion:request.promptVersion,contextVersion:request.contextVersion});
     try {
       if(JSON.stringify(request.input).length>request.budget.maxCharacters) return {error:'BUDGET_EXCEEDED' as GatewayError,result:null,...meta()};
       const measured=(r:{output:unknown;tokenIn:number|null;tokenOut:number|null})=>{tokenIn=r.tokenIn;tokenOut=r.tokenOut;return r.output;};
-      const generated=request.task==='BRANDO_MARKETING'?(this.provider.propose?this.provider.propose(request).then(measured):Promise.reject(new ProviderFailure('UNAVAILABLE'))):this.provider.generateMeasured?this.provider.generateMeasured(request).then(measured):this.provider.generate(request);
+      const generated=request.task==='BRANDO_MARKETING'||request.task==='BRANDO_IDENTITY'?(this.provider.propose?this.provider.propose(request).then(measured):Promise.reject(new ProviderFailure('UNAVAILABLE'))):this.provider.generateMeasured?this.provider.generateMeasured(request).then(measured):this.provider.generate(request);
       const result=await Promise.race([generated,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('TIMEOUT')),request.budget.timeoutMs);})]);
       try {validate(request.outputSchema,result);} catch {return {error:'INVALID_OUTPUT' as GatewayError,result:null,...meta()};}
-      return {error:null,result:result as Recommendation|BrandoAnswer|MarketingProposal,...meta()};
+      return {error:null,result:result as Recommendation|BrandoAnswer|MarketingProposal|IdentityProposal,...meta()};
     } catch(error) {return {error:(error instanceof ProviderFailure?error.code:error instanceof Error&&error.message==='TIMEOUT'?'TIMEOUT':'PROVIDER_ERROR') as GatewayError,result:null,...meta()};}
     finally {if(timer)clearTimeout(timer);}
   }
@@ -52,7 +57,7 @@ const examples:Record<string,[string,string]>={
 /** Deterministic fixture, never presented as live AI or market evidence. */
 export class DemoProvider implements ModelProvider {
   name='DEMO_FIXTURE';model='competition-v1';
-  async propose(r:MarketingGatewayRequest){return {output:demoMarketingProposal(r.input),tokenIn:null,tokenOut:null};}
+  async propose(r:ProposalGatewayRequest){return {output:r.task==='BRANDO_IDENTITY'?demoIdentityProposal(r.input):demoMarketingProposal(r.input),tokenIn:null,tokenOut:null};}
   async generate(r:GatewayRequest):Promise<Recommendation|BrandoAnswer> {
     if(r.task==='BRANDO_CONTEXTUAL'){const answer=demoBrando(r.input);return r.outputSchema==='brando-answer-v2'?{...answer,suggestionActions:answer.suggestions.map(()=>({kind:'EVIDENCE',proposedDecision:null}))}:answer;}
     const labels=examples[r.module];if(!labels)throw new Error('Unsupported module');

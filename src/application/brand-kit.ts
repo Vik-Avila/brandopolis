@@ -225,3 +225,21 @@ export async function approvedKitVersion(tx: Transaction, a: BrandActor) {
   const [kit] = await tx.select({ approvedVersionId: t.brandKits.approvedVersionId }).from(t.brandKits).where(byBrand(t.brandKits, a));
   return kit?.approvedVersionId ?? null;
 }
+
+/** «Quiero crearla» · a direction chosen by the person enters the draft as PROPOSED values (origin BRANDO). */
+export async function applyDirection(tx: Transaction, a: BrandActor, input: { expectedRevision?: unknown }, values: Pick<KitContent, 'palette' | 'typography'>) {
+  const { kit, draft } = await lockDraft(tx, a, input.expectedRevision);
+  const current = draft.content as KitContent;
+  const content = normalizeKit({ ...current, palette: [...current.palette, ...values.palette].slice(0, 16), typography: [...current.typography, ...values.typography].slice(0, 8) });
+  await tx.update(t.brandKitVersions).set({ content, fingerprint: contentFingerprint(content) }).where(eq(t.brandKitVersions.id, draft.id));
+  await touch(tx, kit.id, { revision: kit.revision + 1 });
+  return { kitId: kit.id, versionId: draft.id, revision: kit.revision + 1, added: { palette: values.palette.length, typography: values.typography.length } };
+}
+/** Ids already used in the current draft (so new values get their own ids). */
+export async function draftValueIds(tx: Transaction, a: BrandActor) {
+  const [kit] = await tx.select().from(t.brandKits).where(byBrand(t.brandKits, a));
+  if (!kit?.draftVersionId) throw new AppError('CONFLICT', 'Start a draft before using a direction');
+  const [draft] = await tx.select().from(t.brandKitVersions).where(eq(t.brandKitVersions.id, kit.draftVersionId));
+  const c = draft.content as KitContent;
+  return new Set([...c.logos, ...c.palette, ...c.typography].map(v => v.id));
+}

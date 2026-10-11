@@ -16,9 +16,10 @@ import { effectiveCapabilities } from '../domain/brand-capabilities.js';
 import { changeCapability, grantedCapabilities, listCapabilityGrants, readWorkPriority, recordWorkPriority, type BrandActor } from './brand-access.js';
 import { ExternalOperations } from './external-operations.js';
 import { actionStatus, addAction, addObjective, createPlan, createSnapshot, decideSnapshot, readPlan, readSharedPlan, updateAction, updateObjective, updatePlan } from './marketing-plan.js';
+import { IdentityDirectionsStore, directionValues, identityPacket, validIdentityProposal } from '../domain/brando-identity.js';
 import { MarketingAssistance, marketingPacket, proposalContent, type MarketingPacket } from '../domain/brando-marketing.js';
 import { DELIVERABLE_TYPES, type DeliverableType } from '../domain/deliverables.js';
-import { adoptKitValues, decideKit, kitAsset, mergeKitCandidates, publishKit, readKit, registerKitAsset, saveKitDraft, startKitDraft, submitKit } from './brand-kit.js';
+import { applyDirection, draftValueIds, adoptKitValues, decideKit, kitAsset, mergeKitCandidates, publishKit, readKit, registerKitAsset, saveKitDraft, startKitDraft, submitKit } from './brand-kit.js';
 import type { KitAssetInfo } from '../domain/kit-assets.js';
 import type { KitContent } from '../domain/brand-kit.js';
 import { createDeliverable, decideDeliverable, listDeliverables, newDeliverableDraft, recordPublication, retireDeliverable, saveDeliverableDraft, submitDeliverable } from './deliverables.js';
@@ -33,6 +34,7 @@ export class Engine {
   private brandoSuggestions=new BrandoSuggestions();
   private brandoAssistance=new BrandoAssistance();
   private marketingAssistance=new MarketingAssistance();
+  private identityDirections=new IdentityDirectionsStore();
   constructor(private db:Database, private impactHook?:()=>void,private gateway=new ModelGateway(new DemoProvider())) {}
   /** Whether explicit AI requests reach a real provider (local live AI) or the deterministic DEMO fixture. */
   get aiMode():'LIVE'|'DEMO' {return this.gateway.providerName==='DEMO_FIXTURE'?'DEMO':'LIVE';}
@@ -147,6 +149,42 @@ export class Engine {
   /** A kit file of this brand (authorization on every read; the transport decides what may be previewed). */
   async kitAssetFile(token:string,brandId:string,assetId:unknown) {
     return this.withBrandActor(token,brandId,(tx,actor)=>kitAsset(tx,actor,assetId));
+  }
+  /**
+   * ADR-0034 · Brando proposes visual directions for «Quiero crearla» (B2, propose-only, same gateway). Minimum context:
+   * brand name, active decision versions and approved offers; nothing is written. The directions stay on the server
+   * (single use) so only what Brando proposed can enter a draft, and only as PROPOSED values.
+   */
+  async proposeIdentityDirections(token:string,input:{brandId?:unknown;request?:unknown}) {
+    if(!input||typeof input!=='object'||Array.isArray(input))throw new AppError('INVALID','Invalid request');
+    if(input.request!=null&&(typeof input.request!=='string'||input.request.length>1000))throw new AppError('INVALID','Request too long');
+    const brandId=input.brandId as string;
+    const read=()=>this.withBrandActor(token,brandId,async(tx,actor)=>{const m=await this.marketingContext(tx,actor,'SOCIAL_POST',null,'');const p=identityPacket({contextVersion:m.contextVersion,brand:m.brand,request:String(input.request??''),decisions:m.decisions,offers:m.offers.map(o=>({id:o.id,name:o.name,outcome:o.outcome}))});return {actor,packet:p};});
+    const before=await read();
+    await this.db.transaction(async tx=>{const s=await this.scope(tx,token,brandId,false);await this.event(tx,s,'brando_requested');});
+    const response=await this.gateway.invoke({task:'BRANDO_IDENTITY',module:'Brando identidad',promptVersion:'brando-identity-v1',contextVersion:before.packet.contextVersion,input:before.packet,outputSchema:'identity-directions-v1',budget:{maxCharacters:30000,timeoutMs:this.gateway.timeoutMs},tenantScope:{workspaceId:before.actor.workspaceId,brandId},questionId:''});
+    const after=await read();
+    if(after.packet.contextVersion!==before.packet.contextVersion)throw new AppError('CONFLICT','Brand information changed; ask again');
+    const proposal=response.result?validIdentityProposal(response.result,before.packet):null;
+    const error=response.error??(proposal?null:'INVALID_OUTPUT');
+    const labels=new Map([...before.packet.decisions.map(d=>[d.id,d.area] as const),...before.packet.offers.map(o=>[o.id,`Oferta: ${o.name}`] as const)]);
+    return {
+      directions:proposal&&!error?proposal.directions:null,
+      directionsId:proposal&&!error?this.identityDirections.issue({workspaceId:before.actor.workspaceId,userId:before.actor.userId,brandId},proposal.directions):null,
+      sources:proposal&&!error?proposal.sourceIds.map(id=>({id,label:labels.get(id)??''})):[],missing:proposal?.missing??[],questions:proposal?.questions??[],
+      error,provider:response.provider,demo:response.provider==='DEMO_FIXTURE'
+    };
+  }
+  /** The person chooses one direction: its values enter the draft as PROPOSED (origin BRANDO); nothing is adopted. */
+  async applyIdentityDirection(token:string,input:{brandId?:unknown;directionsId?:unknown;index?:unknown;expectedRevision?:unknown}) {
+    return this.withBrandActor(token,input.brandId as string,async(tx,actor)=>{
+      const used=await draftValueIds(tx,actor);
+      const direction=this.identityDirections.take(input.directionsId,actor,input.index);
+      if(!direction)throw new AppError('NOT_FOUND','Proposal unavailable; ask Brando again');
+      const result=await applyDirection(tx,actor,{expectedRevision:input.expectedRevision},directionValues(direction,used));
+      await this.audit(tx,{...actor},{operation:'KIT_APPLY_DIRECTION',idempotencyKey:randomUUID(),newVersion:result.versionId,rationale:`Dirección de Brando: ${direction.name}`.slice(0,200)});
+      return {...result,direction:direction.name};
+    },true);
   }
   /** Merges candidates extracted from a brand manual into the draft as DECLARED values. */
   async mergeKitCandidates(token:string,brandId:string,expectedRevision:unknown,candidates:Pick<KitContent,'palette'|'typography'>) {

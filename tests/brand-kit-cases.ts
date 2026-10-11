@@ -6,6 +6,7 @@ import { Engine } from '../src/application/engine.js';
 import { seedIdentity } from '../scripts/seed.js';
 import * as t from '../src/persistence/schema.js';
 import { emptyKit } from '../src/domain/brand-kit.js';
+import { readFileSync } from 'node:fs';
 import type { KitAssetInfo } from '../src/domain/kit-assets.js';
 
 const databaseError = async (query: Promise<unknown>) => { try { await query; return 'no error'; } catch (e) { return String((e as { cause?: { message?: string } }).cause?.message ?? (e as Error).message); } };
@@ -124,6 +125,46 @@ export function brandKitCases(connection: () => ReturnType<typeof connect>) {
       const r = await x.engine.deleteBrand(x.who.token, { brandId: x.brand.id, confirmName: 'Marca con identidad', idempotencyKey: randomUUID() });
       expect(r).toMatchObject({ status: 'FILES_PENDING', storagePrefix: `${x.who.workspaceId}/${x.brand.id}` });
       expect(await x.db.select().from(t.kitAssets).where(eq(t.kitAssets.brandId, x.brand.id))).toEqual([]);
+    });
+
+    it('«Quiero crearla»: Brando proposes directions with zero writes; a chosen direction enters the draft as PROPOSED, once', async () => {
+      const x = await setup();
+      const evals = JSON.parse(readFileSync('evals/brando-identity.json', 'utf8')) as { fixtures: { id: string; request: string }[] };
+      const writes = async () => ({ kits: (await x.db.select().from(t.brandKits).where(eq(t.brandKits.brandId, x.brand.id))).length, versions: (await x.db.select().from(t.brandKitVersions).where(eq(t.brandKitVersions.brandId, x.brand.id))).length, audits: (await x.db.select().from(t.audits).where(eq(t.audits.brandId, x.brand.id))).length });
+      const before = await writes();
+      let last: Awaited<ReturnType<Engine['proposeIdentityDirections']>> | null = null;
+      for (const f of evals.fixtures) {
+        last = await x.engine.proposeIdentityDirections(x.who.token, { brandId: x.brand.id, request: f.request });
+        expect(last.error, f.id).toBeNull();
+        expect(last.demo).toBe(true);
+        expect(last.directions!.length, f.id).toBeGreaterThanOrEqual(2);
+        expect(last.directions!.every(d => d.toConfirm.length && d.intent), f.id).toBe(true);
+        expect(JSON.stringify(last.directions), f.id).not.toMatch(/logo/i);
+      }
+      expect(await writes()).toEqual(before); // asking never writes
+      // Using a direction needs a draft; then its values enter as PROPOSED with origin BRANDO.
+      await expect(x.engine.applyIdentityDirection(x.who.token, { brandId: x.brand.id, directionsId: last!.directionsId, index: 0, expectedRevision: 0 })).rejects.toMatchObject({ code: 'CONFLICT' });
+      await x.cmd('start', { entry: 'CREATE', expectedRevision: 0 });
+      let k = (await x.read()).kit!;
+      const fresh = await x.engine.proposeIdentityDirections(x.who.token, { brandId: x.brand.id, request: '' });
+      await x.engine.applyIdentityDirection(x.who.token, { brandId: x.brand.id, directionsId: fresh.directionsId, index: 1, expectedRevision: k.revision });
+      k = (await x.read()).kit!;
+      expect(k.draft!.entry).toBe('CREATE');
+      expect(k.draft!.content.palette.length).toBe(fresh.directions![1].palette.length);
+      expect(k.draft!.content.palette.every(c => c.certainty === 'PROPOSED' && c.origin.kind === 'BRANDO')).toBe(true);
+      expect(k.draft!.content.logos).toEqual([]);
+      // Single use, and never from another person.
+      await expect(x.engine.applyIdentityDirection(x.who.token, { brandId: x.brand.id, directionsId: fresh.directionsId, index: 0, expectedRevision: k.revision })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      const member = await seedIdentity(x.db, 'MEMBER', x.who.workspaceId);
+      await x.db.insert(t.assignments).values({ workspaceId: x.who.workspaceId, brandId: x.brand.id, userId: member.userId });
+      const mine = await x.engine.proposeIdentityDirections(x.who.token, { brandId: x.brand.id, request: '' });
+      await expect(x.engine.applyIdentityDirection(member.token, { brandId: x.brand.id, directionsId: mine.directionsId, index: 0, expectedRevision: k.revision })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      // Nothing is approved or published by asking or applying.
+      expect(k.approved).toBeNull();
+      expect(k.published).toBeNull();
+      await expect(x.engine.proposeIdentityDirections(x.who.token, { brandId: x.brand.id, request: 'x'.repeat(1001) })).rejects.toMatchObject({ code: 'INVALID' });
+      const stranger = await seedIdentity(x.db);
+      await expect(x.engine.proposeIdentityDirections(stranger.token, { brandId: x.brand.id, request: '' })).rejects.toMatchObject({ code: 'NOT_FOUND' });
     });
   });
 }

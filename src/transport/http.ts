@@ -228,7 +228,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(req.method==='POST'&&path==='/api/logout'){if(token)await pilot.logout(token);res.setHeader('Set-Cookie',`${cookieName}=; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`);return send(res,200,{authenticated:false});}
         await pilot.authorize(token);
         const subject=createHash('sha256').update(token).digest('hex');
-        if(req.method==='POST'&&(path==='/api/recommendations/generate'||path==='/api/competitive/research'||path==='/api/documents/claims'||path==='/api/brando/ask'||path==='/api/brando/marketing')){
+        if(req.method==='POST'&&(path==='/api/recommendations/generate'||path==='/api/competitive/research'||path==='/api/documents/claims'||path==='/api/brando/ask'||path==='/api/brando/marketing'||path==='/api/brando/identity')){
           if(limited('ai:'+subject,pilotLimits.ai))return;
           const gate=await pilot.aiGate?.(token)??'OK';
           if(gate==='CONSENT_REQUIRED')return send(res,428,{code:'AI_CONSENT_REQUIRED',message:'Confirm the AI data notice first.'});
@@ -418,6 +418,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           const extracted=await extractDocument({filePath:resolveDocumentStoragePath(asset.storageKey),mediaType:'application/pdf',originalName:asset.originalName});
           return send(res,200,await engine.mergeKitCandidates(token,string(input.brandId),input.expectedRevision,kitCandidatesFromText(extracted.segments.map(s=>({index:s.index,text:s.text})),asset.id)));
         }
+        if(path==='/api/brand-kit/apply-direction') return send(res,200,await engine.applyIdentityDirection(token,input));
         if(path.startsWith('/api/brand-kit/')){const action=path.slice('/api/brand-kit/'.length);if(['start','draft','adopt','submit','decide','publish'].includes(action))return send(res,action==='start'?201:200,await engine.kitCommand(token,action as 'start',input));}
         // PHASE4_SPEC §4.4 · deliverables: one path per operation; authorization, revision and audit in the engine.
         if(path.startsWith('/api/deliverables/')){const action=path.slice('/api/deliverables/'.length);if(['create','draft','submit','decide','new-draft','retire','publication'].includes(action))return send(res,action==='create'||action==='publication'?201:200,await engine.deliverableCommand(token,action as 'create',input));}
@@ -586,6 +587,8 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(path==='/api/brando/suggestions/review')return send(res,200,await engine.reviewBrandoSuggestion(token,string(input.brandId),input.review as Parameters<Engine['reviewBrandoSuggestion']>[2]));
         // ADR-0030 · Brando for marketing: proposal only (no writes); same AI limiter, consent gate and daily cap.
         if(path==='/api/brando/marketing') return send(res,200,await engine.proposeDeliverable(token,input));
+        // ADR-0034 · Brando visual directions: proposal only; same AI limiter, consent gate and daily cap.
+        if(path==='/api/brando/identity') return send(res,200,await engine.proposeIdentityDirections(token,input));
         if(path==='/api/brando/ask') {
           const result=await engine.askBrando(token,string(input.brandId),string(input.message),input.questionId==null?null:string(input.questionId),input.history as {question:string;answer:string}[]|undefined,input.interpretation as Parameters<Engine['askBrando']>[5]);
           if(pilot)await pilot.authorize(token);

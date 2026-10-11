@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import type { connect } from '../src/persistence/database.js';
 import { Engine } from '../src/application/engine.js';
 import { DemoProvider, ModelGateway, type MarketingGatewayRequest, type ModelProvider } from '../src/domain/analysis.js';
-import { demoMarketingProposal, MarketingAssistance } from '../src/domain/brando-marketing.js';
+import { demoMarketingProposal, MarketingAssistance, type MarketingPacket } from '../src/domain/brando-marketing.js';
 import { seedIdentity } from '../scripts/seed.js';
 import * as t from '../src/persistence/schema.js';
 
@@ -98,11 +98,11 @@ export function brandoMarketingCases(connection: () => ReturnType<typeof connect
     });
 
     it('output outside the packet or of the wrong shape is never a proposal; a provider without the surface leaves manual work', async () => {
-      const bad: ModelProvider = { name: 'fixture', model: 'x', generate: async () => { throw new Error('unused'); }, propose: async r => ({ output: { ...demoMarketingProposal(r.input), sourceIds: ['id-de-otra-marca'] }, tokenIn: null, tokenOut: null }) };
+      const bad: ModelProvider = { name: 'fixture', model: 'x', generate: async () => { throw new Error('unused'); }, propose: async r => ({ output: { ...demoMarketingProposal(r.input as MarketingPacket), sourceIds: ['id-de-otra-marca'] }, tokenIn: null, tokenOut: null }) };
       const x = await setup(bad);
       const r = await x.propose({ type: 'SOCIAL_POST', request: '' });
       expect(r).toMatchObject({ proposal: null, assistanceProof: null, error: 'INVALID_OUTPUT' });
-      const wrongBody: ModelProvider = { name: 'fixture', model: 'x', generate: async () => { throw new Error('unused'); }, propose: async r2 => ({ output: { ...demoMarketingProposal(r2.input), body: { network: 'MYSPACE' } }, tokenIn: null, tokenOut: null }) };
+      const wrongBody: ModelProvider = { name: 'fixture', model: 'x', generate: async () => { throw new Error('unused'); }, propose: async r2 => ({ output: { ...demoMarketingProposal(r2.input as MarketingPacket), body: { network: 'MYSPACE' } }, tokenIn: null, tokenOut: null }) };
       const y = await setup(wrongBody);
       expect(await y.propose({ type: 'SOCIAL_POST', request: '' })).toMatchObject({ proposal: null, error: 'INVALID_OUTPUT' });
       const none: ModelProvider = { name: 'legacy', model: 'x', generate: async () => { throw new Error('unused'); } };
@@ -114,7 +114,7 @@ export function brandoMarketingCases(connection: () => ReturnType<typeof connect
 
     it('if the brand information changes while Brando answers, nothing is returned (409)', async () => {
       let engineRef: Engine | null = null, change: (() => Promise<unknown>) | null = null;
-      const racing: ModelProvider = { name: 'fixture', model: 'x', generate: async () => { throw new Error('unused'); }, propose: async r => { await change?.(); return { output: demoMarketingProposal(r.input), tokenIn: null, tokenOut: null }; } };
+      const racing: ModelProvider = { name: 'fixture', model: 'x', generate: async () => { throw new Error('unused'); }, propose: async r => { await change?.(); return { output: demoMarketingProposal(r.input as MarketingPacket), tokenIn: null, tokenOut: null }; } };
       const x = await setup(racing);
       engineRef = x.engine;
       change = () => x.approvedOffer('Aprobada durante la respuesta');

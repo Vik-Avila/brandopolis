@@ -81,3 +81,28 @@ test('identity: upload files, ingest, adopt, contrast, approve and publish the k
   expect(dialogs, 'no script from an uploaded SVG ever runs').toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });
+
+test('«Quiero crearla»: Brando directions (DEMO labelled) enter the draft as proposed values; nothing is adopted or published', async ({ page }, info) => {
+  test.slow();
+  await signIn(page, `Crear identidad ${info.project.name} ${Date.now()}`);
+  if (await page.locator('#menu').isVisible()) await page.locator('#menu').click();
+  await page.locator('#brand-resources').click();
+  const view = page.locator('#decision');
+  await view.getByRole('button', { name: 'Crear mi identidad' }).click();
+  await expect(view).toContainText('Creando tu identidad');
+  await expect(view.locator('#kit-brando-title')).toHaveText('Pide direcciones visuales a Brando');
+  await view.getByLabel('¿Qué buscas?').fill('cercana y profesional');
+  await view.getByRole('button', { name: 'Pedir direcciones a Brando' }).click();
+  const result = view.locator('#kit-brando-result');
+  await expect(result).toContainText('Direcciones de ejemplo (modo DEMO, no generadas por IA)');
+  await expect(result.locator('.kit-direction')).toHaveCount(3);
+  await expect(result.locator('.kit-direction').first()).toContainText('Antes de adoptar, confirma');
+  await expect(view.locator('.kit-value')).toHaveCount(0); // asking adds nothing
+  await result.locator('.kit-direction').first().getByRole('button', { name: 'Usar esta dirección en el borrador' }).click();
+  const values = view.locator('.kit-value');
+  await expect(values.first()).toContainText('Propuesto, sin adoptar');
+  await expect(values.first()).toContainText('Propuesta de Brando');
+  await expect(view.locator('.kit-value').filter({ hasText: 'Confirmado por una persona' })).toHaveCount(0);
+  await expect(view).not.toContainText('Kit aprobado');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+});

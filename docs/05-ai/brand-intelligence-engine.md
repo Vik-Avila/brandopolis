@@ -99,3 +99,14 @@ prompt versionado `prompts/brando-marketing-v1.md`, schema de salida `marketing-
   se envía al proveedor ni concede autoridad.
 - **DEMO:** propuesta determinista construida sólo con el paquete, etiquetada «Propuesta de ejemplo (modo DEMO, no
   generada por IA)». Live AI no se ha ejecutado para esta superficie.
+
+## Fase 4 · Brando para identidad visual («Quiero crearla») · ADR-0034 (2026-10-10)
+
+`POST /api/brando/identity` → `Engine.proposeIdentityDirections` → mismo Model Gateway (tarea `BRANDO_IDENTITY`,
+prompt `prompts/brando-identity-v1.md`, schema `identity-directions-v1`, método `propose`). Contexto mínimo: nombre
+de la marca, versiones vigentes de las decisiones y ofertas aprobadas; petición como `UNTRUSTED_USER_TEXT`. Devuelve
+de dos a tres direcciones (qué comunican, colores con función, tipografías con licencia por confirmar, imágenes,
+ejemplos y qué confirmar). Sin escrituras (evals `evals/brando-identity.json`). Las direcciones quedan en el servidor
+(un solo uso, por persona y marca): «Usar esta dirección» (`/api/brand-kit/apply-direction`) añade sus valores al
+borrador como `PROPOSED` con origen `BRANDO`; adoptar sigue siendo explícito. Nunca propone ni genera logotipos.
+DEMO determinista y etiquetado; Live AI no ejecutado.

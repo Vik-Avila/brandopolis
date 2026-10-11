@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://brandopolis.ai/schemas/identity-directions.v1",
+  "title": "identity-directions-v1",
+  "x-version": "v1",
+  "description": "ADR-0034 · Brando proposal of visual directions for «Quiero crearla»: two or three understandable directions built from the brand context (what each wants to communicate, colors with their role, typefaces with license to confirm, image treatment, usage examples and what the person must confirm), plus sources (ids of the request only), what is missing and questions. A proposal: never adopted, approved or published by itself; no logo is generated.",
+  "properties": {
+    "directions": {
+      "type": "array", "minItems": 1, "maxItems": 3,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "intent": { "type": "string", "minLength": 1, "maxLength": 600 },
+          "palette": {
+            "type": "array", "minItems": 2, "maxItems": 6,
+            "items": { "type": "object", "additionalProperties": false, "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 80 }, "hex": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }, "role": { "type": "string", "enum": ["PRIMARY", "ACCENT", "BACKGROUND", "TEXT", "SUPPORT"] } }, "required": ["name", "hex", "role"] }
+          },
+          "typography": {
+            "type": "array", "minItems": 1, "maxItems": 3,
+            "items": { "type": "object", "additionalProperties": false, "properties": { "family": { "type": "string", "minLength": 1, "maxLength": 80 }, "use": { "type": "string", "enum": ["HEADINGS", "BODY", "ACCENT"] }, "licenseNote": { "type": "string", "maxLength": 200 } }, "required": ["family", "use", "licenseNote"] }
+          },
+          "imagery": { "type": "string", "maxLength": 600 },
+          "examples": { "type": "array", "maxItems": 5, "items": { "type": "string", "minLength": 1, "maxLength": 300 } },
+          "toConfirm": { "type": "array", "maxItems": 6, "items": { "type": "string", "minLength": 1, "maxLength": 300 } }
+        },
+        "required": ["name", "intent", "palette", "typography", "imagery", "examples", "toConfirm"]
+      }
+    },
+    "sourceIds": { "type": "array", "maxItems": 20, "items": { "type": "string", "minLength": 1, "maxLength": 200 } },
+    "missing": { "type": "array", "maxItems": 6, "items": { "type": "string", "minLength": 1, "maxLength": 300 } },
+    "questions": { "type": "array", "maxItems": 4, "items": { "type": "string", "minLength": 1, "maxLength": 300 } }
+  },
+  "required": ["directions", "sourceIds", "missing", "questions"],
+  "examples": [
+    { "directions": [{ "name": "Claridad cercana", "intent": "Transmitir orden y cercanía.", "palette": [{ "name": "Azul", "hex": "#1F4E79", "role": "PRIMARY" }, { "name": "Blanco", "hex": "#FFFFFF", "role": "BACKGROUND" }], "typography": [{ "family": "Inter", "use": "BODY", "licenseNote": "Licencia abierta (SIL OFL); confirmar uso" }], "imagery": "Fotografía natural con personas trabajando.", "examples": ["Publicación con el mensaje principal sobre fondo blanco"], "toConfirm": ["Que el azul no choque con la competencia"] }], "sourceIds": [], "missing": [], "questions": [] }
+  ]
+}

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import Anthropic from '@anthropic-ai/sdk';
-import { ProviderFailure,type AnyGatewayRequest,type GatewayRequest,type MarketingGatewayRequest,type ModelProvider } from '../domain/analysis.js';
+import { ProviderFailure,type AnyGatewayRequest,type GatewayRequest,type ProposalGatewayRequest,type ModelProvider } from '../domain/analysis.js';
 import { schema } from '../domain/contracts.js';
 // Provider-side structured output supports a JSON Schema subset; the full local schema v1 still validates every response.
 function providerSchema(value:unknown):unknown {
@@ -17,7 +17,7 @@ export class AnthropicProvider implements ModelProvider {
   constructor(key:string,readonly model:string,fetchImpl?:typeof fetch){this.client=new Anthropic({apiKey:key,maxRetries:1,...(fetchImpl?{fetch:fetchImpl}:{})});}
   async generate(r:GatewayRequest){return (await this.generateMeasured(r)).output;}
   // ADR-0030 · same adapter and controls for the marketing proposal surface.
-  async propose(r:MarketingGatewayRequest){return this.generateMeasured(r);}
+  async propose(r:ProposalGatewayRequest){return this.generateMeasured(r);}
   async generateMeasured(r:AnyGatewayRequest){
     // Constrain citations to the exact authorized source IDs in this request, not nested object IDs.
     // Keep the local reference guard: provider constraints do not replace authorization/validation.
@@ -30,7 +30,7 @@ export class AnthropicProvider implements ModelProvider {
     try {
       message=await this.client.messages.create({
         model:this.model,max_tokens:16000,
-        system:readFileSync(`prompts/${r.task==='BRANDO_MARKETING'?'brando-marketing-v1':r.task==='BRANDO_CONTEXTUAL'?(r.promptVersion==='brando-contextual-v6'?'brando-contextual-v6':r.promptVersion==='brando-contextual-v5'?'brando-contextual-v5':r.promptVersion==='brando-contextual-v4'?'brando-contextual-v4':r.promptVersion==='brando-contextual-v3'?'brando-contextual-v3':r.promptVersion==='brando-contextual-v2'?'brando-contextual-v2':'brando-contextual-v1'):PILOT_PROMPT_VERSION}.md`,'utf8'),
+        system:readFileSync(`prompts/${r.task==='BRANDO_IDENTITY'?'brando-identity-v1':r.task==='BRANDO_MARKETING'?'brando-marketing-v1':r.task==='BRANDO_CONTEXTUAL'?(r.promptVersion==='brando-contextual-v6'?'brando-contextual-v6':r.promptVersion==='brando-contextual-v5'?'brando-contextual-v5':r.promptVersion==='brando-contextual-v4'?'brando-contextual-v4':r.promptVersion==='brando-contextual-v3'?'brando-contextual-v3':r.promptVersion==='brando-contextual-v2'?'brando-contextual-v2':'brando-contextual-v1'):PILOT_PROMPT_VERSION}.md`,'utf8'),
         messages:[{role:'user',content:JSON.stringify({id:randomUUID(),brandId:r.tenantScope.brandId,questionId:r.questionId,contextVersion:r.contextVersion,module:r.module,context:r.input})}],
         output_config:{format:{type:'json_schema',schema:outputSchema}}
       },{timeout:r.budget.timeoutMs});

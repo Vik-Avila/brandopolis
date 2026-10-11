@@ -1,3 +1,11 @@
+## 2026-10-10 · PHASE 4 · bloque 4 · direcciones visuales de Brando («Quiero crearla»)
+
+Sobre `3d35bcf`. Brando propone 2–3 direcciones (intención, colores con función, tipografías con licencia por
+confirmar, imágenes, ejemplos, qué confirmar) con contexto mínimo y sin escrituras; «Usar esta dirección» añade sus
+valores al borrador como PROPOSED con origen Brando (un solo uso, por persona y marca); nada se adopta, aprueba ni
+publica solo; sin logotipos. Comprobado: typecheck, lint, pruebas del kit (6) incluidas las de evals con inyección y
+E2E `phase4-identity` 10/10 (5 proyectos). DEMO etiquetado; IA real sin verificar.
+
 ## 2026-10-10 · PHASE 4 · capturas v3 aplicadas
 
 Decisión (revisión de Codex del ZIP v3, SHA-256 `17b1587c…873347`, verificado antes de copiar): seis capturas de
