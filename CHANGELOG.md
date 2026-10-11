@@ -1,3 +1,9 @@
+## 2026-10-11 · Phase 4 — menú compacto y direcciones visuales de Brando
+
+- Lateral con las siete áreas sin desplazamiento en 1366×768; Estrategia con navegación interior (nueve pasos, Validación, Mapa estratégico).
+- Brando propone direcciones visuales para «Quiero crearla»; los valores entran al kit como propuestos.
+- Evidencia: test:e2e 249 PASS · 13 SKIP · 0 FAIL (260) sobre cb8d59a; pnpm test 451 PASS y PILOT 10/10 sobre 7f73461; 10 capturas canónicas difieren (ZIP v4 pendiente de decisión).
+
 ## 2026-10-10 · Phase 4 — verificación de 85ec322, capturas aprobadas y regresión completa
 
 - Correcciones de seguridad de 85ec322 verificadas en disco (pruebas HTTP reales y comprobación de mutación).

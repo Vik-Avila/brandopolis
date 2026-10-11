@@ -1,3 +1,31 @@
+## 2026-10-11 · PHASE 4 · menú compacto: Estrategia con navegación interior
+
+**Problema medido** (Chrome, sesión DEMO): con Estrategia desplegada el lateral tenía 1110 px de contenido; en
+1366×768 quedaban ocultas siete entradas (Marketing… Ayuda) y en 1440×900 cuatro.
+**Solución** (PHASE4_SPEC §3, opción indicada por el propietario): el lateral muestra sólo las siete áreas y el pie
+(Mi aprendizaje, Configuración, Ayuda); los nueve pasos, Validación y Mapa estratégico pasan a una navegación interior
+de Estrategia, visible sólo dentro del área (pestañas Decisiones · Validación · Mapa estratégico y los nueve pasos
+unidos por una línea fina horizontal; cuadrícula 3×3 en móvil). Mismos elementos e ids; Estrategia en el cajón móvil
+lo cierra al abrir el área (defecto hallado por la E2E de tablet y corregido). Medición tras el cambio: sin
+desplazamiento vertical del lateral en 1366×768, 1280×800 y 1440×900, dentro y fuera de Estrategia.
+
+**Evidencia:**
+- `cb8d59a` (código del menú): **test:e2e 260: 249 PASS · 13 SKIP · 0 FAIL**, ejecutada por proyecto y en dos mitades
+  de archivos en primer plano (wide 51/1, desktop 51/1, compact 51/1, tablet 48/5, mobile 48/5).
+- `7f73461` (sólo CSS posterior: alineación de los pasos y pestañas en móvil): `workspace.spec` + `micro-hotfix` en
+  los 5 proyectos 76 PASS · 9 SKIP · 0 FAIL; test:visual 10 PASS · 1 SKIP (estructura); UI validator PASS;
+  pnpm test 451 PASS; test:pilot:e2e 10/10.
+- Comparación de píxeles (umbral 48/765): 7 idénticas y 10 distintas por el menú compacto (blueprint, decision-card,
+  history, m1-guided-review, m1-needs-review en escritorio y móvil cuando aplica, y m1-workspace-desktop 0,02 %).
+  No se actualizan: `Brandopolis_Fase4_capturas_canonicas_comparacion_v4_2026-10-11.zip` (SHA-256
+  `ce4683d7fab4eb402f8ee2bd9c3ce76f1d9273f348feb9db87e023afe67d48c5`), pendiente de decisión.
+- Recursos: el sistema detuvo por memoria, con la sesión inactiva, la base de pruebas, el servidor aislado y una
+  ejecución de tablet; terminadas antes wide/desktop/compact; método ajustado (tramos en primer plano < 10 min, sin
+  dejar servicios vivos al quedar inactiva) y repetida la regresión completa sobre `cb8d59a`.
+- Intermitencia de `m1.spec`: no apareció; sigue pendiente de diagnóstico.
+
+## 2026-10-11 · PHASE 4 · direcciones visuales de Brando (registro en la entrada siguiente, `0a92d68`)
+
 ## 2026-10-10 · PHASE 4 · bloque 4 · direcciones visuales de Brando («Quiero crearla»)
 
 Sobre `3d35bcf`. Brando propone 2–3 direcciones (intención, colores con función, tipografías con licencia por
