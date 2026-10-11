@@ -79,8 +79,8 @@
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/README.md",
-      "bytes": 3268,
-      "sha256": "eb1cb5fc6c81a52eba36bc3c9b1450aa458e843a74b7d3e6b7239ca6d8f2dfbe",
+      "bytes": 3836,
+      "sha256": "da286900eb71b922388466894264402514ec371f73e43729f1e44f6849bb58e7",
       "type": "md",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
@@ -103,8 +103,8 @@
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/m1-guided-review-desktop.png",
-      "bytes": 385961,
-      "sha256": "8935ab5bef8c87ee329260553990b50c3e3d4ccd383ec5a7ba1eba9ff378cb06",
+      "bytes": 384523,
+      "sha256": "534b238297615dbb1ccda2a13ddf6fa90d8532a43c6d71815f98d313172e4556",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
@@ -119,8 +119,8 @@
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/m1-needs-review-desktop.png",
-      "bytes": 410132,
-      "sha256": "90864ef2f8a0a2aef046522611e3413004926ff7585825bc1e700aa842cfd190",
+      "bytes": 409027,
+      "sha256": "f9fa9c12d82a60d2ddeeb5060bad3021fe6b38b8987d378d7474a440da1ea4bc",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
@@ -135,8 +135,8 @@
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/m1-workspace-desktop.png",
-      "bytes": 331892,
-      "sha256": "654dbc993409a02d560714405bb80a2aea29a13c4b1a95792fc126f773fb20fb",
+      "bytes": 328904,
+      "sha256": "cb776da9e5ead5783c946d28c5c7894952deae0aeb84bce1a204999b9a65cb0c",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
@@ -295,8 +295,8 @@
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/blueprint-desktop.png",
-      "bytes": 371800,
-      "sha256": "9e45a3bae6ba06d9c02ec1d9da65bcb3c2cc325919ecb64f0644f4f4e7554072",
+      "bytes": 369803,
+      "sha256": "1a95b5c8112125ddb22120b9d6ddb1ff905527d24d4e3c36628599bbaf68c884",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
@@ -311,16 +311,16 @@
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/decision-card-desktop.png",
-      "bytes": 414046,
-      "sha256": "dbc547a229f969d5831c61fafccaa46bfbf14cd120514a0d8174a82bd1c9b7c6",
+      "bytes": 412173,
+      "sha256": "445ff14e5ffdd174985e3495969ac8a5817195caa75698e69864c6748548d529",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"
     },
     {
       "path": "design/brandopolis-ui/reference/screenshots/history-desktop.png",
-      "bytes": 390351,
-      "sha256": "0792934d81f8fbf44d75615ecb87d0817b0ad3df3c7187968d9aa266b4a7cabb",
+      "bytes": 388742,
+      "sha256": "22ab8795693f4cb2dac347e21d1644e883a32764c1b7bfa2aa359cef0ef01939",
       "type": "png",
       "purpose": "canonical-screen-reference",
       "canonicalStatus": "CANONICAL"

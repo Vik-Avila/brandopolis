@@ -53,5 +53,11 @@ percentage of changed pixels plus both sizes, with a red overlay of the changed 
   decision-card-desktop, history-desktop, m1-guided-review-desktop, m1-needs-review-desktop (Phase 4 seven-entry
   navigation and the «Tu prioridad» card). The other ten are unchanged. Hashes updated only for those seven in
   `specs/brand-assets.json`. The approval does not cover images regenerated after later visual changes.
+- 2026-10-10 · human decision (Codex review of
+  `Brandopolis_Fase4_capturas_canonicas_comparacion_v3_2026-10-10.zip`, SHA-256
+  `17b1587c597779881f82cf018258bcb53155d9f869a8a3896be4d4bf2c873347`): six desktop files replaced by the exact
+  `-current.png` images of that ZIP — m1-workspace-desktop, blueprint-desktop, decision-card-desktop,
+  history-desktop, m1-guided-review-desktop, m1-needs-review-desktop («Marca y recursos» available and menu spacing).
+  The other eleven are unchanged. The approval does not cover a later regeneration with further changes.
 
 These screenshots define presentation only. Domain behavior remains owned by the Engineering Repository.

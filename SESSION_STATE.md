@@ -1,3 +1,11 @@
+## 2026-10-10 · PHASE 4 · capturas v3 aplicadas
+
+Decisión (revisión de Codex del ZIP v3, SHA-256 `17b1587c…873347`, verificado antes de copiar): seis capturas de
+escritorio reemplazadas por los `-current.png` exactos del ZIP (m1-workspace, blueprint, decision-card, history,
+m1-guided-review, m1-needs-review); las otras once sin cambios. Registro de hashes: sólo esas seis entradas y la del
+README de capturas (que documenta la decisión). UI validator PASS. Recordatorio de método: `test:visual` comprueba
+estructura y genera capturas; la comparación de píxeles es aparte (suma de diferencias RGB > 48 de 765 por píxel).
+
 ## 2026-10-10 · PHASE 4 · regresión completa sobre `eca854f`
 
 **Estado probado:** commit `eca854f` (árbol limpio). Secuencial, un worker, trazas retenidas en caso de fallo.
