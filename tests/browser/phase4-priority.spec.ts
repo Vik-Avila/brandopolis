@@ -31,17 +31,19 @@ test('INT-001/002/005: the priority chosen at creation is saved with its brand, 
   await expect(priority.locator('.badge')).toHaveText('Un punto concreto de mi estrategia');
   await expect(priority).toContainText('No necesitas recorrer las nueve decisiones');
   await expect(priority.locator('[data-attention-module]')).toHaveCount(9);
-
-  // Change it to an area of a later block: named honestly, never a button to a capability that does not exist.
-  await priority.locator('summary').click();
-  await priority.getByLabel('Mi sitio web').check();
-  await priority.getByRole('button', { name: 'Guardar prioridad' }).click();
-  await expect(page.locator('.work-priority .badge')).toHaveText('Mi sitio web');
-  await expect(page.locator('.work-priority')).toContainText('todavía no está disponible en tu espacio');
-  await expect(page.locator('.work-priority [data-priority-area]')).toHaveCount(0);
   // The suggestion opens a real decision.
-  await page.locator('.work-priority [data-attention-module="Positioning"]').click();
+  await priority.locator('[data-attention-module="Positioning"]').click();
   await expect(page.locator('#decision .decision-title')).toHaveText('Posicionamiento');
+
+  // Change it to an area that exists now (ADR-0032: Sitio web); the button opens it. An area that does not exist yet is
+  // named honestly without a button (covered in tests/work-priority-views.test.ts).
+  await navigate(page, 'Inicio');
+  await page.locator('.work-priority summary').click();
+  await page.locator('.work-priority').getByLabel('Mi sitio web').check();
+  await page.locator('.work-priority').getByRole('button', { name: 'Guardar prioridad' }).click();
+  await expect(page.locator('.work-priority .badge')).toHaveText('Mi sitio web');
+  await page.locator('.work-priority [data-priority-area="WEBSITE"]').click();
+  await expect(page.locator('#decision h2').first()).toHaveText('Sitio web');
   // «Otro» keeps an optional note, shown back in Inicio; history is kept (append-only).
   await navigate(page, 'Inicio');
   await page.locator('.work-priority summary').click();
