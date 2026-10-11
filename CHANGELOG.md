@@ -1,3 +1,10 @@
+## 2026-10-11 · Phase 4 — Compartir exige «Gestionar invitados»; exportaciones PDF, PPTX y DOCX
+
+- Compartir con el cliente y dejar de compartir exigen `MANAGE_GUESTS` en la marca (decisión del propietario, opción A).
+- Guía de marca en PDF desde la versión publicada del kit y materiales en PDF con las fuentes del kit incrustadas (subconjunto, texto seleccionable); presentación comercial en PowerPoint y textos en Word, editables, con colores y tipografías del kit.
+- Permisos de fuente por uso (consulta/impresión frente a editable) y licencia declarada en el kit; cualquier sustitución se avisa con la descarga.
+- Evidencia: unitarias 493; E2E afectadas 35/35; capturas idénticas; verificado en PowerPoint y Word 16.0.16026 y en pdf.js 6.3.289.
+
 ## 2026-10-11 · Phase 4 — capturas canónicas aprobadas aplicadas (menú de ocho áreas)
 
 - Nueve capturas exactas del paquete de revisión única (SHA-256 c32b8e58…c970, sobre 5cf0618) sustituyen a sus canónicas; las otras ocho sin cambios; registro de hashes actualizado sólo para esas nueve y el README. Validador de UI PASS.

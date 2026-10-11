@@ -70,6 +70,18 @@ test('social post: tabs, review, approval, manual publication record and text do
   const download = page.waitForEvent('download');
   await approved.getByRole('button', { name: 'Descargar .txt' }).click();
   expect((await download).suggestedFilename()).toBe('lanzamiento-del-diagnostico-v1.txt');
+  // ADR-0030 · generated documents of the exact approved version (server-side; never changes the version).
+  for (const [label, ext, signature] of [['Descargar PDF', 'pdf', '%PDF-'], ['Descargar Word', 'docx', 'PK']] as const) {
+    const file = page.waitForEvent('download');
+    await approved.getByRole('button', { name: label }).click();
+    const got = await file;
+    expect(got.suggestedFilename()).toBe(`Lanzamiento-del-diagnostico-v1.${ext}`);
+    const bytes = readFileSync((await got.path())!);
+    expect(bytes.subarray(0, signature.length).toString('latin1')).toBe(signature);
+    await expect(page.locator('#notice')).toContainText('Documento descargado');
+  }
+  await expect(approved.getByRole('button', { name: 'Descargar PowerPoint' })).toHaveCount(0); // only for sales presentations
+  await expect(view.locator('.deliverable-card').first()).toContainText('Aprobada · v1');
 
   await approved.getByLabel('Fecha de publicación').fill('2026-11-04');
   await approved.getByLabel('Enlace').fill('https://www.linkedin.com/posts/ejemplo');

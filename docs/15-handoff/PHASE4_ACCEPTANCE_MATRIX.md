@@ -525,6 +525,20 @@ como completado.
 | Licencia, API, aislamiento, costes y canales | Evaluación/prueba F4; cada habilitación | PHASE4_EXTERNAL_REQUIREMENTS I10-EXT-01…14; ADR previo a dependencias | I10-CW-01…12; I10-CHN-01…04; I10-BRA-08 | Sólo evaluación documental (fuentes del paquete); ninguna versión instalada |
 | Navegación y continuidad | F4 | PHASE4_SPEC §3, §12.3; handoff; SESSION_STATE; CHANGELOG | I10-DOC-01; I10-UI-01…03; I10-CON-01…04 | Documentado; ocho áreas **implementadas** (Clientes y Resultados reales, sin «Próximamente»; sin desplazamiento a 1366×768, 1280×800 y 1440×900); capturas canónicas afectadas pendientes de decisión del propietario |
 
+## Estado de implementación · exportaciones (bloque 6, 2026-10-11)
+
+Código: `src/domain/ttf.ts`, `src/domain/export-fonts.ts`, `src/application/pdf-brand.ts`,
+`src/application/export-documents.ts`, `src/application/exports.ts`; rutas `/api/exports/{guide,deliverable}` (sólo equipo).
+Archivos de prueba verificados en aplicaciones reales: PowerPoint 16.0.16026.20200 (PPTX), Word 16.0.16026.20200 (DOCX) y
+pdf.js 6.3.289 renderizado en Chrome con extracción de texto (PDF). Acrobat no está instalado; el visor PDFium de
+Chrome/Edge no se verificó.
+
+| Estado | Criterios |
+|---|---|
+| Implementado · validado en DEMO | EXP-003 (U `tests/export-cases.ts`: texto del PDF extraído idéntico con acentos, ñ, ¿¡, «», “”, – —, €, $; caracteres que la fuente no tiene se informan; PPTX y DOCX con el texto escapado; PowerPoint y Word muestran el texto intacto), EXP-004 (U: fuente incrustada si el archivo y el kit lo permiten; licencia sin confirmar avisada; «no permitida», restringida o ausente → alternativa revisada o Helvetica con aviso; WOFF leído; CFF y WOFF2 informados como no compatibles; editables nunca incrustan y lo dicen), EXP-001 en su parte técnica (U de estructura OOXML; PowerPoint abre sin reparación, cuadros de texto nativos editables, imágenes con proporción correcta). E2E: descarga de PDF y Word de un material aprobado y de la guía en PDF en los 5 proyectos |
+| Parcial | EXP-001 (aplicación de destino de los clientes sin confirmar por el propietario, EXT-REQ-12; verificado en PowerPoint 16.0.16026), EXP-002 y EXP-005 (la guía y los materiales usan colores, tipografía y logotipo del kit; falta la comparación renderizada de dos marcas como prueba automática) |
+| Pendiente | ZIP del sitio (bloque de sitios), PDF de la guía en el portal del invitado (no se amplían sus facultades), OTF/CFF y WOFF2 incrustados, presentación PPTX de otros tipos de material |
+
 ## Historial de revisiones
 
 | Versión | Fecha | Cambio |
@@ -547,3 +561,4 @@ como completado.
 | v16 | 2026-10-11 | Clientes implementado (migración 0027, ADR-0035): estado por criterio I10 y trazabilidad actualizados con evidencia de DEMO; regresión completa pendiente |
 | v17 | 2026-10-11 | Verificación completa de Clientes y Resultados: CLI-10, SEC-05, SEC-08, UI-02, RES-02 y RES-04 validados en DEMO; UI-03 parcial (aprobación visual) |
 | v18 | 2026-10-11 | Capturas aprobadas aplicadas: I10-UI-03 validado en DEMO; aceptación visual del bloque Clientes y Resultados satisfecha (no cierra Fase 4) |
+| v19 | 2026-10-11 | Exportaciones (bloque 6): estado de EXP-001…005 con aplicaciones de verificación |

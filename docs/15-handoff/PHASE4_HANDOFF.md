@@ -128,3 +128,9 @@ unitarias 484, PILOT 10/10. Queda la aprobación visual del paquete único de ca
 (PHASE4_SPEC §12.5: opción A recomendada, compartir con `MANAGE_GUESTS`), proveedor de correo y aviso definitivo.
 `phase3.spec.ts:58` queda como fallo observado una vez (503 durante presión de memoria), no reproducido. Siguiente
 trabajo: exportaciones.
+
+**Actualización · capturas, permiso y exportaciones (2026-10-11).** Capturas del menú de ocho áreas aprobadas y aplicadas
+(`597ad70`); compartir exige `MANAGE_GUESTS` (`8288310`); exportaciones PDF/PPTX/DOCX implementadas y verificadas en
+PowerPoint/Word 16.0.16026 y pdf.js (ver SESSION_STATE y PHASE4_EXPORTS_EVALUATION §5). Siguiente bloque de la Fase 4:
+sitios (renderizador, vista previa autenticada, formularios con el formulario nativo de Clientes, medición), sin
+publicación real ni dominio hasta su decisión.

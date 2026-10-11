@@ -761,7 +761,7 @@ const provenanceWord=p=>p==='AI_ASSISTED'?'Propuesta de Brando editada por una p
  *  versions in review (decision on the exact version), the working draft and what is missing. */
 function deliverableCard(d,offers){
  const shown=d.approved??d.draft??d.inReview[0],name=shown?.content.name??'Material',parts=[];
- const exportBar=v=>`<div class="actions deliverable-export"><button type="button" class="secondary" data-copy-version="${escape(v.id)}">Copiar texto</button><button type="button" class="secondary" data-download-version="${escape(v.id)}">Descargar .txt</button></div>`;
+ const exportBar=v=>`<div class="actions deliverable-export"><button type="button" class="secondary" data-export-version="${escape(v.id)}" data-export-format="pdf">Descargar PDF</button>${d.type==='SALES_PRESENTATION'?`<button type="button" class="secondary" data-export-version="${escape(v.id)}" data-export-format="pptx">Descargar PowerPoint</button>`:''}<button type="button" class="secondary" data-export-version="${escape(v.id)}" data-export-format="docx">Descargar Word</button><button type="button" class="tertiary" data-copy-version="${escape(v.id)}">Copiar texto</button><button type="button" class="tertiary" data-download-version="${escape(v.id)}">Descargar .txt</button></div><p class="hint">El documento muestra esta versión exacta con la identidad del kit con el que se escribió. Descargarlo no cambia ni aprueba nada.</p>`;
  if(d.approved){
   const v=d.approved;
   const pubs=d.type==='SOCIAL_POST'?`<div class="deliverable-publications"><h4>Publicación</h4>${d.publications.length?`<ul>${d.publications.map(p=>`<li>Publicada el ${escape(dayText(p.publishedOn))}${p.url?` · <a href="${escape(p.url)}" rel="noopener noreferrer" target="_blank">ver publicación</a>`:''}${p.note?` · ${escape(p.note)}`:''}</li>`).join('')}</ul>`:'<p class="hint">Aún no registras su publicación. Brandopolis no publica por ti: cuando la publiques, registra aquí la fecha.</p>'}
@@ -981,7 +981,7 @@ export function guideBodyHtml(guide,previewUrl){
 export function guideHtml(guide,brandIdValue){
  const head=`<div class="ws-hero"><p class="eyebrow">Marca y recursos</p><h2>Guía de marca</h2><p class="ws-lead">La guía se genera de la versión publicada de tu kit. Cambia cuando publicas otra versión; los borradores no aparecen aquí.</p></div>`;
  if(!guide)return `${head}<p>Aún no hay una versión publicada del kit. Aprueba y publica tu kit en Identidad visual para tener tu guía.</p>`;
- return `${head}<p class="hint">Versión ${guide.sequence} del kit, publicada.</p>${guideBodyHtml(guide,id=>`/api/brand-kit/assets/preview?brandId=${encodeURIComponent(brandIdValue)}&amp;assetId=${encodeURIComponent(id)}`)}`;
+ return `${head}<p class="hint">Versión ${guide.sequence} del kit, publicada.</p><div class="actions"><button type="button" class="secondary" id="guide-export">Descargar guía en PDF</button></div>${guideBodyHtml(guide,id=>`/api/brand-kit/assets/preview?brandId=${encodeURIComponent(brandIdValue)}&amp;assetId=${encodeURIComponent(id)}`)}`;
 }
 const SHARE_WORDS={STRATEGY_SNAPSHOT:'Estrategia',PLAN_SNAPSHOT:'Plan de Marketing',DELIVERABLE_VERSION:'Material',KIT_VERSION:'Identidad visual'};
 const INVITATION_WORDS={PENDING:'Pendiente',ACCEPTED:'Aceptada',REVOKED:'Retirada',EXPIRED:'Vencida'};

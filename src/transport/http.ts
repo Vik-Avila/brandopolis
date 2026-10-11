@@ -9,11 +9,15 @@ import type { PilotBoundary } from './pilot-auth.js';
 import type { CompetitiveResearchService } from './competitive-research.js';
 import type { DocumentClaimsService } from './document-claims.js';
 import { randomUUID,createHash } from 'node:crypto';
-import { open,mkdir,rename,rm,readFile,writeFile } from 'node:fs/promises';
+import { open,mkdir,rename,rm,readFile,writeFile,stat } from 'node:fs/promises';
 import { dirname,relative,resolve,sep } from 'node:path';
 import { extractDocument } from '../documents/extractor.js';
 import { inspectKitAsset,KIT_ASSET_MAX_BYTES } from '../domain/kit-assets.js';
 import { kitCandidatesFromText } from '../domain/brand-kit.js';
+import { chooseFonts, type FontFile } from '../domain/export-fonts.js';
+import { FONT_MAX_BYTES } from '../domain/ttf.js';
+import type { ExportSource } from '../application/exports.js';
+import { deliverableDocx, deliverablePdf, deliverablePptx, guidePdf, type BuiltDocument, type Image } from '../application/export-documents.js';
 
 async function body(req:IncomingMessage):Promise<Record<string,unknown>> {
   if(!req.headers['content-type']?.startsWith('application/json')) throw new AppError('INVALID','JSON required');
@@ -157,6 +161,26 @@ export class RateLimiter implements Limiter {
     if(!entry||t-entry.start>=windowMs){this.hits.set(key,{start:t,count:1});return true;}
     return ++entry.count<=limit;
   }
+}
+// ADR-0030 · export assembly: load the kit files the source names (fonts and logos), within size limits, then build.
+async function loadExportFile(storageKey:string,max:number):Promise<Buffer|null>{
+  try{const target=resolveDocumentStoragePath(storageKey),info=await stat(target);if(!info.isFile()||info.size>max)return null;return await readFile(target);}catch{return null;}
+}
+async function buildExport(source:ExportSource,format:string,guide:boolean):Promise<BuiltDocument>{
+  if(!['pdf','pptx','docx'].includes(format)||(guide&&format!=='pdf'))throw new AppError('INVALID','Unsupported export format');
+  if(format==='pptx'&&source.deliverable?.content.type!=='SALES_PRESENTATION')throw new AppError('INVALID','PowerPoint is offered for sales presentations');
+  const fonts:FontFile[]=[],images=new Map<string,Image>();
+  for(const asset of source.assets){
+    if(asset.role==='FONT'&&format==='pdf'){const bytes=await loadExportFile(asset.storageKey,FONT_MAX_BYTES);if(bytes)fonts.push({assetId:asset.id,originalName:asset.originalName,bytes});}
+    else if(asset.role!=='FONT'&&(asset.format==='PNG'||asset.format==='JPEG')){const bytes=await loadExportFile(asset.storageKey,KIT_ASSET_MAX_BYTES);if(bytes)images.set(asset.id,{bytes,format:asset.format});}
+  }
+  const choice=chooseFonts(source.kit?.content??null,fonts,format==='pdf'?'PDF':'EDITABLE');
+  try{
+    if(guide)return guidePdf(source,choice,images);
+    if(format==='pdf')return deliverablePdf(source,choice,images);
+    if(format==='pptx')return await deliverablePptx(source,choice,images);
+    return await deliverableDocx(source,choice);
+  }catch(error){if(error instanceof AppError)throw error;throw new AppError('UNAVAILABLE','The document could not be generated');}
 }
 // ADR-0035 · public web form: reads of the form, submissions per client and per form; development only.
 const LEAD_FORM_PATHS=new Set(['/formulario','/lead-form.js','/lead-form.css']);
@@ -745,6 +769,15 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(path==='/api/offers') return send(res,200,await engine.offers(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/plan') return send(res,200,await engine.marketingPlan(token,string(url.searchParams.get('brandId')),Number(url.searchParams.get('year'))));
         if(path==='/api/collaboration') return send(res,200,await engine.collaboration(token,string(url.searchParams.get('brandId'))));
+        // ADR-0030 · exports (team only). Files come from the brand's private storage, are size-checked and parsed as
+        // untrusted input; the response carries the notices (fonts, characters) the person sees with the download.
+        if(path==='/api/exports/guide'||path==='/api/exports/deliverable'){
+          const brandId=string(url.searchParams.get('brandId')),format=url.searchParams.get('format')??'pdf';
+          const source=path==='/api/exports/guide'?await engine.exportGuideSource(token,brandId):await engine.exportDeliverableSource(token,brandId,url.searchParams.get('versionId'));
+          const doc=await buildExport(source,format,path==='/api/exports/guide');
+          res.writeHead(200,{'Content-Type':doc.mediaType,'Content-Length':String(doc.bytes.length),'Content-Disposition':`attachment; filename="${doc.filename}"`,'X-Brandopolis-Notices':encodeURIComponent(JSON.stringify(doc.notices))});
+          res.end(doc.bytes);return;
+        }
         if(path==='/api/clients') return send(res,200,await engine.clients(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/results') return send(res,200,await engine.results(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/brand-guide') return send(res,200,await engine.brandGuide(token,string(url.searchParams.get('brandId'))));

@@ -66,3 +66,24 @@ fuentes y la compatibilidad OOXML, que sólo se acredita abriendo los archivos e
 
 Decisión pendiente del propietario: aplicación de destino para verificar exportaciones (PowerPoint, LibreOffice o
 ambas). No bloquea los pasos 1 y 2.
+
+## 5. Resultado de la implementación (2026-10-11)
+
+La solución propia cumple los criterios comprobables en este equipo, así que no se propone ninguna dependencia nueva.
+
+- **PDF:** fuentes TrueType y WOFF del kit incrustadas como `CIDFontType2` con subconjunto (los glifos no usados se vacían
+  y se conservan los componentes compuestos) y `ToUnicode`; texto seleccionable y copiable, idéntico al extraerlo.
+  Carácter ausente en la fuente: se dibuja con Helvetica o «?» y se informa. Imágenes PNG (con alfa) y JPEG; WebP se
+  informa. Lectura defensiva: tamaño máximo de 10 MB, límites en cada tabla y error controlado.
+- **Permisos:** consulta e impresión (PDF) frente a documentos editables: «sólo vista previa e impresión» permite el PDF
+  y no el editable; «restringida» o «sólo mapa de bits» impiden incrustar; además manda la licencia declarada en el
+  kit (`NOT_ALLOWED` nunca se incrusta; `UNKNOWN` se incrusta si el archivo lo permite, con aviso).
+- **PPTX/DOCX:** paquetes OOXML completos con jszip; cuadros de texto y párrafos nativos, tema con la paleta y las
+  tipografías del kit por nombre (sin incrustar; si no está instalada, la aplicación la sustituye y se avisa con la
+  alternativa revisada), logotipo con su proporción.
+- **Verificado en:** PowerPoint 16.0.16026.20200 (abre sin reparación, texto editable, edición en memoria con ñ, € y «»),
+  Word 16.0.16026.20200 (abre sin reparación, estilos Título/Título 1, tabla, edición) y pdf.js 6.3.289 en Chrome
+  (render y texto). Acrobat no disponible.
+- **Límites:** OTF/CFF y WOFF2 no se incrustan (alternativa con aviso); falta confirmar la aplicación de destino de los
+  clientes (EXT-REQ-12); la comparación renderizada de dos marcas no está automatizada; el PPTX sólo se ofrece para la
+  presentación comercial.

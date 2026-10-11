@@ -2207,6 +2207,7 @@ async function showDeliverables(area){
  root.querySelectorAll('[data-deliverable-retire]').forEach(b=>b.addEventListener('click',()=>{const d=byId(b.dataset.deliverableRetire);command('retire',{deliverableId:d.id,expectedRevision:d.revision},'Retirado. Se conserva con su historial.');}));
  root.querySelectorAll('.deliverable-decide').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const criterion=form.querySelector('textarea').value.trim();if(criterion.length<10){form.querySelector('textarea').focus();notice('Escribe al menos diez caracteres para explicar tu decisión.',true);return;}const decision=event.submitter?.value;const keyName=`key${decision}`;form.dataset[keyName]??=crypto.randomUUID();command('decide',{deliverableId:form.dataset.deliverable,versionId:form.dataset.version,fingerprint:form.dataset.fingerprint,decision,criterion,idempotencyKey:form.dataset[keyName]},decision==='APPROVE'?'Versión aprobada.':'Cambios solicitados. Se hacen en una versión nueva.');}));
  root.querySelectorAll('.publication-form').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const date=form.querySelector('input[type="date"]'),url=form.querySelector('input[type="url"]');if(!date.value){date.focus();notice('Indica la fecha en que la publicaste.',true);return;}if(url.value&&!url.value.startsWith('https://')){url.focus();notice('El enlace debe empezar por https://',true);return;}form.dataset.key??=crypto.randomUUID();command('publication',{deliverableId:form.dataset.deliverable,versionId:form.dataset.version,publishedOn:date.value,url:url.value||null,note:form.querySelector('input:not([type])').value||null,idempotencyKey:form.dataset.key},'Publicación registrada. Brandopolis no publica por ti; sólo guarda este registro.');}));
+ root.querySelectorAll('[data-export-version]').forEach(b=>b.addEventListener('click',()=>downloadExport(`/api/exports/deliverable?brandId=${encodeURIComponent(brandId)}&versionId=${encodeURIComponent(b.dataset.exportVersion)}&format=${b.dataset.exportFormat}`,b)));
  root.querySelectorAll('[data-copy-version]').forEach(b=>b.addEventListener('click',async()=>{const v=versionById(b.dataset.copyVersion);try{await navigator.clipboard.writeText(deliverableText(v.content));notice('Texto copiado.');}catch{notice('No se pudo copiar automáticamente. Usa «Descargar .txt».',true);}}));
  root.querySelectorAll('[data-download-version]').forEach(b=>b.addEventListener('click',()=>{const v=versionById(b.dataset.downloadVersion);const blob=new Blob([deliverableText(v.content)],{type:'text/plain;charset=utf-8'});const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`${v.content.name.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'').toLowerCase()||'material'}-v${v.sequence}.txt`;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(link.href),1000);}));
 }
@@ -2307,11 +2308,25 @@ function openKitEditor(){
   }catch(error){$('#kit-form-status').textContent=error.message;}
  });
 }
+/** ADR-0030 · downloads a generated document and shows the notices (fonts, characters) that travel with it. */
+async function downloadExport(url,button){
+ if(button)button.disabled=true;
+ try{
+  const response=await fetch(url,{signal:AbortSignal.timeout(60000)});
+  if(!response.ok){let data={};try{data=await response.json();}catch{/* not JSON */}notice(response.status===409?'Primero publica una versión del kit para descargar su guía.':response.status===400?'Este formato no está disponible para este material.':'No se pudo generar el documento. Inténtalo de nuevo.',true);return data;}
+  let notices=[];try{notices=JSON.parse(decodeURIComponent(response.headers.get('x-brandopolis-notices')??'%5B%5D'));}catch{notices=[];}
+  const name=/filename="([^"]+)"/.exec(response.headers.get('content-disposition')??'')?.[1]??'documento';
+  const link=document.createElement('a');link.href=URL.createObjectURL(await response.blob());link.download=name;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(link.href),10000);
+  notice(notices.length?`Documento descargado. ${notices.map(n=>n.message).join(' ')}`:'Documento descargado.');
+ }catch{notice('No se pudo descargar el documento. Comprueba la conexión y vuelve a intentarlo.',true);}
+ finally{if(button)button.disabled=false;}
+}
 /** ADR-0033 · Marca y recursos → Guía de marca: the living guide of the published kit version (never a draft). */
 async function showGuide(){
  if(!enterView('#brand-resources','Guía de marca'))return;
  const guide=await api(`/api/brand-guide?brandId=${encodeURIComponent(brandId)}`);
  const root=$('#decision');root.innerHTML=guideHtml(guide,brandId);mountAreaTabs('brand','guide');
+ $('#guide-export')?.addEventListener('click',event=>downloadExport(`/api/exports/guide?brandId=${encodeURIComponent(brandId)}&format=pdf`,event.currentTarget));
  root.querySelectorAll('.kit-swatch').forEach(el=>{el.style.backgroundColor=el.dataset.hex;});
 }
 /** ADR-0033 · Colaboración: invitations by single-use link, guests, shares, comments and the client's decisions. */

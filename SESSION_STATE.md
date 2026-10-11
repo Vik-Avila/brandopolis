@@ -1,3 +1,41 @@
+## 2026-10-11 · PHASE 4 · permiso para compartir (opción A) y exportaciones PDF, PPTX y DOCX
+
+**Permiso para compartir (`8288310`):** decisión del propietario, opción A de PHASE4_SPEC §12.5. `shareToPortal` y
+`withdrawShare` exigen `MANAGE_GUESTS` en la marca, también al repetir con la misma clave; comentar sigue abierto al
+equipo; lo que aprueba el invitado no cambia (ADR-0033 v5). Pruebas: miembro sin permiso, otra marca, invitado (404) y
+permiso retirado. Unitarias 485/485 en ese commit.
+
+**Exportaciones (bloque 6):**
+- Código nuevo: lectura defensiva de TrueType/WOFF con permisos por uso y subconjunto (`src/domain/ttf.ts`); elección
+  de tipografía con avisos (`src/domain/export-fonts.ts`); constructor PDF con fuentes incrustadas y `ToUnicode`
+  (`src/application/pdf-brand.ts`); guía de marca PDF (versión publicada del kit), material en PDF, presentación comercial
+  en PPTX y textos en DOCX (`src/application/export-documents.ts`); orígenes de sólo lectura en el ámbito de la marca
+  (`src/application/exports.ts`); rutas `/api/exports/{guide,deliverable}` (sólo equipo; avisos en
+  `X-Brandopolis-Notices`); botones en el material aprobado y en Guía de marca. Sin dependencia nueva (jszip ya estaba).
+- Verificación de archivos de prueba en aplicaciones reales: PowerPoint 16.0.16026.20200 (PPTX: abre sin reparación,
+  4 diapositivas, cuadros de texto nativos editables, texto con acentos y símbolos intacto, logotipo con su proporción
+  tras corregir un defecto propio que lo deformaba; si la fuente del kit no está instalada, PowerPoint la sustituye y el
+  aviso lo dice), Word 16.0.16026.20200 (DOCX: abre sin reparación, estilos, tabla, edición) y pdf.js 6.3.289 en Chrome
+  (PDF: render, texto seleccionable e idéntico, saltos de página, imagen con alfa). Acrobat no está instalado; PDFium no
+  se verificó. Las instancias ocultas de PowerPoint y Word que abrieron los scripts se cerraron al terminar.
+- Defectos propios corregidos durante la prueba: logotipo deformado en PPTX; etiquetas sin negrita cuando la fuente del
+  kit está incrustada (ahora se usa el archivo negrita del kit si existe y lo permite).
+- Pruebas: `tests/export-cases.ts` (8; fuentes como entrada no confiable, permisos, subconjunto, PDF/PPTX/DOCX, ámbito,
+  invitado, otra marca, HTTP con fuente desde almacenamiento privado, la exportación no cambia el origen ni incluye
+  comentarios internos); E2E: PDF y Word de un material aprobado y guía en PDF.
+
+**Resultados sobre el árbol de este commit:** `pnpm test` **493 PASS**; typecheck y lint 0 errores; E2E afectadas
+(`phase4-deliverables`, `phase4-identity`, `phase4-collaboration`) **35/35** (7 × 5 proyectos); `test:visual` 10 PASS · 1
+SKIP y **las 17 capturas idénticas** a las canónicas aprobadas; Foundation 0; validador de UI PASS. No se repitió la
+regresión E2E completa: los cambios tocan exportaciones (rutas nuevas), Colaboración (compartir) y botones de dos vistas,
+cubiertos por las suites afectadas.
+
+**Pendiente:** aplicación de destino de los clientes (EXT-REQ-12), comparación renderizada de dos marcas (EXP-002/005),
+OTF/CFF y WOFF2, ZIP del sitio, PDF de la guía en el portal (sin ampliar facultades del invitado). Decisiones abiertas:
+correo, privacidad definitiva, dominios, proveedores, IA real; ADR-0035 propuesto; Atomic y Chatwoot sin adoptar; el 503
+de Validación sigue en observación. Siguiente: sitios (bloque 7) o, si el propietario lo prioriza, la comparación de dos
+marcas para cerrar EXP-002/005.
+
 ## 2026-10-11 · PHASE 4 · capturas aprobadas (revisión única) aplicadas
 
 Decisión del propietario: aplicar nueve `-current.png` del ZIP `Brandopolis_Fase4_capturas_revision_unica_2026-10-11.zip`

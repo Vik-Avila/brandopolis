@@ -21,6 +21,7 @@ import { actionStatus, addAction, addObjective, createPlan, createSnapshot, deci
 import { IdentityDirectionsStore, directionValues, identityPacket, validIdentityProposal } from '../domain/brando-identity.js';
 import { MarketingAssistance, marketingPacket, proposalContent, type MarketingPacket } from '../domain/brando-marketing.js';
 import { DELIVERABLE_TYPES, type DeliverableType } from '../domain/deliverables.js';
+import { deliverableSource, guideSource } from './exports.js';
 import { createForm, createOpportunity, createSegment, disableForm, publicForm, readClients, readResults, submitWebForm, updateOpportunity } from './clients.js';
 import { acceptInvitation, brandGuide, createInvitation, guestAsset, guestBrands, guestComment, guestDecide, readCollaboration, readPortal, resolveGuest, revokeGuest, revokeInvitation, shareToPortal, teamComment, withdrawShare, type GuestActor } from './collaboration.js';
 import { applyDirection, draftValueIds, adoptKitValues, decideKit, kitAsset, mergeKitCandidates, reusableDocument, publishKit, readKit, registerKitAsset, saveKitDraft, startKitDraft, submitKit } from './brand-kit.js';
@@ -154,6 +155,13 @@ export class Engine {
       if(!result.replayed)await this.audit(tx,actor,{operation:`COLLAB_${action.toUpperCase().replace(/-/g,'_')}`,idempotencyKey:String(input.idempotencyKey??randomUUID()),newVersion:String(result.invitationId??result.guestId??result.shareId??result.commentId??'')});
       return result;
     },true);
+  }
+  // ─── ADR-0030 · exports: read-only sources inside the brand scope (team only); exporting never changes the source ───
+  async exportGuideSource(token:string,brandId:string) {
+    return this.withBrandActor(token,brandId,(tx,actor)=>guideSource(tx,actor));
+  }
+  async exportDeliverableSource(token:string,brandId:string,versionId:unknown) {
+    return this.withBrandActor(token,brandId,(tx,actor)=>deliverableSource(tx,actor,versionId));
   }
   // ─── ADR-0035 · Clientes (team side: membership + brand scope; a client guest has no membership and never gets here) ───
   async clients(token:string,brandId:string) {

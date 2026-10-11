@@ -86,6 +86,13 @@ test('identity: upload files, ingest, adopt, contrast, approve and publish the k
   await expect(view.locator('.guide-color').filter({ hasText: 'Tinta' })).toContainText('Texto · #111111');
   await expect(view).toContainText('Cercano y claro');
   await expect(view).toContainText('normal cumple AA');
+  // ADR-0030 · the guide as a PDF of the published version; the font notices travel with the download.
+  const guidePdf = page.waitForEvent('download');
+  await view.getByRole('button', { name: 'Descargar guía en PDF' }).click();
+  const gotGuide = await guidePdf;
+  expect(gotGuide.suggestedFilename()).toMatch(/^Guia-de-marca-.+-kit-v1.pdf$/);
+  expect(readFileSync((await gotGuide.path())!).subarray(0, 5).toString('latin1')).toBe('%PDF-');
+  await expect(page.locator('#notice')).toContainText('Documento descargado');
   expect(dialogs, 'no script from an uploaded SVG ever runs').toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });
