@@ -284,6 +284,15 @@ Evidencia sobre el árbol `1f374eb2…` (ver SESSION_STATE): test:e2e 242 PASS �
 | Parcial | Exportaciones: sólo copiar/descargar texto; EXP-001…005 pendientes para el bloque 6, empezando por comprobar el generador PDF propio y `jszip` (ADR-0030); revisión de entregables por invitado (ADR-0033) hasta Colaboración |
 | Pendiente | CNV-001/002 (Canva), marca y recursos, colaboración, resultados |
 
+## Estado de implementación · bloque 4 (identidad visual, base, 2026-10-10)
+
+Evidencia sobre `eca854f`: pnpm test 450 PASS, test:e2e 247 PASS · 13 SKIP · 0 FAIL, PILOT 10/10.
+
+| Estado | Criterios |
+|---|---|
+| Implementado · verificado en DEMO | IDN-001 (incorporar con candidatos del manual y corrección humana), IDN-003 (sin confirmación silenciosa), IDN-005 (otra versión aprobada: impacto y revisión, publicadas intactas), IDN-006 (alcance por marca), IDN-007 en su parte de archivos (firma, SVG nunca servido, formato no admitido), IDN-008 en su parte de contraste por pareja; DEL-005 para archivos del kit (U `tests/brand-kit-cases.ts`, `tests/brand-deletion-cases.ts`, `tests/kit-assets.test.ts`, `tests/brand-kit-domain.test.ts`; E `tests/browser/phase4-identity.spec.ts`) |
+| Parcial | IDN-002 (crear desde la estrategia: borrador manual; direcciones de Brando pendientes), IDN-004 (manifiesto con la versión del kit en materiales; sitio, anuncio visual y presentación pendientes), IDN-007/008 (fuentes sin permiso, resolución por uso real, exportaciones) |
+
 ## Gates por bloque
 
 Matriz de brandopolis-review según archivos tocados: typecheck, lint, `pnpm test` (incluye INV-001..010, VAL, WS,
@@ -306,3 +315,4 @@ Ninguna prueba se debilita para pasar.
 | v8 | 2026-10-10 | Bloque 3: revisión de seguridad de ofertas y Plan de Marketing; sección de estado correspondiente |
 | v9 | 2026-10-10 | Bloque 3: PLN-001…003 y calendario implementados; sección de estado correspondiente |
 | v10 | 2026-10-10 | Bloque 3: navegación de siete entradas, entregables y Brando para marketing; sección de estado correspondiente |
+| v11 | 2026-10-10 | Bloque 4: base del kit de marca y verificación de seguridad; sección de estado correspondiente |

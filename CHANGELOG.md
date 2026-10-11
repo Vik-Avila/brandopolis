@@ -1,3 +1,9 @@
+## 2026-10-10 · Phase 4 — verificación de 85ec322, capturas aprobadas y regresión completa
+
+- Correcciones de seguridad de 85ec322 verificadas en disco (pruebas HTTP reales y comprobación de mutación).
+- Siete capturas canónicas actualizadas por decisión del propietario con las imágenes exactas del ZIP v2; método de comparación documentado.
+- Regresión sobre eca854f: pnpm test 450 PASS; test:e2e 247 PASS · 13 SKIP · 0 FAIL (260); PILOT 10/10. Seis capturas de escritorio vuelven a diferir por el menú posterior (Marca y recursos habilitado): ZIP v3 pendiente de decisión.
+
 ## 2026-10-10 · Phase 4 — bloque 4 en curso: base del kit de marca
 
 - Kit de marca versionado con certeza por valor, adopción explícita, contraste por pareja, faltantes por canal, archivos validados por firma y publicación con permiso propio; migración aditiva 0023.
