@@ -1,3 +1,14 @@
+## 2026-10-11 · Phase 4 — DEMO integral lista para la aceptación local (migración aditiva 0032)
+
+- Campañas de Google y Meta: crear en pausa, activar con una segunda autorización y pausar, todo en el simulador y sin gasto.
+- Campañas de captación en Meta: sólo se activan con la medición del sitio verificada (simulada en la DEMO).
+- Cancelar o perder el acceso a mitad de una operación detiene lo siguiente y explica qué quedó pendiente; nada se da por hecho sin comprobarlo.
+- Canva: vincular un diseño existente y recuperarlo como versión nueva.
+- Resultados con conversiones atribuidas por cada proveedor, sin sumarlas como personas.
+- La revisión del ciclo propone un experimento que una persona crea en Validación.
+- `pnpm demo:phase4` inicia la DEMO completa y Ctrl+C la detiene. Guía en `docs/15-handoff/PHASE4_DEMO_ACCEPTANCE.md`.
+- Evidencia: unitarias 526; navegador 320 ejecuciones (307 PASS, 13 SKIP, 0 FAIL); PILOT 10/10; canónicas idénticas. Las cuentas reales, la publicación real y la aceptación del propietario siguen pendientes.
+
 ## 2026-10-11 · Phase 4 — Clientes: la sección elegida durante la carga se respeta · Bloque 8 local con simuladores (migración aditiva 0031)
 
 - Al recargar, elegir una sección mientras el espacio termina de cargar ya no se pierde ni la sustituye la carga inicial.

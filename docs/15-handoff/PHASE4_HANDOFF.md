@@ -164,3 +164,8 @@ Estado por criterio en la matriz (v22). Pendiente de decisión: activación y ga
 Pendiente de proveedor: cuentas reales de Google, Meta y Canva. Siguiente según PHASE4_SPEC §7: bloque 9 (revisión
 integral, seguridad, pruebas completas, DEMO de aceptación, informe de riesgos), cuando el propietario decida qué
 queda dentro de la Fase 4 sin proveedores.
+
+**Actualización · DEMO integral de la Fase 4 (2026-10-11).** Bloque 8 completado en local con simuladores y bloque 9
+ejecutado sobre `0c356ca`. Guía de aceptación, instrucciones de inicio y parada, limitaciones, decisiones y
+riesgos en [PHASE4_DEMO_ACCEPTANCE](PHASE4_DEMO_ACCEPTANCE.md). Estado final por criterio en la matriz (v23). La
+aceptación del propietario y la verificación real siguen pendientes; la Fase 4 no está cerrada.

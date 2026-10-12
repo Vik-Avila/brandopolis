@@ -184,7 +184,11 @@ estado real del proveedor → resultados. Captación sólo con medición verific
 pausar y comprobar; sincronizar rechazos y cambios externos. Estados editorial, de publicación y de proveedor
 separados. Trabajos inciertos en «Pendiente de comprobación», nunca reenviados automáticamente.
 
-**Estado (2026-10-11, bloque 8 local):** implementado y validado en DEMO con el simulador, hasta la creación **en
+**Estado (2026-10-11, bloque 8 completado en local):** creación en pausa, activación con segunda autorización y pausa,
+implementadas y validadas en DEMO **sólo con simuladores** (Google y Meta, incluida la captación con medición
+simulada). Los adaptadores reales y las cuentas siguen pendientes; la DEMO espera la aceptación del propietario
+([PHASE4_DEMO_ACCEPTANCE](PHASE4_DEMO_ACCEPTANCE.md)). Estado anterior, conservado como historial: implementado y
+validado en DEMO con el simulador, hasta la creación **en
 pausa**: versiones con revisión, pantalla de confirmación, autorización con reserva, worker supervisado,
 conciliación sin reenvío y estado leído con su fuente. La activación (autorización 2), pausar, la sincronización de
 rechazos y las cuentas reales siguen pendientes de decisión y proveedor. Detalle en la matriz (v22).
@@ -720,3 +724,4 @@ supuesto a recalibrar con el tiempo real informado en SESSION_STATE).
 | v7 | 2026-10-11 | §4.5: estado de implementación de sitios (bloque 7); sin cambio de alcance |
 | v8 | 2026-10-11 | §4.5: sitios en DEMO completos en su alcance local (DOM-004, SITE-004, ZIP, vista por tamaño); sin cambio de alcance |
 | v9 | 2026-10-11 | §4.6 y §4.8: estado del bloque 8 local con simuladores; sin cambio de alcance |
+| v10 | 2026-10-11 | §4.6: activación y pausa completadas con simuladores (alcance sin cambios: las dos ya estaban en §4.6); DEMO de aceptación preparada |

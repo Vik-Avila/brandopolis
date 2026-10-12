@@ -1,3 +1,47 @@
+## 2026-10-11 · PHASE 4 · bloque 8 completado en local con simuladores y bloque 9 (revisión integral)
+
+**Punto de partida:** HEAD `d955645`, árbol limpio. **Commits locales (sin push ni despliegue):** `6e3da74` (bloque 8 completado en local, migración aditiva 0032), `16cc068` (correcciones de la revisión de seguridad independiente y lanzador de la DEMO), `0c356ca` (cabecera de las tarjetas de campaña, hallada en la revisión de las pantallas nuevas) y el commit de documentación. Las
+migraciones 0028 a 0032 sólo se aplicaron en las bases aisladas (55434 y 55432).
+
+**Alcance:** PHASE4_SPEC §4.6 y ADR-0031 incluyen activar con una segunda autorización y pausar. La limitación
+anterior a «sólo en pausa» venía de una instrucción del propietario en el bloque previo, sin cambio de alcance. Se
+completó **sólo con simuladores**, sin campañas reales ni gasto.
+
+**Qué se completó:**
+- Google y Meta: crear en pausa, segunda autorización, activar, consultar y pausar (simulados).
+- Captación con medición verificada simulada, comprobada antes del envío.
+- EXT-008 y EXT-017 (cancelar y revocar durante el intento, respuesta tardía, sin acceso no se infiere nada).
+- EXT-014 con prueba propia; EXT-003 cubierto por la prueba existente.
+- Canva: vincular un diseño existente; aislamiento y acceso retirado.
+- RES-002 con datos sintéticos.
+- Revisión del ciclo → Validación (propuesta revisable, acción humana, una vez).
+- Recorrido integrado ACC-01.
+- Lanzador de la DEMO: `pnpm demo:phase4`.
+
+**Incidencia de Clientes:** cerrada (causa, prueba antes y después, resultado original y regresiones posteriores en la
+matriz v23).
+
+**Revisión de seguridad:** revisión independiente de solo lectura del comportamiento de `b9d1bd2` al árbol de trabajo. No hubo hallazgos altos ni medios; cuatro bajos y uno plausible, todos corregidos con pruebas en `16cc068`: nombre de la oferta resuelto en el servidor (F1); destino sin dirección bloqueado (F2); la pausa no depende del estado editorial (F3); Canva actúa con la credencial propia de la persona (F4); un solo experimento por propuesta aunque dos personas actúen a la vez (P1). Se comprobaron sin hallazgos: referencias a versiones aprobadas, conexiones personales y por marca, operaciones directas por API, permisos retirados, aislamiento de invitados, cola, cancelación, revocación y resultados tardíos
+
+**Resultados sobre el candidato `0c356ca`:** `pnpm test` 526 PASS sobre `16cc068`, con typecheck y lint en 0 errores, Foundation en 0 errores y el validador de UI en PASS. Regresión completa de navegador sobre `16cc068`, con los cuatro servicios levantados por `pnpm demo:phase4` (19 archivos en tres tramos A: 6, B: 10 y C: 3, inventario sin duplicados ni reintentos): 320 ejecuciones (64 pruebas × 5 proyectos), 307 PASS, 13 SKIP por diseño según el ancho y 0 FAIL; el 503 de `phase3.spec.ts:58` no apareció. `0c356ca` sólo cambia CSS acotado a `.campaign-card`; sobre él se repitieron las tres pruebas afectadas (`phase4-campaigns`, `phase4-campaigns-meta` y `phase4-launch`) en los cinco proyectos, todas PASS. `pnpm test:pilot:e2e` dio 10/10 sobre `16cc068`. `test:visual` dio 10 PASS · 1 SKIP, y las 17 canónicas, comparadas al píxel sobre `16cc068` y de nuevo sobre `0c356ca`, tienen 0 % de diferencia; no se cambió ninguna referencia
+
+**Tres estados:**
+- Implementación local: completa en su alcance.
+- Aceptación de la DEMO por el propietario: pendiente ([PHASE4_DEMO_ACCEPTANCE](docs/15-handoff/PHASE4_DEMO_ACCEPTANCE.md)).
+- Verificación real: pendiente. Los adaptadores reales de Google, Meta y Canva no existen todavía (código pendiente,
+  no sólo credenciales).
+
+**Pendientes, separados:**
+- **Código pendiente:** adaptadores reales y OAuth, recorrido `BrandClosure` (DEL-002/004/005), versión del kit en el
+  manifiesto del anuncio (IDN-004), OTF/WOFF2, PDF y búsqueda en el portal, Biblioteca y Plantillas, cambio de
+  workspace, correo.
+- **Pendiente de acceso o evidencia real:** cuentas de prueba, medición real, HTTPS y DNS, OIDC de invitado.
+- **Pendiente de decisión:** aceptación de la DEMO, registro de integraciones, entorno de ensayo, dominio, privacidad
+  y consentimiento, correo, clave de IA, aplicaciones de destino de exportación, gasto real.
+
+ADR-0035 sigue propuesto; Atomic y Chatwoot no están adoptados. El 503 de `phase3.spec.ts:58` sigue en observación.
+**Not release-ready**; la Fase 4 no está cerrada.
+
 ## 2026-10-11 · PHASE 4 · incidencia de Clientes corregida y bloque 8 local con simuladores
 
 **Punto de partida:** HEAD `b9d1bd2` (después de `28bb7d0`), árbol limpio. **Commits locales (sin push ni

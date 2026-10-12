@@ -729,6 +729,82 @@ sincronización de rechazos y métricas reales.
 **Pendiente de decisión:** autorizar la activación y el gasto en una fase posterior, la medición verificada para
 captación y el proveedor de correo para avisos.
 
+## Bloque 8 completado en local y bloque 9 · revisión integral (2026-10-11, v23)
+
+**Alcance y trazabilidad.** PHASE4_SPEC §4.6 y ADR-0031 (paquete revisado y aceptado el 2026-10-10) incluyen la
+creación en pausa, la activación con una segunda autorización y la pausa. La entrega anterior (`9e373b4`) se limitó a
+crear en pausa, por una instrucción del propietario en la conversación de ese bloque («La creación de campañas llega
+únicamente al estado en pausa… No actives campañas ni gasto»). Esa instrucción no cambió el alcance documentado. La
+instrucción siguiente del propietario (2026-10-11) pidió completar la activación y la pausa **sólo con simuladores**,
+y así se hizo. No existe ninguna decisión que retire esas capacidades de la Fase 4.
+
+**Tres estados independientes:**
+1. **Implementación local:** completa en el alcance local (abajo).
+2. **Aceptación de la DEMO por el propietario:** pendiente
+   ([PHASE4_DEMO_ACCEPTANCE](PHASE4_DEMO_ACCEPTANCE.md)).
+3. **Verificación real y preparación para producción:** pendiente. **Not release-ready.**
+
+**Candidato comprobado:** `0c356ca`. `pnpm test` 526 PASS sobre `16cc068`, con typecheck y lint en 0 errores, Foundation en 0 errores y el validador de UI en PASS. Regresión completa de navegador sobre `16cc068`, con los cuatro servicios levantados por `pnpm demo:phase4` (19 archivos en tres tramos A: 6, B: 10 y C: 3, inventario sin duplicados ni reintentos): 320 ejecuciones (64 pruebas × 5 proyectos), 307 PASS, 13 SKIP por diseño según el ancho y 0 FAIL; el 503 de `phase3.spec.ts:58` no apareció. `0c356ca` sólo cambia CSS acotado a `.campaign-card`; sobre él se repitieron las tres pruebas afectadas (`phase4-campaigns`, `phase4-campaigns-meta` y `phase4-launch`) en los cinco proyectos, todas PASS. `pnpm test:pilot:e2e` dio 10/10 sobre `16cc068`. `test:visual` dio 10 PASS · 1 SKIP, y las 17 canónicas, comparadas al píxel sobre `16cc068` y de nuevo sobre `0c356ca`, tienen 0 % de diferencia; no se cambió ninguna referencia
+
+**Incidencia de Clientes (cerrada):**
+- Causa confirmada: un clic durante la carga inicial se perdía, y una respuesta tardía volvía a dibujar la vista.
+- Prueba que fallaba antes de la corrección y pasa después: `phase4-clients.spec.ts`, «a section chosen while the
+  workspace is still loading…».
+- Resultado original conservado: 300 ejecuciones sobre `28bb7d0`, 286 PASS, 13 SKIP, 1 FAIL.
+- Corrección: `5356f57`.
+- Regresiones posteriores: completa sobre `9e373b4` (310 · 297 PASS · 13 SKIP · 0 FAIL) y completa sobre el candidato
+  `0c356ca` (abajo).
+- Las comprobaciones sobre `4c692df` (unitarias, campañas en cinco proyectos, PILOT y capturas) se registran aparte.
+
+### Estado final por criterio · bloque 8
+
+| Criterio | Estado | Evidencia |
+|---|---|---|
+| Google Ads: propuesta → aprobación → crear en pausa → segunda autorización → activar → consultar → pausar | Validado en DEMO con simulador | U `tests/campaign-cases.ts`; E `phase4-campaigns.spec.ts` en cinco proyectos |
+| Meta Ads (tráfico y captación): el mismo recorrido | Validado en DEMO con simulador | U; E `phase4-campaigns-meta.spec.ts` (captación) en cinco proyectos |
+| Segunda autorización independiente, ligada a campaña, cuenta, marca y versión creada; revalidada en el servidor y antes del envío | Validado en DEMO | U: autorización y trabajo propios; cuenta forzada a la de la creación; versión aprobada distinta → bloqueo |
+| Pausa con `AUTHORIZE_SPEND` y sin confirmación de importe | Validado en DEMO | U, E |
+| Medición para captación: sin verificar → bloquea; verificada → permite; pierde vigencia antes del envío → `MEASUREMENT_NOT_VERIFIED` | Validado en DEMO con evidencia simulada | U, E; la comprobación real está pendiente (EXT-REQ-05) |
+| EXT-008 (cancelar antes de enviar no ejecuta; después, pendiente de comprobación hasta conocer el resultado) | Validado en DEMO (simulador) | U «EXT-008 / EXT-017»; la interfaz distingue cancelar la solicitud de pausar o borrar un recurso |
+| EXT-017 (revocar o vencer antes del intento impide enviarlo; durante el intento bloquea los siguientes y conserva lo ocurrido) | Validado en DEMO (simulador) | U; sin acceso válido no se consulta ni se infiere nada (`ACCESS_UNAVAILABLE`) |
+| Respuesta tardía (se registra, no reactiva ni concede facultades) | Validado en DEMO (simulador) | U (cancelar con respuesta perdida, luego vincular sin volver a la cola); EXT-015/019 del bloque 2 |
+| EXT-003 | Validado por la prueba existente | `tests/phase4-cases.ts` «EXT-002…» cubre el contrato (A reclama y no inicia; B reclama y envía una vez); ejecutada sobre el candidato |
+| EXT-014 | Validado en DEMO | U nueva «EXT-014…» (la prueba anterior llegaba a `PARTIAL` por rechazo, no por vencimiento) |
+| EXT-006, 010, 011, 012, ACC-06 | Validado en DEMO (simulador) | bloque 8 (v22) y candidato |
+| CNV-001 (recuperar crea una versión nueva pendiente de revisión; la aprobada se conserva) | Validado en DEMO con simulador | U, E |
+| CNV-002 y capacidades de Canva | Validado en DEMO con simulador | enviar recursos (simulado), crear diseño (simulado), **vincular un diseño existente** (simulado, nuevo), abrir el editor (**sin verificar**: no hay editor en el simulador), recuperar o exportar (simulado), autocompletar y plantillas de marca (no disponibles en el plan) |
+| Aislamiento de Canva por persona y marca; acceso retirado | Validado en DEMO | U: la conexión de otra persona no sirve; otra marca → 404; acceso vencido bloquea enviar y recuperar |
+| RES-001 | Validado en DEMO | U, E |
+| RES-002 (conversiones atribuidas por proveedor, nunca sumadas ni contadas como personas) | Validado con datos sintéticos | U «RES-002…» |
+| RES-003 y enlace con Validación (propuesta revisable; acción humana; ciclo y aprobaciones existentes; sin duplicar; fuentes, periodo, campaña y versión) | Validado en DEMO | U «cycle review → Validation…»; E `phase4-launch.spec.ts` |
+| ACC-01 (lanzamiento local integrado) | Validado en DEMO con simuladores | E `phase4-launch.spec.ts` en cinco proyectos: oferta → plan → kit → material → revisión del cliente → sitio → formulario → oportunidad → campañas simuladas → resultados → revisión del ciclo → Validación |
+| Separación de adaptadores | Validado | U «adapter separation…»: la DEMO sólo construye simuladores y no arranca en producción |
+
+### Capacidades pendientes de proveedor, en categorías separadas
+
+| Capacidad | Código o adaptador por implementar | Implementación existente pendiente de acceso | Comprobación real pendiente | Decisión del propietario pendiente |
+|---|---|---|---|---|
+| Google Ads (OAuth, crear en pausa, activar, pausar, estado, métricas, registro de cambios) | **Sí**: adaptador real y flujo OAuth (hoy sólo el contrato y el simulador) | cola, autorizaciones, conciliación, pantallas y resultados | todas las operaciones con cuentas de prueba | registrar la integración; entorno de ensayo con HTTPS; gasto real por operación |
+| Meta Ads (ídem, más la medición del destino) | **Sí**: adaptador real y OAuth | ídem | ídem; evento de conversión del destino (EXT-REQ-05) | ídem; consentimiento (EXT-REQ-13) |
+| Canva Connect | **Sí**: adaptador real, OAuth por persona y paso de la credencial sellada al adaptador | envío, vínculo y recuperación como versión nueva | operaciones por plan y revisión de distribución | registrar la integración |
+| Medición del sitio (etiquetas y verificación real) | **Sí**: recepción real del evento y su verificación | huella de medición, evidencia y bloqueo | sí | privacidad y consentimiento definitivos |
+| Publicación real de sitios, HTTPS y DNS | No (servidor y verificación por TXT existen); falta el despliegue | sí | sí | dominio y alojamiento (EXT-REQ-07, EXT-REQ-14) |
+| Correo de invitaciones y avisos | **Sí**: proveedor y su diseño de seguridad | invitación por enlace | — | proveedor o mantener el enlace (EXT-REQ-08) |
+| IA real en las superficies nuevas | No (Gateway existente) | Brando determinista | sesión Live AI | clave del propietario (EXT-REQ-10) |
+
+### Criterios de bloques anteriores revisados en este cierre
+
+| Criterio | Estado tras la revisión |
+|---|---|
+| IDN-002 | Validado en DEMO: Brando propone direcciones sin escribir y la elegida entra al borrador como propuesta (`tests/brand-kit-cases.ts`). La fila del bloque 4 quedó desactualizada y esta la sustituye |
+| IDN-004 | Parcial: sitio y materiales citan la versión del kit; el anuncio de Meta cita la imagen del kit pero no la versión del kit en su manifiesto |
+| DEL-002, DEL-004, DEL-005 | Parcial: la eliminación se bloquea y las conexiones se conservan; **falta el código** del recorrido `BrandClosure` (pausar y verificar, entrega explícita) |
+| EXP-001 | Parcial: verificado en PowerPoint 16 en el bloque 6; falta la decisión sobre las aplicaciones de destino de los clientes (EXT-REQ-12). No se repite sin ese motivo |
+| EXP-002, EXP-005 | Parcial: falta la comparación renderizada automática de dos marcas |
+| Pendiente de código de bloques anteriores | OTF/CFF y WOFF2 incrustados; PDF de la guía en el portal; búsqueda del portal; Biblioteca y Plantillas; cambio de workspace activo (PRT-006); ONB-009 con un proveedor real que falle |
+| IVT-001 | Parcial: falta OIDC real y el envío por correo |
+| Pantallas nuevas | Revisadas en el paquete local de capturas (no canónicas): 8 pantallas en escritorio (1440) y móvil (390), generadas sobre `0c356ca` en `.local/acceptance/index.html`. La revisión encontró la cabecera de la tarjeta de campaña comprimida en móvil, corregida en `0c356ca` |
+
 ## Historial de revisiones
 
 | Versión | Fecha | Cambio |
@@ -753,5 +829,6 @@ captación y el proveedor de correo para avisos.
 | v18 | 2026-10-11 | Capturas aprobadas aplicadas: I10-UI-03 validado en DEMO; aceptación visual del bloque Clientes y Resultados satisfecha (no cierra Fase 4) |
 | v19 | 2026-10-11 | Exportaciones (bloque 6): estado de EXP-001…005 con aplicaciones de verificación |
 | v20 | 2026-10-11 | Sitios (bloque 7): estado de SITE, DOM, MEA y CNS con evidencia de DEMO; nota de DOM-002 (reserva al verificar) |
+| v23 | 2026-10-11 | Bloque 8 completado en local con simuladores (activación con segunda autorización, pausa, medición, EXT-008/017, Canva, RES-002, Validación, ACC-01) y bloque 9: estado final por criterio, categorías de lo pendiente de proveedor, criterios anteriores revisados |
 | v22 | 2026-10-11 | Incidencia de Clientes diagnosticada y corregida; idempotencia del formulario comprobada; bloque 8 local con simuladores: estado por criterio (CNV, EXT, RES, ACC-01/06) |
 | v21 | 2026-10-11 | Sitios en DEMO completos en su alcance local: SITE-004 (testimonios y cifras con fuente), DOM-004 (nueva verificación periódica), duplicados del formulario en el servidor, vista por tamaño, ZIP; evidencia por prueba, proyecto y código; inventario de capturas corregido (17 canónicas) |
