@@ -1030,3 +1030,6 @@ button.danger:disabled { background: #E8D5D2; border-color: #E8D5D2; color: #6E5
 .cycle-results { margin: 6px 0; padding-left: 18px; }
 .result-campaign h4 { margin: 8px 0 4px; }
 
+/* The global header rules (sticky shell bar) must not apply to a campaign card's own heading. */
+.app .campaign-card > header { display: block; position: static; min-height: 0; height: auto; padding: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; z-index: auto; box-shadow: none; border: 0; }
+.app .campaign-card > header .eyebrow { overflow-wrap: anywhere; }
