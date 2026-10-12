@@ -805,6 +805,41 @@ y así se hizo. No existe ninguna decisión que retire esas capacidades de la Fa
 | IVT-001 | Parcial: falta OIDC real y el envío por correo |
 | Pantallas nuevas | Revisadas en el paquete local de capturas (no canónicas): 8 pantallas en escritorio (1440) y móvil (390), generadas sobre `0c356ca` en `.local/acceptance/index.html`. La revisión encontró la cabecera de la tarjeta de campaña comprimida en móvil, corregida en `0c356ca` |
 
+## Revisión de la DEMO del propietario · criterios R12 (2026-10-12)
+
+Origen: revisión del propietario del 2026-10-12 (PHASE4_SPEC §13). Estados: **implementado**, **probado en local**,
+**probado con proveedor**, **pendiente**. «Ampliación» marca lo que no estaba en el alcance anterior. Un control
+visible sin funcionamiento no cuenta como implementado.
+
+| ID | Observación | Criterio de aceptación | Tipo |
+|---|---|---|---|
+| R12-01 | General / 15 | Área central más clara que ambos laterales, contenida y legible, con los tokens del sistema; revisada en los cinco tamaños | arreglo |
+| R12-02 | General | Correo: flujo completo (plantillas, cola, reintentos sin duplicar, revalidación de invitaciones, errores visibles) con proveedor simulado; la aceptación real y la entrega a una bandeja de prueba se acreditan aparte | mejora |
+| R12-03 | General | Menú: Inicio, Estrategia, Marca y recursos, Productos y servicios, Marketing, Clientes, Colaboración, Resultados, en escritorio y móvil | arreglo |
+| R12-04 | 1, 5, 10, 13, 14 | Casillas y radios alineados desde el componente común: etiqueta junto a su control, varias líneas, área de clic, teclado y foco | arreglo |
+| R12-05 | 1, 5 | Decisiones de origen aprobadas preseleccionadas al crear, con contador, «Seleccionar todas» y «Quitar selección», estado parcial; lo desmarcado se conserva; nunca decisiones no aprobadas ni de otra marca | mejora |
+| R12-06 | 1, 6 | Brando al inicio en ofertas, materiales, briefs y redes («Construir con Brando», «Completar manualmente», «Partir de una oferta aprobada»); la propuesta no borra lo escrito sin acción expresa; no inventa precios ni condiciones | mejora |
+| R12-07 | 2 | Varios planes de precio por oferta, con importe, moneda, periodicidad, unidad y condiciones, guardados por versión; vigencia comercial aparte; precios anteriores sin periodicidad inventada | mejora |
+| R12-08 | 3, 7 | Política por marca y tipo; antes de enviar se ve el responsable; después, estado, comentarios y resolución de la versión; sólo decide el asignado; devolver exige comentario; aprobación individual explícita y auditada; validado en el servidor | mejora |
+| R12-09 | 4 | Crear a partir de una oferta aprobada: borrador independiente de la misma marca, con origen trazable, sin aprobación ni autorizaciones heredadas | mejora |
+| R12-10 | 5 | Arte final adjuntable durante la elaboración o tras Canva; después de aprobar crea una versión nueva revisable | mejora |
+| R12-11 | 8 | Referencias del brief: carga, consulta y descarga, separadas del arte, con acceso controlado; no van al invitado ni a Canva por sí solas | mejora |
+| R12-12 | 17 | Plantillas en Marca y recursos: subir, listar, clasificar, versionar y descargar formatos admitidos; aislamiento por marca | mejora |
+| R12-13 | 9 | Publicación para varias redes: pieza base y variantes por red validadas (formato, longitud, estado); no autoriza publicar | mejora |
+| R12-14 | 10 | Google Performance Max con configuración y recursos propios, validaciones, propuesta, aprobación, creación en pausa, segunda autorización, consulta, pausa y fallos en el simulador | **ampliación** (ADR-0036) |
+| R12-15 | 10 | Campañas de mensajes en Meta con destino conversacional definido, validaciones y el mismo recorrido en el simulador; sin depender de Chatwoot | **ampliación** (ADR-0036) |
+| R12-16 | 11 | Compartir varios recursos a la vez con un resumen de lo que verá el invitado; sin acceso a borradores, notas internas ni versiones futuras | mejora |
+| R12-17 | 12 | Resultados: periodos predefinidos y personalizados; comparación con el periodo anterior o el mismo del año previo; ambos rangos y zona horaria; los filtros cambian los datos; sin porcentajes engañosos | mejora |
+| R12-18 | 14 | Formulario web: etiquetas junto a sus casillas; consentimientos independientes | arreglo |
+| R12-19 | 15 | Marketing con icono y texto; estado activo y foco distinguibles | arreglo |
+| R12-20 | 16 | Estrategia con el mismo indicador de sección actual que las demás, también al recargar y en la carga inicial | arreglo |
+| R12-21 | 18 | Centro de notificaciones persistente (panel derecho, contador, enlaces que revalidan el acceso) y resumen de acciones en Inicio, por usuario | mejora |
+| R12-22 | 11, §3.6 | Comentarios en la entrega y su versión, internos o compartidos, con autor y fecha; menciones y respuestas notifican; el invitado no lee notas internas | mejora |
+| R12-23 | §4 | Textos conciliados con lo que funciona; referencia inequívoca del candidato | arreglo |
+| R12-24 | §6 | DEMO en Windows con `pnpm.cmd demo:phase4`, acceso, recorrido y parada comprobada | arreglo |
+
+Estado de cada criterio: en la sección de implementación de esta iteración (más abajo, al cerrarla).
+
 ## Historial de revisiones
 
 | Versión | Fecha | Cambio |
@@ -829,6 +864,7 @@ y así se hizo. No existe ninguna decisión que retire esas capacidades de la Fa
 | v18 | 2026-10-11 | Capturas aprobadas aplicadas: I10-UI-03 validado en DEMO; aceptación visual del bloque Clientes y Resultados satisfecha (no cierra Fase 4) |
 | v19 | 2026-10-11 | Exportaciones (bloque 6): estado de EXP-001…005 con aplicaciones de verificación |
 | v20 | 2026-10-11 | Sitios (bloque 7): estado de SITE, DOM, MEA y CNS con evidencia de DEMO; nota de DOM-002 (reserva al verificar) |
+| v24 | 2026-10-12 | Criterios R12-01…R12-24 de la revisión del propietario (sin aceptación), con arreglos, mejoras y ampliaciones expresas |
 | v23 | 2026-10-11 | Bloque 8 completado en local con simuladores (activación con segunda autorización, pausa, medición, EXT-008/017, Canva, RES-002, Validación, ACC-01) y bloque 9: estado final por criterio, categorías de lo pendiente de proveedor, criterios anteriores revisados |
 | v22 | 2026-10-11 | Incidencia de Clientes diagnosticada y corregida; idempotencia del formulario comprobada; bloque 8 local con simuladores: estado por criterio (CNV, EXT, RES, ACC-01/06) |
 | v21 | 2026-10-11 | Sitios en DEMO completos en su alcance local: SITE-004 (testimonios y cifras con fuente), DOM-004 (nueva verificación periódica), duplicados del formulario en el servidor, vista por tamaño, ZIP; evidencia por prueba, proyecto y código; inventario de capturas corregido (17 canónicas) |

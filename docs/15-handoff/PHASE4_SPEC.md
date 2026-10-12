@@ -711,6 +711,107 @@ Prueba acotada de Chatwoot cuando haya entorno y accesos. 6. Exportaciones (prim
 se reutilizan como plazo: el bloque Clientes se estima por tareas (captura y resúmenes F4: 2–3 sesiones de 3–4 h,
 supuesto a recalibrar con el tiempo real informado en SESSION_STATE).
 
+## 13. Revisión de la DEMO del propietario · 2026-10-12
+
+Fuente: `Brandopolis_Fase4_Revision_DEMO_y_Bloque_Claude_2026-10-12.md` (revisión del propietario con cambios
+solicitados). **La revisión no acepta la DEMO** ni autoriza publicar, desplegar, conectar cuentas reales ni gastar. Los
+pendientes anteriores se conservan (§13.5).
+
+### 13.1 Clasificación
+
+| Tipo | Contenido |
+|---|---|
+| Arreglos dentro del alcance | controles alineados (casillas y radios) en componentes comunes; área central más clara que los laterales; orden del menú; iconos en Marketing; estado activo de Estrategia; textos desactualizados |
+| Mejoras incorporadas a la Fase 4 | preselección de decisiones de origen; Brando como guía inicial; planes de precio; crear una oferta a partir de otra; circuito de aprobación con responsable; comentarios por versión; centro de notificaciones y resumen en Inicio; correo (flujo local completo); referencias, arte final y plantillas; varias redes con variantes; compartir varios recursos; filtros y comparativos en Resultados |
+| **Ampliaciones expresas de alcance** | **Google Performance Max** y **campañas de mensajes en Meta**. ADR-0031 las excluía; se registran en [ADR-0036](../14-decisions/ADR-0036.md). Funcionan sólo con simuladores |
+
+Se mantiene el plan posterior: administración SaaS, usuarios, configuración de modelos y bases de consumo y cobro en
+la Fase 5; el primer asistente público de marca con conocimiento aprobado y RAG en la Fase 5; automatizaciones
+visuales avanzadas en la Fase 6. Las bases de permisos, eventos y notificaciones de esta revisión se diseñan para
+reutilizarse. Un plan de precio de una oferta no es una suscripción ni facturación SaaS.
+
+### 13.2 Reglas
+
+- **Preselección de decisiones de origen:** sólo en los grupos de fuentes señalados (decisiones de origen de ofertas y
+  materiales).
+  - Al crear, se marcan las decisiones aprobadas y elegibles de la marca, con contador y con «Seleccionar todas» /
+    «Quitar selección». El control conjunto representa también una selección parcial.
+  - Lo que la persona desmarca no se vuelve a marcar al reabrir ni al llegar datos tardíos.
+  - No se aplica a consentimientos, permisos, aprobaciones, redes de publicación ni autorizaciones de gasto.
+- **Brando como guía inicial:** «Construir con Brando», «Completar manualmente» y, donde corresponda, «Partir de una
+  oferta aprobada».
+  - Las propuestas se incorporan total o parcialmente y no borran lo que la persona escribió sin una acción expresa.
+  - No inventan precios, evidencias ni condiciones.
+  - En la DEMO son deterministas y así se indica.
+- **Planes de precio:** cada oferta admite varios planes, ligados a la versión: nombre, importe, moneda, periodicidad
+  (único, mensual, trimestral, anual o personalizada) y unidad (por persona, por servicio u otra) con condiciones.
+  - La vigencia comercial va aparte de la periodicidad.
+  - Los precios anteriores se conservan sin inventarles periodicidad.
+- **Crear a partir de una oferta:** copia el contenido y los planes a un borrador nuevo de la misma marca, con vínculo
+  al origen. No hereda aprobación, revisores, invitaciones, publicación ni autorizaciones.
+- **Circuito de aprobación** (ofertas y los cinco tipos de material):
+  - Hay una política por marca y tipo, con responsable por defecto y permiso de aprobación individual.
+  - Al enviar se ve quién revisa, la versión y el siguiente paso; sin responsable no se envía.
+  - Sólo el responsable asignado decide. Devolver exige comentario.
+  - La aprobación individual sólo existe con la política que la permite y queda identificada y auditada.
+  - Una aprobación anterior no vale para una versión posterior.
+  - Reasignar no concede capacidades nuevas. Si el responsable pierde el acceso, se reasigna.
+  - Se conserva la separación entre aprobación editorial, publicación y gasto. El invitado sigue sin aprobar ofertas
+    ni estrategia (ADR-0033).
+- **Comentarios:** en la entrega y su versión, con autor y fecha, internos o compartidos. El invitado sólo ve los
+  compartidos de lo que se le compartió. Las menciones notifican.
+- **Notificaciones:** un único registro de eventos por destinatario. Se ven en el panel derecho, con contador y enlace
+  que revalida el acceso, y en el resumen de Inicio. Marcar como leída no resuelve una aprobación.
+- **Correo:**
+  - Bandeja de salida persistente con plantillas, cola, reintentos sin duplicar y errores visibles. Antes de enviar
+    revalida la invitación (revocada o vencida → no se envía).
+  - En la DEMO, un proveedor simulado guarda el mensaje en local y no lo envía a nadie.
+  - Hay tres niveles de evidencia separados: flujo local con simulador; aceptación por el proveedor real; entrega a
+    una bandeja de prueba autorizada.
+- **Archivos:** se distinguen tres usos: referencia del brief, arte final de un material y plantilla de Marca y
+  recursos.
+  - Cada archivo muestra nombre, tipo, tamaño, versión y procedencia, con carga y descarga según permisos.
+  - El arte cargado o recuperado después de una aprobación crea una versión nueva revisable.
+  - Las referencias internas no se comparten con invitados ni se envían a Canva solas.
+- **Redes sociales:** varias plataformas a partir de una pieza común, con variantes por red validadas. La selección no
+  autoriza publicar.
+- **Colaboración:** se pueden compartir varios recursos a la vez, con un resumen de lo que verá el invitado. Compartir
+  no da acceso a borradores, notas internas ni versiones futuras.
+- **Resultados:**
+  - Periodos predefinidos y fechas personalizadas, comparados con el periodo anterior de igual duración o con el mismo
+    periodo del año previo.
+  - Se muestran ambos rangos y la zona horaria.
+  - Los filtros cambian los datos: las métricas de actividad del intervalo van aparte del estado actual.
+  - Sin porcentajes cuando la base es cero o desconocida. «Sin conectar» no es cero.
+- **Performance Max y mensajes en Meta:** cada tipo tiene configuración, validaciones, propuesta revisable,
+  aprobación, creación en pausa, segunda autorización, consulta, pausa y fallos propios en el simulador (ADR-0036).
+- **Navegación:**
+  - Orden del menú: Inicio → Estrategia → Marca y recursos → Productos y servicios → Marketing → Clientes →
+    Colaboración → Resultados.
+  - Marketing con icono y texto; Estrategia con el mismo indicador de sección actual, también al recargar.
+
+### 13.3 Aceptación
+
+Criterios R12-01…R12-24 en la [matriz](PHASE4_ACCEPTANCE_MATRIX.md), cada uno con su estado: implementado, probado en
+local, probado con proveedor o pendiente.
+
+### 13.4 Conciliación
+
+- **Candidato anterior:** `0c356ca` (código) y `5a76d0f` (documentación). El informe anterior anunció «cinco commits»
+  y enumeró cuatro sobre `d955645`: `6e3da74`, `16cc068`, `0c356ca` y `5a76d0f`. Son cuatro.
+- **Textos desactualizados confirmados en el código:**
+  - Campañas decía que «sólo se crea en pausa», aunque la activación y la pausa simuladas existen desde `6e3da74`.
+  - Materiales anunciaba PowerPoint, PDF y Word «más adelante», aunque las versiones aprobadas ya descargan PDF y Word,
+    más PowerPoint para presentaciones, desde el bloque 6.
+
+### 13.5 Pendientes anteriores que se conservan
+
+Adaptadores reales y OAuth de Google Ads, Meta y Canva; cierre de marca (DEL-002/004/005); versión del kit en el
+anuncio de Meta (IDN-004); OTF/WOFF2 incrustadas; PDF y búsqueda en el portal del cliente; cambio de espacio de
+trabajo; HTTPS, dominio, DNS y medición reales; privacidad y consentimiento definitivos; inicio de sesión real del
+invitado. Biblioteca y Plantillas, y el correo, se refuerzan con esta revisión. ADR-0035 sigue propuesto; Atomic y
+Chatwoot no se adoptan.
+
 ## Historial de revisiones
 
 | Versión | Fecha | Cambio |
@@ -724,4 +825,5 @@ supuesto a recalibrar con el tiempo real informado en SESSION_STATE).
 | v7 | 2026-10-11 | §4.5: estado de implementación de sitios (bloque 7); sin cambio de alcance |
 | v8 | 2026-10-11 | §4.5: sitios en DEMO completos en su alcance local (DOM-004, SITE-004, ZIP, vista por tamaño); sin cambio de alcance |
 | v9 | 2026-10-11 | §4.6 y §4.8: estado del bloque 8 local con simuladores; sin cambio de alcance |
+| v11 | 2026-10-12 | §13: revisión de la DEMO del propietario (sin aceptación): arreglos, mejoras y ampliaciones expresas (Performance Max, mensajes en Meta; ADR-0036); criterios R12; conciliación; pendientes conservados |
 | v10 | 2026-10-11 | §4.6: activación y pausa completadas con simuladores (alcance sin cambios: las dos ya estaban en §4.6); DEMO de aceptación preparada |

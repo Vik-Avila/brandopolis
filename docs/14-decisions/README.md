@@ -46,3 +46,4 @@ ACCEPTED: 0001 monolito modular, 0002 PostgreSQL, 0003 Drizzle, 0005 arquitectur
 - [ADR-0034 · Identidad visual y kit de marca](ADR-0034.md) (accepted 2026-10-10)
 
 - [ADR-0035 · Clientes: captura comercial nativa, evidencia de origen y contratos de Fases 5–6](ADR-0035.md) (proposed 2026-10-11; alcance de producto aprobado en el issue #10)
+- [ADR-0036 · Ampliación de cobertura: Google Performance Max y campañas de mensajes en Meta](ADR-0036.md) (accepted 2026-10-12 como alcance pedido por el propietario; adaptadores reales pendientes)
