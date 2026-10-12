@@ -539,26 +539,89 @@ Chrome/Edge no se verificó.
 | Parcial | EXP-001 (aplicación de destino de los clientes sin confirmar por el propietario, EXT-REQ-12; verificado en PowerPoint 16.0.16026), EXP-002 y EXP-005 (la guía y los materiales usan colores, tipografía y logotipo del kit; falta la comparación renderizada de dos marcas como prueba automática) |
 | Pendiente | ZIP del sitio (bloque de sitios), PDF de la guía en el portal del invitado (no se amplían sus facultades), OTF/CFF y WOFF2 incrustados, presentación PPTX de otros tipos de material |
 
-## Estado de implementación · sitios (bloque 7, 2026-10-11)
+## Estado de implementación · sitios en DEMO (bloque 7, 2026-10-11, v21)
 
-Código: `src/domain/site.ts` (catálogo cerrado, normalización, enlaces, preflight, huella de medición),
-`src/domain/site-render.ts` (renderizador determinista sin JavaScript), `src/application/sites.ts` y `site-config.ts`,
-`src/transport/{site-files,sites-public,sites-preview}.ts` y `scripts/sites-server.ts`. Migraciones aditivas 0028
-(siete tablas de sitios) y 0029 (reserva del dominio sólo al verificarlo), aplicadas únicamente en bases aisladas.
-Pruebas: `tests/site-cases.ts` (9 casos) y `tests/browser/phase4-sites.spec.ts` (recorrido DEMO completo en escritorio,
-tableta y móvil con la app aislada, el servidor público en 3101 y la vista previa en `127.0.0.2:3201`).
+Código: `src/domain/site.ts` (catálogo cerrado con testimonios y cifras con fuente, normalización, enlaces, preflight,
+huella de medición, reglas de nueva verificación de dominios), `src/domain/site-render.ts` (renderizador determinista
+sin JavaScript), `src/application/sites.ts` y `site-config.ts`, `src/transport/{site-files,site-zip,sites-public,
+sites-preview}.ts` y `scripts/sites-server.ts`. Migraciones aditivas 0028 (siete tablas de sitios), 0029 (reserva del
+dominio sólo al verificarlo) y 0030 (nueva verificación periódica), aplicadas únicamente en las bases aisladas de
+desarrollo (55434) y pruebas (55432).
+
+### Evidencia por prueba, proyecto y código
+
+| Prueba | Qué cubre | Proyectos | Código comprobado |
+|---|---|---|---|
+| `tests/site-cases.ts` (14 casos, dentro de `pnpm test`) | SITE-001…010, DOM-001…006, CNS-004, MEA-006/007/008/012/013, duplicados del formulario en el servidor, ZIP, vista por tamaño | unitarias (Node, base 55432) | `28bb7d0` |
+| `tests/browser/phase4-sites.spec.ts` (1 recorrido) | crear → propuesta → secciones (con testimonio de ejemplo DEMO y cifra con fuente) → guardar y retomar → vista previa y vista por tamaño → revisión y aprobación → ZIP abierto desde disco → publicar → formulario (reintento al volver atrás) → Clientes → segunda versión → restaurar | wide, desktop, compact, tablet y mobile | `28bb7d0` |
+| Regresión completa: 16 archivos de `tests/browser/` en dos tramos (A: 6, B: 10; inventario sin duplicados, sin reintentos automáticos) | todas las pruebas de navegador del repositorio | 300 ejecuciones (60 pruebas × 5 proyectos): 286 PASS, 13 omitidas por diseño según el ancho (pruebas sólo de escritorio o sólo de móvil) y 1 fallo: `phase4-clients.spec.ts:16` en compact (tras recargar, el clic en Clientes mostró «Objetivo estratégico»; posible carrera con la carga inicial, causa no confirmada). Esa prueba pasó 3 de 3 al repetirla aislada como diagnóstico, sin sustituir el resultado. La traza está conservada y la prueba queda en observación, no corregida. El 503 de `phase3.spec.ts:58` no apareció (PASS en los cinco proyectos) y sigue en observación | `28bb7d0` |
+
+Evidencia anterior, sustituida por la de esta tabla y conservada como historial: en `897e61a` el recorrido de sitios
+pasó en desktop, tablet y mobile, y siete pruebas pasaron **sólo en escritorio**: `phase4-deliverables` (3: publicación
+social con registro manual; copia de oferta en Materiales de venta; propuesta de Brando para redes), `phase4-collaboration`
+(1: invitación, portal y revocación), `phase4-priority` (2: INT-001/002/005 e INT-007) y `phase4-clients` (1: captura
+manual y web). No fue una regresión completa.
 
 | Estado | Criterios |
 |---|---|
-| Implementado · validado en DEMO | SITE-001, SITE-002, SITE-003, SITE-005, SITE-007, SITE-008, SITE-009, SITE-010; SITE-006 (campo trampa, cuerpo limitado, límite por visitante y por sitio, guardado por la captura de Clientes; un reintento o volver atrás conserva una sola oportunidad); DOM-001, DOM-002 (ver nota), DOM-005 (cerrar la marca borra sitios, versiones, dominios e instantáneas), DOM-006; CNS-004 y MEA-006/007/008/012/013 como reglas de huella y estado de la medición, sin medición real conectada |
-| Parcial | SITE-004 (catálogo cerrado y escape validados; el catálogo no tiene testimonios ni cifras, así que «sólo con fuente» todavía no tiene superficie); DOM-004 (retirar deja de servir y libera; la pérdida del registro se detecta al comprobar, todavía sin comprobación periódica automática); vista previa escritorio/móvil (la página se adapta al navegador; no hay conmutador de tamaño) |
-| Pendiente de decisión o proveedor | DOM-003 (HTTPS por dominio: depende del alojamiento definitivo); MEA-001…005 y MEA-009…011 (medición real, etiquetas y cuentas conectadas); CNS-001…003 (sin etiquetas reales no se carga nada; el texto final depende de la privacidad definitiva); publicación en un dominio real (despliegue no autorizado) |
-| Pendiente | ZIP del sitio (portabilidad); regresión E2E completa de cinco proyectos con este bloque |
+| Implementado · validado en DEMO | SITE-001…SITE-010 (SITE-004 con testimonios y cifras: cada uno cita una evidencia de la marca o un texto aportado por una persona, con permiso en los testimonios; la fuente queda en la versión y nunca se publica; los ejemplos DEMO se marcan en la página y sólo se publican en marcas DEMO; Brando propone dónde irían y qué falta, nunca su contenido); SITE-006 (duplicados detenidos en el servidor, ver nota); DOM-001, DOM-002, DOM-004 (ver nota), DOM-005, DOM-006; vista previa por tamaño (escritorio 1280 px y móvil 390 px; no sustituye las pruebas en tamaños reales); ZIP de una versión aprobada (ver nota); CNS-004 y MEA-006/007/008/012/013 como reglas, sin medición real |
+| Parcial | — (en el alcance local de sitios) |
+| Pendiente de decisión | dominio de publicación de los sitios; texto definitivo de privacidad y consentimiento; correo para avisos (hoy los avisos de dominio se ven en la propia pantalla) |
+| Pendiente de proveedor o evidencia real | DOM-003 (HTTPS por dominio y dirección DNS hacia el alojamiento: dependen del alojamiento definitivo); comprobaciones DNS reales de un dominio de cliente (el mecanismo se probó con respuestas controladas y tiempo simulado); MEA-001…005 y MEA-009…011 (medición real y cuentas conectadas); CNS-001…003 con etiquetas reales; publicación en un dominio real (despliegue no autorizado) |
 
-Nota sobre DOM-002: un dominio pendiente de verificación no queda asociado; sólo la verificación lo reserva. Así una
-marca no puede bloquear el dominio de otra añadiéndolo sin controlarlo (corrección `562e32a`, hallada por la revisión
-de seguridad del commit). Mientras la marca que lo tiene verificado conserve su registro, ninguna otra lo verifica, y
-la respuesta no revela cuál lo tiene.
+Nota sobre SITE-006 (formulario): la protección contra duplicados es del servidor, no del navegador. El identificador
+de envío de cada página es la clave de captura de Clientes, única por formulario en la base de datos (I10-CLI-04).
+Así, un reintento tras perder la respuesta, dos envíos simultáneos o volver atrás y reenviar devuelven el mismo
+registro. El HTML es `private, no-cache`: ninguna caché compartida puede entregar la misma página, con el mismo
+identificador, a varios visitantes. Si eso ocurriera, o si alguien vuelve atrás y cambia la solicitud, llegaría el
+mismo identificador con otro contenido. Ese envío se guarda entonces como oportunidad propia, con una clave
+derivada del identificador y su contenido; es determinista, así que sus propios reintentos también se agrupan. Nada
+se mezcla, se pierde ni se bloquea. Cada marca y cada sitio tienen su formulario y su ámbito. El éxito sólo se
+muestra después de guardar; si el guardado falla, la página lo dice y pide reenviar.
+
+Nota sobre DOM-004: cada dominio propio verificado se vuelve a comprobar una vez al día. Lo hace un trabajador que
+reclama cada dominio con `SKIP LOCKED` sobre su propia fila, el mismo patrón de reclamación que la cola de ADR-0031.
+Una lectura DNS no necesita conexión con un proveedor ni autorización humana, así que no entra en esa cola.
+
+- **Vigencia:** una confirmación vale 72 h. Sólo se sirve un dominio con confirmación vigente.
+- **Fallo temporal de la consulta** (sin respuesta, SERVFAIL): no confirma ni retira nada; se reintenta cada hora.
+  Si la última confirmación tiene más de 72 h, el dominio pasa a «Comprobación pendiente»: deja de servirse, pero
+  sigue reservado para su marca. A los 30 días sin ninguna confirmación se libera.
+- **Pérdida confirmada:** una respuesta DNS sin el registro (también NXDOMAIN) se confirma con una segunda respuesta
+  al menos una hora después. Entonces el dominio pasa a «Perdió la verificación», deja de servirse y se libera.
+- **Recuperación:** en cuanto vuelve a encontrarse el registro, el dominio queda verificado y se sirve de nuevo.
+- **Transferencia:** sólo cuando otra marca demuestra control con su propio registro, en una respuesta DNS en la que
+  ya no está el del titular. Nunca por una consulta fallida, y la respuesta no revela qué marca lo tiene.
+- **Verificaciones concurrentes:** se bloquean todos los intentos sobre el host en un orden fijo, sin interbloqueo, y
+  un índice único garantiza un solo titular.
+- **Vínculo con la marca:** el registro TXT lleva un token propio de cada intento de asociación, así que nadie puede
+  reutilizar una configuración genérica.
+- **Requisitos por separado:** control del dominio, dirección DNS hacia el alojamiento y HTTPS se muestran aparte. Un
+  dominio propio nunca aparece como listo para publicar, porque los dos últimos dependen del alojamiento definitivo.
+- **Trabajador en desarrollo:** se activa con `pnpm sites:public --isolated --domain-checks` y sólo lee registros TXT
+  públicos.
+
+Nota sobre el ZIP: exporta una versión aprobada exacta con los mismos archivos del renderizador. Lleva enlaces
+relativos (abre desde una carpeta), `LEEME.txt` y `manifest.json` con el SHA-256 de cada archivo. La sección de
+contacto no lleva formulario: muestra que no está conectado fuera de Brandopolis. No incluye fuentes de testimonios
+ni de cifras, enlaces de vista previa, identificadores de workspace o marca, credenciales ni archivos de otras marcas.
+Las tipografías sólo se incluyen con el permiso web declarado en el kit. `LEEME.txt` explica qué funciones necesitan
+Brandopolis (formulario, publicación, vista previa, dominio) y las limitaciones de medición y consentimiento.
+
+Nota sobre DOM-002: un dominio pendiente de verificación no queda asociado; sólo la verificación lo reserva
+(corrección `562e32a`, hallada por la revisión de seguridad del commit). Desde 0030 también lo reserva un dominio en
+«Comprobación pendiente».
+
+### Inventario de capturas (corrección del registro)
+
+El conjunto canónico único que compara la validación es de **17 archivos** en `design/brandopolis-ui/reference/screenshots/`:
+8 pantallas en escritorio y móvil, más `decision-card-desktop`. Son los mismos 17 nombres que había antes de la Fase 4;
+no se incorporó ninguna canónica nueva. Su aprobación viene de las decisiones humanas registradas en el README de esa
+carpeta: v2, v3, v4 y la revisión única del 2026-10-11 (SHA-256 `c32b8e58…c970`, capturada sobre `5cf0618`), que
+reemplazó nueve en `597ad70`. La cifra de «36 capturas canónicas» del registro anterior fue un error de recuento: se
+sumaron archivos generados o de otras carpetas de referencia que no son el conjunto canónico. Otras carpetas de
+referencia (`phase10b/`, `brando-b1/`, `phase10a/encoding-proof/`, `future-concepts/`) son evidencia histórica o
+conceptos, no se regeneran con `test:visual` y no entran en esa cifra. Comparación de esta entrega: `test:visual` 10 PASS · 1 SKIP (sólo estructura); comparación al píxel (umbral: suma RGB > 48 de 765) de las 17 canónicas contra las capturas de `test-results/visual/` generadas sobre `28bb7d0`: 17 de 17 con 0 % de píxeles cambiados y los mismos tamaños. Ninguna referencia se actualizó y no hay cambios visuales previstos en esas pantallas
 
 ## Historial de revisiones
 
@@ -584,3 +647,4 @@ la respuesta no revela cuál lo tiene.
 | v18 | 2026-10-11 | Capturas aprobadas aplicadas: I10-UI-03 validado en DEMO; aceptación visual del bloque Clientes y Resultados satisfecha (no cierra Fase 4) |
 | v19 | 2026-10-11 | Exportaciones (bloque 6): estado de EXP-001…005 con aplicaciones de verificación |
 | v20 | 2026-10-11 | Sitios (bloque 7): estado de SITE, DOM, MEA y CNS con evidencia de DEMO; nota de DOM-002 (reserva al verificar) |
+| v21 | 2026-10-11 | Sitios en DEMO completos en su alcance local: SITE-004 (testimonios y cifras con fuente), DOM-004 (nueva verificación periódica), duplicados del formulario en el servidor, vista por tamaño, ZIP; evidencia por prueba, proyecto y código; inventario de capturas corregido (17 canónicas) |

@@ -1,3 +1,12 @@
+## 2026-10-11 · Phase 4 — Sitios en DEMO: cierre del alcance local (migración aditiva 0030)
+
+- El formulario del sitio evita duplicados desde el servidor; si un mismo identificador llega con otro contenido, se guarda aparte y nunca se mezcla ni se bloquea.
+- Los dominios propios se vuelven a comprobar cada día; una consulta fallida nunca los transfiere ni los da por buenos, y el control del dominio, la dirección DNS y HTTPS se muestran por separado.
+- Nuevas secciones de testimonios y cifras: sólo con fuente, y los ejemplos DEMO se marcan como tales.
+- Vista previa en ancho de escritorio o de móvil.
+- ZIP de una versión aprobada con instrucciones; su formulario no aparenta enviar fuera de Brandopolis.
+- Evidencia: unitarias 508 PASS; regresión de navegador 300 ejecuciones (60 pruebas × 5 proyectos): 286 PASS, 13 omitidas por diseño según el ancho (pruebas sólo de escritorio o sólo de móvil) y 1 fallo: `phase4-clients.spec.ts:16` en compact (tras recargar, el clic en Clientes mostró «Objetivo estratégico»; posible carrera con la carga inicial, causa no confirmada). Esa prueba pasó 3 de 3 al repetirla aislada como diagnóstico, sin sustituir el resultado. La traza está conservada y la prueba queda en observación, no corregida. El 503 de `phase3.spec.ts:58` no apareció (PASS en los cinco proyectos) y sigue en observación; PILOT 10/10. HTTPS, dominio de publicación, medición real y publicación real siguen pendientes.
+
 ## 2026-10-11 · Phase 4 — Sitio web en Marketing (migraciones aditivas 0028 y 0029)
 
 - Marketing › Sitio web: objetivo, lo que ya existe, propuesta de Brando con procedencia (sólo se guarda si la incorporas), edición por secciones de un catálogo cerrado, guardar y retomar, comprobaciones antes de publicar.

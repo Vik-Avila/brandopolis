@@ -108,7 +108,8 @@ Aprobar o pedir cambios exige un criterio de al menos diez caracteres y la huell
 publica: publicar es otra acción, exige `PUBLISH_SITE` y una confirmación con sitio, versión y dirección. Una
 publicación nueva reemplaza a la anterior y restaurar crea otra publicación. Las versiones aprobadas y las
 publicaciones son inmutables (triggers de la migración 0028). Un dominio propio sólo reserva su host cuando se
-verifica (migración 0029).
+verifica (migración 0029) y se vuelve a comprobar cada día; sólo se sirve con una confirmación vigente; una
+consulta fallida nunca lo transfiere (migración 0030).
 
 ```mermaid
 stateDiagram-v2
@@ -128,7 +129,12 @@ stateDiagram-v2
  state SiteDomain {
   [*] --> PENDING_VERIFICATION: añadir dominio propio
   PENDING_VERIFICATION --> VERIFIED: registro TXT propio encontrado
-  VERIFIED --> FAILED: registro perdido u otro titular lo demuestra
+  VERIFIED --> VERIFIED: comprobación diaria confirma (vigencia 72 h)
+  VERIFIED --> NEEDS_REVERIFICATION: sin confirmación vigente (consultas fallidas)
+  NEEDS_REVERIFICATION --> VERIFIED: registro confirmado de nuevo
+  NEEDS_REVERIFICATION --> FAILED: pérdida confirmada, otro titular lo demuestra o 30 días sin confirmar
+  VERIFIED --> FAILED: pérdida confirmada en dos respuestas separadas una hora, u otro titular lo demuestra
+  NEEDS_REVERIFICATION --> REMOVED: retirar
   FAILED --> VERIFIED: registro encontrado de nuevo
   PENDING_VERIFICATION --> REMOVED: retirar
   VERIFIED --> REMOVED: retirar

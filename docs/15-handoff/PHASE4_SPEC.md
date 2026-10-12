@@ -171,8 +171,10 @@ nueva en el lateral. Recorrido: objetivo → lo que ya existe → propuesta dete
 (sólo cambia el borrador si la persona la incorpora) → edición por secciones del catálogo cerrado → comprobaciones
 → vista previa autenticada → revisión con criterio → publicación de la versión exacta con `PUBLISH_SITE` y
 confirmación → restauración como publicación nueva. El formulario guarda la solicitud en Clientes. Dominio propio
-verificado por TXT, sin compra ni cambio de DNS. Pendiente: ZIP, medición real y consentimiento con etiquetas reales,
-HTTPS por dominio y publicación real. Estado por criterio en la matriz (v20).
+verificado por TXT, sin compra ni cambio de DNS, y vuelto a comprobar cada día (DOM-004). Testimonios y cifras sólo con
+fuente, vista previa por tamaño y ZIP de una versión aprobada. Pendiente de proveedor o decisión: HTTPS por dominio,
+dominio de publicación, medición y consentimiento con etiquetas reales, comprobaciones DNS reales y publicación real.
+Estado por criterio en la matriz (v21).
 
 ### 4.6 Google Ads y Meta Ads (ADR-0031)
 
@@ -704,3 +706,4 @@ supuesto a recalibrar con el tiempo real informado en SESSION_STATE).
 | v5 · aprobada | 2026-10-10 | Aprobación del propietario (14:49): ADR aceptados con C1; inicio guiado completo, dominio propio, invitaciones y controles de consentimiento incluidos; §10 actualizado y §11 nuevo; desarrollo autorizado fuera de producción |
 | v6 | 2026-10-11 | Issue #10 y plan de Clientes/Resultados v5 (paquete de reconciliación revisión 3): resolución en §1, ocho áreas propuestas en §3, filas nuevas en §10 y §12 nuevo (captura F4, Resultados ampliados, permisos, flujo y Brando, atribución/ROAS/asesores/metas/históricos/forecast, reparto F4/F5/F6, Atomic/Chatwoot, orden de trabajo). El resto de la especificación no cambia |
 | v7 | 2026-10-11 | §4.5: estado de implementación de sitios (bloque 7); sin cambio de alcance |
+| v8 | 2026-10-11 | §4.5: sitios en DEMO completos en su alcance local (DOM-004, SITE-004, ZIP, vista por tamaño); sin cambio de alcance |

@@ -141,3 +141,11 @@ publicación y restauración en el servidor aislado, formulario hacia Clientes y
 `pnpm competition:start --isolated`, `pnpm sites:public --isolated` y `pnpm sites:preview --isolated`. Estado por
 criterio en la matriz (v20) y en SESSION_STATE. Pendiente de decisión: dominio de publicación, HTTPS por dominio,
 medición y consentimiento con etiquetas reales; pendiente técnico: ZIP del sitio y regresión completa.
+
+**Actualización · sitios en DEMO, cierre local (2026-10-11).** `28bb7d0` completa el alcance local de Sitios:
+duplicados del formulario detenidos en el servidor, nueva verificación diaria de dominios (migración aditiva 0030,
+`pnpm sites:public --isolated --domain-checks`), testimonios y cifras con fuente, vista previa por tamaño y ZIP de una
+versión aprobada. Estado por criterio y evidencia por prueba en la matriz (v21). Siguen pendientes de decisión o
+proveedor el dominio de publicación, HTTPS y DNS por dominio, las comprobaciones DNS reales, la medición y el
+consentimiento con etiquetas reales y la publicación real. Siguiente bloque según PHASE4_SPEC §7: bloque 8 (Canva,
+Google Ads y Meta Ads en el alcance definido; resultados y revisión del ciclo).

@@ -1,3 +1,44 @@
+## 2026-10-11 · PHASE 4 · sitios en DEMO completos en su alcance local (bloque 7, cierre)
+
+**Punto de partida:** rama `feat/phase4-marketing-web-collaboration`, HEAD `ab95faa` (después de `8d00287`,
+`562e32a` y `897e61a`), árbol limpio. **Commits locales (sin push ni despliegue):** `28bb7d0` (implementación y
+migración aditiva 0030) y el commit de documentación de este cierre. Las migraciones 0028, 0029 y 0030 se aplicaron
+sólo en las bases aisladas de desarrollo (55434) y pruebas (55432).
+
+**Qué cambió:**
+- **Formulario:** los duplicados se detienen en el servidor. Un identificador de página reutilizado con otro
+  contenido se guarda como oportunidad propia, sin mezclarse ni bloquearse.
+- **DOM-004:** nueva verificación diaria de dominios propios. Una consulta fallida nunca confirma ni transfiere; la
+  pérdida se confirma dos veces; «Comprobación pendiente» no se sirve, pero conserva la reserva. Las verificaciones
+  concurrentes se serializan; corregido un posible interbloqueo entre dos verificaciones simultáneas (hallado al
+  diseñar la prueba).
+- **SITE-004:** testimonios y cifras con fuente; los ejemplos DEMO se marcan.
+- **Vista previa:** vista por tamaño (escritorio y móvil).
+- **ZIP:** exportación de una versión aprobada, con `LEEME.txt` y manifiesto.
+
+**Resultados en `28bb7d0`:**
+- `pnpm test`: 508 PASS. Typecheck y lint, 0 errores. Foundation, 0 errores. Validador de UI: PASS.
+- Recorrido `phase4-sites`: PASS en los cinco proyectos.
+- Regresión completa de navegador (16 archivos, 5 proyectos, en tramos secuenciales con un worker): 300 ejecuciones (60 pruebas × 5 proyectos): 286 PASS, 13 omitidas por diseño según el ancho (pruebas sólo de escritorio o sólo de móvil) y 1 fallo: `phase4-clients.spec.ts:16` en compact (tras recargar, el clic en Clientes mostró «Objetivo estratégico»; posible carrera con la carga inicial, causa no confirmada). Esa prueba pasó 3 de 3 al repetirla aislada como diagnóstico, sin sustituir el resultado. La traza está conservada y la prueba queda en observación, no corregida. El 503 de `phase3.spec.ts:58` no apareció (PASS en los cinco proyectos) y sigue en observación.
+- `test:visual` y comparación al píxel: `test:visual` 10 PASS · 1 SKIP (sólo estructura); comparación al píxel (umbral: suma RGB > 48 de 765) de las 17 canónicas contra las capturas de `test-results/visual/` generadas sobre `28bb7d0`: 17 de 17 con 0 % de píxeles cambiados y los mismos tamaños. Ninguna referencia se actualizó y no hay cambios visuales previstos en esas pantallas
+- `pnpm test:pilot:e2e`: 10/10
+
+**Corrección del registro:** la entrada anterior decía «36 capturas canónicas». El conjunto canónico es de 17
+archivos (`design/brandopolis-ui/reference/screenshots/`), sin canónicas nuevas en la Fase 4. Inventario y origen de
+las aprobaciones en la matriz v21.
+
+**Estado por tipo (matriz v21):**
+- **Implementado y validado en DEMO:** SITE-001…010, DOM-001/002/004/005/006, vista por tamaño, ZIP, y CNS-004 y
+  MEA-006/007/008/012/013 como reglas.
+- **Parcial:** nada en el alcance local de sitios.
+- **Pendiente de decisión:** dominio de publicación, privacidad y consentimiento definitivos, correo para avisos.
+- **Pendiente de proveedor o evidencia real:** HTTPS y dirección DNS por dominio (DOM-003), comprobaciones DNS reales,
+  medición real (MEA-001…005, 009…011), CNS-001…003 con etiquetas reales, publicación real.
+
+**Sin cambios:** producción, DNS, proveedores, correo e IA real. ADR-0035 sigue propuesto; Atomic y Chatwoot no
+están adoptados. El 503 de `phase3.spec.ts:58` sigue en observación, sin causa confirmada. Cerrar Sitios en DEMO no
+cierra la Fase 4 ni autoriza publicar de verdad. **Not release-ready.**
+
 ## 2026-10-11 · PHASE 4 · sitios web (bloque 7) y corrección de seguridad de dominios
 
 **Commits locales (sin push ni despliegue):** `8d00287` (sitios, migración aditiva 0028), `562e32a` (corrección de
