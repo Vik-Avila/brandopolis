@@ -18,11 +18,37 @@ export type OfferContent = {
   sourceDecisionVersionIds: string[];
   hypothesisIds: string[];
   price: { amountMinor: number; currency: string; validFrom: string | null; validUntil: string | null; certainty: 'CONFIRMED' | 'ESTIMATED' } | null;
+  /** PHASE4_SPEC §13 · several price plans per version (absent in versions created before them). */
+  pricePlans?: PricePlan[];
 };
+export type Periodicity = 'ONE_TIME' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | 'CUSTOM';
+export type PricePlan = { name: string; amountMinor: number; currency: string; periodicity: Periodicity | null; customPeriod: string; unit: 'PER_SERVICE' | 'PER_PERSON' | 'PER_UNIT' | 'OTHER'; unitLabel: string; conditions: string; validFrom: string | null; validUntil: string | null; certainty: 'CONFIRMED' | 'ESTIMATED' };
 
 const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
 const list = (value: unknown) => (Array.isArray(value) ? value.map(text).filter(Boolean) : []);
 const ids = (value: unknown) => [...new Set(list(value))];
+const dateOrNull = (value: unknown) => text(value) || null;
+
+/**
+ * A plan keeps what the person wrote: periodicity null means «not stated» (a legacy single price carried over keeps it
+ * that way; nothing is invented). CUSTOM needs its description and OTHER units their label.
+ */
+function normalizePlan(raw: unknown): PricePlan {
+  const p = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  return {
+    name: text(p.name), amountMinor: p.amountMinor as number, currency: text(p.currency).toUpperCase(),
+    periodicity: p.periodicity == null || p.periodicity === '' ? null : p.periodicity as Periodicity,
+    customPeriod: p.periodicity === 'CUSTOM' ? text(p.customPeriod) : '',
+    unit: (p.unit ?? 'PER_SERVICE') as PricePlan['unit'], unitLabel: p.unit === 'OTHER' ? text(p.unitLabel) : '',
+    conditions: text(p.conditions), validFrom: dateOrNull(p.validFrom), validUntil: dateOrNull(p.validUntil),
+    certainty: p.certainty as 'CONFIRMED'
+  };
+}
+
+/** A legacy single price shown and edited as one plan, without inventing a periodicity or a unit label. */
+export function legacyPlan(price: NonNullable<OfferContent['price']>): PricePlan {
+  return { name: 'Precio', amountMinor: price.amountMinor, currency: price.currency, periodicity: null, customPeriod: '', unit: 'PER_SERVICE', unitLabel: '', conditions: '', validFrom: price.validFrom, validUntil: price.validUntil, certainty: price.certainty };
+}
 
 /** Trims and fills defaults, then validates against offer-version v1 and the price rules (MKT-006). */
 export function normalizeOfferContent(input: unknown): OfferContent {
@@ -48,11 +74,28 @@ export function normalizeOfferContent(input: unknown): OfferContent {
       validFrom: text(price.validFrom) || null,
       validUntil: text(price.validUntil) || null,
       certainty: price.certainty as 'CONFIRMED'
-    } : null
+    } : null,
+    ...(raw.pricePlans !== undefined ? { pricePlans: (Array.isArray(raw.pricePlans) ? raw.pricePlans : [null]).map(normalizePlan) } : {})
   };
   validate('offer-version', content);
   if (content.price?.validFrom && content.price.validUntil && content.price.validUntil < content.price.validFrom) throw new AppError('INVALID', 'Price validity ends before it starts');
+  for (const plan of content.pricePlans ?? []) {
+    if (plan.validFrom && plan.validUntil && plan.validUntil < plan.validFrom) throw new AppError('INVALID', 'Price validity ends before it starts');
+    if (plan.periodicity === 'CUSTOM' && !plan.customPeriod) throw new AppError('INVALID', 'Describe the custom periodicity');
+    if (plan.unit === 'OTHER' && !plan.unitLabel) throw new AppError('INVALID', 'Describe the unit');
+  }
+  if (new Set((content.pricePlans ?? []).map(p => p.name.toLowerCase())).size !== (content.pricePlans ?? []).length) throw new AppError('INVALID', 'Each price plan needs its own name');
   return content;
+}
+
+/**
+ * «Create from this offer»: a new draft with the same content and plans. Nothing that belongs to the source travels
+ * (approvals, reviewers, invitations, publications and authorizations live outside the content); the name says it is
+ * a copy so both can be told apart.
+ */
+export function derivedContent(source: OfferContent): OfferContent {
+  const name = `${source.name} (copia)`.slice(0, 160);
+  return normalizeOfferContent({ ...source, name, ...(source.pricePlans === undefined && source.price ? { pricePlans: [legacyPlan(source.price)], price: null } : {}) });
 }
 
 /** What is still missing for a useful offer (shown as guidance; never blocks a draft). */

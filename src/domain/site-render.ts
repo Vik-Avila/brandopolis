@@ -100,7 +100,7 @@ main{max-width:1080px;margin:0 auto;padding:0 clamp(16px,5vw,64px) 48px}section,
 .cta{padding:32px;border-radius:12px;background:rgba(0,0,0,.04)}figcaption{font-size:15px;opacity:.8}
 details{border-bottom:1px solid rgba(0,0,0,.1);padding:12px 0}summary{cursor:pointer;font-weight:700}
 .contact-form{display:grid;gap:8px;max-width:560px}.contact-form label{font-weight:700}.contact-form input:not([type=checkbox]),.contact-form textarea{width:100%;font:inherit;padding:10px 12px;border:1px solid rgba(0,0,0,.3);border-radius:8px}
-.contact-form .check{display:flex;gap:8px;font-weight:400}.hint{font-size:15px;opacity:.8;margin:0}.trap{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.contact-form .check{display:flex;align-items:flex-start;gap:10px;font-weight:400;line-height:1.4}.contact-form .check input{width:18px;height:18px;margin:2px 0 0;flex:0 0 18px}.hint{font-size:15px;opacity:.8;margin:0}.trap{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}.site-footer{padding:24px clamp(16px,5vw,64px);border-top:1px solid rgba(0,0,0,.08);font-size:15px}
 `;
 }

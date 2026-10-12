@@ -34,7 +34,9 @@ import { applyDirection, draftValueIds, adoptKitValues, decideKit, kitAsset, mer
 import type { KitAssetInfo } from '../domain/kit-assets.js';
 import type { KitContent } from '../domain/brand-kit.js';
 import { createDeliverable, decideDeliverable, listDeliverables, newDeliverableDraft, recordPublication, retireDeliverable, saveDeliverableDraft, submitDeliverable } from './deliverables.js';
-import { createOffer, decideOffer, listOffers, newOfferDraft, retireOffer, saveOfferDraft, submitOffer } from './offers.js';
+import { createOffer, createOfferFrom, decideOffer, listOffers, newOfferDraft, retireOffer, saveOfferDraft, submitOffer } from './offers.js';
+import { addReviewComment, readApprovalPolicies, reassignReview, setApprovalPolicy } from './review-workflow.js';
+import { listNotifications, markNotificationsRead, openNotification } from './notifications.js';
 
 const id=()=>randomUUID();
 export const hash=(value:string)=>createHash('sha256').update(value).digest('hex');
@@ -121,18 +123,54 @@ export class Engine {
     return this.withBrandActor(token,brandId,(tx,actor)=>listOffers(tx,actor));
   }
   /** PHASE4_SPEC §4.1 · one offer operation under the brand scope; every change is audited. */
-  async offerCommand(token:string,action:'create'|'draft'|'submit'|'decide'|'new-draft'|'retire',input:Record<string,unknown>) {
+  async offerCommand(token:string,action:'create'|'create-from'|'draft'|'submit'|'decide'|'new-draft'|'retire',input:Record<string,unknown>) {
     if(!input||typeof input!=='object'||Array.isArray(input))throw new AppError('INVALID','Invalid offer request');
-    const run={create:createOffer,draft:saveOfferDraft,submit:submitOffer,decide:decideOffer,'new-draft':newOfferDraft,retire:retireOffer}[action];
+    const run={create:createOffer,'create-from':createOfferFrom,draft:saveOfferDraft,submit:submitOffer,decide:decideOffer,'new-draft':newOfferDraft,retire:retireOffer}[action];
     if(!run)throw new AppError('INVALID','Unknown offer operation');
     return this.withBrandActor(token,input.brandId as string,async(tx,actor)=>{
       const result=await (run as (tx:Transaction,a:BrandActor,i:Record<string,unknown>)=>Promise<Record<string,unknown>>)(tx,actor,input);
       // Audit names the exact version acted on (and the one it superseded or started from); only a decision carries
       // its validated criterion. A decision is recorded as OFFER_APPROVE or OFFER_REQUEST_CHANGES.
-      const operation=action==='decide'?(result.status==='APPROVED'?'OFFER_APPROVE':'OFFER_REQUEST_CHANGES'):`OFFER_${action.toUpperCase().replace('-','_')}`;
+      const operation=action==='decide'?(result.status==='APPROVED'?'OFFER_APPROVE':'OFFER_REQUEST_CHANGES'):`OFFER_${action.toUpperCase().replace(/-/g,'_')}`;
       if(!result.replayed)await this.audit(tx,{...actor},{operation,idempotencyKey:typeof input.idempotencyKey==='string'?input.idempotencyKey:randomUUID(),newVersion:(result.versionId as string|null)??null,previousVersion:((result.superseded??result.previousVersionId) as string|null|undefined)??null,rationale:action==='decide'?result.criterion as string:undefined});
+      if(!result.replayed)await this.auditReview(tx,actor,'OFFER',action,result);
       return result;
     },true);
+  }
+  /**
+   * PHASE4_SPEC §13 · the approval circuit leaves its own trace: who was assigned to review a version (and whether the
+   * author reviews alone), and an approval given alone. The decision audit above stays as it was.
+   */
+  private async auditReview(tx:Transaction,actor:BrandActor,kind:'OFFER'|'DELIVERABLE',action:string,result:Record<string,unknown>) {
+    if(action==='submit')await this.audit(tx,{...actor},{operation:result.selfApproval?`${kind}_REVIEW_SELF_ASSIGNED`:`${kind}_REVIEW_ASSIGNED`,idempotencyKey:randomUUID(),newVersion:(result.versionId as string)??null,rationale:`reviewer:${String(result.reviewerId)}`});
+    if(action==='decide'&&result.selfApproval)await this.audit(tx,{...actor},{operation:`${kind}_SELF_APPROVAL`,idempotencyKey:randomUUID(),newVersion:(result.versionId as string)??null});
+  }
+  /** PHASE4_SPEC §13 · approval circuit of a brand: policies per type and the team that can review. */
+  async approvalPolicies(token:string,brandId:string) {
+    return this.withBrandActor(token,brandId,(tx,actor)=>readApprovalPolicies(tx,actor));
+  }
+  /** PHASE4_SPEC §13 · policy edits (administrators), review reassignment and comments per version; all audited. */
+  async reviewCommand(token:string,action:'policy'|'reassign'|'comment',input:Record<string,unknown>) {
+    if(!input||typeof input!=='object'||Array.isArray(input))throw new AppError('INVALID','Invalid review request');
+    const run={policy:setApprovalPolicy,reassign:reassignReview,comment:addReviewComment}[action];
+    if(!run)throw new AppError('INVALID','Unknown review operation');
+    return this.withBrandActor(token,String(input.brandId??''),async(tx,actor)=>{
+      const result=await (run as (tx:Transaction,a:BrandActor,i:Record<string,unknown>)=>Promise<Record<string,unknown>>)(tx,actor,input);
+      if(!result.replayed)await this.audit(tx,actor,{operation:{policy:'APPROVAL_POLICY_SET',reassign:'REVIEW_REASSIGNED',comment:'REVIEW_COMMENT'}[action],idempotencyKey:typeof input.idempotencyKey==='string'?input.idempotencyKey:randomUUID(),newVersion:String(result.versionId??result.commentId??result.subjectType??'')});
+      return result;
+    },true);
+  }
+  /** PHASE4_SPEC §13 · the person's notifications (this workspace, brands they can still open). Reading never writes. */
+  async notifications(token:string) {
+    return this.db.transaction(async tx=>{const who=await this.identity(tx,token);return listNotifications(tx,{workspaceId:who.workspaceId,userId:who.userId,role:who.member.role});});
+  }
+  /** Marks read or opens (revalidating access now). Never resolves the work a notification points to. */
+  async notificationCommand(token:string,action:'read'|'open',input:Record<string,unknown>) {
+    return this.db.transaction(async tx=>{
+      const who=await this.identity(tx,token),me={workspaceId:who.workspaceId,userId:who.userId,role:who.member.role};
+      if(action==='open')return openNotification(tx,me,input?.notificationId);
+      return markNotificationsRead(tx,me,input??{});
+    });
   }
   /** ADR-0034 · brand kit of a brand: versions, files, channel needs, contrast, differences and impact. */
   async brandKit(token:string,brandId:string) {
@@ -558,6 +596,7 @@ export class Engine {
       if(assisted&&!result.replayed)this.marketingAssistance.consume(String(input.assistanceProof));
       const operation=action==='decide'?(result.status==='APPROVED'?'DELIVERABLE_APPROVE':'DELIVERABLE_REQUEST_CHANGES'):`DELIVERABLE_${action.toUpperCase().replace('-','_')}`;
       if(!result.replayed)await this.audit(tx,{...actor},{operation,idempotencyKey:typeof input.idempotencyKey==='string'?input.idempotencyKey:randomUUID(),newVersion:(result.versionId as string|null)??null,previousVersion:((result.superseded??result.previousVersionId) as string|null|undefined)??null,rationale:action==='decide'?result.criterion as string:undefined});
+      if(!result.replayed)await this.auditReview(tx,actor,'DELIVERABLE',action,result);
       return result;
     },true);
   }
@@ -1506,7 +1545,7 @@ export class Engine {
         // before decisions; the self reference of versions is satisfied because the whole chain goes in one statement.
         // Phase 4 rows of this Brand (append-only tables allow it only inside this registered deletion). Workspace
         // connections are NOT deleted here: only this Brand's links to them (a credential may serve other brands).
-        for(const table of [t.cycleReviewExperiments,t.measurementEvidence,t.cycleReviews,t.canvaDesigns,t.campaignMetrics,t.campaignApprovals,t.campaignVersions,t.campaigns,t.sitePreviewSessions,t.sitePreviewCodes,t.siteDomains,t.sitePublications,t.siteApprovals,t.siteVersions,t.sites,t.clientOpportunityEvents,t.clientInteractions,t.clientOpportunities,t.leadForms,t.clientSegments,t.portalApprovals,t.portalComments,t.portalShares,t.brandGuests,t.brandInvitations,t.brandSetupDrafts,t.brandKitPublications,t.brandKitApprovals,t.brandKitVersions,t.brandKits,t.kitAssets,t.deliverablePublications,t.deliverableApprovals,t.deliverableVersions,t.deliverables,t.planProgressUpdates,t.planSnapshotApprovals,t.planSnapshots,t.planChanges,t.planActions,t.planObjectives,t.marketingPlans,t.offerApprovals,t.offerVersions,t.offers,t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
+        for(const table of [t.reviewComments,t.reviewAssignments,t.notifications,t.emailOutbox,t.brandFiles,t.approvalPolicies,t.cycleReviewExperiments,t.measurementEvidence,t.cycleReviews,t.canvaDesigns,t.campaignMetrics,t.campaignApprovals,t.campaignVersions,t.campaigns,t.sitePreviewSessions,t.sitePreviewCodes,t.siteDomains,t.sitePublications,t.siteApprovals,t.siteVersions,t.sites,t.clientOpportunityEvents,t.clientInteractions,t.clientOpportunities,t.leadForms,t.clientSegments,t.portalApprovals,t.portalComments,t.portalShares,t.brandGuests,t.brandInvitations,t.brandSetupDrafts,t.brandKitPublications,t.brandKitApprovals,t.brandKitVersions,t.brandKits,t.kitAssets,t.deliverablePublications,t.deliverableApprovals,t.deliverableVersions,t.deliverables,t.planProgressUpdates,t.planSnapshotApprovals,t.planSnapshots,t.planChanges,t.planActions,t.planObjectives,t.marketingPlans,t.offerApprovals,t.offerVersions,t.offers,t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));
         for(const table of [t.audits,t.telemetry,t.idempotency,t.reviewReceipts,t.reviews,t.impacts,t.dependencies,t.learningSignals,t.signals,t.learnings,t.experiments,t.analyses,t.documentClaims,t.documentExtractions,t.sourceDocuments,t.versions,t.decisions,t.recommendations,t.questions,t.userInputs,t.evidence,t.hypotheses,t.openQuestions,t.brandProfiles,t.assignments] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));

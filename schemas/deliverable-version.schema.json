@@ -5,13 +5,27 @@
   "$id": "https://brandopolis.ai/schemas/deliverable-version.v1",
   "title": "deliverable-version",
   "x-version": "v1",
-  "description": "ADR-0030 / PHASE4_SPEC §4.4 · editable content of one version of a deliverable: sales presentation, offer copy, social post, ad or brief for a designer/Canva. The body is typed per deliverable type. Origin (decision versions, offer version) and provenance are decided by the server and stored beside the content. Immutable once it leaves DRAFT. Nothing here publishes or spends: a social post or ad is text for a person to use; publication of a social post is recorded manually.",
+  "description": "ADR-0030 / PHASE4_SPEC §4.4 · editable content of one version of a deliverable: sales presentation, offer copy, social post, ad or brief for a designer/Canva. The body is typed per deliverable type. Origin (decision versions, offer version) and provenance are decided by the server and stored beside the content. Immutable once it leaves DRAFT. Nothing here publishes or spends: a social post or ad is text for a person to use; publication of a social post is recorded manually. PHASE4_SPEC §13 · finalArt (optional, written only by the server): the final art file attached to this version; attaching one after approval creates a new version to review.",
   "properties": {
     "type": { "type": "string", "enum": ["SALES_PRESENTATION", "OFFER_COPY", "SOCIAL_POST", "AD", "DESIGN_BRIEF"] },
     "name": { "type": "string", "minLength": 1, "maxLength": 160 },
     "offerId": { "type": ["string", "null"], "maxLength": 200 },
     "sourceDecisionVersionIds": { "type": "array", "maxItems": 20, "items": { "type": "string", "minLength": 1, "maxLength": 200 } },
-    "body": { "type": "object" }
+    "body": { "type": "object" },
+    "finalArt": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fileId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "format": { "type": "string", "enum": ["PNG", "JPEG", "WEBP", "PDF", "PPTX", "DOCX", "XLSX"] },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "source": { "type": "string", "enum": ["UPLOAD", "CANVA"] },
+        "attachedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fileId", "name", "format", "bytes", "sha256", "source", "attachedAt"]
+    }
   },
   "required": ["type", "name", "offerId", "sourceDecisionVersionIds", "body"],
   "allOf": [

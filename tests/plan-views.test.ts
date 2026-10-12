@@ -123,7 +123,7 @@ describe('PHASE4_SPEC §3/§4.4 · area tabs and deliverable views', () => {
   };
   it('Marketing tabs: Plan, Redes sociales, Campañas digitales; Sitio web named as later, never a tab; a selector mirrors the tabs', () => {
     const html = v.areaTabsHtml('marketing', 'social');
-    expect([...html.matchAll(/role="tab"[^>]*>([^<]+)</g)].map(m => m[1])).toEqual(['Plan de Marketing', 'Redes sociales', 'Sitio web', 'Campañas digitales']); // ADR-0032: Sitio web is a real tab now
+    expect([...html.matchAll(/role="tab"[^>]*>(?:<svg[\s\S]*?<\/svg><span>)?([^<]+)</g)].map(m => m[1])).toEqual(['Plan de Marketing', 'Redes sociales', 'Sitio web', 'Campañas digitales']); // ADR-0032: Sitio web is a real tab now
     expect(html).toContain('id="area-tab-social" data-area-tab="social" aria-selected="true" tabindex="0"');
     expect(html).toContain('aria-selected="false" tabindex="-1"');
     expect(html).toContain('<option value="social" selected>Redes sociales</option>');
@@ -142,14 +142,14 @@ describe('PHASE4_SPEC §3/§4.4 · area tabs and deliverable views', () => {
     expect(html).toContain('Brandopolis no publica por ti');
     expect(html).toContain('Registrar publicación');
     expect(html).toContain('Escrito por una persona');
-    expect(html).toContain('Presentación en PowerPoint o PDF y documento de Word llegarán más adelante.');
+    expect(html).toContain('Cada versión aprobada se descarga en PDF y Word (y las presentaciones, también en PowerPoint)');
     const published = v.deliverablesHtml('social', [post({ publications: [{ versionId: 'v1', publishedOn: '2026-11-04', url: 'https://example.com/p', note: null }] })], []);
     expect(published).toContain('Publicada el 4 de noviembre de 2026');
     expect(published).toContain('rel="noopener noreferrer"');
   });
   it('the plain text export carries the content of each type; ads say campaigns are created only in pause, in the simulator, without spend', () => {
     expect(v.deliverableText(post().approved.content)).toBe('Lanzamiento <b>\n\nLinkedIn · Publicación · 2026-11-03\n\nHola\n\n#marca\n');
-    expect(v.deliverablesHtml('ads', [], [])).toContain('una campaña sólo se crea en pausa y con el simulador, sin gasto');
+    expect(v.deliverablesHtml('ads', [], [])).toContain('ocurren en el simulador, sin campañas ni gasto reales');
     expect(v.AREA_TYPES.materials).toEqual(['SALES_PRESENTATION', 'OFFER_COPY', 'DESIGN_BRIEF']);
   });
   it('an offer copy form requires an offer and only offers active offers of the brand', () => {

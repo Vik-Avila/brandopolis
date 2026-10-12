@@ -95,7 +95,6 @@ body[data-live-ai="true"].app header #mode-badge { background: var(--bp-success-
 #journey .nav-item .nav-label { flex: 1; min-width: 0; text-align: left; }
 #journey .nav-item[aria-current],
 #journey .nav-item.contains-current { background: var(--bp-success-bg); color: var(--bp-brand-emerald-deep); box-shadow: inset 4px 0 0 var(--bp-brand-emerald); border-color: transparent; font-weight: 650; }
-#journey .nav-item.contains-current:not([aria-current]) { box-shadow: none; background: transparent; }
 #journey .nav-count { flex: 0 0 auto; padding: 2px 9px; border-radius: var(--bp-radius-pill); background: var(--bp-gold-wash); color: var(--bp-warning) !important; font-size: 12.5px !important; font-weight: 650; font-variant-numeric: tabular-nums; }
 #journey .nav-chevron { width: 18px; height: 18px; flex-basis: 18px; transition: transform var(--bp-motion-normal) var(--bp-ease); }
 #journey #strategy-toggle[aria-expanded="false"] .nav-chevron { transform: rotate(-90deg); }
@@ -507,8 +506,8 @@ body.left-collapsed #journey .nav-item[data-tip]:hover::after, body.left-collaps
 .offer-form h3 { margin: 0 0 6px; font: 500 24px/1.2 var(--font-display); }
 .offer-form fieldset { margin: 10px 0 0; padding: 12px 14px; border: 1px solid var(--ws-line); border-radius: 12px; display: grid; gap: 6px; }
 .offer-form legend { padding: 0 6px; font-weight: 650; }
-.check-option { display: flex; align-items: flex-start; gap: 10px; min-height: 44px; padding: 6px 0; }
-.check-option input { width: 18px; height: 18px; margin: 3px 0 0; flex: 0 0 18px; }
+.check-option { display: flex; align-items: flex-start; gap: 10px; min-height: 44px; padding: 10px 0 6px; margin: 0; font-weight: 500; line-height: 1.4; cursor: pointer; }
+.check-option > span { flex: 1 1 auto; min-width: 0; }
 .offer-price { display: grid; gap: 6px; }
 .offer-price[hidden] { display: none; }
 .offer-empty { margin-top: 18px; }
@@ -742,7 +741,6 @@ body.left-collapsed #journey .nav-item[data-tip]:hover::after, body.left-collaps
 /* Softer selection: warm neutral surface + emerald edge and text; green fills are reserved. */
 #journey .nav-item[aria-current], #journey .nav-item.contains-current,
 #journey #home.nav-item[aria-current], #journey #practice.nav-item[aria-current] { background: var(--ws-select); }
-#journey .nav-item.contains-current:not([aria-current]) { background: transparent; }
 #journey .strategy-list button[data-module][aria-current] { background: var(--ws-select); }
 .rail-tools .rail-tool[aria-pressed="true"] { background: var(--ws-select); border-color: var(--ws-line-strong); }
 .rail-tools .rail-tool-brando { background: transparent; }
@@ -1033,3 +1031,17 @@ button.danger:disabled { background: #E8D5D2; border-color: #E8D5D2; color: #6E5
 /* The global header rules (sticky shell bar) must not apply to a campaign card's own heading. */
 .app .campaign-card > header { display: block; position: static; min-height: 0; height: auto; padding: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; z-index: auto; box-shadow: none; border: 0; }
 .app .campaign-card > header .eyebrow { overflow-wrap: anywhere; }
+
+/* R12-01 · owner review 2026-10-12: the working area is paler than both side panels and clearly contained. Tokens of
+   the system only (no new colours): side panels in brand ivory, the centre in neutral-50 with a line and a radius. */
+body.app { background: var(--bp-brand-ivory); }
+#journey { background: var(--bp-brand-ivory); border-right: 1px solid var(--ws-line); }
+.rail-tools, .rail-panel { background: var(--bp-brand-ivory); }
+.app #decision { background: var(--bp-neutral-50); border: 1px solid var(--ws-line); border-radius: 18px; padding: var(--ws-s5) clamp(14px, 2.4vw, 32px) var(--ws-s6); box-shadow: 0 1px 2px rgba(31, 37, 35, .04); }
+@media (max-width: 640px) { .app #decision { border-radius: 14px; padding: 16px 12px 24px; } }
+/* R12-19 · area sections with icon and text; the selected one and keyboard focus stay distinguishable. */
+.area-tabs [role="tab"] { display: inline-flex; align-items: center; gap: 8px; }
+.area-tabs [role="tab"] .ico { width: 18px; height: 18px; flex: 0 0 18px; }
+.area-tabs [role="tab"][aria-selected="true"] { font-weight: 700; }
+.area-tabs [role="tab"]:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+

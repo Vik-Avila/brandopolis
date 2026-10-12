@@ -13,7 +13,7 @@ export function deliverablesCases(connection: () => ReturnType<typeof connect>) 
   const setup = async () => {
     const db = connection().db, engine = new Engine(db), who = await seedIdentity(db);
     const brand = await engine.createBrand(who.token, 'Marca con materiales');
-    const cmd = (action: Parameters<Engine['deliverableCommand']>[1], input: Record<string, unknown>, token = who.token) => engine.deliverableCommand(token, action, { brandId: brand.id, ...(action === 'decide' ? { idempotencyKey: randomUUID() } : {}), ...input });
+    const cmd = (action: Parameters<Engine['deliverableCommand']>[1], input: Record<string, unknown>, token = who.token) => engine.deliverableCommand(token, action, { brandId: brand.id, ...(action === 'submit' ? { reviewerId: who.userId } : {}), ...(action === 'decide' ? { idempotencyKey: randomUUID() } : {}), ...input });
     const list = (types: string[] | null = null, token = who.token) => engine.deliverables(token, brand.id, types);
     const post = (extra: Record<string, unknown> = {}) => ({ type: 'SOCIAL_POST', name: 'Lanzamiento', offerId: null, sourceDecisionVersionIds: [], body: { network: 'LINKEDIN', format: 'POST', objective: 'Dar a conocer el diagnóstico', scheduledDate: '2026-11-03', text: 'Ordena tu estrategia.', hashtags: ['marca', '#estrategia'], materials: '' }, ...extra });
     const approveAll = async (id: unknown, revision: number) => { const v = await cmd('submit', { deliverableId: id, expectedRevision: revision }); await cmd('decide', { deliverableId: id, versionId: v.versionId, fingerprint: v.fingerprint, decision: 'APPROVE', criterion: 'Revisado por el equipo' }); return v; };
@@ -72,15 +72,19 @@ export function deliverablesCases(connection: () => ReturnType<typeof connect>) 
       await x.approveAll(d.id, d.revision);
       [d] = await x.list();
       expect(d.history.map(h => h.status)).toEqual(['SUPERSEDED', 'APPROVED']);
-      const audits = (await x.db.select().from(t.audits).where(eq(t.audits.brandId, x.brand.id))).filter(a => a.operation.startsWith('DELIVERABLE_'));
+      // PHASE4_SPEC §13: the approval circuit leaves its own entries beside the editorial ones (author reviewing alone).
+      const circuit = (op: string) => /_REVIEW_|_SELF_APPROVAL$/.test(op);
+      const all = (await x.db.select().from(t.audits).where(eq(t.audits.brandId, x.brand.id))).filter(a => a.operation.startsWith('DELIVERABLE_'));
+      const audits = all.filter(a => !circuit(a.operation));
       expect(audits.map(a => a.operation).sort()).toEqual(['DELIVERABLE_APPROVE', 'DELIVERABLE_APPROVE', 'DELIVERABLE_CREATE', 'DELIVERABLE_DRAFT', 'DELIVERABLE_NEW_DRAFT', 'DELIVERABLE_SUBMIT', 'DELIVERABLE_SUBMIT']);
       expect(audits.filter(a => a.operation !== 'DELIVERABLE_APPROVE').every(a => a.rationale === null)).toBe(true);
+      expect(all.filter(a => circuit(a.operation)).map(a => a.operation).sort()).toEqual(['DELIVERABLE_REVIEW_SELF_ASSIGNED', 'DELIVERABLE_REVIEW_SELF_ASSIGNED', 'DELIVERABLE_SELF_APPROVAL', 'DELIVERABLE_SELF_APPROVAL']);
     });
 
     it('origin manifest: decision versions and the offer\'s approved version; a newer one marks «origin updated» without rewriting', async () => {
       const x = await setup();
       const offer = await x.engine.offerCommand(x.who.token, 'create', { brandId: x.brand.id, content: offerContent, idempotencyKey: randomUUID() });
-      const ov1 = await x.engine.offerCommand(x.who.token, 'submit', { brandId: x.brand.id, offerId: offer.offerId, expectedRevision: 0 });
+      const ov1 = await x.engine.offerCommand(x.who.token, 'submit', { reviewerId: x.who.userId, brandId: x.brand.id, offerId: offer.offerId, expectedRevision: 0 });
       await x.engine.offerCommand(x.who.token, 'decide', { brandId: x.brand.id, offerId: offer.offerId, versionId: ov1.versionId, fingerprint: ov1.fingerprint, decision: 'APPROVE', criterion: 'Oferta aprobada', idempotencyKey: randomUUID() });
       const created = await x.cmd('create', { content: { type: 'OFFER_COPY', name: 'Textos', offerId: offer.offerId, sourceDecisionVersionIds: [], body: { headline: 'h', short: 's', long: '', callToAction: 'c' } }, idempotencyKey: randomUUID() });
       await x.approveAll(created.deliverableId, 0);
@@ -88,7 +92,7 @@ export function deliverablesCases(connection: () => ReturnType<typeof connect>) 
       expect(d.approved).toMatchObject({ manifest: { offerVersionId: ov1.versionId, kitVersionId: null }, originOutdated: [] });
       // A newer approved offer version: the deliverable is flagged, never rewritten.
       await x.engine.offerCommand(x.who.token, 'new-draft', { brandId: x.brand.id, offerId: offer.offerId, expectedRevision: 2 });
-      const ov2 = await x.engine.offerCommand(x.who.token, 'submit', { brandId: x.brand.id, offerId: offer.offerId, expectedRevision: 3 });
+      const ov2 = await x.engine.offerCommand(x.who.token, 'submit', { reviewerId: x.who.userId, brandId: x.brand.id, offerId: offer.offerId, expectedRevision: 3 });
       await x.engine.offerCommand(x.who.token, 'decide', { brandId: x.brand.id, offerId: offer.offerId, versionId: ov2.versionId, fingerprint: ov2.fingerprint, decision: 'APPROVE', criterion: 'Nueva versión aprobada', idempotencyKey: randomUUID() });
       [d] = await x.list();
       expect(d.approved).toMatchObject({ manifest: { offerVersionId: ov1.versionId }, originOutdated: ['OFFER'] });
@@ -130,7 +134,7 @@ export function deliverablesCases(connection: () => ReturnType<typeof connect>) 
       await expect(x.list(null, stranger.token)).rejects.toMatchObject({ code: 'NOT_FOUND' });
       await expect(x.list(null, member.token)).rejects.toMatchObject({ code: 'FORBIDDEN' });
       const other = await x.engine.createBrand(x.who.token, 'Otra marca');
-      await expect(x.engine.deliverableCommand(x.who.token, 'submit', { brandId: other.id, deliverableId: created.deliverableId, expectedRevision: 0 })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      await expect(x.engine.deliverableCommand(x.who.token, 'submit', { reviewerId: x.who.userId, brandId: other.id, deliverableId: created.deliverableId, expectedRevision: 0 })).rejects.toMatchObject({ code: 'NOT_FOUND' });
       const v1 = await x.cmd('submit', { deliverableId: created.deliverableId, expectedRevision: 0 });
       await x.cmd('retire', { deliverableId: created.deliverableId, expectedRevision: 1 });
       await expect(x.cmd('decide', { deliverableId: created.deliverableId, versionId: v1.versionId, fingerprint: v1.fingerprint, decision: 'APPROVE', criterion: 'Después de retirar' })).rejects.toMatchObject({ code: 'CONFLICT' });

@@ -20,7 +20,7 @@ export function offersCases(connection: () => ReturnType<typeof connect>) {
       return engine.commitDecision(who.token, { brandId: brand.id, questionId: q.id, selectedOption: option, rationale: 'Criterio humano', expectedActiveVersion: d?.activeVersionId ?? null, sourceRecommendationId: null, idempotencyKey: randomUUID(), actorUserId: who.userId });
     };
     // A decision needs its own idempotency key (INV-010); tests that do not exercise retries get a fresh one.
-    const cmd = (action: Parameters<Engine['offerCommand']>[1], input: Record<string, unknown>, token = who.token) => engine.offerCommand(token, action, { brandId: brand.id, ...(action === 'decide' ? { idempotencyKey: randomUUID() } : {}), ...input });
+    const cmd = (action: Parameters<Engine['offerCommand']>[1], input: Record<string, unknown>, token = who.token) => engine.offerCommand(token, action, { brandId: brand.id, ...(action === 'submit' ? { reviewerId: who.userId } : {}), ...(action === 'decide' ? { idempotencyKey: randomUUID() } : {}), ...input });
     const content = (extra: Record<string, unknown> = {}) => ({ name: 'Diagnóstico de marca', kind: 'SERVICE', audience: { customerDecisionVersionId: null, segment: 'Agencias pequeñas' }, need: 'Ordenar la estrategia', outcome: 'Estrategia aprobada', benefits: ['Menos retrabajo'], differentiators: [], conditions: '', proofIds: [], sourceDecisionVersionIds: [], hypothesisIds: [], price: null, ...extra });
     const list = async () => (await engine.offers(who.token, brand.id));
     return { db, engine, who, brand, commit, cmd, content, list };
@@ -58,7 +58,10 @@ export function offersCases(connection: () => ReturnType<typeof connect>) {
       expect(offer.approved).toMatchObject({ sequence: 2, status: 'APPROVED' });
       expect(offer.history.map(h => h.status)).toEqual(['SUPERSEDED', 'APPROVED']);
       const audited = await x.db.select().from(t.audits).where(eq(t.audits.brandId, x.brand.id));
-      expect(audited.filter(a => a.operation.startsWith('OFFER_')).length).toBe(8);
+      // PHASE4_SPEC §13: the approval circuit leaves its own entries beside the editorial ones (author reviewing alone).
+      const circuit = (op: string) => /_REVIEW_|_SELF_APPROVAL$/.test(op);
+      expect(audited.filter(a => a.operation.startsWith('OFFER_') && !circuit(a.operation)).length).toBe(8);
+      expect(audited.filter(a => circuit(a.operation)).map(a => a.operation).sort()).toEqual(['OFFER_REVIEW_SELF_ASSIGNED', 'OFFER_REVIEW_SELF_ASSIGNED', 'OFFER_SELF_APPROVAL', 'OFFER_SELF_APPROVAL']);
     });
 
     it('MKT-003: a version out of DRAFT is immutable in the database; versions are never deleted directly', async () => {
@@ -163,7 +166,8 @@ export function offersCases(connection: () => ReturnType<typeof connect>) {
       const audits = (await x.db.select().from(t.audits).where(eq(t.audits.brandId, x.brand.id))).filter(r => r.operation.startsWith('OFFER_'));
       expect(audits.map(r => r.operation)).toEqual(expect.arrayContaining(['OFFER_CREATE', 'OFFER_SUBMIT', 'OFFER_APPROVE']));
       expect(audits.find(r => r.operation === 'OFFER_APPROVE')).toMatchObject({ newVersion: v1.versionId, rationale: 'Revisada con el equipo' });
-      expect(audits.filter(r => r.operation !== 'OFFER_APPROVE').every(r => r.rationale === null)).toBe(true);
+      expect(audits.filter(r => r.operation !== 'OFFER_APPROVE' && !/_REVIEW_/.test(r.operation)).every(r => r.rationale === null)).toBe(true);
+      expect(audits.find(r => r.operation === 'OFFER_REVIEW_SELF_ASSIGNED')).toMatchObject({ newVersion: v1.versionId, rationale: `reviewer:${x.who.userId}` });
       await x.cmd('retire', { offerId: created.offerId, expectedRevision: 2, criterion: 'Aprobado por dirección' });
       expect((await x.db.select().from(t.audits).where(eq(t.audits.operation, 'OFFER_RETIRE'))).find(r => r.brandId === x.brand.id)).toMatchObject({ rationale: null, newVersion: v1.versionId });
       // Database: an approved version cannot go back to DRAFT, and a recorded decision cannot be rewritten.
@@ -172,7 +176,7 @@ export function offersCases(connection: () => ReturnType<typeof connect>) {
       // Ids of another brand of the same workspace are not found from this brand.
       const other = await x.engine.createBrand(x.who.token, 'Otra marca con ofertas');
       const foreign = await x.engine.offerCommand(x.who.token, 'create', { brandId: other.id, content: x.content(), idempotencyKey: randomUUID() });
-      const foreignV = await x.engine.offerCommand(x.who.token, 'submit', { brandId: other.id, offerId: foreign.offerId, expectedRevision: 0 });
+      const foreignV = await x.engine.offerCommand(x.who.token, 'submit', { reviewerId: x.who.userId, brandId: other.id, offerId: foreign.offerId, expectedRevision: 0 });
       await expect(x.cmd('decide', { offerId: foreign.offerId, versionId: foreignV.versionId, fingerprint: foreignV.fingerprint, decision: 'APPROVE', criterion: 'Desde la marca equivocada' })).rejects.toMatchObject({ code: 'NOT_FOUND' });
       const mine = await x.cmd('create', { content: x.content({ name: 'Propia' }), idempotencyKey: randomUUID() });
       await x.cmd('submit', { offerId: mine.offerId, expectedRevision: 0 });

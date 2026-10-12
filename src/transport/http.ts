@@ -538,7 +538,11 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(path.startsWith('/api/deliverables/')){const action=path.slice('/api/deliverables/'.length);if(['create','draft','submit','decide','new-draft','retire','publication'].includes(action))return send(res,action==='create'||action==='publication'?201:200,await engine.deliverableCommand(token,action as 'create',input));}
         // PHASE4_SPEC §4.2 · marketing plan: one path per operation; authorization, revision and audit in the engine.
         if(path.startsWith('/api/plan/')){const action=path.slice('/api/plan/'.length);if(['create','update','add-objective','update-objective','add-action','update-action','action-status','share','decide-share'].includes(action))return send(res,action==='create'||action==='share'||action.startsWith('add-')?201:200,await engine.planCommand(token,action as 'create',input));}
-        if(path.startsWith('/api/offers/')){const action=path.slice('/api/offers/'.length);if(['create','draft','submit','decide','new-draft','retire'].includes(action))return send(res,action==='create'?201:200,await engine.offerCommand(token,action as 'create',input));}
+        if(path.startsWith('/api/offers/')){const action=path.slice('/api/offers/'.length);if(['create','create-from','draft','submit','decide','new-draft','retire'].includes(action))return send(res,action==='create'||action==='create-from'?201:200,await engine.offerCommand(token,action as 'create',input));}
+        // PHASE4_SPEC §13 · approval circuit, comments per version and notifications (authorization in the engine).
+        if(path.startsWith('/api/reviews/')){const action=path.slice('/api/reviews/'.length);if(['policy','reassign','comment'].includes(action))return send(res,action==='comment'?201:200,await engine.reviewCommand(token,action as 'policy',input));}
+        if(path==='/api/notifications/read') return send(res,200,await engine.notificationCommand(token,'read',input));
+        if(path==='/api/notifications/open') return send(res,200,await engine.notificationCommand(token,'open',input));
         if(path==='/api/brands/capabilities') return send(res,200,await engine.changeBrandCapability(token,{brandId:input.brandId,userId:input.userId,capability:input.capability,grant:input.grant}));
         if(path==='/api/brands') return send(res,201,await engine.createBrand(token,string(input.name),input.initialContext===undefined?undefined:string(input.initialContext)));
         if(path==='/api/context/capture') return send(res,201,await engine.captureContext(
@@ -801,6 +805,8 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           return res.end(Buffer.from(pdf));
         }
         if(path==='/api/offers') return send(res,200,await engine.offers(token,string(url.searchParams.get('brandId'))));
+        if(path==='/api/reviews/policies') return send(res,200,await engine.approvalPolicies(token,string(url.searchParams.get('brandId'))));
+        if(path==='/api/notifications') return send(res,200,await engine.notifications(token));
         if(path==='/api/plan') return send(res,200,await engine.marketingPlan(token,string(url.searchParams.get('brandId')),Number(url.searchParams.get('year'))));
         if(path==='/api/collaboration') return send(res,200,await engine.collaboration(token,string(url.searchParams.get('brandId'))));
         // ADR-0030 · exports (team only). Files come from the brand's private storage, are size-checked and parsed as

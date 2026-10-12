@@ -196,7 +196,7 @@ export function exportCases(connection: () => ReturnType<typeof connect>) {
         expect(guide.assets.map(a => a.role)).toEqual(['FONT']);
         // A deliverable approved with this kit, and an internal comment that must never reach the export.
         const created = (await engine.deliverableCommand(who.token, 'create', { brandId: brand.id, content: deck().deliverable!.content, idempotencyKey: randomUUID() })) as { deliverableId: string };
-        const sub = (await engine.deliverableCommand(who.token, 'submit', { brandId: brand.id, deliverableId: created.deliverableId, expectedRevision: 0 })) as { versionId: string; fingerprint: string };
+        const sub = (await engine.deliverableCommand(who.token, 'submit', { reviewerId: who.userId, brandId: brand.id, deliverableId: created.deliverableId, expectedRevision: 0 })) as { versionId: string; fingerprint: string };
         await engine.deliverableCommand(who.token, 'decide', { brandId: brand.id, deliverableId: created.deliverableId, versionId: sub.versionId, fingerprint: sub.fingerprint, decision: 'APPROVE', criterion: 'Lista para el cliente', idempotencyKey: randomUUID() });
         await engine.collaborationCommand(who.token, 'share', { brandId: brand.id, targetType: 'DELIVERABLE_VERSION', targetId: sub.versionId, idempotencyKey: randomUUID() });
         const shareId = (await engine.collaboration(who.token, brand.id)).shares[0].id;

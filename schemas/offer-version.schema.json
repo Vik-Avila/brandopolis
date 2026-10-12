@@ -5,7 +5,7 @@
   "$id": "https://brandopolis.ai/schemas/offer-version.v1",
   "title": "offer-version",
   "x-version": "v1",
-  "description": "ADR-0030 · content of one version of an offer (product or service): audience, need, outcome, benefits, differences, conditions, proofs (Evidence with provenance), origin decision versions and assumptions (hypotheses of the Validation engine). A price is optional; an estimate is labelled ESTIMATED and never shown as confirmed. Immutable once it leaves DRAFT.",
+  "description": "ADR-0030 · content of one version of an offer (product or service): audience, need, outcome, benefits, differences, conditions, proofs (Evidence with provenance), origin decision versions and assumptions (hypotheses of the Validation engine). A price is optional; an estimate is labelled ESTIMATED and never shown as confirmed. Immutable once it leaves DRAFT. PHASE4_SPEC §13 · pricePlans (optional, additive): several plans per version with amount, currency, periodicity (ONE_TIME, MONTHLY, QUARTERLY, YEARLY, CUSTOM, or null when a legacy price never stated it), unit and conditions; commercial validity is separate from periodicity. A plan of an offer is never a SaaS subscription or billing.",
   "properties": {
     "name": { "type": "string", "minLength": 1, "maxLength": 160 },
     "kind": { "type": "string", "enum": ["PRODUCT", "SERVICE"] },
@@ -37,6 +37,28 @@
         "certainty": { "type": "string", "enum": ["CONFIRMED", "ESTIMATED"] }
       },
       "required": ["amountMinor", "currency", "validFrom", "validUntil", "certainty"]
+    },
+    "pricePlans": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "amountMinor": { "type": "integer", "minimum": 0 },
+          "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+          "periodicity": { "type": ["string", "null"], "enum": ["ONE_TIME", "MONTHLY", "QUARTERLY", "YEARLY", "CUSTOM", null] },
+          "customPeriod": { "type": "string", "maxLength": 80 },
+          "unit": { "type": "string", "enum": ["PER_SERVICE", "PER_PERSON", "PER_UNIT", "OTHER"] },
+          "unitLabel": { "type": "string", "maxLength": 80 },
+          "conditions": { "type": "string", "maxLength": 600 },
+          "validFrom": { "type": ["string", "null"], "format": "date" },
+          "validUntil": { "type": ["string", "null"], "format": "date" },
+          "certainty": { "type": "string", "enum": ["CONFIRMED", "ESTIMATED"] }
+        },
+        "required": ["name", "amountMinor", "currency", "periodicity", "customPeriod", "unit", "unitLabel", "conditions", "validFrom", "validUntil", "certainty"]
+      }
     }
   },
   "required": ["name", "kind", "audience", "need", "outcome", "benefits", "differentiators", "conditions", "proofIds", "sourceDecisionVersionIds", "hypothesisIds", "price"],

@@ -188,6 +188,22 @@ form label {
   margin: 18px 0px 8px;
 }
 
+/* R12-04 · checkboxes and radios are never text fields: the generic input rules above (full width, 48px height,
+   padding) and the form label margin made them float away from their text. One rule for every form. */
+input[type="checkbox"], input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  padding: 0;
+  margin: 2px 0 0;
+  flex: 0 0 18px;
+  border: 0;
+  accent-color: var(--action-primary);
+}
+form label:has(> input[type="checkbox"]), form label:has(> input[type="radio"]) {
+  margin: 0;
+}
+
 :focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 3px;

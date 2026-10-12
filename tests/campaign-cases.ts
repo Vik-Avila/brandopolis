@@ -32,7 +32,7 @@ export function campaignCases(connection: () => ReturnType<typeof connect>) {
     const offerContent = (name: string) => ({ name, kind: 'SERVICE', audience: { customerDecisionVersionId: null, segment: 'Cafeterías' }, need: 'Café de especialidad', outcome: 'Café constante', benefits: ['Entrega semanal'], differentiators: [], conditions: '', proofIds: [], sourceDecisionVersionIds: [], hypothesisIds: [], price: null });
     const approvedOffer = async (name = 'Café para cafeterías') => {
       const o = await engine.offerCommand(who.token, 'create', { brandId: brand.id, content: offerContent(name), idempotencyKey: randomUUID() });
-      const v = await engine.offerCommand(who.token, 'submit', { brandId: brand.id, offerId: o.offerId, expectedRevision: 0 });
+      const v = await engine.offerCommand(who.token, 'submit', { reviewerId: who.userId, brandId: brand.id, offerId: o.offerId, expectedRevision: 0 });
       await engine.offerCommand(who.token, 'decide', { brandId: brand.id, offerId: o.offerId, versionId: v.versionId, fingerprint: v.fingerprint, decision: 'APPROVE', criterion: 'Oferta aprobada', idempotencyKey: randomUUID() });
       const offers = await engine.offers(who.token, brand.id);
       const offer = offers.find((x: { id: string }) => x.id === o.offerId) as { id: string; approved: { id: string } };
@@ -320,7 +320,7 @@ export function campaignCases(connection: () => ReturnType<typeof connect>) {
       const [draftRow] = await x.db.select().from(t.deliverableVersions).where(eq(t.deliverableVersions.deliverableId, d.deliverableId));
       expect((draftRow.content as { body: Record<string, unknown> }).body.design).toBeUndefined();
       await expect(x.engine.canvaSend(x.who.token, { brandId: x.brand.id, deliverableId: d.deliverableId, idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'CONFLICT' }); // not approved
-      const sub = await x.engine.deliverableCommand(x.who.token, 'submit', { brandId: x.brand.id, deliverableId: d.deliverableId, expectedRevision: 1 }) as { versionId: string; fingerprint: string };
+      const sub = await x.engine.deliverableCommand(x.who.token, 'submit', { reviewerId: x.who.userId, brandId: x.brand.id, deliverableId: d.deliverableId, expectedRevision: 1 }) as { versionId: string; fingerprint: string };
       await x.engine.deliverableCommand(x.who.token, 'decide', { brandId: x.brand.id, deliverableId: d.deliverableId, versionId: sub.versionId, fingerprint: sub.fingerprint, decision: 'APPROVE', criterion: 'Brief aprobado', idempotencyKey: randomUUID() });
       await expect(x.engine.canvaSend(x.who.token, { brandId: x.brand.id, deliverableId: d.deliverableId, idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'CONFLICT' }); // no Canva connection
       await x.engine.connectSimulated(x.who.token, { brandId: x.brand.id, provider: 'CANVA' });
@@ -535,7 +535,7 @@ export function campaignCases(connection: () => ReturnType<typeof connect>) {
       const x = await setup();
       const brief = { type: 'DESIGN_BRIEF', name: 'Cartel', offerId: null, sourceDecisionVersionIds: [], body: { for: 'CANVA', piece: 'Cartel', format: 'A3', audience: '', message: 'Café', mustInclude: '', avoid: '', dueDate: null } };
       const d = await x.engine.deliverableCommand(x.who.token, 'create', { brandId: x.brand.id, content: brief, idempotencyKey: randomUUID() }) as { deliverableId: string };
-      const sub = await x.engine.deliverableCommand(x.who.token, 'submit', { brandId: x.brand.id, deliverableId: d.deliverableId, expectedRevision: 0 }) as { versionId: string; fingerprint: string };
+      const sub = await x.engine.deliverableCommand(x.who.token, 'submit', { reviewerId: x.who.userId, brandId: x.brand.id, deliverableId: d.deliverableId, expectedRevision: 0 }) as { versionId: string; fingerprint: string };
       await x.engine.deliverableCommand(x.who.token, 'decide', { brandId: x.brand.id, deliverableId: d.deliverableId, versionId: sub.versionId, fingerprint: sub.fingerprint, decision: 'APPROVE', criterion: 'Brief aprobado', idempotencyKey: randomUUID() });
       const canva = await x.engine.connectSimulated(x.who.token, { brandId: x.brand.id, provider: 'CANVA' }) as { connectionId: string };
       await expect(x.engine.canvaLink(x.who.token, { brandId: x.brand.id, deliverableId: d.deliverableId, designRef: 'no-existe-123', idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'NOT_FOUND' });
@@ -580,7 +580,7 @@ export function campaignCases(connection: () => ReturnType<typeof connect>) {
       // F4 · Canva designs are found only with the credential that created them.
       const brief = { type: 'DESIGN_BRIEF', name: 'Cartel', offerId: null, sourceDecisionVersionIds: [], body: { for: 'CANVA', piece: 'Cartel', format: 'A3', audience: '', message: 'Café', mustInclude: '', avoid: '', dueDate: null } };
       const d = await x.engine.deliverableCommand(x.who.token, 'create', { brandId: x.brand.id, content: brief, idempotencyKey: randomUUID() }) as { deliverableId: string };
-      const dv = await x.engine.deliverableCommand(x.who.token, 'submit', { brandId: x.brand.id, deliverableId: d.deliverableId, expectedRevision: 0 }) as { versionId: string; fingerprint: string };
+      const dv = await x.engine.deliverableCommand(x.who.token, 'submit', { reviewerId: x.who.userId, brandId: x.brand.id, deliverableId: d.deliverableId, expectedRevision: 0 }) as { versionId: string; fingerprint: string };
       await x.engine.deliverableCommand(x.who.token, 'decide', { brandId: x.brand.id, deliverableId: d.deliverableId, versionId: dv.versionId, fingerprint: dv.fingerprint, decision: 'APPROVE', criterion: 'Brief aprobado', idempotencyKey: randomUUID() });
       await x.engine.connectSimulated(x.who.token, { brandId: x.brand.id, provider: 'CANVA' });
       const mine = await x.engine.canvaSend(x.who.token, { brandId: x.brand.id, deliverableId: d.deliverableId, idempotencyKey: randomUUID() }) as { designRef: string };

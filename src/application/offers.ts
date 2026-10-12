@@ -3,10 +3,11 @@ import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { AppError } from '../domain/contracts.js';
 import { approve, contentFingerprint, editorialTransition, type EditorialStatus } from '../domain/editorial-versions.js';
-import { normalizeOfferContent, offerGaps, originOutdated, type OfferContent } from '../domain/offers.js';
+import { derivedContent, normalizeOfferContent, offerGaps, originOutdated, type OfferContent } from '../domain/offers.js';
 import type { Transaction } from '../persistence/database.js';
 import * as t from '../persistence/schema.js';
 import type { BrandActor } from './brand-access.js';
+import { assignReviewer, closeReview, commentsOf, requireReviewer, reviewsOf } from './review-workflow.js';
 
 /**
  * ADR-0030 / PHASE4_SPEC §4.1 · offers. Every function receives the actor resolved by Engine.withBrandActor (same
@@ -52,13 +53,18 @@ export async function listOffers(tx: Transaction, a: BrandActor) {
   const allVersions = await tx.select({ id: t.versions.id, decisionId: t.versions.decisionId }).from(t.versions).where(and(eq(t.versions.workspaceId, a.workspaceId), eq(t.versions.brandId, a.brandId)));
   const active = new Map(decisions.filter(d => d.activeVersionId).map(d => [d.id, d.activeVersionId as string]));
   const decisionOf = new Map(allVersions.map(v => [v.id, v.decisionId]));
+  const reviews = await reviewsOf(tx, a, versions.map(v => v.id));
+  const comments = await commentsOf(tx, a, rows.map(r => r.id));
+  const sourceName = new Map(versions.map(v => [v.id, (v.content as OfferContent).name]));
   return rows.map(o => {
     const own = versions.filter(v => v.offerId === o.id);
-    const view = (v: typeof own[number]) => ({ id: v.id, sequence: v.sequence, status: v.status, fingerprint: v.fingerprint, content: v.content as OfferContent, createdAt: v.createdAt.toISOString(), decidedAt: v.decidedAt?.toISOString() ?? null, decisionCriterion: v.decisionCriterion });
+    const view = (v: typeof own[number]) => ({ id: v.id, sequence: v.sequence, status: v.status, fingerprint: v.fingerprint, content: v.content as OfferContent, createdAt: v.createdAt.toISOString(), decidedAt: v.decidedAt?.toISOString() ?? null, decisionCriterion: v.decisionCriterion, review: reviews.get(v.id) ?? null });
     const approved = own.find(v => v.id === o.approvedVersionId);
     const draft = own.find(v => v.id === o.draftVersionId);
     return {
       id: o.id, status: o.status, revision: o.revision,
+      derivedFrom: o.derivedFromOfferId ? { offerId: o.derivedFromOfferId, versionId: o.derivedFromVersionId, name: (o.derivedFromVersionId && sourceName.get(o.derivedFromVersionId)) || null } : null,
+      comments: comments.filter(c => c.subjectId === o.id),
       approved: approved ? { ...view(approved), originOutdated: originOutdated(approved.content as OfferContent, active, decisionOf) } : null,
       draft: draft ? { ...view(draft), gaps: offerGaps(draft.content as OfferContent) } : null,
       inReview: own.filter(v => v.status === 'IN_REVIEW').map(view),
@@ -104,15 +110,17 @@ export async function saveOfferDraft(tx: Transaction, a: BrandActor, input: { of
 }
 
 /** Sends the draft to review: it becomes immutable (content and fingerprint frozen by the database). */
-export async function submitOffer(tx: Transaction, a: BrandActor, input: { offerId?: unknown; expectedRevision?: unknown }) {
+export async function submitOffer(tx: Transaction, a: BrandActor, input: { offerId?: unknown; expectedRevision?: unknown; reviewerId?: unknown }) {
   const offer = await lockOffer(tx, a, input.offerId, input.expectedRevision);
   if (offer.status !== 'ACTIVE') throw new AppError('CONFLICT', 'A retired offer is read-only');
   if (!offer.draftVersionId) throw new AppError('CONFLICT', 'There is no draft to review');
   const [draft] = await tx.select().from(t.offerVersions).where(eq(t.offerVersions.id, offer.draftVersionId)).for('update');
   editorialTransition(draft.status as EditorialStatus, 'IN_REVIEW');
   await tx.update(t.offerVersions).set({ status: 'IN_REVIEW', submittedAt: new Date() }).where(eq(t.offerVersions.id, draft.id));
+  // PHASE4_SPEC §13 · without a reviewer the version is not sent (same transaction: no unassigned version exists).
+  const review = await assignReviewer(tx, a, { type: 'OFFER', id: offer.id, versionId: draft.id, title: `${(draft.content as OfferContent).name} · versión ${draft.sequence}` }, input.reviewerId);
   await touch(tx, offer.id, { draftVersionId: null, revision: offer.revision + 1 });
-  return { offerId: offer.id, versionId: draft.id, revision: offer.revision + 1, fingerprint: draft.fingerprint };
+  return { offerId: offer.id, versionId: draft.id, revision: offer.revision + 1, fingerprint: draft.fingerprint, ...review };
 }
 
 /**
@@ -138,11 +146,14 @@ export async function decideOffer(tx: Transaction, a: BrandActor, input: { offer
   const target = versions.find(v => v.id === input.versionId);
   if (!target) throw new AppError('NOT_FOUND', 'Version not available');
   if (target.fingerprint !== input.fingerprint) throw new AppError('CONFLICT', 'Content changed since it was shared for review');
+  const assignment = await requireReviewer(tx, a, target.id);
+  const title = `${(target.content as OfferContent).name} · versión ${target.sequence}`;
   const now = new Date();
   if (input.decision === 'REQUEST_CHANGES') {
     editorialTransition(target.status as EditorialStatus, 'CHANGES_REQUESTED');
     await tx.update(t.offerVersions).set({ status: 'CHANGES_REQUESTED', decidedBy: a.userId, decidedAt: now, decisionCriterion: criterion }).where(eq(t.offerVersions.id, target.id));
     await record('REQUEST_CHANGES', target.id, target.fingerprint, null);
+    await closeReview(tx, a, assignment, 'CHANGES_REQUESTED', title);
     await touch(tx, offer.id, { revision: offer.revision + 1 });
     return { offerId: offer.id, versionId: target.id, status: 'CHANGES_REQUESTED' as const, superseded: null, criterion };
   }
@@ -152,8 +163,9 @@ export async function decideOffer(tx: Transaction, a: BrandActor, input: { offer
   await tx.update(t.offerVersions).set({ status: 'APPROVED', decidedBy: a.userId, decidedAt: now, decisionCriterion: criterion }).where(eq(t.offerVersions.id, target.id));
   if (result.superseded) await tx.update(t.offerVersions).set({ status: 'SUPERSEDED' }).where(eq(t.offerVersions.id, result.superseded));
   await record('APPROVE', target.id, target.fingerprint, result.superseded);
+  await closeReview(tx, a, assignment, 'APPROVED', title);
   await touch(tx, offer.id, { approvedVersionId: result.pointers.approvedVersionId, draftVersionId: result.pointers.draftVersionId, revision: offer.revision + 1 });
-  return { offerId: offer.id, versionId: target.id, status: 'APPROVED' as const, superseded: result.superseded, criterion };
+  return { offerId: offer.id, versionId: target.id, status: 'APPROVED' as const, superseded: result.superseded, criterion, selfApproval: assignment?.selfApproval ?? false };
 }
 
 /** Starts a new DRAFT from the approved version (or the latest one). The approved version stays approved. */
@@ -176,4 +188,27 @@ export async function retireOffer(tx: Transaction, a: BrandActor, input: { offer
   if (offer.status === 'RETIRED') return { offerId: offer.id, versionId, status: 'RETIRED' as const, replayed: true };
   await touch(tx, offer.id, { status: 'RETIRED', revision: offer.revision + 1 });
   return { offerId: offer.id, versionId, status: 'RETIRED' as const };
+}
+
+/**
+ * PHASE4_SPEC §13 · «Create from this offer»: a new, independent offer of the same brand with a DRAFT copied from the
+ * chosen version (the approved one by default) and a link to its origin. It inherits no approval, reviewer,
+ * invitation, publication or authorization (none of them live in the content). Idempotent per author and key.
+ */
+export async function createOfferFrom(tx: Transaction, a: BrandActor, input: { sourceOfferId?: unknown; sourceVersionId?: unknown; idempotencyKey?: unknown }) {
+  const idempotencyKey = key(input.idempotencyKey);
+  const source = await lockOffer(tx, a, input.sourceOfferId, REVISION_NOT_GUARDED);
+  const versions = await tx.select().from(t.offerVersions).where(eq(t.offerVersions.offerId, source.id)).orderBy(asc(t.offerVersions.sequence));
+  const chosen = input.sourceVersionId == null || input.sourceVersionId === '' ? versions.find(v => v.id === source.approvedVersionId) ?? versions[versions.length - 1] : versions.find(v => v.id === input.sourceVersionId);
+  if (!chosen) throw new AppError('NOT_FOUND', 'Version not available');
+  const content = derivedContent(chosen.content as OfferContent), fingerprint = contentFingerprint(content);
+  const origin = { sourceOfferId: source.id, sourceVersionId: chosen.id, previousVersionId: chosen.id };
+  const replay = await replayCreate(tx, a, idempotencyKey, fingerprint);
+  if (replay) return { ...replay, ...origin };
+  await checkReferences(tx, a, content);
+  const offerId = randomUUID(), versionId = randomUUID(), now = new Date();
+  const inserted = await tx.insert(t.offers).values({ id: offerId, workspaceId: a.workspaceId, brandId: a.brandId, status: 'ACTIVE', draftVersionId: versionId, approvedVersionId: null, revision: 0, createdBy: a.userId, idempotencyKey, createdAt: now, updatedAt: now, derivedFromOfferId: source.id, derivedFromVersionId: chosen.id }).onConflictDoNothing().returning({ id: t.offers.id });
+  if (!inserted.length) return { ...(await replayCreate(tx, a, idempotencyKey, fingerprint))!, ...origin };
+  await tx.insert(t.offerVersions).values({ id: versionId, workspaceId: a.workspaceId, brandId: a.brandId, offerId, sequence: 1, previousVersionId: null, status: 'DRAFT', content, fingerprint, createdBy: a.userId, createdAt: now });
+  return { offerId, versionId, replayed: false, ...origin };
 }

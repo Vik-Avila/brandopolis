@@ -6,7 +6,8 @@ import { AppError, validate } from './contracts.js';
  */
 export type DeliverableType = 'SALES_PRESENTATION' | 'OFFER_COPY' | 'SOCIAL_POST' | 'AD' | 'DESIGN_BRIEF';
 export const DELIVERABLE_TYPES: readonly DeliverableType[] = ['SALES_PRESENTATION', 'OFFER_COPY', 'SOCIAL_POST', 'AD', 'DESIGN_BRIEF'];
-export type DeliverableContent = { type: DeliverableType; name: string; offerId: string | null; sourceDecisionVersionIds: string[]; body: Record<string, unknown> };
+export type FinalArt = { fileId: string; name: string; format: string; bytes: number; sha256: string; source: 'UPLOAD' | 'CANVA'; attachedAt: string };
+export type DeliverableContent = { type: DeliverableType; name: string; offerId: string | null; sourceDecisionVersionIds: string[]; body: Record<string, unknown>; finalArt?: FinalArt };
 
 const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
 const list = (value: unknown) => (Array.isArray(value) ? value.map(text).filter(Boolean) : []);

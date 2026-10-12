@@ -7,6 +7,7 @@ import { DELIVERABLE_TYPES, deliverableGaps, normalizeDeliverable, type Delivera
 import type { Transaction } from '../persistence/database.js';
 import * as t from '../persistence/schema.js';
 import type { BrandActor } from './brand-access.js';
+import { assignReviewer, closeReview, commentsOf, requireReviewer, reviewsOf } from './review-workflow.js';
 
 /**
  * ADR-0030 / PHASE4_SPEC §4.4 · deliverables. Same guarantees as offers: brand scope from Engine.withBrandActor,
@@ -60,6 +61,8 @@ export async function listDeliverables(tx: Transaction, a: BrandActor, types: re
   const offers = await tx.select({ id: t.offers.id, approvedVersionId: t.offers.approvedVersionId }).from(t.offers).where(byBrand(t.offers, a));
   const [kit] = await tx.select({ approvedVersionId: t.brandKits.approvedVersionId }).from(t.brandKits).where(byBrand(t.brandKits, a));
   const activeOf = new Map(decisions.map(d => [d.id, d.activeVersionId])), decisionOf = new Map(decisionVersions.map(v => [v.id, v.decisionId]));
+  const reviews = await reviewsOf(tx, a, versions.map(v => v.id));
+  const comments = await commentsOf(tx, a, ids);
   const outdated = (content: DeliverableContent, m: Manifest) => [
     ...m.decisionVersionIds.filter(v => decisionOf.has(v) && activeOf.get(decisionOf.get(v)!) !== v).map(() => 'DECISION'),
     ...(content.offerId && offers.find(o => o.id === content.offerId)?.approvedVersionId !== m.offerVersionId ? ['OFFER'] : []),
@@ -67,10 +70,11 @@ export async function listDeliverables(tx: Transaction, a: BrandActor, types: re
   ];
   return rows.map(d => {
     const own = versions.filter(v => v.deliverableId === d.id);
-    const view = (v: typeof own[number]) => ({ id: v.id, sequence: v.sequence, status: v.status, fingerprint: v.fingerprint, content: v.content as DeliverableContent, manifest: v.manifest as Manifest, provenance: v.provenance, createdAt: v.createdAt.toISOString(), decidedAt: v.decidedAt?.toISOString() ?? null });
+    const view = (v: typeof own[number]) => ({ id: v.id, sequence: v.sequence, status: v.status, fingerprint: v.fingerprint, content: v.content as DeliverableContent, manifest: v.manifest as Manifest, provenance: v.provenance, createdAt: v.createdAt.toISOString(), decidedAt: v.decidedAt?.toISOString() ?? null, decisionCriterion: v.decisionCriterion, review: reviews.get(v.id) ?? null });
     const approved = own.find(v => v.id === d.approvedVersionId), draft = own.find(v => v.id === d.draftVersionId);
     return {
       id: d.id, type: d.type, status: d.status, revision: d.revision,
+      comments: comments.filter(c => c.subjectId === d.id),
       approved: approved ? { ...view(approved), originOutdated: outdated(approved.content as DeliverableContent, approved.manifest as Manifest) } : null,
       draft: draft ? { ...view(draft), gaps: deliverableGaps(draft.content as DeliverableContent) } : null,
       inReview: own.filter(v => v.status === 'IN_REVIEW').map(view),
@@ -82,7 +86,7 @@ export async function listDeliverables(tx: Transaction, a: BrandActor, types: re
 
 /** Creates a deliverable with its first DRAFT. Provenance is MANUAL unless the server verified an AI proposal. */
 export async function createDeliverable(tx: Transaction, a: BrandActor, input: { content?: unknown; idempotencyKey?: unknown }, provenance: 'MANUAL' | 'AI_ASSISTED' = 'MANUAL') {
-  const idempotencyKey = key(input.idempotencyKey), content = serverDesign(normalizeDeliverable(input.content), undefined), fingerprint = contentFingerprint(content);
+  const idempotencyKey = key(input.idempotencyKey), content = serverOwned(normalizeDeliverable(input.content), null), fingerprint = contentFingerprint(content);
   const replay = async () => {
     const [prior] = await tx.select().from(t.deliverables).where(and(byBrand(t.deliverables, a), eq(t.deliverables.createdBy, a.userId), eq(t.deliverables.idempotencyKey, idempotencyKey)));
     if (!prior) return null;
@@ -107,6 +111,16 @@ export function serverDesign(content: DeliverableContent, design: unknown): Deli
   return { ...content, body: design ? { ...body, design } : body };
 }
 
+/**
+ * Fields only the server writes: the Canva design and the attached final art (PHASE4_SPEC §13). Whatever the browser
+ * sends for them is replaced by what the previous draft had (or nothing on creation).
+ */
+export function serverOwned(content: DeliverableContent, previous: DeliverableContent | null): DeliverableContent {
+  const { finalArt: _ignored, ...rest } = content;
+  const withDesign = serverDesign(rest, previous?.body.design);
+  return previous?.finalArt ? { ...withDesign, finalArt: previous.finalArt } : withDesign;
+}
+
 /** Saves the working draft. The type never changes; an edit by a person keeps the provenance it had. */
 export async function saveDeliverableDraft(tx: Transaction, a: BrandActor, input: { deliverableId?: unknown; expectedRevision?: unknown; content?: unknown }) {
   const row = await lockDeliverable(tx, a, input.deliverableId, input.expectedRevision);
@@ -114,7 +128,7 @@ export async function saveDeliverableDraft(tx: Transaction, a: BrandActor, input
   if (!row.draftVersionId) throw new AppError('CONFLICT', 'There is no draft; start a new version first');
   const [draft] = await tx.select().from(t.deliverableVersions).where(eq(t.deliverableVersions.id, row.draftVersionId)).for('update');
   if (draft.status !== 'DRAFT') throw new AppError('CONFLICT', 'Only a draft can be edited');
-  const content = serverDesign(normalizeDeliverable(input.content), (draft.content as DeliverableContent).body.design);
+  const content = serverOwned(normalizeDeliverable(input.content), draft.content as DeliverableContent);
   if (content.type !== row.type) throw new AppError('INVALID', 'The type of a deliverable cannot change');
   const manifest = await manifestFor(tx, a, content);
   await tx.update(t.deliverableVersions).set({ content, fingerprint: contentFingerprint(content), manifest }).where(eq(t.deliverableVersions.id, draft.id));
@@ -122,15 +136,17 @@ export async function saveDeliverableDraft(tx: Transaction, a: BrandActor, input
   return { deliverableId: row.id, versionId: draft.id, revision: row.revision + 1 };
 }
 
-export async function submitDeliverable(tx: Transaction, a: BrandActor, input: { deliverableId?: unknown; expectedRevision?: unknown }) {
+export async function submitDeliverable(tx: Transaction, a: BrandActor, input: { deliverableId?: unknown; expectedRevision?: unknown; reviewerId?: unknown }) {
   const row = await lockDeliverable(tx, a, input.deliverableId, input.expectedRevision);
   active(row);
   if (!row.draftVersionId) throw new AppError('CONFLICT', 'There is no draft to review');
   const [draft] = await tx.select().from(t.deliverableVersions).where(eq(t.deliverableVersions.id, row.draftVersionId)).for('update');
   editorialTransition(draft.status as EditorialStatus, 'IN_REVIEW');
   await tx.update(t.deliverableVersions).set({ status: 'IN_REVIEW', submittedAt: new Date() }).where(eq(t.deliverableVersions.id, draft.id));
+  // PHASE4_SPEC §13 · without a reviewer the version is not sent (same transaction: no unassigned version exists).
+  const review = await assignReviewer(tx, a, { type: row.type as DeliverableType, id: row.id, versionId: draft.id, title: `${(draft.content as DeliverableContent).name} · versión ${draft.sequence}` }, input.reviewerId);
   await touch(tx, row.id, { draftVersionId: null, revision: row.revision + 1 });
-  return { deliverableId: row.id, versionId: draft.id, revision: row.revision + 1, fingerprint: draft.fingerprint };
+  return { deliverableId: row.id, versionId: draft.id, revision: row.revision + 1, fingerprint: draft.fingerprint, ...review };
 }
 
 /** Approve or request changes on the exact version + fingerprint, with a criterion and an idempotency key (INV-010). */
@@ -150,12 +166,15 @@ export async function decideDeliverable(tx: Transaction, a: BrandActor, input: {
   const target = versions.find(v => v.id === input.versionId);
   if (!target) throw new AppError('NOT_FOUND', 'Version not available');
   if (target.fingerprint !== input.fingerprint) throw new AppError('CONFLICT', 'Content changed since it was shared for review');
+  const assignment = await requireReviewer(tx, a, target.id);
+  const title = `${(target.content as DeliverableContent).name} · versión ${target.sequence}`;
   const now = new Date();
   const record = (decision: 'APPROVE' | 'REQUEST_CHANGES', superseded: string | null) => tx.insert(t.deliverableApprovals).values({ id: randomUUID(), workspaceId: a.workspaceId, brandId: a.brandId, deliverableId: row.id, versionId: target.id, fingerprint: target.fingerprint, decision, criterion, supersededVersionId: superseded, actorId: a.userId, idempotencyKey, createdAt: now });
   if (input.decision === 'REQUEST_CHANGES') {
     editorialTransition(target.status as EditorialStatus, 'CHANGES_REQUESTED');
     await tx.update(t.deliverableVersions).set({ status: 'CHANGES_REQUESTED', decidedBy: a.userId, decidedAt: now, decisionCriterion: criterion }).where(eq(t.deliverableVersions.id, target.id));
     await record('REQUEST_CHANGES', null);
+    await closeReview(tx, a, assignment, 'CHANGES_REQUESTED', title);
     await touch(tx, row.id, { revision: row.revision + 1 });
     return { deliverableId: row.id, versionId: target.id, status: 'CHANGES_REQUESTED', superseded: null, criterion };
   }
@@ -165,8 +184,9 @@ export async function decideDeliverable(tx: Transaction, a: BrandActor, input: {
   await tx.update(t.deliverableVersions).set({ status: 'APPROVED', decidedBy: a.userId, decidedAt: now, decisionCriterion: criterion }).where(eq(t.deliverableVersions.id, target.id));
   if (result.superseded) await tx.update(t.deliverableVersions).set({ status: 'SUPERSEDED' }).where(eq(t.deliverableVersions.id, result.superseded));
   await record('APPROVE', result.superseded);
+  await closeReview(tx, a, assignment, 'APPROVED', title);
   await touch(tx, row.id, { approvedVersionId: result.pointers.approvedVersionId, draftVersionId: result.pointers.draftVersionId, revision: row.revision + 1 });
-  return { deliverableId: row.id, versionId: target.id, status: 'APPROVED', superseded: result.superseded, criterion };
+  return { deliverableId: row.id, versionId: target.id, status: 'APPROVED', superseded: result.superseded, criterion, selfApproval: assignment?.selfApproval ?? false };
 }
 
 /** New DRAFT from the approved version (or the latest). The approved version stays approved until another is. */

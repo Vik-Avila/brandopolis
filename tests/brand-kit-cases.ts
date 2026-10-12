@@ -77,7 +77,7 @@ export function brandKitCases(connection: () => ReturnType<typeof connect>) {
       await x.cmd('publish', { versionId: v1.versionId, fingerprint: v1.fingerprint });
       // A material made now records kit version 1 in its origin manifest.
       const post = await x.engine.deliverableCommand(x.who.token, 'create', { brandId: x.brand.id, content: { type: 'AD', name: 'Anuncio', offerId: null, sourceDecisionVersionIds: [], body: { channel: 'META', objective: 'LEADS', headlines: ['h'], descriptions: [], callToAction: '', landingUrl: null } }, idempotencyKey: randomUUID() });
-      const ps = await x.engine.deliverableCommand(x.who.token, 'submit', { brandId: x.brand.id, deliverableId: post.deliverableId, expectedRevision: 0 });
+      const ps = await x.engine.deliverableCommand(x.who.token, 'submit', { reviewerId: x.who.userId, brandId: x.brand.id, deliverableId: post.deliverableId, expectedRevision: 0 });
       await x.engine.deliverableCommand(x.who.token, 'decide', { brandId: x.brand.id, deliverableId: post.deliverableId, versionId: ps.versionId, fingerprint: ps.fingerprint, decision: 'APPROVE', criterion: 'Anuncio aprobado', idempotencyKey: randomUUID() });
       expect((await x.engine.deliverables(x.who.token, x.brand.id, null))[0].approved).toMatchObject({ manifest: { kitVersionId: v1.versionId }, originOutdated: [] });
       // «Completar»: new version from the approved one; v1 stays approved and published meanwhile.

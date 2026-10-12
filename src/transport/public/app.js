@@ -2821,6 +2821,9 @@ function setNavActive(selector){
  const inStrategy=!selector||STRATEGY_VIEWS.has(selector);
  // Inside Estrategia the area keeps its own navigation (sections and the nine steps); outside it disappears.
  $('#strategy-toggle')?.classList.toggle('contains-current',inStrategy);
+ // R12-20 · Estrategia shows the same current-section marker as every other area (visual and accessible): the area
+ // button is the current section (aria-current="true"); the step or tab inside it is the current page.
+ if(inStrategy)$('#strategy-toggle')?.setAttribute('aria-current','true');
  $('#strategy-nav').hidden=!inStrategy;
  if(inStrategy&&!selector)$('#strategy-decisions')?.setAttribute('aria-current','page');
 }

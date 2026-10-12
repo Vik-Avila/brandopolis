@@ -271,9 +271,9 @@ describe('production verification hotfix', () => {
     const navStart = html.indexOf('<nav id="journey"');
     const nav = html.slice(navStart, html.indexOf('</nav>', navStart));
     const labels = [...nav.matchAll(/<span class="nav-label">([^<]+)/g)].map(m => m[1]);
-    // PHASE4_SPEC §3 (2026-10-10) and §12.3 (issue #10, 2026-10-11): eight compact areas (Clientes is an approved
+    // PHASE4_SPEC §3 (2026-10-10), §12.3 (issue #10, 2026-10-11) and §13 R12-03 (owner order 2026-10-12): eight compact areas (Clientes is an approved
     // destination) and the footer; no scroll is needed at the checked sizes (browser suite).
-    expect(labels).toEqual(['Inicio', 'Estrategia', 'Productos y servicios', 'Marketing', 'Clientes', 'Marca y recursos', 'Colaboración', 'Resultados', 'Mi aprendizaje', 'Configuración de marca', 'Ayuda']);
+    expect(labels).toEqual(['Inicio', 'Estrategia', 'Marca y recursos', 'Productos y servicios', 'Marketing', 'Clientes', 'Colaboración', 'Resultados', 'Mi aprendizaje', 'Configuración de marca', 'Ayuda']);
     expect(nav).not.toContain('data-module');
     expect(nav).not.toContain('aria-expanded="true" aria-controls="strategy-list');
     // Estrategia keeps its own inner navigation: sections, then the nine journey steps in canonical order.

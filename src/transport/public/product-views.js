@@ -726,9 +726,12 @@ const AREA_TABS={
  offers:{label:'Productos y servicios',tabs:[['offers','Ofertas'],['materials','Materiales de venta']],later:''},
  brand:{label:'Marca y recursos',tabs:[['identity','Identidad visual'],['guide','Guía de marca']],later:'Biblioteca y Plantillas llegarán más adelante.'}
 };
+// R12-19 · icon + text for the sections of an area (the icon never replaces the word).
+const TAB_ICONS={plan:'i-map',social:'i-users',site:'i-link',ads:'i-target'};
+const tabLabel=(k,l)=>TAB_ICONS[k]?`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#${TAB_ICONS[k]}"/></svg><span>${escape(l)}</span>`:escape(l);
 export function areaTabsHtml(area,active){
  const a=AREA_TABS[area];
- return `<div class="area-nav"><div class="ws-tabs area-tabs" role="tablist" aria-label="${escape(a.label)}">${a.tabs.map(([k,l])=>`<button type="button" role="tab" id="area-tab-${k}" data-area-tab="${k}" aria-selected="${k===active}" tabindex="${k===active?0:-1}">${escape(l)}</button>`).join('')}</div>
+ return `<div class="area-nav"><div class="ws-tabs area-tabs" role="tablist" aria-label="${escape(a.label)}">${a.tabs.map(([k,l])=>`<button type="button" role="tab" id="area-tab-${k}" data-area-tab="${k}" aria-selected="${k===active}" tabindex="${k===active?0:-1}">${tabLabel(k,l)}</button>`).join('')}</div>
  <label class="area-select-label" for="area-select">${escape(a.label)}: sección</label><select id="area-select" class="area-select">${a.tabs.map(([k,l])=>`<option value="${k}"${k===active?' selected':''}>${escape(l)}</option>`).join('')}</select>${a.later?`<p class="hint area-later">${escape(a.later)}</p>`:''}</div>`;
 }
 
@@ -781,7 +784,7 @@ function deliverableCard(d,offers){
 const AREA_COPY={
  materials:{eyebrow:'Productos y servicios',title:'Materiales de venta',lead:'Presentaciones, textos de tus ofertas y briefs para quien diseña. Cada versión se revisa y aprueba antes de usarse.',empty:'Aún no hay materiales. Empieza por los textos de la oferta que más quieres vender.'},
  social:{eyebrow:'Marketing',title:'Redes sociales',lead:'Prepara tus publicaciones con su red, formato, fecha y texto. Se revisan y aprueban aquí; tú las publicas y registras la fecha.',empty:'Aún no hay publicaciones. Prepara la primera con su fecha prevista.'},
- ads:{eyebrow:'Marketing',title:'Campañas digitales',lead:'Prepara los textos de tus anuncios y tus campañas de Google y Meta. Cada versión se revisa y aprueba; en esta fase una campaña sólo se crea en pausa y con el simulador, sin gasto.',empty:'Aún no hay anuncios. Prepara los textos del primero.'}
+ ads:{eyebrow:'Marketing',title:'Campañas digitales',lead:'Prepara los textos de tus anuncios y tus campañas de Google y Meta. Cada versión se revisa y aprueba; crear en pausa, activar (con una segunda autorización) y pausar ocurren en el simulador, sin campañas ni gasto reales.',empty:'Aún no hay anuncios. Prepara los textos del primero.'}
 };
 /** Materials of one area. Social posts are grouped by planned month (same records, no copies). */
 export function deliverablesHtml(area,list,offers){
@@ -795,7 +798,7 @@ export function deliverablesHtml(area,list,offers){
   body=[...groups].map(([k,ds])=>`<section class="plan-month"><h4>${k?`${MONTHS[Number(k.slice(5,7))-1]} ${k.slice(0,4)}`:'Sin fecha'}</h4><div class="offer-list">${ds.map(d=>deliverableCard(d,offers)).join('')}</div></section>`).join('');
  } else body=`<div class="offer-list">${list.map(d=>deliverableCard(d,offers)).join('')}</div>`;
  return `<div class="ws-hero"><p class="eyebrow">${escape(copy.eyebrow)}</p><h2>${escape(copy.title)}</h2><p class="ws-lead">${escape(copy.lead)}</p></div>
- <div class="actions deliverable-new">${newButtons}</div><p class="hint">Exportación disponible: copiar o descargar el texto. Presentación en PowerPoint o PDF y documento de Word llegarán más adelante.</p><div id="deliverable-editor"></div>${body}`;
+ <div class="actions deliverable-new">${newButtons}</div><p class="hint">Cada versión aprobada se descarga en PDF y Word (y las presentaciones, también en PowerPoint), o se copia como texto.</p><div id="deliverable-editor"></div>${body}`;
 }
 /** Form of one deliverable type. Origin choices are only this brand's offers and active decision versions. */
 export function deliverableFormHtml(type,ctx,offers,content=null,d=null){

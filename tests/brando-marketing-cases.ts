@@ -21,7 +21,7 @@ export function brandoMarketingCases(connection: () => ReturnType<typeof connect
     const offerContent = (name: string) => ({ name, kind: 'SERVICE', audience: { customerDecisionVersionId: null, segment: 'Agencias pequeñas' }, need: 'Ordenar la estrategia', outcome: 'Estrategia aprobada', benefits: ['Menos retrabajo'], differentiators: [], conditions: '', proofIds: [], sourceDecisionVersionIds: [], hypothesisIds: [], price: null });
     const approvedOffer = async (name: string) => {
       const o = await engine.offerCommand(who.token, 'create', { brandId: brand.id, content: offerContent(name), idempotencyKey: randomUUID() });
-      const v = await engine.offerCommand(who.token, 'submit', { brandId: brand.id, offerId: o.offerId, expectedRevision: 0 });
+      const v = await engine.offerCommand(who.token, 'submit', { reviewerId: who.userId, brandId: brand.id, offerId: o.offerId, expectedRevision: 0 });
       await engine.offerCommand(who.token, 'decide', { brandId: brand.id, offerId: o.offerId, versionId: v.versionId, fingerprint: v.fingerprint, decision: 'APPROVE', criterion: 'Oferta aprobada', idempotencyKey: randomUUID() });
       return o.offerId as string;
     };
