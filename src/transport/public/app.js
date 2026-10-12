@@ -740,7 +740,7 @@ async function run(action,button) {
     // Disabling or re-rendering drops focus to <body>; return it to the control or to the view heading.
     if(!document.activeElement||document.activeElement===document.body){if(button?.isConnected&&!button.disabled)button.focus();else focusView();}}
 }
-async function loadBrands(preferred) {
+async function loadBrands(preferred,seq) {
   const brands=await api('/api/brands');
   // An empty selector says nothing: the control appears with the first brand and hides again if none remain.
   $('.header-brand-control').hidden=brands.length===0;
@@ -749,7 +749,7 @@ async function loadBrands(preferred) {
   resetBrando();
   brandId=brands.some(b=>b.id===preferred)?preferred:brands[0]?.id;
   if(brandId)$('#brands').value=brandId;
-  activeDecisionTab='overview';draft=null;await refresh();
+  activeDecisionTab='overview';draft=null;await refresh(seq);
 }
 /** Routes that are public documents. Google requires them reachable, and a participant must be able
  *  to read what they are accepting BEFORE accepting it, so no gate may ever intercept them. */
@@ -888,15 +888,15 @@ async function showIntake(){
   $('#intake').hidden=true;await authenticated();
  },event.submitter));
 }
-async function authenticated() {const directModule=new URL(location.href).searchParams.has('module');document.body.classList.add('app');for(const id of ['#gateway','#request-access-view'])$(id).hidden=true;$('#login').hidden=true;document.body.classList.remove('booting');user=await api('/api/me');$('#workspace').hidden=false;$('#logout').hidden=false;$('#menu').hidden=false;$('#new-brand').hidden=false;$('#mode-badge').hidden=false;await loadBrands(new URL(location.href).searchParams.get('brand'));if(await acceptPendingInvitation())return;await refreshPortalEntry();if(!directModule&&context)await showHome();}
+async function authenticated() {const directModule=new URL(location.href).searchParams.has('module');document.body.classList.add('app');for(const id of ['#gateway','#request-access-view'])$(id).hidden=true;$('#login').hidden=true;document.body.classList.remove('booting');user=await api('/api/me');$('#workspace').hidden=false;$('#logout').hidden=false;$('#menu').hidden=false;$('#new-brand').hidden=false;$('#mode-badge').hidden=false;booting=true;pendingNav=null;const seq=navSeq;try{await loadBrands(new URL(location.href).searchParams.get('brand'),seq);}finally{booting=false;}const asked=pendingNav;pendingNav=null;if(await acceptPendingInvitation())return;await refreshPortalEntry();if(asked&&brandId){$(asked).click();return;}if(!directModule&&context&&navSeq===seq)await showHome();}
 /**
  * Reloads the brand context and repaints. Deliberately ONE request: this runs after every mutation,
  * so anything added here delays the whole workspace. Market status is auxiliary rail information and
  * is fetched WITHOUT blocking the render, repainting only the rail when it arrives.
  */
-async function refresh(){
+async function refresh(seq){
  if(brandId)context=await api(`/api/context?brandId=${encodeURIComponent(brandId)}`);else context=null;
- render();
+ if(seq===undefined||seq===navSeq)render(); // the initial load does not replace a section opened meanwhile
  if(brandId)ensureCompetitiveRejections().then(loaded=>{if(loaded&&context)renderContext();});
 }
 function render() {
@@ -1289,7 +1289,10 @@ Promise.all([api('/api/mode'),api('/api/session-state')]).then(async([mode,state
 $('#brand-context').addEventListener('click',()=>run(showBrandContext));
 $('#competitive-context').addEventListener('click',()=>run(showCompetitiveContext));
 // Entering a non-Decision view: title, active navigation, drawer closed, draft preserved. False without a brand.
-function enterView(selector,title){closeRailDrawer(false);$('#decision').before($('#brando-suggestion'));setTitle(title);setNavActive(selector);syncBrandoPresentation();closeMenu(false);preserveDraft();draft=null;return !!brandId;}
+// Navigation generation: every section the person opens bumps it. A section asked for while the workspace is still
+// loading (no brand yet) is remembered and opened when the load ends; the initial load never draws over a newer choice.
+let navSeq=0,booting=false,pendingNav=null;
+function enterView(selector,title){navSeq++;if(!brandId&&booting){pendingNav=selector;setNavActive(selector);return false;}closeRailDrawer(false);$('#decision').before($('#brando-suggestion'));setTitle(title);setNavActive(selector);syncBrandoPresentation();closeMenu(false);preserveDraft();draft=null;return !!brandId;}
 
 
 function competitiveFindingClaim(finding){
@@ -2053,6 +2056,7 @@ function downloadDocument(button,kind){
 function currentStrategySummary(){return `<details><summary>Lo que decidiste y lo que requiere revisión</summary>${context.questions.map(q=>{const d=context.decisions.find(d=>d.questionId===q.id),v=context.versions.find(v=>v.id===d?.activeVersionId);return `<p><strong>${escape(labels[q.module])}</strong><br>${escape(v?.selectedOption??'Pregunta estratégica abierta')}${needsReview(context,d)?'<br><span class="badge warn">Requiere revisión</span>':''}</p>`;}).join('')}</details>`;}
 async function showHome(){
  if(!enterView('#home','Inicio'))return;
+ const seq=navSeq;
  const [nextContext,priority,sourceDocuments,documentClaims]=await Promise.all([
   api(`/api/context?brandId=${encodeURIComponent(brandId)}`),
   api(`/api/brands/work-priority?brandId=${encodeURIComponent(brandId)}`),
@@ -2060,6 +2064,7 @@ async function showHome(){
   api(`/api/document-claims?brandId=${encodeURIComponent(brandId)}`)
  ]);
  context=nextContext;
+ if(seq!==navSeq)return; // the person opened another section while Inicio was loading
  renderContext();
  const documentState={
   total:sourceDocuments.length,

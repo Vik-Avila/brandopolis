@@ -156,3 +156,32 @@ test('ADR-0035: manual and web capture persist, retries keep one opportunity, fo
   await expect(view).toContainText('America/Mexico_City');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });
+
+// Regression of the compact failure of 2026-10-11 (trace kept): after a reload the person chose Clientes while the
+// workspace was still loading and the initial load drew another section. Responses are held with page.route (not
+// timed waits) so both windows are reproduced on purpose: before the brand list arrives, and after it but before the
+// brand context arrives. The observable end of the initial load is the competitive-rejections request, which the app
+// issues right after it would draw the initial section.
+test('a section chosen while the workspace is still loading is kept; a late initial response never replaces it', async ({ page }) => {
+  const team = JSON.parse(readFileSync(process.env.BRANDOPOLIS_SESSION_FILE ?? '.local/demo-session.json', 'utf8'));
+  await page.goto('/'); await signIn(page, team.token);
+  await expect(page.locator('#decision h2').first()).toBeVisible();
+  const view = page.locator('#decision');
+  const hold = (pattern: string) => { let open!: () => void; const gate = new Promise<void>(r => { open = r; }); void page.route(pattern, async route => { await gate; await route.continue(); }, { times: 1 }); return open; };
+  const initialEnd = () => page.waitForResponse(r => r.url().includes('/api/competitive/rejections'));
+  for (const held of ['**/api/brands', '**/api/context?*']) {
+    const release = hold(held);
+    const brandsDone = held === '**/api/context?*' ? page.waitForResponse(r => new URL(r.url()).pathname === '/api/brands') : null;
+    const ended = initialEnd();
+    await page.reload();
+    await page.locator('#workspace').waitFor();
+    if (brandsDone) await brandsDone; // second window: the brand is known, its context is still on the way
+    const clientsLoaded = page.waitForResponse(r => new URL(r.url()).pathname === '/api/clients');
+    await openNav(page); await page.locator('#clients').click();
+    release();
+    await ended;
+    await clientsLoaded;
+    await expect(view.locator('h2').first()).toHaveText('Oportunidades de tu marca');
+    await expect(page.locator('#clients')).toHaveAttribute('aria-current', 'page');
+  }
+});

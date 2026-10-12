@@ -394,6 +394,9 @@ export function siteCases(connection: () => ReturnType<typeof connect>) {
         const leakedRef = refOf(await post(leaked));
         expect(leakedRef).not.toBe(ref);
         expect(refOf(await post(leaked))).toBe(leakedRef);
+        const twice = await Promise.all([post(leaked), post(leaked)]); // simultaneous posts of the second content
+        expect([refOf(twice[0]), refOf(twice[1])]).toEqual([leakedRef, leakedRef]);
+        expect(refOf(await post(ana))).toBe(ref); // the first content still returns its original record
         const rows = await mine();
         expect(rows).toHaveLength(3);
         expect(rows.find(o => o.personName === 'Ana')).toMatchObject({ contactEmail: 'ana@example.com', need: 'Precios para mi cafetería' });
