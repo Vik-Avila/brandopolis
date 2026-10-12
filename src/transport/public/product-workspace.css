@@ -1010,3 +1010,9 @@ button.danger:disabled { background: #E8D5D2; border-color: #E8D5D2; color: #6E5
 .site-notices { list-style: none; padding: 0; }
 .button-link { display: inline-flex; align-items: center; min-height: 40px; padding: 6px 14px; border: 1px solid var(--ws-line); border-radius: 10px; text-decoration: none; }
 .site-faq { display: grid; gap: 6px; padding-left: 10px; border-left: 3px solid var(--ws-line); }
+.site-proof { display: grid; gap: 6px; padding-left: 10px; border-left: 3px solid var(--ws-line); margin-bottom: 8px; }
+.site-proof-source { display: grid; gap: 6px; border: 1px solid var(--ws-line); border-radius: 10px; padding: 8px 10px; margin: 0; min-width: 0; }
+.site-proof-source legend { font-weight: 600; padding: 0 4px; }
+.site-proof-source .check-option { font-weight: 400; }
+.site-domains li { flex-wrap: wrap; }
+.site-domain-reqs { flex-basis: 100%; }

@@ -2310,15 +2310,15 @@ function openKitEditor(){
  });
 }
 /** ADR-0030 · downloads a generated document and shows the notices (fonts, characters) that travel with it. */
-async function downloadExport(url,button){
+async function downloadExport(url,button,words={}){
  if(button)button.disabled=true;
  try{
   const response=await fetch(url,{signal:AbortSignal.timeout(60000)});
-  if(!response.ok){let data={};try{data=await response.json();}catch{/* not JSON */}notice(response.status===409?'Primero publica una versión del kit para descargar su guía.':response.status===400?'Este formato no está disponible para este material.':'No se pudo generar el documento. Inténtalo de nuevo.',true);return data;}
+  if(!response.ok){let data={};try{data=await response.json();}catch{/* not JSON */}notice(response.status===409?(words.conflict??'Primero publica una versión del kit para descargar su guía.'):response.status===400?'Este formato no está disponible para este material.':'No se pudo generar el documento. Inténtalo de nuevo.',true);return data;}
   let notices=[];try{notices=JSON.parse(decodeURIComponent(response.headers.get('x-brandopolis-notices')??'%5B%5D'));}catch{notices=[];}
   const name=/filename="([^"]+)"/.exec(response.headers.get('content-disposition')??'')?.[1]??'documento';
   const link=document.createElement('a');link.href=URL.createObjectURL(await response.blob());link.download=name;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(link.href),10000);
-  notice(notices.length?`Documento descargado. ${notices.map(n=>n.message).join(' ')}`:'Documento descargado.');
+  const done=words.done??'Documento descargado.';notice(notices.length?`${done} ${notices.map(n=>n.message).join(' ')}`:done);
  }catch{notice('No se pudo descargar el documento. Comprueba la conexión y vuelve a intentarlo.',true);}
  finally{if(button)button.disabled=false;}
 }
@@ -2377,11 +2377,14 @@ function renderSites(){
     if(f('imageAssetId'))s.imageAssetId=f('imageAssetId').value||null;if(f('assetId'))s.assetId=f('assetId').value;
     if(s.type==='OFFERS')s.items=siteData.offers.filter(o=>li.querySelector(`[data-offer="${CSS.escape(o.offerId)}"]`)?.checked).map(o=>s.items.find(i=>i.offerId===o.offerId&&i.offerVersionId===o.offerVersionId)??{offerId:o.offerId,offerVersionId:o.offerVersionId,name:o.name,description:[o.outcome||o.need,...o.benefits.slice(0,3).map(b=>`• ${b}`)].filter(Boolean).join('\n')});
     if(s.type==='FAQ')s.items=s.items.map((q,k)=>({question:f(`q${k}`)?.value??q.question,answer:f(`a${k}`)?.value??q.answer}));
+    const source=(k,old)=>{const sel=f(`src-kind${k}`);if(!sel)return old;if(sel.value==='PERSON')return {kind:'PERSON',label:f(`src-label${k}`)?.value??'',permission:!!f(`src-permission${k}`)?.checked,example:!!f(`src-example${k}`)?.checked};if(sel.value.startsWith('EVIDENCE:')){const e=(siteData.evidence??[]).find(x=>x.id===sel.value.slice(9));return e?{kind:'EVIDENCE',evidenceId:e.id,label:`${e.claim.slice(0,200)}${e.source?` · ${e.source.slice(0,80)}`:''}`}:null;}return null;};
+    if(s.type==='TESTIMONIALS')s.items=s.items.map((q,k)=>({quote:f(`quote${k}`)?.value??q.quote,author:f(`author${k}`)?.value??q.author,role:f(`role${k}`)?.value??q.role,source:source(k,q.source)}));
+    if(s.type==='FIGURES')s.items=s.items.map((q,k)=>({value:f(`value${k}`)?.value??q.value,label:f(`flabel${k}`)?.value??q.label,context:f(`fcontext${k}`)?.value??q.context,source:source(k,q.source)}));
    });
   });
   const open=[...editor.querySelectorAll('.site-page')].findIndex(el=>el.open);siteUi.openPage=open<0?siteUi.openPage:open;
  };
- editor?.addEventListener('change',event=>{if(event.target.matches('[data-target-select]')){const url=event.target.parentElement.nextElementSibling;if(url)url.hidden=event.target.value!=='url';}});
+ editor?.addEventListener('change',event=>{if(event.target.matches('[data-target-select]')){const url=event.target.parentElement.nextElementSibling;if(url)url.hidden=event.target.value!=='url';}if(event.target.matches('[data-source-select]')){const person=event.target.parentElement.querySelector('[data-person-fields]');if(person)person.hidden=event.target.value!=='PERSON';}});
  editor?.querySelectorAll('.site-page').forEach(el=>{
   const page=()=>siteUi.draft.content.pages.find(p=>p.id===el.dataset.page);
   el.querySelector('[data-section-add]')?.addEventListener('click',()=>{readEditor();const p=page();if(p.sections.length>=20){notice('Una página admite hasta 20 secciones.',true);return;}p.sections.push(newSection(el.querySelector('[data-section-type]').value));siteUi.openPage=siteUi.draft.content.pages.indexOf(p);renderSites();});
@@ -2391,6 +2394,7 @@ function renderSites(){
    li.querySelectorAll('[data-section-move]').forEach(b=>b.addEventListener('click',()=>{readEditor();const p=page(),i=idx(),j=i+Number(b.dataset.sectionMove);if(j<0||j>=p.sections.length)return;[p.sections[i],p.sections[j]]=[p.sections[j],p.sections[i]];siteUi.openPage=siteUi.draft.content.pages.indexOf(p);renderSites();}));
    li.querySelector('[data-section-remove]')?.addEventListener('click',()=>{readEditor();const p=page();p.sections.splice(idx(),1);siteUi.openPage=siteUi.draft.content.pages.indexOf(p);renderSites();});
    li.querySelector('[data-faq-add]')?.addEventListener('click',()=>{readEditor();const p=page();p.sections[idx()].items.push({question:'',answer:''});siteUi.openPage=siteUi.draft.content.pages.indexOf(p);renderSites();});
+   li.querySelector('[data-proof-add]')?.addEventListener('click',()=>{readEditor();const p=page(),sec=p.sections[idx()];if(sec.items.length>=12){notice('Una sección admite hasta 12 elementos.',true);return;}sec.items.push(sec.type==='TESTIMONIALS'?{quote:'',author:'',role:'',source:null}:{value:'',label:'',context:'',source:null});siteUi.openPage=siteUi.draft.content.pages.indexOf(p);renderSites();});
   });
  });
  $('#site-page-add')?.addEventListener('click',()=>{readEditor();const pages=siteUi.draft.content.pages;const id=`p-${Math.random().toString(36).slice(2,10)}`;pages.push({id,slug:`pagina-${pages.length+1}`,title:pages.length?'Nueva página':'Inicio',description:'',sections:[]});siteUi.openPage=pages.length-1;renderSites();});
@@ -2404,7 +2408,8 @@ function renderSites(){
  document.querySelectorAll('.site-decide').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const criterion=form.querySelector('textarea').value.trim();if(criterion.length<10){form.querySelector('textarea').focus();notice('Escribe al menos diez caracteres para explicar tu decisión.',true);return;}const decision=event.submitter?.value;const keyName=`key${decision}`;form.dataset[keyName]??=crypto.randomUUID();run(async()=>{await api('/api/sites/decide',{brandId,siteId:site.id,versionId:form.dataset.version,fingerprint:form.dataset.fingerprint,decision,criterion,idempotencyKey:form.dataset[keyName]});await showSites();notice(decision==='APPROVE'?'Versión aprobada. Publicar es un paso aparte.':'Pediste cambios. Crea una versión nueva para corregirla.');},event.submitter);}));
  document.querySelectorAll('[data-site-publish]').forEach(b=>b.addEventListener('click',()=>{const host=site.domains.find(x=>x.kind==='BRANDOPOLIS')?.hostname,sequence=Number(b.dataset.sequence),restore='restore' in b.dataset;if(!window.confirm(`${restore?'Restaurar':'Publicar'} «${site.name}», versión ${sequence}, en ${host}. ¿Confirmas?`))return;b.dataset.key??=crypto.randomUUID();run(async()=>{const r=await api('/api/sites/publish',{brandId,siteId:site.id,versionId:b.dataset.sitePublish,confirm:{siteName:site.name,sequence,host},idempotencyKey:b.dataset.key});await showSites();notice(r.status==='PUBLISHED'?(restore?`Restaurada la versión ${sequence}: es la que está en línea.`:`Publicada la versión ${sequence} en el servidor de desarrollo.`):'No se pudo publicar. La versión anterior sigue en línea.',r.status!=='PUBLISHED');},b);}));
  $('#site-domain-form')?.addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget,hostname=$('#site-domain').value.trim();if(!hostname){$('#site-domain').focus();return;}form.dataset.key??=crypto.randomUUID();run(async()=>{await api('/api/sites/domain-add',{brandId,siteId:site.id,hostname,idempotencyKey:form.dataset.key});await showSites();notice('Dominio añadido. Agrega el registro que se indica en tu DNS y luego pulsa «Comprobar».');},event.submitter);});
- document.querySelectorAll('[data-domain-check]').forEach(b=>b.addEventListener('click',()=>run(async()=>{const r=await api('/api/sites/domain-check',{brandId,domainId:b.dataset.domainCheck});await showSites();notice(r.status==='VERIFIED'?'Dominio verificado. Servirlo con HTTPS depende del alojamiento definitivo.':'Todavía no encontramos el registro. Los cambios de DNS pueden tardar.',r.status!=='VERIFIED');},b)));
+ document.querySelectorAll('[data-domain-check]').forEach(b=>b.addEventListener('click',()=>run(async()=>{const r=await api('/api/sites/domain-check',{brandId,domainId:b.dataset.domainCheck});await showSites();notice(r.outcome==='LOOKUP_FAILED'?'La consulta de DNS no respondió. No cambia nada; inténtalo más tarde.':r.status==='VERIFIED'?'Control del dominio verificado. Para publicar en él faltan la dirección DNS hacia el alojamiento y HTTPS, que dependen del alojamiento definitivo.':r.status==='NEEDS_REVERIFICATION'?'Todavía no podemos confirmar el registro; el dominio sigue reservado para tu marca.':r.status==='FAILED'?'El registro ya no está: el dominio se liberó y deja de servirse.':'Todavía no encontramos el registro. Los cambios de DNS pueden tardar.',r.status!=='VERIFIED');},b)));
+ document.querySelectorAll('[data-site-zip]').forEach(b=>b.addEventListener('click',()=>downloadExport(`/api/sites/export?brandId=${encodeURIComponent(brandId)}&versionId=${encodeURIComponent(b.dataset.siteZip)}`,b,{done:'ZIP descargado: contiene la versión aprobada y un LEEME.txt con lo que incluye y lo que necesita Brandopolis.',conflict:'Sólo se puede exportar una versión aprobada.'})));
  document.querySelectorAll('[data-domain-remove]').forEach(b=>b.addEventListener('click',()=>run(async()=>{await api('/api/sites/domain-remove',{brandId,domainId:b.dataset.domainRemove});await showSites();notice('Dominio retirado: el sitio deja de servirse en él.');},b)));
 }
 /** ADR-0035 · Clientes: register and follow up real opportunities of the active brand (team only). */

@@ -39,7 +39,10 @@ export function safeImage(bytes: Buffer | null, format: string): { width: number
   } catch { return null; }
 }
 
-export async function buildSiteFiles(plan: RenderPlan, load: FileLoader, o: { baseUrl: string | null; noindex: boolean }): Promise<BuiltSite> {
+/** Notice shown instead of the contact form in a copy hosted outside Brandopolis (ZIP): nothing pretends to send. */
+export const OFFLINE_FORM_NOTICE = 'El formulario de contacto no está conectado en esta copia del sitio: sólo envía solicitudes en el sitio publicado por Brandopolis. Para recibirlas aquí hace falta conectar un destino propio y autorizado (consulta LEEME.txt).';
+/** `form: 'NONE'` (ZIP copy) renders the contact section without a form. */
+export async function buildSiteFiles(plan: RenderPlan, load: FileLoader, o: { baseUrl: string | null; noindex: boolean; form?: 'SERVER' | 'NONE' }): Promise<BuiltSite> {
   const notices: string[] = [], files = new Map<string, string | Buffer>(), images = new Map<string, RenderImage>();
   const kit = plan.kit?.content ?? null;
   for (const a of plan.assets.filter(x => x.role !== 'FONT')) {
@@ -75,7 +78,7 @@ export async function buildSiteFiles(plan: RenderPlan, load: FileLoader, o: { ba
   };
   const logoImg = plan.logoAssetId ? images.get(plan.logoAssetId) : undefined;
   const theme: Theme = { brandName: plan.brandName, primary: role('PRIMARY', '#1D2A26'), text: role('TEXT', '#1F2523'), background: role('BACKGROUND', '#FFFFFF'), accent: role('ACCENT', role('PRIMARY', '#1D2A26')), headingFont: await pick('HEADINGS'), bodyFont: await pick('BODY'), fontFaces, logo: logoImg ? { path: logoImg.path, alt: plan.brandName } : null };
-  for (const [path, text] of renderSite(plan.version.content, theme, images, { baseUrl: o.baseUrl, noindex: o.noindex, formAction: '/__form', formPrivacy: SITE_FORM_PRIVACY })) files.set(path, text);
+  for (const [path, text] of renderSite(plan.version.content, theme, images, { baseUrl: o.baseUrl, noindex: o.noindex, formAction: o.form === 'NONE' ? null : '/__form', formPrivacy: o.form === 'NONE' ? OFFLINE_FORM_NOTICE : SITE_FORM_PRIVACY })) files.set(path, text);
   return { files, notices: [...new Set(notices)] };
 }
 

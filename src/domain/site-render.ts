@@ -7,7 +7,7 @@
  * Two placeholders are left for the public server, which fills them per request with escaped values: the contact
  * form's submission id (so a re-submission is recognised) and the hidden acquisition fields (UTM, click ids).
  */
-import type { Page, Section, SiteContent } from './site.js';
+import type { Page, ProofSource, Section, SiteContent } from './site.js';
 
 export type Theme = {
   brandName: string; primary: string; text: string; background: string; accent: string;
@@ -15,7 +15,8 @@ export type Theme = {
   logo: { path: string; alt: string } | null;
 };
 export type RenderImage = { path: string; width: number; height: number };
-export type RenderOptions = { baseUrl: string | null; noindex: boolean; formAction: string; formPrivacy: string };
+/** formAction null (ZIP copy): the contact section shows formPrivacy as a notice instead of a form that cannot send. */
+export type RenderOptions = { baseUrl: string | null; noindex: boolean; formAction: string | null; formPrivacy: string };
 export const SUBMISSION_PLACEHOLDER = '__BP_SUBMISSION__';
 export const TRACKING_PLACEHOLDER = '<!--BP_TRACKING-->';
 
@@ -31,6 +32,7 @@ function href(target: string, c: SiteContent) {
   if (target.startsWith('page:')) { const page = c.pages.find(p => p.id === target.slice(5)); return page ? pageUrl(page) : '#'; }
   return target; // https URL validated by normalizeSite
 }
+const sample = (src: ProofSource | null) => (src?.kind === 'PERSON' && src.example ? '<p class="sample">Ejemplo de demostración: no es un dato real.</p>' : '');
 const external = (url: string) => url.startsWith('https://') ? ' rel="noopener noreferrer"' : '';
 
 function sectionHtml(s: Section, c: SiteContent, images: Map<string, RenderImage>, o: RenderOptions) {
@@ -42,7 +44,11 @@ function sectionHtml(s: Section, c: SiteContent, images: Map<string, RenderImage
     case 'IMAGE': return `<figure class="image">${img(s.assetId, s.alt, 'image-file')}${s.caption ? `<figcaption>${esc(s.caption)}</figcaption>` : ''}</figure>`;
     case 'CTA': { const link = href(s.target, c); return `<section class="cta">${s.heading ? `<h2>${esc(s.heading)}</h2>` : ''}${s.text ? `<p>${esc(s.text)}</p>` : ''}<a class="button" href="${esc(link)}"${external(link)}>${esc(s.label)}</a></section>`; }
     case 'FAQ': return `<section class="faq">${s.heading ? `<h2>${esc(s.heading)}</h2>` : ''}${s.items.map(i => `<details><summary>${esc(i.question)}</summary>${paragraphs(i.answer)}</details>`).join('')}</section>`;
-    case 'CONTACT': return `<section class="contact" id="contacto">${s.heading ? `<h2>${esc(s.heading)}</h2>` : ''}${s.text ? `<p>${esc(s.text)}</p>` : ''}
+    // Testimonials and figures: the source is kept in the version for review, never printed; DEMO samples say so.
+    case 'TESTIMONIALS': return `<section class="testimonials">${s.heading ? `<h2>${esc(s.heading)}</h2>` : ''}<ul class="quotes">${s.items.map(i => `<li class="quote"><blockquote><p>${esc(i.quote)}</p></blockquote><p class="who">${esc(i.author)}${i.role ? `, ${esc(i.role)}` : ''}</p>${sample(i.source)}</li>`).join('')}</ul></section>`;
+    case 'FIGURES': return `<section class="figures">${s.heading ? `<h2>${esc(s.heading)}</h2>` : ''}<ul class="figure-list">${s.items.map(i => `<li class="figure"><strong class="figure-value">${esc(i.value)}</strong><span class="figure-label">${esc(i.label)}</span>${i.context ? `<span class="figure-context">${esc(i.context)}</span>` : ''}${sample(i.source)}</li>`).join('')}</ul></section>`;
+    case 'CONTACT': if (o.formAction === null) return `<section class="contact" id="contacto">${s.heading ? `<h2>${esc(s.heading)}</h2>` : ''}${s.text ? `<p>${esc(s.text)}</p>` : ''}<p class="form-off">${esc(o.formPrivacy)}</p></section>`;
+      return `<section class="contact" id="contacto">${s.heading ? `<h2>${esc(s.heading)}</h2>` : ''}${s.text ? `<p>${esc(s.text)}</p>` : ''}
 <form method="post" action="${esc(o.formAction)}" class="contact-form">
 <input type="hidden" name="submission" value="${SUBMISSION_PLACEHOLDER}">${TRACKING_PLACEHOLDER}
 <div class="trap" aria-hidden="true"><label for="website">No completes este campo</label><input id="website" name="website" tabindex="-1" autocomplete="off"></div>
@@ -89,6 +95,8 @@ main{max-width:1080px;margin:0 auto;padding:0 clamp(16px,5vw,64px) 48px}section,
 .hero{display:grid;gap:24px;align-items:center}@media(min-width:800px){.hero{grid-template-columns:1fr 1fr}}.hero h1{font-size:clamp(32px,6vw,52px);margin:0 0 12px}.lead{font-size:20px}
 .button{display:inline-block;min-height:44px;padding:12px 22px;border-radius:8px;background:var(--primary);color:#fff;text-decoration:none;font-weight:700;border:0;font-size:17px;cursor:pointer}
 .cards{list-style:none;padding:0;display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}.card{padding:20px;border:1px solid rgba(0,0,0,.1);border-radius:12px}
+.quotes,.figure-list{list-style:none;padding:0;display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}.quote,.figure{padding:20px;border-left:4px solid var(--accent);background:rgba(0,0,0,.03);border-radius:8px}blockquote{margin:0;font-size:19px}.who{font-weight:700;margin:8px 0 0}
+.figure{display:grid;gap:4px}.figure-value{font:700 clamp(28px,5vw,40px)/1.1 var(--heading);color:var(--primary)}.figure-context{font-size:15px;opacity:.8}.sample,.form-off{font-size:15px;padding:8px 12px;border:1px dashed currentColor;border-radius:8px}
 .cta{padding:32px;border-radius:12px;background:rgba(0,0,0,.04)}figcaption{font-size:15px;opacity:.8}
 details{border-bottom:1px solid rgba(0,0,0,.1);padding:12px 0}summary{cursor:pointer;font-weight:700}
 .contact-form{display:grid;gap:8px;max-width:560px}.contact-form label{font-weight:700}.contact-form input:not([type=checkbox]),.contact-form textarea{width:100%;font:inherit;padding:10px 12px;border:1px solid rgba(0,0,0,.3);border-radius:8px}

@@ -18,6 +18,7 @@ import { chooseFonts, type FontFile } from '../domain/export-fonts.js';
 import { FONT_MAX_BYTES } from '../domain/ttf.js';
 import { resolveTxt } from 'node:dns/promises';
 import { buildSiteFiles, sitesRoot, snapshotDir, writeSnapshot } from './site-files.js';
+import { buildSiteZip } from './site-zip.js';
 import { siteConfig } from '../application/site-config.js';
 import type { ExportSource } from '../application/exports.js';
 import { deliverableDocx, deliverablePdf, deliverablePptx, guidePdf, type BuiltDocument, type Image } from '../application/export-documents.js';
@@ -169,7 +170,7 @@ export class RateLimiter implements Limiter {
   }
 }
 // ADR-0032 · TXT lookup for custom domain verification (read-only; a short timeout; never changes DNS).
-async function resolveTxtRecords(name:string):Promise<string[]>{const timer=new Promise<string[][]>((_,reject)=>setTimeout(()=>reject(new Error('timeout')),4000));const records=await Promise.race([resolveTxt(name),timer]);return records.map(r=>r.join(''));}
+export async function resolveTxtRecords(name:string):Promise<string[]>{const timer=new Promise<string[][]>((_,reject)=>setTimeout(()=>reject(new Error('timeout')),4000));const records=await Promise.race([resolveTxt(name),timer]);return records.map(r=>r.join(''));}
 // ADR-0030 · export assembly: load the kit files the source names (fonts and logos), within size limits, then build.
 async function loadExportFile(storageKey:string,max:number):Promise<Buffer|null>{
   try{const target=resolveDocumentStoragePath(storageKey),info=await stat(target);if(!info.isFile()||info.size>max)return null;return await readFile(target);}catch{return null;}
@@ -790,6 +791,12 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           const doc=await buildExport(source,format,path==='/api/exports/guide');
           res.writeHead(200,{'Content-Type':doc.mediaType,'Content-Length':String(doc.bytes.length),'Content-Disposition':`attachment; filename="${doc.filename}"`,'X-Brandopolis-Notices':encodeURIComponent(JSON.stringify(doc.notices))});
           res.end(doc.bytes);return;
+        }
+        // ADR-0032 · ZIP of one approved site version (team only): same files as the renderer, no working form, instructions.
+        if(path==='/api/sites/export'){
+          const z=await buildSiteZip(await engine.siteExport(token,string(url.searchParams.get('brandId')),url.searchParams.get('versionId')),loadExportFile);
+          res.writeHead(200,{'Content-Type':'application/zip','Content-Length':String(z.bytes.length),'Content-Disposition':`attachment; filename="${z.filename}"`,'Cache-Control':'no-store','X-Brandopolis-Notices':encodeURIComponent(JSON.stringify(z.notices.map(message=>({message}))))});
+          res.end(z.bytes);return;
         }
         if(path==='/api/sites') return send(res,200,await engine.sites(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/clients') return send(res,200,await engine.clients(token,string(url.searchParams.get('brandId'))));

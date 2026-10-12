@@ -22,7 +22,7 @@ import { IdentityDirectionsStore, directionValues, identityPacket, validIdentity
 import { MarketingAssistance, marketingPacket, proposalContent, type MarketingPacket } from '../domain/brando-marketing.js';
 import { DELIVERABLE_TYPES, type DeliverableType } from '../domain/deliverables.js';
 import { deliverableSource, guideSource } from './exports.js';
-import { addCustomDomain, checkDomain, createSite, decideSite, exchangePreviewCode, finishPublication, issuePreviewCode, newSiteDraft, previewAccess, proposeSite, readSites, removeDomain, renderPlan, resolvePublicHost, saveSiteDraft, startPublication, submitSite, type TxtResolver } from './sites.js';
+import { addCustomDomain, checkDomain, createSite, decideSite, exchangePreviewCode, finishPublication, issuePreviewCode, newSiteDraft, previewAccess, proposeSite, readSites, removeDomain, renderPlan, resolvePublicHost, reverifyNextDomain, saveSiteDraft, siteExportSource, startPublication, submitSite, type TxtResolver } from './sites.js';
 import { createForm, createOpportunity, createSegment, disableForm, publicForm, readClients, readResults, submitWebForm, updateOpportunity } from './clients.js';
 import { acceptInvitation, brandGuide, createInvitation, guestAsset, guestBrands, guestComment, guestDecide, readCollaboration, readPortal, resolveGuest, revokeGuest, revokeInvitation, shareToPortal, teamComment, withdrawShare, type GuestActor } from './collaboration.js';
 import { applyDirection, draftValueIds, adoptKitValues, decideKit, kitAsset, mergeKitCandidates, reusableDocument, publishKit, readKit, registerKitAsset, saveKitDraft, startKitDraft, submitKit } from './brand-kit.js';
@@ -188,6 +188,16 @@ export class Engine {
   }
   async siteRenderPlan(scope:{workspaceId:string;brandId:string},versionId:string) {
     return this.db.transaction(tx=>renderPlan(tx,scope,versionId));
+  }
+  /** ZIP export source of one approved version (team only; exporting changes nothing). */
+  async siteExport(token:string,brandId:string,versionId:unknown) {
+    return this.withBrandActor(token,brandId,(tx,actor)=>siteExportSource(tx,actor,{versionId}));
+  }
+  /** DOM-004 · system worker: re-verifies due custom domains one per transaction (SKIP LOCKED); returns what it did. */
+  async reverifyDomains(resolveTxt:TxtResolver,now=new Date(),limit=50) {
+    const done:{domainId:string;status:string;outcome:string}[]=[];
+    for(let i=0;i<limit;i++){const r=await this.db.transaction(tx=>reverifyNextDomain(tx,resolveTxt,now));if(!r)break;done.push(r);}
+    return done;
   }
   async resolvePublicSite(host:string) {
     return this.db.transaction(tx=>resolvePublicHost(tx,host));

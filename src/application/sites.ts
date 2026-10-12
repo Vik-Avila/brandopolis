@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { and, asc, desc, eq, inArray, isNull, ne } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, lte, ne } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { AppError } from '../domain/contracts.js';
 import { approve, editorialTransition, type EditorialStatus } from '../domain/editorial-versions.js';
 import { channelGaps, pairContrast, type KitContent } from '../domain/brand-kit.js';
-import { DOMAIN, SITE_GOALS, challengeOf, measurementFingerprint, newToken, normalizeSite, preflight, sha256, siteFingerprint, slugify, type SiteContent, type SiteGoal, type SectionSource } from '../domain/site.js';
+import { DOMAIN, DOMAIN_CHECK, SITE_GOALS, challengeOf, measurementFingerprint, newToken, nextHeldState, normalizeSite, preflight, proofValue, provesToken, servable, sha256, siteFingerprint, slugify, type ProofSource, type SiteContent, type SiteGoal, type SectionSource, type TxtLookup } from '../domain/site.js';
 import { DEV_PRIVACY_NOTICE, newPublicFormId } from '../domain/clients.js';
 import { MAX_IMAGE_PIXELS } from './pdf-brand.js';
 import { brandopolisHost, siteConfig } from './site-config.js';
@@ -62,6 +62,20 @@ async function checkReferences(tx: Transaction, a: Scoped, c: SiteContent) {
   }
   const imageRefs = c.pages.flatMap(p => p.sections.flatMap(s => (s.type === 'IMAGE' ? [s.assetId] : s.type === 'HERO' && s.imageAssetId ? [s.imageAssetId] : [])));
   if (imageRefs.length) { const allowed = new Set((await siteImages(tx, a)).map(i => i.id)); for (const i of imageRefs) if (!allowed.has(i)) throw new AppError('INVALID', 'This image is not an image of the brand kit that a site can use'); }
+  const evidenceRefs = proofSources(c).flatMap(src => (src.kind === 'EVIDENCE' ? [src.evidenceId] : []));
+  if (evidenceRefs.length) { const own = new Set((await brandEvidence(tx, a)).map(e => e.id)); for (const e of evidenceRefs) if (!own.has(e)) throw new AppError('INVALID', 'Unknown evidence for this brand'); }
+}
+/** Sources cited by testimonials and figures. */
+const proofSources = (c: SiteContent) => c.pages.flatMap(p => p.sections.flatMap(s => (s.type === 'TESTIMONIALS' || s.type === 'FIGURES' ? s.items.map(i => i.source).filter((x): x is ProofSource => !!x) : [])));
+/** Evidence of the brand a testimonial or figure may cite (claim, source and date: the provenance the editor shows). */
+async function brandEvidence(tx: Transaction, a: Scoped) {
+  const rows = await tx.select({ id: t.evidence.id, payload: t.evidence.payload }).from(t.evidence).where(byBrand(t.evidence, a)).orderBy(asc(t.evidence.createdAt));
+  return rows.map(r => { const p = r.payload as { claim?: string; source?: string; sourceDate?: string }; return { id: r.id, claim: String(p.claim ?? '').slice(0, 300), source: String(p.source ?? '').slice(0, 200), sourceDate: typeof p.sourceDate === 'string' ? p.sourceDate : null }; });
+}
+/** DEMO sample testimonials and figures publish only for DEMO brands. */
+async function allowsExamples(tx: Transaction, a: Scoped) {
+  const [b] = await tx.select({ dataClass: t.brands.dataClass }).from(t.brands).where(and(eq(t.brands.workspaceId, a.workspaceId), eq(t.brands.id, a.brandId)));
+  return b?.dataClass === 'DEMO';
 }
 const manifestOf = (c: SiteContent) => ({ kitVersionId: c.kitVersionId, offerVersionIds: [...new Set(c.pages.flatMap(p => p.sections.flatMap(s => (s.type === 'OFFERS' ? s.items.map(i => i.offerVersionId) : []))))] });
 
@@ -94,7 +108,8 @@ async function checksFor(tx: Transaction, a: Scoped, c: SiteContent) {
   const words: Record<string, string> = { PRIMARY_LOGO: 'El kit no tiene logotipo principal para el sitio.', FAVICON: 'El kit no tiene símbolo o favicon para el sitio.', WEB_FONT: 'El kit no tiene una tipografía con permiso web ni una alternativa web revisada.', CONTRAST_PAIRS: 'El kit no define combinaciones de texto y fondo.' };
   const gaps = kit ? channelGaps(kit.content).filter(g => g.channel === 'WEBSITE').map(g => words[g.need]).filter(Boolean) : [];
   // The contact form gets its destination when a person with the publish permission publishes (startPublication).
-  const issues = preflight(c, { images, formReady: true, contrastOk: pairs.every(p => p.normalText === 'AA'), kitWebsiteGaps: gaps, outdated: await outdated(tx, a, c) });
+  const evidence = new Set((await brandEvidence(tx, a)).map(e => e.id));
+  const issues = preflight(c, { images, formReady: true, contrastOk: pairs.every(p => p.normalText === 'AA'), kitWebsiteGaps: gaps, outdated: await outdated(tx, a, c), evidence, allowExamples: await allowsExamples(tx, a) });
   if (!kit) issues.push({ code: 'NO_KIT', message: 'La marca todavía no tiene un kit aprobado: el sitio usa colores y tipografía neutros hasta que lo tenga.' });
   return issues;
 }
@@ -110,7 +125,7 @@ export async function readSites(tx: Transaction, a: BrandActor) {
   const versions = sites.length ? await tx.select().from(t.siteVersions).where(byBrand(t.siteVersions, a)).orderBy(desc(t.siteVersions.sequence)) : [];
   const publications = sites.length ? await tx.select().from(t.sitePublications).where(byBrand(t.sitePublications, a)).orderBy(desc(t.sitePublications.createdAt)) : [];
   const domains = sites.length ? await tx.select().from(t.siteDomains).where(byBrand(t.siteDomains, a)).orderBy(asc(t.siteDomains.createdAt)) : [];
-  const kit = await currentKit(tx, a);
+  const kit = await currentKit(tx, a), now = new Date();
   const out = [];
   for (const s of sites) {
     const vs = versions.filter(v => v.siteId === s.id);
@@ -123,13 +138,13 @@ export async function readSites(tx: Transaction, a: BrandActor) {
       history: vs.map(v => ({ id: v.id, sequence: v.sequence, status: v.status, createdAt: v.createdAt.toISOString(), decidedAt: v.decidedAt?.toISOString() ?? null })),
       publications: publications.filter(p => p.siteId === s.id).map(p => ({ id: p.id, versionId: p.versionId, sequence: vs.find(v => v.id === p.versionId)?.sequence ?? null, status: p.status, host: p.host, restoredFrom: p.restoredFrom, createdAt: p.createdAt.toISOString(), completedAt: p.completedAt?.toISOString() ?? null, failure: p.failure })),
       liveVersionId: s.publishedVersionId,
-      domains: domains.filter(d => d.siteId === s.id).map(d => ({ id: d.id, hostname: d.hostname, kind: d.kind, status: d.status, record: d.kind === 'CUSTOM' ? { name: `_brandopolis.${d.hostname}`, type: 'TXT', value: `brandopolis-site-verification=${d.token}` } : null, checkedAt: d.checkedAt?.toISOString() ?? null, verifiedAt: d.verifiedAt?.toISOString() ?? null })),
+      domains: domains.filter(d => d.siteId === s.id).map(d => domainView(d, now)),
     });
   }
   return {
     sites: out, canPublish: a.capabilities.includes('PUBLISH_SITE'), goals: SITE_GOALS,
     kit: kit ? { versionId: kit.id, sequence: kit.sequence, published: kit.published } : null,
-    offers: await approvedOffers(tx, a), images: await siteImages(tx, a),
+    offers: await approvedOffers(tx, a), images: await siteImages(tx, a), evidence: await brandEvidence(tx, a), examplesAllowed: await allowsExamples(tx, a),
     previewOrigin: siteConfig().previewOrigin, publicScheme: siteConfig().publicScheme,
   };
 }
@@ -190,6 +205,13 @@ export async function proposeSite(tx: Transaction, a: BrandActor, input: { siteI
   if (!promise) missing.push('Promesa de marca o posicionamiento aprobados (la portada usará el nombre de la marca)');
   if (!offers.length) missing.push('Ofertas aprobadas en Productos y servicios (no se propone la lista de ofertas)');
   if (!kit) missing.push('Kit de marca aprobado (el sitio usará colores neutros)');
+  // Testimonials and figures: Brando proposes only where they would go and what they need; it never writes them.
+  const evidenceCount = (await brandEvidence(tx, a)).length;
+  const suggestions = [
+    { type: 'TESTIMONIALS', title: 'Testimonios', why: 'Ayudan a decidir a quien todavía no conoce la marca.', needs: 'Testimonios reales con el permiso de quien los da, o una evidencia de la marca. Brando no los escribe.' },
+    { type: 'FIGURES', title: 'Cifras', why: 'Dan una medida concreta de lo que hace la marca.', needs: evidenceCount ? `Cifras con fuente: puedes citar ${evidenceCount === 1 ? 'la evidencia registrada' : `una de las ${evidenceCount} evidencias`} de la marca o escribir de dónde sale cada número.` : 'Cifras con fuente: escribe de dónde sale cada número. La marca todavía no tiene evidencias registradas.' },
+  ];
+  missing.push('Testimonios y cifras con fuente (Brando propone dónde irían, nunca su contenido)');
   const home = { id: 'p-home', slug: '', title: 'Inicio', description: (message?.option ?? promise?.option ?? brand?.name ?? site.name).slice(0, 160), sections: [] as unknown[] };
   const sources: Record<string, SectionSource> = {};
   const add = (page: { sections: unknown[] }, section: Record<string, unknown>, source: SectionSource) => { page.sections.push(section); sources[section.id as string] = source; };
@@ -204,7 +226,7 @@ export async function proposeSite(tx: Transaction, a: BrandActor, input: { siteI
     pages.push(page);
   }
   if (site.goal !== 'INFORM') { const contact = { id: 'p-contact', slug: 'contacto', title: 'Contacto', description: `Escribe a ${brand?.name ?? site.name}.`.slice(0, 160), sections: [] as unknown[] }; add(contact, { id: 's-contact', type: 'CONTACT', heading: 'Escríbenos', text: 'Te respondemos lo antes posible.' }, src('BRAND', 'Objetivo del sitio')); pages.push(contact); }
-  return { proposal: { pages, navigation: pages.map(p => p.id as string) }, sources, missing, provenance: 'AI_ASSISTED', mode: 'DETERMINISTIC_DEMO', tone: kit?.content.verbal.tone ?? null };
+  return { proposal: { pages, navigation: pages.map(p => p.id as string) }, sources, missing, suggestions, provenance: 'AI_ASSISTED', mode: 'DETERMINISTIC_DEMO', tone: kit?.content.verbal.tone ?? null };
 }
 
 export async function submitSite(tx: Transaction, a: BrandActor, input: { siteId?: unknown; expectedRevision?: unknown }) {
@@ -325,6 +347,19 @@ export async function renderPlan(tx: Transaction, s: Scoped, versionId: string) 
   return { version: versionView(v), siteName: site?.name ?? content.name, brandName: brand?.name ?? '', kit: kit ? { versionId: kit.id, sequence: kit.sequence, content: kit.content } : null, logoAssetId: logo?.assetId ?? null, assets, formPublicId };
 }
 
+/**
+ * Source of the ZIP export of one exact version (ADR-0032 portability): only a version that was approved, inside the
+ * brand scope of a team member. Returns the same plan the renderer uses plus what the instructions file states.
+ */
+export async function siteExportSource(tx: Transaction, a: BrandActor, input: { versionId?: unknown }) {
+  const [v] = await tx.select().from(t.siteVersions).where(and(byBrand(t.siteVersions, a), eq(t.siteVersions.id, idOf(input.versionId, 'Version'))));
+  if (!v) throw new AppError('NOT_FOUND', 'Version not available');
+  if (!['APPROVED', 'SUPERSEDED'].includes(v.status) || !v.decidedAt) throw new AppError('CONFLICT', 'Only an approved version can be exported');
+  const [site] = await tx.select().from(t.sites).where(eq(t.sites.id, v.siteId));
+  const plan = await renderPlan(tx, a, v.id);
+  return { plan, siteName: site?.name ?? '', slug: site?.slug ?? 'sitio', sequence: v.sequence, fingerprint: v.fingerprint, approvedAt: v.decidedAt.toISOString(), live: site?.publishedVersionId === v.id };
+}
+
 // ─── Domains ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** Registers a custom domain to verify with a TXT record the client adds. Nothing is bought or changed automatically. */
@@ -345,26 +380,85 @@ export async function addCustomDomain(tx: Transaction, a: BrandActor, input: { s
   return { domainId: id, replayed: false };
 }
 export type TxtResolver = (name: string) => Promise<string[]>;
-/** Checks the TXT record; a verified domain that loses it becomes FAILED (no dangling domains). */
-export async function checkDomain(tx: Transaction, a: BrandActor, input: { domainId?: unknown }, resolveTxt: TxtResolver) {
-  needsPublish(a);
-  const [d] = await tx.select().from(t.siteDomains).where(and(byBrand(t.siteDomains, a), eq(t.siteDomains.id, idOf(input.domainId, 'Domain')))).for('update');
-  if (!d || d.kind !== 'CUSTOM' || d.status === 'REMOVED') throw new AppError('NOT_FOUND', 'Domain not available');
-  const proves = async (token: string) => { try { return (await resolveTxt(`_brandopolis.${d.hostname}`)).some(v => v.trim() === `brandopolis-site-verification=${token}`); } catch { return false; } };
-  const found = await proves(d.token);
-  const now = new Date();
-  if (found && d.status !== 'VERIFIED') {
-    // Serialise every claim of this hostname; a current holder keeps it only while its own record is still published.
-    const claims = await tx.select().from(t.siteDomains).where(eq(t.siteDomains.hostname, d.hostname)).orderBy(t.siteDomains.id).for('update');
-    const holder = claims.find(c => c.id !== d.id && c.status === 'VERIFIED');
-    if (holder) {
-      if (holder.kind !== 'CUSTOM' || await proves(holder.token)) throw new AppError('CONFLICT', 'This domain is not available');
-      await tx.update(t.siteDomains).set({ status: 'FAILED', checkedAt: now }).where(eq(t.siteDomains.id, holder.id));
-    }
+type DomainRow = typeof t.siteDomains.$inferSelect;
+/**
+ * One TXT lookup as an answer or a failure. NXDOMAIN and NODATA are answers (the record is not there); a timeout,
+ * SERVFAIL or refused query is a failure and proves nothing either way.
+ */
+export async function lookupTxt(resolveTxt: TxtResolver, hostname: string): Promise<TxtLookup> {
+  try { return { ok: true, values: await resolveTxt(`_brandopolis.${hostname}`) }; } catch (error) {
+    const code = (error as { code?: string })?.code;
+    return code === 'ENOTFOUND' || code === 'ENODATA' ? { ok: true, values: [] } : { ok: false };
   }
-  const status = found ? 'VERIFIED' : d.status === 'VERIFIED' ? 'FAILED' : d.status;
-  await tx.update(t.siteDomains).set({ status, checkedAt: now, ...(found && d.status !== 'VERIFIED' ? { verifiedAt: now } : {}) }).where(eq(t.siteDomains.id, d.id));
-  return { domainId: d.id, status, found };
+}
+/**
+ * What the team sees of a domain. Three separate requirements: control (the TXT proof, re-checked), DNS routing to the
+ * publishing host and HTTPS. Routing and HTTPS depend on the definitive hosting (external requirement), so a custom
+ * domain is never «ready» here; the Brandopolis address is a development address without HTTPS.
+ */
+function domainView(d: DomainRow, now: Date) {
+  const custom = d.kind === 'CUSTOM', confirmed = d.lastConfirmedAt ?? (custom ? null : d.verifiedAt);
+  return {
+    id: d.id, hostname: d.hostname, kind: d.kind, status: d.status,
+    record: custom ? { name: `_brandopolis.${d.hostname}`, type: 'TXT', value: proofValue(d.token) } : null,
+    checkedAt: d.checkedAt?.toISOString() ?? null, verifiedAt: d.verifiedAt?.toISOString() ?? null,
+    lastConfirmedAt: confirmed?.toISOString() ?? null, nextCheckAt: d.nextCheckAt?.toISOString() ?? null,
+    failingSince: d.failingSince?.toISOString() ?? null, lastOutcome: d.lastOutcome,
+    servedUntil: custom && d.lastConfirmedAt && d.status === 'VERIFIED' ? new Date(d.lastConfirmedAt.getTime() + DOMAIN_CHECK.validityMs).toISOString() : null,
+    served: servable(d, now),
+    requirements: { control: d.status === 'VERIFIED' ? 'MET' : 'PENDING', routing: 'PENDING_HOSTING', https: 'PENDING_HOSTING' },
+    ready: false,
+  };
+}
+/** Applies one lookup to a domain the brand holds (VERIFIED or NEEDS_REVERIFICATION). */
+async function applyHeld(tx: Transaction, d: DomainRow, lookup: TxtLookup, now: Date) {
+  const next = nextHeldState({ status: d.status as 'VERIFIED' | 'NEEDS_REVERIFICATION', lastConfirmedAt: d.lastConfirmedAt ?? d.verifiedAt, failingSince: d.failingSince }, lookup, d.token, now);
+  await tx.update(t.siteDomains).set({ status: next.status, lastConfirmedAt: next.lastConfirmedAt, failingSince: next.failingSince, nextCheckAt: next.nextCheckAt, lastOutcome: next.outcome, checkedAt: now }).where(eq(t.siteDomains.id, d.id));
+  return next;
+}
+/**
+ * Checks a custom domain now (the team's «Comprobar»). A held domain follows the periodic rules (nextHeldState). An
+ * unverified claim verifies only with its own record in a DNS answer; if another brand holds the hostname, the same
+ * answer decides: its record still there → «not available» (without saying who), gone → that claim is released and
+ * this one verifies. A failed lookup changes nothing and never transfers a domain. Every claim of the hostname is
+ * locked first and in a fixed order, so two simultaneous verifications are serialised (never deadlock) and at most one
+ * holds it (unique index).
+ */
+export async function checkDomain(tx: Transaction, a: BrandActor, input: { domainId?: unknown }, resolveTxt: TxtResolver, now = new Date()) {
+  needsPublish(a);
+  const domainId = idOf(input.domainId, 'Domain');
+  const [own] = await tx.select({ hostname: t.siteDomains.hostname }).from(t.siteDomains).where(and(byBrand(t.siteDomains, a), eq(t.siteDomains.id, domainId)));
+  if (!own) throw new AppError('NOT_FOUND', 'Domain not available');
+  // Lock every claim of the hostname (this one included) in one fixed order before anything else: two verifications
+  // at the same time wait for each other instead of deadlocking, and the second sees the first one's result.
+  const claims = await tx.select().from(t.siteDomains).where(eq(t.siteDomains.hostname, own.hostname)).orderBy(t.siteDomains.id).for('update');
+  const d = claims.find(c => c.id === domainId);
+  if (!d || d.kind !== 'CUSTOM' || d.status === 'REMOVED') throw new AppError('NOT_FOUND', 'Domain not available');
+  const lookup = await lookupTxt(resolveTxt, d.hostname);
+  if (d.status === 'VERIFIED' || d.status === 'NEEDS_REVERIFICATION') { const next = await applyHeld(tx, d, lookup, now); return { domainId: d.id, status: next.status, found: next.outcome === 'CONFIRMED', outcome: next.outcome }; }
+  const outcome = !lookup.ok ? 'LOOKUP_FAILED' as const : provesToken(lookup, d.token) ? 'CONFIRMED' as const : 'NOT_FOUND' as const;
+  if (outcome === 'CONFIRMED') {
+    const holder = claims.find(c => c.id !== d.id && (c.status === 'VERIFIED' || c.status === 'NEEDS_REVERIFICATION'));
+    if (holder) {
+      if (holder.kind !== 'CUSTOM' || provesToken(lookup, holder.token)) throw new AppError('CONFLICT', 'This domain is not available');
+      await tx.update(t.siteDomains).set({ status: 'FAILED', checkedAt: now, nextCheckAt: null, lastOutcome: 'REPLACED' }).where(eq(t.siteDomains.id, holder.id));
+    }
+    await tx.update(t.siteDomains).set({ status: 'VERIFIED', checkedAt: now, verifiedAt: now, lastConfirmedAt: now, failingSince: null, nextCheckAt: new Date(now.getTime() + DOMAIN_CHECK.everyMs), lastOutcome: 'CONFIRMED' }).where(eq(t.siteDomains.id, d.id));
+    return { domainId: d.id, status: 'VERIFIED', found: true, outcome };
+  }
+  await tx.update(t.siteDomains).set({ checkedAt: now, lastOutcome: outcome }).where(eq(t.siteDomains.id, d.id));
+  return { domainId: d.id, status: d.status, found: false, outcome };
+}
+/**
+ * DOM-004 periodic re-verification (system worker, no session). Claims one due domain at a time with SKIP LOCKED (the
+ * claiming pattern of the ADR-0031 queue, on the domain row itself: a DNS read needs no provider connection or human
+ * authorization), applies one lookup and schedules the next check. Several workers never check the same domain at once.
+ */
+export async function reverifyNextDomain(tx: Transaction, resolveTxt: TxtResolver, now: Date) {
+  const [d] = await tx.select().from(t.siteDomains).where(and(eq(t.siteDomains.kind, 'CUSTOM'), inArray(t.siteDomains.status, ['VERIFIED', 'NEEDS_REVERIFICATION']), lte(t.siteDomains.nextCheckAt, now))).orderBy(asc(t.siteDomains.nextCheckAt)).limit(1).for('update', { skipLocked: true });
+  if (!d) return null;
+  const next = await applyHeld(tx, d, await lookupTxt(resolveTxt, d.hostname), now);
+  return { domainId: d.id, status: next.status, outcome: next.outcome };
 }
 export async function removeDomain(tx: Transaction, a: BrandActor, input: { domainId?: unknown }) {
   needsPublish(a);
@@ -380,7 +474,7 @@ export async function removeDomain(tx: Transaction, a: BrandActor, input: { doma
 export async function resolvePublicHost(tx: Transaction, host: string) {
   if (!/^[a-z0-9.:-]{4,260}$/.test(host)) return null;
   const [d] = await tx.select().from(t.siteDomains).where(and(eq(t.siteDomains.hostname, host), eq(t.siteDomains.status, 'VERIFIED')));
-  if (!d) return null;
+  if (!d || !servable(d, new Date())) return null; // a custom domain without a current confirmation is not served
   const [site] = await tx.select().from(t.sites).where(eq(t.sites.id, d.siteId));
   if (!site || site.status !== 'ACTIVE' || !site.publishedVersionId) return null;
   const [pub] = await tx.select().from(t.sitePublications).where(and(eq(t.sitePublications.siteId, site.id), eq(t.sitePublications.status, 'PUBLISHED')));

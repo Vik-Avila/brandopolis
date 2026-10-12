@@ -1,9 +1,15 @@
 import { test, expect, type Page } from '@playwright/test';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import JSZip from 'jszip';
 
 // ADR-0032 · Sitio web in DEMO: create from the goal → Brando's proposal (incorporated by the person) → edit by sections
-// → save and resume → authenticated preview on its own origin (browser-bound exchange) → review and approve → publish
-// to the isolated public server → contact form → opportunity in Clientes → second version → restore the first.
+// → testimonials and figures with their source (a DEMO sample is labelled) → save and resume → authenticated preview on
+// its own origin (browser-bound exchange) with the desktop/phone size view → review and approve → ZIP of the approved
+// version opened from disk → publish to the isolated public server → contact form → opportunity in Clientes → second
+// version → restore the first.
 // Needs the isolated app (3001) plus `pnpm sites:public --isolated` (3101) and `pnpm sites:preview --isolated` (3201).
 async function signIn(page: Page, token: string) {
   await page.getByLabel('Token de sesión local').fill(token);
@@ -15,6 +21,8 @@ const openNav = async (page: Page) => { if (await page.locator('#menu').isVisibl
 async function siteTab(page: Page) {
   await openNav(page); await page.locator('#marketing').click();
   const tab = page.getByRole('tab', { name: 'Sitio web' });
+  // Wait until the Marketing area has rendered its tabs (wide screens) or its selector (narrow screens).
+  await page.waitForFunction(() => [...document.querySelectorAll('[role=tab]')].some(t => t.textContent === 'Sitio web' && (t as HTMLElement).offsetParent) || (document.querySelector('#area-select') as HTMLElement | null)?.offsetParent);
   if (await tab.isVisible()) await tab.click(); else await page.locator('#area-select').selectOption('site');
   await expect(page.locator('#decision h2').first()).toHaveText('Sitio web');
 }
@@ -56,6 +64,23 @@ test('ADR-0032: site from goal to publication, form to Clientes, preview and res
   const faq = view.locator('.site-page').first().locator('.site-section').last();
   await faq.getByLabel('Pregunta 1').fill('¿Hacen envíos?');
   await faq.getByLabel('Respuesta').fill('Sí, a todo el país.');
+  // Testimonials and figures exist only with a source; the source stays in the version, never on the page.
+  await home.getByLabel('Tipo de sección').selectOption('TESTIMONIALS');
+  await home.getByRole('button', { name: 'Añadir sección' }).click();
+  const quotes = view.locator('.site-page').first().locator('.site-section').last();
+  await expect(quotes).toContainText('Brando no los escribe');
+  await quotes.getByLabel('Testimonio 1').fill('El mejor café para nuestra barra.');
+  await quotes.getByLabel('Quién lo dice').fill('Cliente de ejemplo');
+  await quotes.getByLabel('Fuente del elemento 1').selectOption('PERSON');
+  await quotes.getByLabel(/^Fuente \(por ejemplo/).fill('Ejemplo DEMO preparado por el equipo');
+  await quotes.getByLabel(/Es un ejemplo de demostración/).check();
+  await view.locator('.site-page').first().getByLabel('Tipo de sección').selectOption('FIGURES');
+  await view.locator('.site-page').first().getByRole('button', { name: 'Añadir sección' }).click();
+  const figures = view.locator('.site-page').first().locator('.site-section').last();
+  await figures.getByLabel('Cifra 1').fill('120');
+  await figures.getByLabel('Qué mide').fill('cafeterías atendidas');
+  await figures.getByLabel('Fuente del elemento 1').selectOption('PERSON');
+  await figures.getByLabel(/^Fuente \(por ejemplo/).fill('Registro interno de ventas 2025');
   await view.getByRole('button', { name: 'Guardar borrador' }).click();
   await expect(page.locator('#notice')).toContainText('Borrador guardado');
   await page.reload(); await page.locator('#workspace').waitFor();
@@ -72,7 +97,17 @@ test('ADR-0032: site from goal to publication, form to Clientes, preview and res
   await expect(preview).toHaveURL(/127\.0\.0\.2:3201\/b\/.+\/v\/.+\/$/);
   await expect(preview.locator('body')).toContainText('Vista previa · versión interna');
   await expect(preview.locator('h1')).toHaveText('Café de origen para tu negocio');
+  await expect(preview.locator('.quote')).toContainText('Ejemplo de demostración: no es un dato real.');
+  await expect(preview.locator('body')).not.toContainText('Registro interno de ventas 2025');
   expect(await preview.evaluate(() => document.cookie)).toBe(''); // HttpOnly session, nothing readable by scripts
+  // Size view: the same version in a phone or desktop width; switching never changes the content.
+  await preview.getByRole('link', { name: 'móvil', exact: true }).click();
+  await expect(preview).toHaveURL(/__vista\?ancho=movil/);
+  await expect(preview.locator('iframe')).toHaveAttribute('width', '390');
+  await expect(preview.frameLocator('iframe').locator('h1')).toHaveText('Café de origen para tu negocio');
+  await preview.getByRole('link', { name: 'Escritorio (1280 px)' }).click();
+  await expect(preview.locator('iframe')).toHaveAttribute('width', '1280');
+  await expect(preview.frameLocator('iframe').locator('h1')).toHaveText('Café de origen para tu negocio');
   await preview.close();
 
   // 5 · Review, approve and publish the exact version (explicit confirmation names site, version and address).
@@ -81,9 +116,26 @@ test('ADR-0032: site from goal to publication, form to Clientes, preview and res
   await view.getByLabel('¿Por qué apruebas o pides cambios?').fill('Revisado con el equipo comercial');
   await view.getByRole('button', { name: 'Aprobar esta versión' }).click();
   await expect(page.locator('#notice')).toContainText('Versión aprobada');
+  // ZIP of the exact approved version: it opens from a folder, keeps its styles and says the form does not send.
+  const [download] = await Promise.all([page.waitForEvent('download'), view.getByRole('button', { name: 'Descargar ZIP de la versión 1' }).click()]);
+  expect(download.suggestedFilename()).toBe('sitio-de-prueba-v1.zip');
+  const zip = await JSZip.loadAsync(readFileSync(await download.path()));
+  const out = mkdtempSync(join(tmpdir(), 'bp-site-zip-'));
+  for (const [name, entry] of Object.entries(zip.files)) if (!entry.dir) { mkdirSync(dirname(join(out, name)), { recursive: true }); writeFileSync(join(out, name), await entry.async('nodebuffer')); }
+  expect(JSON.parse(readFileSync(join(out, 'sitio-de-prueba-v1', 'manifest.json'), 'utf8'))).toMatchObject({ site: 'Sitio de prueba', version: 1 });
+  const copy = await context.newPage();
+  await copy.goto(pathToFileURL(join(out, 'sitio-de-prueba-v1', 'index.html')).href);
+  await expect(copy.locator('h1')).toHaveText('Café de origen para tu negocio');
+  expect(await copy.locator('h1').evaluate(el => getComputedStyle(el).color)).toBe('rgb(29, 42, 38)'); // the theme stylesheet loaded
+  await copy.getByRole('link', { name: 'Contacto' }).first().click();
+  await expect(copy).toHaveURL(/contacto\/index\.html$/);
+  await expect(copy.locator('.form-off')).toContainText('no está conectado en esta copia');
+  await expect(copy.locator('form')).toHaveCount(0);
+  await copy.close();
   await view.getByRole('button', { name: 'Publicar esta versión' }).click();
   await expect(page.locator('#notice')).toContainText('Publicada la versión 1');
   const live = await view.locator('#site-live-link').getAttribute('href');
+  await expect(view.locator('.site-domains')).toContainText('servidor de desarrollo, sin HTTPS'); // never shown as ready for real publication
   expect(live).toMatch(/^http:\/\/sitio-de-prueba-[a-z0-9]+\.localhost:3101\/$/);
 
   // The public site: no app cookie goes there; the form stores an opportunity before showing success.

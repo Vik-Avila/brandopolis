@@ -9,11 +9,21 @@ import { canonicalJson } from './editorial-versions.js';
 
 export const SITE_GOALS = ['LEADS', 'SELL', 'INFORM', 'EVENT'] as const;
 export type SiteGoal = typeof SITE_GOALS[number];
-export const SECTION_TYPES = ['HERO', 'TEXT', 'OFFERS', 'IMAGE', 'CTA', 'CONTACT', 'FAQ'] as const;
+export const SECTION_TYPES = ['HERO', 'TEXT', 'OFFERS', 'IMAGE', 'CTA', 'CONTACT', 'FAQ', 'TESTIMONIALS', 'FIGURES'] as const;
 export type SectionType = typeof SECTION_TYPES[number];
 export const LIMITS = { pages: 12, sections: 20, title: 120, short: 300, body: 4000, items: 12, slug: 60 } as const;
 
 export type OfferItem = { offerId: string; offerVersionId: string; name: string; description: string };
+/**
+ * Where a testimonial or a figure comes from (ADR-0032: they exist only if they cite an Evidence with provenance or a
+ * text supplied by a person; the AI never invents them). EVIDENCE cites a record of the brand's evidence. PERSON is
+ * text a person supplied: `label` says where it comes from, `permission` that the person quoted agreed to publish it,
+ * and `example` marks DEMO sample content, which the renderer labels visibly and which never publishes outside DEMO.
+ * The source stays inside the version (review and audit); the renderer never puts it in a page.
+ */
+export type ProofSource = { kind: 'EVIDENCE'; evidenceId: string; label: string } | { kind: 'PERSON'; label: string; permission: boolean; example: boolean };
+export type Testimonial = { quote: string; author: string; role: string; source: ProofSource | null };
+export type Figure = { value: string; label: string; context: string; source: ProofSource | null };
 export type Section =
   | { id: string; type: 'HERO'; title: string; subtitle: string; ctaLabel: string; ctaTarget: string; imageAssetId: string | null; imageAlt: string }
   | { id: string; type: 'TEXT'; heading: string; body: string }
@@ -21,7 +31,9 @@ export type Section =
   | { id: string; type: 'IMAGE'; assetId: string; alt: string; caption: string }
   | { id: string; type: 'CTA'; heading: string; text: string; label: string; target: string }
   | { id: string; type: 'CONTACT'; heading: string; text: string }
-  | { id: string; type: 'FAQ'; heading: string; items: { question: string; answer: string }[] };
+  | { id: string; type: 'FAQ'; heading: string; items: { question: string; answer: string }[] }
+  | { id: string; type: 'TESTIMONIALS'; heading: string; items: Testimonial[] }
+  | { id: string; type: 'FIGURES'; heading: string; items: Figure[] };
 export type Page = { id: string; slug: string; title: string; description: string; sections: Section[] };
 export type Measurement = { provider: 'NONE' } | { provider: 'GOOGLE' | 'META'; propertyId: string; event: string; template: string };
 export type Consent = { required: boolean; noticeVersion: string | null };
@@ -47,6 +59,14 @@ export function slugify(v: string) {
   return v.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, LIMITS.slug);
 }
 
+function proofSource(v: unknown): ProofSource | null {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
+  if (o.kind === 'EVIDENCE') { const evidenceId = ref(o.evidenceId); return evidenceId ? { kind: 'EVIDENCE', evidenceId, label: text(o.label, LIMITS.short, 'Source') } : null; }
+  if (o.kind === 'PERSON') return { kind: 'PERSON', label: text(o.label, LIMITS.short, 'Source'), permission: o.permission === true, example: o.example === true };
+  return null;
+}
+const proofItems = <T>(v: unknown, map: (o: Record<string, unknown>) => T, empty: (i: T) => boolean) => (Array.isArray(v) ? v : []).slice(0, LIMITS.items).map(i => map((i ?? {}) as Record<string, unknown>)).filter(i => !empty(i));
+
 function section(raw: unknown): Section {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const sid = id(r.id, 's');
@@ -61,6 +81,8 @@ function section(raw: unknown): Section {
     case 'CTA': return { id: sid, type: 'CTA', heading: text(r.heading, LIMITS.title, 'Heading'), text: text(r.text, LIMITS.short, 'Text'), label: text(r.label, 60, 'Button'), target: linkTarget(r.target) };
     case 'CONTACT': return { id: sid, type: 'CONTACT', heading: text(r.heading, LIMITS.title, 'Heading'), text: text(r.text, LIMITS.short, 'Text') };
     case 'FAQ': return { id: sid, type: 'FAQ', heading: text(r.heading, LIMITS.title, 'Heading'), items: (Array.isArray(r.items) ? r.items : []).slice(0, LIMITS.items).map(i => { const o = (i ?? {}) as Record<string, unknown>; return { question: text(o.question, LIMITS.short, 'Question'), answer: text(o.answer, LIMITS.body, 'Answer') }; }).filter(i => i.question || i.answer) };
+    case 'TESTIMONIALS': return { id: sid, type: 'TESTIMONIALS', heading: text(r.heading, LIMITS.title, 'Heading'), items: proofItems(r.items, o => ({ quote: text(o.quote, 600, 'Testimonial'), author: text(o.author, LIMITS.title, 'Author'), role: text(o.role, LIMITS.title, 'Role'), source: proofSource(o.source) }), i => !i.quote && !i.author && !i.role) };
+    case 'FIGURES': return { id: sid, type: 'FIGURES', heading: text(r.heading, LIMITS.title, 'Heading'), items: proofItems(r.items, o => ({ value: text(o.value, 30, 'Figure'), label: text(o.label, LIMITS.title, 'Figure label'), context: text(o.context, LIMITS.short, 'Figure context'), source: proofSource(o.source) }), i => !i.value && !i.label && !i.context) };
     default: throw new AppError('INVALID', 'Unknown section type');
   }
 }
@@ -119,7 +141,7 @@ export type PreflightIssue = { code: string; message: string; pageId?: string; s
  * Blocking pre-publication check (ADR-0032): titles and descriptions, image descriptions and existing images, links
  * that resolve, a destination for the contact form, contrast of the pairs used, and the kit's website requirements.
  */
-export function preflight(c: SiteContent, context: { images: Set<string>; formReady: boolean; contrastOk: boolean; kitWebsiteGaps: string[]; outdated: string[] }): PreflightIssue[] {
+export function preflight(c: SiteContent, context: { images: Set<string>; formReady: boolean; contrastOk: boolean; kitWebsiteGaps: string[]; outdated: string[]; evidence?: Set<string>; allowExamples?: boolean }): PreflightIssue[] {
   const issues: PreflightIssue[] = [];
   const pageIds = new Set(c.pages.map(p => p.id));
   if (!c.pages.length) issues.push({ code: 'NO_PAGES', message: 'El sitio todavía no tiene páginas.' });
@@ -136,6 +158,18 @@ export function preflight(c: SiteContent, context: { images: Set<string>; formRe
       if (s.type === 'CTA') { if (!s.label || !s.target) issues.push({ code: 'BROKEN_LINK', message: 'Una llamada a la acción no tiene botón o destino.', pageId: p.id, sectionId: s.id }); else target(s.target, p.id, s.id); }
       if (s.type === 'CONTACT' && !context.formReady) issues.push({ code: 'FORM_DESTINATION', message: 'El formulario necesita un destino: se crea al publicar con permiso de publicar.', pageId: p.id, sectionId: s.id });
       if (s.type === 'FAQ' && !s.items.length) issues.push({ code: 'EMPTY_SECTION', message: 'Las preguntas frecuentes están vacías.', pageId: p.id, sectionId: s.id });
+      if (s.type === 'TESTIMONIALS' || s.type === 'FIGURES') {
+        const isQuote = s.type === 'TESTIMONIALS', one = isQuote ? 'Un testimonio' : 'Una cifra';
+        if (!s.items.length) issues.push({ code: 'EMPTY_SECTION', message: isQuote ? 'La sección de testimonios está vacía.' : 'La sección de cifras está vacía.', pageId: p.id, sectionId: s.id });
+        for (const i of s.items as (Testimonial | Figure)[]) {
+          const filled = 'quote' in i ? i.quote && i.author : i.value && i.label;
+          if (!filled) issues.push({ code: 'INCOMPLETE_PROOF', message: isQuote ? 'Cada testimonio necesita el texto y quién lo dice.' : 'Cada cifra necesita el número y qué mide.', pageId: p.id, sectionId: s.id });
+          const src = i.source;
+          if (!src || (src.kind === 'EVIDENCE' && !context.evidence?.has(src.evidenceId)) || (src.kind === 'PERSON' && !src.label)) issues.push({ code: 'UNSOURCED', message: `${one} no dice de dónde viene: cita una evidencia de la marca o escribe la fuente.`, pageId: p.id, sectionId: s.id });
+          else if (src.kind === 'PERSON' && 'quote' in i && !src.permission && !src.example) issues.push({ code: 'NO_PERMISSION', message: 'Confirma que quien da el testimonio aceptó publicarlo.', pageId: p.id, sectionId: s.id });
+          if (src?.kind === 'PERSON' && src.example && !context.allowExamples) issues.push({ code: 'EXAMPLE_CONTENT', message: `${one} es un ejemplo de demostración: sólo se publica en DEMO.`, pageId: p.id, sectionId: s.id });
+        }
+      }
     }
   }
   if (!context.contrastOk) issues.push({ code: 'CONTRAST', message: 'El color del texto y el del fondo del kit no tienen contraste suficiente.' });
@@ -150,3 +184,40 @@ export const newToken = (bytes = 24) => randomBytes(bytes).toString('base64url')
 export const sha256 = (v: string) => createHash('sha256').update(v).digest('hex');
 /** PKCE-style challenge of a preview verifier (base64url SHA-256). */
 export const challengeOf = (verifier: string) => createHash('sha256').update(verifier).digest('base64url');
+
+// ─── Custom domains: periodic re-verification (DOM-004) ─────────────────────────────────────────────────────────────
+
+/**
+ * Timing of the periodic check of a verified custom domain. A confirmation is valid for `validityMs`: a domain is served
+ * only while its last confirmation is that recent, so it never stays «verified» without current checks.
+ */
+export const DOMAIN_CHECK = { everyMs: 24 * 3600_000, retryMs: 3600_000, confirmLossAfterMs: 3600_000, validityMs: 72 * 3600_000, releaseAfterMs: 30 * 24 * 3600_000 } as const;
+/** A DNS answer (possibly without records: NXDOMAIN/NODATA count as an answer) or a failed lookup (timeout, SERVFAIL…). */
+export type TxtLookup = { ok: true; values: string[] } | { ok: false };
+export type DomainOutcome = 'CONFIRMED' | 'RECORD_MISSING' | 'LOOKUP_FAILED' | 'LOST' | 'EXPIRED';
+export type HeldDomain = { status: 'VERIFIED' | 'NEEDS_REVERIFICATION'; lastConfirmedAt: Date | null; failingSince: Date | null };
+export const proofValue = (token: string) => `brandopolis-site-verification=${token}`;
+export const provesToken = (lookup: TxtLookup, token: string) => lookup.ok && lookup.values.some(v => v.trim() === proofValue(token));
+
+/**
+ * Next state of a domain the brand holds (VERIFIED or NEEDS_REVERIFICATION) after one lookup:
+ * - its own record found → VERIFIED, confirmation renewed;
+ * - an answer without its record → the loss is confirmed only by a second answer at least `confirmLossAfterMs` later
+ *   (propagation, a record being replaced); then FAILED, which stops serving and releases the hostname;
+ * - a failed lookup proves nothing: status kept and retried, but once the last confirmation is older than
+ *   `validityMs` it becomes NEEDS_REVERIFICATION (not served, hostname still reserved: a failed lookup never hands it to
+ *   another brand), and after `releaseAfterMs` without any confirmation it is released (FAILED).
+ */
+export function nextHeldState(d: HeldDomain, lookup: TxtLookup, token: string, now: Date): { status: 'VERIFIED' | 'NEEDS_REVERIFICATION' | 'FAILED'; lastConfirmedAt: Date | null; failingSince: Date | null; nextCheckAt: Date | null; outcome: DomainOutcome } {
+  const at = now.getTime(), confirmed = d.lastConfirmedAt?.getTime() ?? 0;
+  const stale = at - confirmed >= DOMAIN_CHECK.validityMs ? 'NEEDS_REVERIFICATION' : d.status;
+  if (provesToken(lookup, token)) return { status: 'VERIFIED', lastConfirmedAt: now, failingSince: null, nextCheckAt: new Date(at + DOMAIN_CHECK.everyMs), outcome: 'CONFIRMED' };
+  if (lookup.ok) {
+    if (d.failingSince && at - d.failingSince.getTime() >= DOMAIN_CHECK.confirmLossAfterMs) return { status: 'FAILED', lastConfirmedAt: d.lastConfirmedAt, failingSince: d.failingSince, nextCheckAt: null, outcome: 'LOST' };
+    return { status: stale, lastConfirmedAt: d.lastConfirmedAt, failingSince: d.failingSince ?? now, nextCheckAt: new Date(at + DOMAIN_CHECK.retryMs), outcome: 'RECORD_MISSING' };
+  }
+  if (at - confirmed >= DOMAIN_CHECK.releaseAfterMs) return { status: 'FAILED', lastConfirmedAt: d.lastConfirmedAt, failingSince: d.failingSince, nextCheckAt: null, outcome: 'EXPIRED' };
+  return { status: stale, lastConfirmedAt: d.lastConfirmedAt, failingSince: d.failingSince, nextCheckAt: new Date(at + DOMAIN_CHECK.retryMs), outcome: 'LOOKUP_FAILED' };
+}
+/** A domain is served only while verified with a current confirmation (Brandopolis addresses are its own infrastructure). */
+export const servable = (d: { kind: string; status: string; lastConfirmedAt: Date | null }, now: Date) => d.status === 'VERIFIED' && (d.kind === 'BRANDOPOLIS' || (!!d.lastConfirmedAt && now.getTime() - d.lastConfirmedAt.getTime() < DOMAIN_CHECK.validityMs));

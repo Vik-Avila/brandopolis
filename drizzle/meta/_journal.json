@@ -211,6 +211,13 @@
       "when": 1791753482059,
       "tag": "0029_site_domain_claims",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1791764232010,
+      "tag": "0030_site_domain_reverification",
+      "breakpoints": true
     }
   ]
 }

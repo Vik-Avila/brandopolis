@@ -8,6 +8,8 @@
  *  3. Here the code is redeemed once with this browser's verifier; only then a preview session cookie is created
  *     (HttpOnly, SameSite=Strict, 30 minutes) and the transaction cookie removed. A code copied to another browser
  *     has no transaction cookie and fails.
+ * Size view (`__vista?ancho=escritorio|movil&p=/page/`): the same page of the same version in a frame of that width,
+ * with plain links to switch; changing the size never changes the content and does not replace real-device tests.
  * Every request (HTML, CSS, images, fonts) re-checks the session and the permission: a team member with the brand,
  * or a guest with that exact version shared. noindex, no-store, no-referrer. Codes and sessions are never logged.
  */
@@ -17,7 +19,11 @@ import { challengeOf, newToken } from '../domain/site.js';
 import { siteConfig } from '../application/site-config.js';
 import { buildSiteFiles, contentType, filePathFor, type FileLoader } from './site-files.js';
 
-const CSP = "default-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'";
+const CSP = "default-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'self'";
+// The size view frames the same page of the same origin; nothing else may frame a preview.
+const FRAME_CSP = CSP.replace("default-src 'none';", "default-src 'none'; frame-src 'self';");
+const VIEWS = { escritorio: { width: 1280, height: 800, label: 'Escritorio (1280 px)' }, movil: { width: 390, height: 844, label: 'Móvil (390 px)' } } as const;
+const escAttr = (v: string) => v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 const TX = 'bp_preview_tx', SESSION = 'bp_preview';
 const common = { 'Content-Security-Policy': CSP, 'X-Robots-Tag': 'noindex, nofollow', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff' };
 const cookie = (header: string | undefined, name: string) => header?.split(';').map(v => v.trim()).find(v => v.startsWith(`${name}=`))?.slice(name.length + 1);
@@ -53,16 +59,23 @@ export function createPreviewServer(engine: Engine, load: FileLoader) {
         res.writeHead(303, { ...common, Location: confirm, 'Set-Cookie': `${TX}=${state}.${verifier}; HttpOnly; SameSite=Lax; Path=/; Max-Age=300${secure}` });
         return res.end();
       }
+      const prefix = `/b/${brandId}/v/${versionId}`;
+      if (rest === '/__vista') {
+        const which = url.searchParams.get('ancho') === 'movil' ? 'movil' : 'escritorio', view = VIEWS[which], page = url.searchParams.get('p') ?? '/';
+        if (!page.startsWith('/') || !filePathFor(page)) return deny(res);
+        const link = (k: keyof typeof VIEWS) => `<a href="${prefix}/__vista?ancho=${k}&amp;p=${encodeURIComponent(page)}"${k === which ? ' aria-current="page"' : ''}>${VIEWS[k].label}</a>`;
+        res.writeHead(200, { ...common, 'Content-Security-Policy': FRAME_CSP, 'Content-Type': 'text/html; charset=utf-8' });
+        return res.end(`<!doctype html><html lang="es-MX"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>Vista previa · ${view.label}</title><link rel="stylesheet" href="${prefix}/styles.css"></head><body><main id="contenido"><nav class="preview-sizes" aria-label="Tamaño de la vista previa"><p>Ver en: ${link('escritorio')} · ${link('movil')} · <a href="${prefix}${escAttr(page)}">Ventana completa</a></p><p class="hint">Es la misma versión en otro ancho: el contenido no cambia. No sustituye probar en un teléfono o una pantalla reales.</p></nav><iframe title="Vista previa · ${view.label}" src="${prefix}${escAttr(page)}" width="${view.width}" height="${view.height}"></iframe></main></body></html>`);
+      }
       const path = filePathFor(rest);
       if (!path) return deny(res);
       const plan = await engine.siteRenderPlan({ workspaceId: access.workspaceId, brandId: access.brandId }, versionId);
       const built = await buildSiteFiles(plan, load, { baseUrl: null, noindex: true });
       // Links inside the preview stay under the clean prefix of this version.
-      const prefix = `/b/${brandId}/v/${versionId}`;
       const data = built.files.get(path);
       if (data === undefined) return deny(res);
       res.writeHead(200, { ...common, 'Content-Type': contentType(path) });
-      if (typeof data === 'string' && path.endsWith('.html')) return res.end(data.replace(/(href|src)="\/(?!\/)/g, `$1="${prefix}/`).replace(/action="\/__form"/g, 'action="#"').replace('<body>', `<body><p class="hint preview-banner">Vista previa · ${access.as === 'GUEST' ? 'versión compartida contigo' : 'versión interna'} · no se publica ni recibe solicitudes</p>`));
+      if (typeof data === 'string' && path.endsWith('.html')) return res.end(data.replace(/(href|src)="\/(?!\/)/g, `$1="${prefix}/`).replace(/action="\/__form"/g, 'action="#"').replace('<body>', `<body><p class="hint preview-banner">Vista previa · ${access.as === 'GUEST' ? 'versión compartida contigo' : 'versión interna'} · no se publica ni recibe solicitudes · Ver en: <a target="_top" href="${prefix}/__vista?ancho=escritorio&amp;p=${encodeURIComponent(rest)}">escritorio</a> · <a target="_top" href="${prefix}/__vista?ancho=movil&amp;p=${encodeURIComponent(rest)}">móvil</a></p>`));
       if (typeof data === 'string' && path.endsWith('.css')) return res.end(data.replace(/url\("\//g, `url("${prefix}/`));
       res.end(data);
     } catch { if (!res.headersSent) deny(res, 503); }
