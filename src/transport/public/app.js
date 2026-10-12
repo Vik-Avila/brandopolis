@@ -2339,6 +2339,9 @@ function openDeliverableEditor(area,type,d){
  const checkVariant=panel=>{const v={network:panel.dataset.variant,format:panel.querySelector('[data-variant-format]').value,text:panel.querySelector('[data-variant-text]').value.trim(),hashtags:panel.querySelector('[data-variant-tags]').value.split(/[\s,]+/).filter(Boolean)};const issues=variantIssues(v);panel.querySelector('[data-variant-status]').textContent=issues.length?`Revisa: ${variantIssueText(issues)}.`:'Lista para esta red.';return {v,issues};};
  form.querySelectorAll('input[name="dl-variant-network"]').forEach(box=>box.addEventListener('change',()=>{const panel=variantOf(box);panel.hidden=!box.checked;if(box.checked){const t=panel.querySelector('[data-variant-text]'),g=panel.querySelector('[data-variant-tags]');if(!t.value.trim())t.value=baseText().text;if(!g.value.trim())g.value=baseText().tags;checkVariant(panel);t.focus();}}));
  form.querySelectorAll('.social-variant').forEach(panel=>{if(!panel.hidden)checkVariant(panel);panel.querySelectorAll('textarea,input,select').forEach(el=>el.addEventListener('input',()=>checkVariant(panel)));});
+ // The base piece covers its own network: that variant is hidden and unchecked whenever the base network changes.
+ const syncBaseNetwork=()=>{const base=$('#dl-network')?.value;form.querySelectorAll('[data-variant-option]').forEach(label=>{const box=label.querySelector('input'),own=box.value===base;label.hidden=own;if(own&&box.checked){box.checked=false;variantOf(box).hidden=true;}});};
+ $('#dl-network')?.addEventListener('change',syncBaseNetwork);syncBaseNetwork();
  form.querySelector('[data-editor-cancel]').addEventListener('click',()=>{host.innerHTML='';});
  // ADR-0030 · Brando proposes from approved information only; using it fills the form, never saves or approves.
  $('#dl-ask-brando')?.addEventListener('click',event=>run(async()=>{

@@ -13,6 +13,8 @@ async function signIn(page: Page, token: string) {
 }
 const openNav = async (page: Page) => { if (await page.locator('#menu').isVisible()) await page.locator('#menu').click(); };
 const post = (page: Page, path: string, body: Record<string, unknown>) => page.evaluate(async ([p, b]) => { const r = await fetch(p as string, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); return r.json(); }, [path, body] as const);
+/** PHASE4_SPEC §13: sending for review names who reviews (here the DEMO person, approving alone, recorded). */
+const me = (page: Page) => page.evaluate(async () => (await (await fetch('/api/me')).json()).userId as string);
 const day = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 
@@ -28,7 +30,7 @@ test('block 8 · Meta lead capture: activation only with verified (simulated) me
   page.on('dialog', d => d.accept());
   // Setup through the same API the interface uses: approved offer, a kit image and a published site.
   const o = await post(page, '/api/offers/create', { brandId, content: { name: 'Café para oficinas', kind: 'SERVICE', audience: { customerDecisionVersionId: null, segment: 'Oficinas' }, need: 'Café para el equipo', outcome: 'Equipo con buen café', benefits: [], differentiators: [], conditions: '', proofIds: [], sourceDecisionVersionIds: [], hypothesisIds: [], price: null }, idempotencyKey: crypto.randomUUID() });
-  const ov = await post(page, '/api/offers/submit', { brandId, offerId: o.offerId, expectedRevision: 0 });
+  const ov = await post(page, '/api/offers/submit', { brandId, offerId: o.offerId, expectedRevision: 0, reviewerId: await me(page) });
   await post(page, '/api/offers/decide', { brandId, offerId: o.offerId, versionId: ov.versionId, fingerprint: ov.fingerprint, decision: 'APPROVE', criterion: 'Oferta revisada', idempotencyKey: crypto.randomUUID() });
   await page.evaluate(async ([b, png]) => { const bytes = Uint8Array.from(atob(png as string), c => c.charCodeAt(0)); await fetch('/api/brand-kit/assets', { method: 'POST', headers: { 'x-brand-id': b as string, 'x-file-name': 'taza.png', 'x-asset-role': 'REFERENCE', 'Content-Type': 'application/octet-stream' }, body: bytes }); }, [brandId, PNG] as const);
   const site = await post(page, '/api/sites/create', { brandId, name: 'Sitio de captación', goal: 'LEADS', idempotencyKey: crypto.randomUUID() });
@@ -49,8 +51,8 @@ test('block 8 · Meta lead capture: activation only with verified (simulated) me
   const area = view.locator('.campaigns-area');
   await area.getByRole('button', { name: 'Conectar cuenta simulada de Meta Ads' }).click();
   await expect(page.locator('#notice')).toContainText('Cuenta simulada conectada');
-  await area.getByLabel('Meta Ads · Tráfico').check();
-  await area.getByLabel(/captación de contactos/).check();
+  // ADR-0036 · one radio group of campaign types per provider (lead capture is a Meta type).
+  await area.getByRole('radio', { name: /^Meta Ads · Captación/ }).check();
   await area.getByLabel('Nombre de la campaña').fill('Captación oficinas');
   await area.getByRole('button', { name: 'Crear campaña' }).click();
   const card = area.locator('.campaign-card').first();

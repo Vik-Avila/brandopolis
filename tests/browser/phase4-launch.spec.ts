@@ -38,7 +38,7 @@ test('ACC-01 · local launch: offer, plan, kit, client review, site, form, oppor
 
   // 1 · Offer (approved), 2 · annual plan with a budgeted action, 3 · kit approved and published.
   const o = await ok(page, '/api/offers/create', { brandId, content: { name: 'Café para cafeterías', kind: 'SERVICE', audience: { customerDecisionVersionId: null, segment: 'Cafeterías' }, need: 'Café constante', outcome: 'Barra surtida', benefits: ['Entrega semanal'], differentiators: [], conditions: '', proofIds: [], sourceDecisionVersionIds: [], hypothesisIds: [], price: null }, idempotencyKey: key() });
-  const ov = await ok(page, '/api/offers/submit', { brandId, offerId: o.offerId, expectedRevision: 0 });
+  const ov = await ok(page, '/api/offers/submit', { brandId, offerId: o.offerId, expectedRevision: 0, reviewerId: (await ok(page, '/api/me')).userId });
   await ok(page, '/api/offers/decide', { brandId, offerId: o.offerId, versionId: ov.versionId, fingerprint: ov.fingerprint, decision: 'APPROVE', criterion: 'Oferta revisada', idempotencyKey: key() });
   const year = Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City', year: 'numeric' }).format(new Date()));
   const plan = await ok(page, '/api/plan/create', { brandId, year });
@@ -54,7 +54,7 @@ test('ACC-01 · local launch: offer, plan, kit, client review, site, form, oppor
 
   // 4 · A material in review, shared with the client; 5 · the client comments and approves the shared version.
   const d = await ok(page, '/api/deliverables/create', { brandId, content: { type: 'OFFER_COPY', name: 'Texto de la oferta', offerId: o.offerId, sourceDecisionVersionIds: [], body: { headline: 'Café de origen para tu barra', short: 'Entrega semanal', long: '', callToAction: 'Escríbenos' } }, idempotencyKey: key() });
-  const dv = await ok(page, '/api/deliverables/submit', { brandId, deliverableId: d.deliverableId, expectedRevision: 0 });
+  const dv = await ok(page, '/api/deliverables/submit', { brandId, deliverableId: d.deliverableId, expectedRevision: 0, reviewerId: (await ok(page, '/api/me')).userId });
   const invitation = await ok(page, '/api/collaboration/invite', { brandId, email: 'cliente@cafeteria.mx', idempotencyKey: key() });
   await ok(page, '/api/collaboration/share', { brandId, targetType: 'DELIVERABLE_VERSION', targetId: dv.versionId, idempotencyKey: key() });
   const guestIdentity = await demoIdentity();

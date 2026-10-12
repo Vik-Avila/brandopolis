@@ -52,6 +52,11 @@ test('Navigation: Estrategia inner navigation, Mercado objetivo, Productos y ser
  const steps=page.locator('#strategy-list [data-module]');
  await expect(steps).toHaveText(['01 Objetivo estratégico','02 Mercado objetivo','03 Cliente principal','04 Modelo de valor','05 Posicionamiento','06 Promesa de marca','07 Mensaje principal','08 Prioridad de lanzamiento','09 Experimento prioritario']);
  await expect(page.locator('#strategy-toggle')).toHaveClass(/contains-current/);
+ // PHASE4_SPEC §13 R12-20: Estrategia carries the same current-section marker as every other area, also after a reload.
+ await expect(page.locator('#strategy-toggle')).toHaveAttribute('aria-current','true');
+ await page.reload(); await page.locator('#workspace').waitFor();
+ await expect(page.locator('#strategy-toggle')).toHaveAttribute('aria-current','true');
+ if(await menu.isVisible())await menu.click();
  // ADR-0030 (Phase 4, owner-approved 2026-10-10): Productos y servicios is a real destination; the other two stay announced.
  await expect(nav.locator('[data-soon]',{hasText:'Productos y servicios'})).toHaveCount(0);
  await expect(nav.locator('[data-soon]',{hasText:'Marketing'})).toHaveCount(0);
@@ -62,6 +67,7 @@ test('Navigation: Estrategia inner navigation, Mercado objetivo, Productos y ser
  await expect(nav).not.toContainText('Próximamente');
  await nav.getByRole('button',{name:'Mi aprendizaje',exact:true}).click();
  await expect(page.locator('#practice')).toHaveAttribute('aria-current','page');
+ await expect(page.locator('#strategy-toggle')).not.toHaveAttribute('aria-current',/.+/);
  await expect(page.locator('#learning-loop')).not.toHaveAttribute('aria-current','page');
  await navigate(page,'Ayuda');
  await expect(page.locator('#decision')).toContainText('Mercado objetivo');

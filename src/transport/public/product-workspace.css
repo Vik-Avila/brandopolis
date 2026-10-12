@@ -1111,3 +1111,10 @@ body.app { background: var(--bp-brand-ivory); }
 
 .policy-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
 .offer-derived { margin: 4px 0 0; }
+
+/* Defect found while testing the notification centre (2026-10-12): on narrow screens the sticky header (z-index 80)
+   covered the top of the tools drawer (z-index 60), hiding its title and close button. The open drawer is a modal
+   surface: it sits above the header (still below tooltips). */
+@media (max-width: 1000px) {
+  body.rail-drawer-open .rail-panel { z-index: 85; }
+}

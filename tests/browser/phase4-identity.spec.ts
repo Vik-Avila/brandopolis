@@ -25,7 +25,9 @@ test('identity: upload files, ingest, adopt, contrast, approve and publish the k
   await page.locator('#brand-resources').click();
   const view = page.locator('#decision');
   await expect(view.locator('h2').first()).toHaveText('Identidad visual');
-  await expect(view).toContainText('Biblioteca y Plantillas llegarán más adelante.');
+  // PHASE4_SPEC §13 R12-12: Plantillas is a real tab now; only the resource library is announced as later.
+  await expect(view).toContainText('La biblioteca de recursos llegará más adelante.');
+  await expect(view).not.toContainText('Biblioteca y Plantillas');
   await expect(view.getByRole('heading', { name: 'Ya tengo identidad' })).toBeVisible();
   await expect(view.locator('.kit-entry').nth(1).getByRole('button', { name: 'Empezar con lo que tengo' })).toBeVisible(); // partial identity (ONB-007)
 

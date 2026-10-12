@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { reviewShot } from './review-shots.js';
 
 // PHASE4_SPEC §3/§4.4 · area tabs and deliverables: social post (review, approval, manual publication record, text
 // download), offer copy in Productos y servicios → Materiales de venta. Deterministic DEMO; no AI, no publication.
@@ -48,21 +49,39 @@ test('social post: tabs, review, approval, manual publication record and text do
 
   await view.getByRole('button', { name: 'Nuevo: Publicación para redes' }).click();
   const form = view.locator('#deliverable-form');
+  // PHASE4_SPEC §13 · R12-06: Brando is offered first; the person chooses to fill in by hand.
+  await form.getByRole('button', { name: 'Completar manualmente' }).click();
   await form.getByLabel('Nombre').fill('Lanzamiento del diagnóstico');
-  await form.getByLabel('Red').selectOption('LINKEDIN');
+  await form.getByLabel('Red', { exact: true }).selectOption('LINKEDIN');
   await form.getByLabel('¿Para qué sirve esta publicación?').fill('Dar a conocer el diagnóstico');
   await form.getByLabel('Fecha prevista').fill('2026-11-03');
   await form.getByLabel('Texto', { exact: true }).fill('Ordena tu estrategia antes de producir materiales.');
   await form.getByLabel('Etiquetas (separadas por espacios)').fill('marca #estrategia');
+  // R12-13: one base piece, a variant for X validated against X's limits; LinkedIn (the base) is not offered again.
+  await expect(form.locator('[data-variant-option="LINKEDIN"]')).toBeHidden();
+  await form.locator('[data-variant-option="X"]').getByRole('checkbox').check();
+  const variant = form.locator('.social-variant[data-variant="X"]');
+  await expect(variant.getByLabel('Texto para X')).toHaveValue('Ordena tu estrategia antes de producir materiales.');
+  await variant.getByLabel('Texto para X').fill('x'.repeat(300));
+  await expect(variant).toContainText('supera el máximo de la red');
+  await form.getByRole('button', { name: 'Crear borrador' }).click();
+  await expect(form.locator('#deliverable-form-status')).toContainText('La variante para X necesita ajustes');
+  await variant.getByLabel('Texto para X').fill('Ordena tu estrategia antes de producir.');
+  await expect(variant).toContainText('Lista para esta red.');
+  await reviewShot(page, info, 'r12-redes-variantes');
   await form.getByRole('button', { name: 'Crear borrador' }).click();
 
   const card = view.locator('.deliverable-card').first();
   await expect(card).toContainText('Borrador · v1');
   await expect(card).toContainText('#marca #estrategia');
+  await expect(card).toContainText('X · Publicación');
   await expect(view.locator('.plan-month h4').first()).toHaveText('noviembre 2026');
   await card.getByRole('button', { name: 'Enviar a revisión' }).click();
-  await view.locator('.deliverable-card').first().getByLabel('¿Por qué apruebas o pides cambios?').fill('Revisada con el equipo comercial');
-  await view.locator('.deliverable-card').first().getByRole('button', { name: 'Aprobar esta versión' }).click();
+  await card.locator('.review-submit').getByLabel('Yo: aprobación individual').check();
+  await card.locator('.review-submit').getByRole('button', { name: 'Enviar a revisión' }).click();
+  await expect(view.locator('.deliverable-card').first()).toContainText('Pendiente de revisión · v1');
+  await view.locator('.deliverable-card').first().getByLabel('Tu comentario: por qué apruebas o qué hay que cambiar').fill('Revisada con el equipo comercial');
+  await view.locator('.deliverable-card').first().getByRole('button', { name: 'Aprobar (aprobación individual)' }).click();
   const approved = view.locator('.deliverable-card').first();
   await expect(approved).toContainText('Aprobada · v1');
   await expect(approved).toContainText('Brandopolis no publica por ti');
@@ -97,12 +116,14 @@ test('offer copy lives in Productos y servicios → Materiales de venta and need
   await open(page, '#offers');
   const view = page.locator('#decision');
   await view.getByRole('button', { name: 'Nueva oferta' }).click();
+  await view.locator('#offer-form').getByRole('button', { name: 'Completar manualmente' }).click();
   await view.locator('#offer-form').getByLabel('Nombre', { exact: true }).fill('Diagnóstico de marca');
   await view.locator('#offer-form').getByRole('button', { name: 'Crear borrador' }).click();
   await expect(view.locator('.offer-card').first()).toContainText('Borrador · v1');
   await section(page, 'materials', 'Materiales de venta');
   await view.getByRole('button', { name: 'Nuevo: Textos de producto o servicio' }).click();
   const form = view.locator('#deliverable-form');
+  await form.getByRole('button', { name: 'Completar manualmente' }).click();
   await form.getByLabel('Nombre').fill('Textos del diagnóstico');
   await form.getByRole('button', { name: 'Crear borrador' }).click();
   await expect(form.locator('#deliverable-form-status')).toHaveText('Elige la oferta de estos textos.');
@@ -126,6 +147,7 @@ test('Brando proposes a social post from approved information (DEMO labelled); u
   const view = page.locator('#decision');
   await view.getByRole('button', { name: 'Nuevo: Publicación para redes' }).click();
   const form = view.locator('#deliverable-form');
+  await form.getByRole('button', { name: 'Construir con Brando' }).click();
   await expect(form).toContainText('Tú lo editas y decides; nada se aprueba ni se publica solo.');
   await form.getByLabel('¿Qué necesitas?').fill('Anunciar el lanzamiento con un tono cercano');
   await form.getByRole('button', { name: 'Pedir una propuesta a Brando' }).click();
@@ -134,8 +156,11 @@ test('Brando proposes a social post from approved information (DEMO labelled); u
   await expect(proposal).toContainText('Preguntas para ti');
   expect(marketing).toEqual(['POST']);
   await expect(view.locator('.deliverable-card')).toHaveCount(0); // asking writes nothing
-  await proposal.getByRole('button', { name: 'Usar esta propuesta en el formulario' }).click();
+  // R12-06: what the person wrote is kept unless they choose to replace it.
+  await form.getByLabel('¿Para qué sirve esta publicación?').fill('Mi objetivo escrito a mano');
+  await proposal.getByRole('button', { name: 'Completar sólo lo vacío' }).click();
   await expect(form.getByLabel('Nombre')).toHaveValue(/Propuesta de ejemplo/);
+  await expect(form.getByLabel('¿Para qué sirve esta publicación?')).toHaveValue('Mi objetivo escrito a mano');
   await form.getByLabel('Nombre').fill('Lanzamiento con Brando');
   await form.getByRole('button', { name: 'Crear borrador' }).click();
   const card = view.locator('.deliverable-card').first();

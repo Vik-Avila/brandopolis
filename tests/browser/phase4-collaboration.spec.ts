@@ -1,9 +1,11 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { reviewShot } from './review-shots.js';
 import { demoIdentity } from './demo-identity.js';
 
-// ADR-0033 · Colaboración with two real identities: the agency invites by single-use link (no email provider is
-// configured, and the page says so), shares an identity proposal, comments internally and for the client; the guest
+// ADR-0033 · Colaboración with two real identities: the agency invites by single-use link and, in the DEMO, also by
+// email through the SIMULATED provider (stored in a local folder, sent to no one; PHASE4_SPEC §13), shares an identity
+// proposal by multiple selection with a summary, comments internally and for the client; the guest
 // accepts in their own session, sees only what was shared, comments and approves the exact version; withdrawing the
 // access applies on the guest's next action. Deterministic DEMO; no AI.
 async function signIn(page: Page, token: string) {
@@ -36,20 +38,30 @@ test('ADR-0033: invite by link, share the exact version, guest portal with comme
   await view.getByRole('button', { name: 'Enviar a revisión' }).click();
   await expect(page.locator('#notice')).toContainText('Versión enviada a revisión');
 
-  // Colaboración: a real destination now; the invitation is delivered by a single-use link, never a fake email.
+  // Colaboración: the single-use link, plus the email through the simulated provider (labelled as such).
   await openNav(page); await page.locator('#collaboration').click();
   await expect(view.locator('h2').first()).toHaveText('Trabaja con tu cliente');
-  await expect(view).toContainText('El envío por correo aún no está configurado');
+  await expect(view).toContainText('simulado: se guarda en la bandeja local de la DEMO y no sale a ningún buzón');
   await view.getByLabel('Correo de tu cliente').fill('cliente@empresa.com');
+  await view.getByLabel(/Enviar también la invitación por correo/).check();
   await view.getByRole('button', { name: 'Crear invitación' }).click();
+  await expect(page.locator('#notice')).toContainText('correo en cola (simulado');
   const linkField = view.locator('#invite-link-value');
   await expect(linkField).toHaveValue(/\/#invitacion=[A-Za-z0-9_-]{43}$/);
   const link = await linkField.inputValue();
   await expect(view.locator('.collab-list').first()).toContainText('cliente@empresa.com');
   await expect(view.locator('.collab-list').first()).toContainText('Pendiente');
-  await view.getByLabel('¿Qué quieres compartir?').selectOption({ label: 'Identidad visual · versión 1 (en revisión)' });
-  await view.getByRole('button', { name: 'Compartir con el cliente' }).click();
-  await expect(page.locator('#notice')).toContainText('Tu cliente verá esta versión exacta');
+  // The worker (or the server right after queuing) sends it to the simulated provider; the status is visible.
+  await expect(view.locator('.collab-list').first()).toContainText('Correo enviado · simulado', { timeout: 20000 });
+  await expect(view.locator('.collab-list').first()).toContainText('no salió a ningún buzón');
+  // PHASE4_SPEC §13 · R12-16: multiple selection (nothing preselected) and a summary of what the guest will see.
+  const share = view.locator('#share-many-form');
+  await expect(share.getByRole('button', { name: 'Compartir lo seleccionado' })).toBeDisabled();
+  await share.getByRole('checkbox', { name: /Identidad visual · versión 1/ }).check();
+  await expect(share.locator('#share-summary')).toContainText('Tu cliente verá (1)');
+  await reviewShot(page, info, 'r12-colaboracion-compartir-varios');
+  await share.getByRole('button', { name: 'Compartir lo seleccionado' }).click();
+  await expect(page.locator('#notice')).toContainText('Tu cliente verá esas versiones exactas');
   const card = view.locator('.share-card').first();
   await card.getByLabel('Comentario').fill('Nota interna: revisar el rojo con imprenta');
   await card.getByLabel('¿Quién lo ve?').selectOption('INTERNAL');
@@ -86,7 +98,10 @@ test('ADR-0033: invite by link, share the exact version, guest portal with comme
   await expect(portal.locator('.share-approvals')).toContainText('Tú');
   expect(await guest.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 
-  // The team sees the guest's comment and decision; approving changed nothing editorial.
+  // The team is notified (same records in Inicio and in the right panel) and sees the comment and decision.
+  await openNav(page); await page.locator('#home').click();
+  await expect(view.locator('.home-actions')).toContainText('Comentario del cliente en', { timeout: 15000 });
+  await expect(view.locator('.home-actions')).toContainText('El cliente aprobó');
   await openNav(page); await page.locator('#collaboration').click();
   await expect(view.locator('.share-card').first()).toContainText('Nos gusta, ¿se puede ver en fondo oscuro?');
   await expect(view.locator('.share-card').first()).toContainText('Aprobó esta versión');

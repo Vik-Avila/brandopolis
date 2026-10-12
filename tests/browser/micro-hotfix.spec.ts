@@ -99,8 +99,8 @@ test('navigation keeps every destination reachable at laptop height; preparation
   const menu = page.getByRole('button', { name: 'Abrir navegación', exact: true });
   if (await menu.isVisible()) await menu.click();
   const labels = await page.locator('#journey .nav-label').evaluateAll(nodes => nodes.map(n => (n.firstChild?.textContent ?? '').trim()));
-  // PHASE4_SPEC §3 and §12.3 (issue #10): eight compact areas (Clientes added) and the footer; Estrategia keeps an inner navigation.
-  expect(labels).toEqual(['Inicio', 'Estrategia', 'Productos y servicios', 'Marketing', 'Clientes', 'Marca y recursos', 'Colaboración', 'Resultados', 'Mi aprendizaje', 'Configuración de marca', 'Ayuda']);
+  // PHASE4_SPEC §3, §12.3 (issue #10) and §13 R12-03 (owner order 2026-10-12): eight compact areas and the footer; Estrategia keeps an inner navigation.
+  expect(labels).toEqual(['Inicio', 'Estrategia', 'Marca y recursos', 'Productos y servicios', 'Marketing', 'Clientes', 'Colaboración', 'Resultados', 'Mi aprendizaje', 'Configuración de marca', 'Ayuda']);
   await expect(page.locator('#journey [data-module]')).toHaveCount(0);
   await expect(page.locator('#journey #competitive-context')).toHaveCount(0);
   await expect(page.locator('#rail-panel #competitive-context')).not.toHaveAttribute('data-module');

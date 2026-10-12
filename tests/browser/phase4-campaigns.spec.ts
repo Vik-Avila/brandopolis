@@ -23,6 +23,8 @@ async function marketingTab(page: Page, key: string, name: string) {
 }
 /** Setup through the same API the interface uses (same-origin, the person's session): an approved offer and brief. */
 const post = (page: Page, path: string, body: Record<string, unknown>) => page.evaluate(async ([p, b]) => { const r = await fetch(p as string, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); return r.json(); }, [path, body] as const);
+/** PHASE4_SPEC §13: sending for review names who reviews (here the DEMO person, approving alone, recorded). */
+const me = (page: Page) => page.evaluate(async () => (await (await fetch('/api/me')).json()).userId as string);
 const day = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
 
 test('block 8: campaign created in pause through the simulator, uncertain step checked, results apart, cycle review, Canva', async ({ page }, info) => {
@@ -38,7 +40,7 @@ test('block 8: campaign created in pause through the simulator, uncertain step c
   page.on('dialog', d => d.accept());
   const offer = { name: 'Café para cafeterías', kind: 'SERVICE', audience: { customerDecisionVersionId: null, segment: 'Cafeterías' }, need: 'Café de especialidad constante', outcome: 'Barra siempre surtida', benefits: ['Entrega semanal'], differentiators: [], conditions: '', proofIds: [], sourceDecisionVersionIds: [], hypothesisIds: [], price: null };
   const o = await post(page, '/api/offers/create', { brandId, content: offer, idempotencyKey: crypto.randomUUID() });
-  const ov = await post(page, '/api/offers/submit', { brandId, offerId: o.offerId, expectedRevision: 0 });
+  const ov = await post(page, '/api/offers/submit', { brandId, offerId: o.offerId, expectedRevision: 0, reviewerId: await me(page) });
   await post(page, '/api/offers/decide', { brandId, offerId: o.offerId, versionId: ov.versionId, fingerprint: ov.fingerprint, decision: 'APPROVE', criterion: 'Oferta revisada', idempotencyKey: crypto.randomUUID() });
   const view = page.locator('#decision');
 
@@ -137,7 +139,7 @@ test('block 8: campaign created in pause through the simulator, uncertain step c
   // Canva: the approved brief goes to a simulated Canva; retrieving creates a new draft; the approved one stays.
   const brief = { type: 'DESIGN_BRIEF', name: 'Carrusel de lanzamiento', offerId: o.offerId, sourceDecisionVersionIds: [], body: { for: 'CANVA', piece: 'Carrusel', format: '1080×1350', audience: 'Cafeterías', message: 'Café de origen', mustInclude: '', avoid: '', dueDate: null } };
   const d = await post(page, '/api/deliverables/create', { brandId, content: brief, idempotencyKey: crypto.randomUUID() });
-  const dv = await post(page, '/api/deliverables/submit', { brandId, deliverableId: d.deliverableId, expectedRevision: 0 });
+  const dv = await post(page, '/api/deliverables/submit', { brandId, deliverableId: d.deliverableId, expectedRevision: 0, reviewerId: await me(page) });
   await post(page, '/api/deliverables/decide', { brandId, deliverableId: d.deliverableId, versionId: dv.versionId, fingerprint: dv.fingerprint, decision: 'APPROVE', criterion: 'Brief revisado', idempotencyKey: crypto.randomUUID() });
   await openNav(page); await page.locator('#offers').click();
   const tab = page.getByRole('tab', { name: 'Materiales de venta' });
