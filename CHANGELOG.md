@@ -1,3 +1,12 @@
+## 2026-10-11 · Phase 4 — Clientes: la sección elegida durante la carga se respeta · Bloque 8 local con simuladores (migración aditiva 0031)
+
+- Al recargar, elegir una sección mientras el espacio termina de cargar ya no se pierde ni la sustituye la carga inicial.
+- Campañas de Google Ads (Búsqueda) y Meta Ads (tráfico) con versiones aprobadas; la creación se autoriza en una pantalla exacta y llega sólo hasta «en pausa», siempre con el simulador y sin gasto.
+- Respuestas perdidas, límites del proveedor y accesos vencidos nunca crean dos veces: lo incierto se comprueba antes de seguir.
+- Canva simulado: el diseño recuperado entra como una versión nueva del brief que se revisa.
+- Resultados por campaña con cada fuente aparte (presupuesto, gasto real sin conectar, simulador, oportunidades) y revisión del ciclo con decisión humana.
+- Evidencia: unitarias 517 PASS; regresión de navegador 310 ejecuciones (62 pruebas × 5 proyectos): 297 PASS, 13 SKIP por diseño según el ancho, 0 FAIL. Activación, gasto y cuentas reales siguen pendientes.
+
 ## 2026-10-11 · Phase 4 — Sitios en DEMO: cierre del alcance local (migración aditiva 0030)
 
 - El formulario del sitio evita duplicados desde el servidor; si un mismo identificador llega con otro contenido, se guarda aparte y nunca se mezcla ni se bloquea.

@@ -149,3 +149,18 @@ versión aprobada. Estado por criterio y evidencia por prueba en la matriz (v21)
 proveedor el dominio de publicación, HTTPS y DNS por dominio, las comprobaciones DNS reales, la medición y el
 consentimiento con etiquetas reales y la publicación real. Siguiente bloque según PHASE4_SPEC §7: bloque 8 (Canva,
 Google Ads y Meta Ads en el alcance definido; resultados y revisión del ciclo).
+
+**Actualización · bloque 8 local (2026-10-11).** `5356f57` corrige la navegación de Clientes (sección elegida
+durante la carga). `9e373b4` y `4c692df` implementan el bloque 8 con simuladores: campañas creadas en
+pausa, Canva, resultados por fuente y revisión del ciclo. Para revisarlo en local:
+1. `pnpm competition:start --isolated`.
+2. `pnpm external:worker --isolated`.
+3. Marketing › Campañas digitales: conectar la cuenta simulada, crear la campaña, aprobarla, solicitar la creación en
+   pausa (con escenario) y comprobar.
+4. Materiales de venta: el brief con Canva.
+5. Resultados: campañas y revisión del ciclo.
+
+Estado por criterio en la matriz (v22). Pendiente de decisión: activación y gasto, medición para captación, correo.
+Pendiente de proveedor: cuentas reales de Google, Meta y Canva. Siguiente según PHASE4_SPEC §7: bloque 9 (revisión
+integral, seguridad, pruebas completas, DEMO de aceptación, informe de riesgos), cuando el propietario decida qué
+queda dentro de la Fase 4 sin proveedores.

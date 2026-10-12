@@ -184,6 +184,11 @@ estado real del proveedor → resultados. Captación sólo con medición verific
 pausar y comprobar; sincronizar rechazos y cambios externos. Estados editorial, de publicación y de proveedor
 separados. Trabajos inciertos en «Pendiente de comprobación», nunca reenviados automáticamente.
 
+**Estado (2026-10-11, bloque 8 local):** implementado y validado en DEMO con el simulador, hasta la creación **en
+pausa**: versiones con revisión, pantalla de confirmación, autorización con reserva, worker supervisado,
+conciliación sin reenvío y estado leído con su fuente. La activación (autorización 2), pausar, la sincronización de
+rechazos y las cuentas reales siguen pendientes de decisión y proveedor. Detalle en la matriz (v22).
+
 ### 4.7 Colaboración y portal (ADR-0033)
 
 Entregables con responsable, fechas, comentarios, solicitud de revisión y aprobación por versión. Invitado de una
@@ -202,6 +207,13 @@ marca. Mi aprendizaje privado para todos.
   humana. Manual/importado/sincronizado etiquetado; sin conexión = «dato pendiente», nunca cero. Solicitudes del
   formulario propio separadas de conversiones atribuidas. Conversiones de proveedores no se suman como personas.
   La revisión humana elige mantener, ajustar o volver a probar, enlazando con el motor de Validación.
+
+**Estado (2026-10-11, bloque 8 local):**
+- Canva (simulador, por persona): el brief aprobado se envía y el diseño recuperado crea una versión nueva que se
+  revisa; las capacidades se muestran como simuladas, no disponibles o sin verificar.
+- Resultados por campaña: presupuesto planificado, gasto del proveedor («Sin conectar»), lectura del simulador y
+  oportunidades con referencia, cada uno por separado; sin ROAS.
+- Revisión del ciclo con decisión humana y criterio; todavía sin enlace con el motor de Validación.
 
 ### 4.9 Pregunta inicial de prioridad · **requisito confirmado**
 
@@ -707,3 +719,4 @@ supuesto a recalibrar con el tiempo real informado en SESSION_STATE).
 | v6 | 2026-10-11 | Issue #10 y plan de Clientes/Resultados v5 (paquete de reconciliación revisión 3): resolución en §1, ocho áreas propuestas en §3, filas nuevas en §10 y §12 nuevo (captura F4, Resultados ampliados, permisos, flujo y Brando, atribución/ROAS/asesores/metas/históricos/forecast, reparto F4/F5/F6, Atomic/Chatwoot, orden de trabajo). El resto de la especificación no cambia |
 | v7 | 2026-10-11 | §4.5: estado de implementación de sitios (bloque 7); sin cambio de alcance |
 | v8 | 2026-10-11 | §4.5: sitios en DEMO completos en su alcance local (DOM-004, SITE-004, ZIP, vista por tamaño); sin cambio de alcance |
+| v9 | 2026-10-11 | §4.6 y §4.8: estado del bloque 8 local con simuladores; sin cambio de alcance |

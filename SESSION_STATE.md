@@ -1,3 +1,58 @@
+## 2026-10-11 · PHASE 4 · incidencia de Clientes corregida y bloque 8 local con simuladores
+
+**Punto de partida:** HEAD `b9d1bd2` (después de `28bb7d0`), árbol limpio. **Commits locales (sin push ni
+despliegue):**
+- `5356f57`: corrección de la navegación y ampliación de la prueba de idempotencia.
+- `9e373b4`: bloque 8, con la migración aditiva 0031.
+- `4c692df`: corrección de autorización hallada por la revisión automática de seguridad.
+- El commit de documentación de este cierre.
+
+Las migraciones 0028 a 0031 sólo se aplicaron en las bases aisladas de desarrollo (55434) y pruebas (55432).
+
+**Sitios:** alcance local implementado y validado en DEMO. Tenía una incidencia abierta en la regresión general, ya
+diagnosticada y corregida (abajo).
+
+**Incidencia de Clientes:**
+- Resultado original conservado: 300 ejecuciones, 286 PASS, 13 SKIP y 1 FAIL (`phase4-clients.spec.ts:16`,
+  compact).
+- Aparte, tres repeticiones aisladas PASS.
+- Diagnóstico: defecto del producto. Un clic durante la carga inicial se perdía sin aviso, y una respuesta tardía
+  volvía a dibujar la vista inicial.
+- Corregido en `5356f57`, con una prueba que reproduce las dos ventanas: fallaba antes, pasa después.
+
+**Idempotencia del formulario:** cobertura completa en `tests/site-cases.ts` (tabla en la matriz v22), PASS.
+
+**Bloque 8 (alcance local con simuladores):**
+- Campañas de Google (Búsqueda) y Meta (tráfico) con versiones, revisión y aprobación.
+- Pantalla de confirmación exacta y autorización con reserva (`AUTHORIZE_SPEND`).
+- Creación **sólo en pausa** mediante la cola existente y un worker supervisado.
+- Escenarios: respuesta perdida, visibilidad con retraso, límite del proveedor, acceso insuficiente y acceso vencido.
+- Conciliación sin reenvío y `CONTENT_CHANGED` activo.
+- Canva simulado: el diseño recuperado crea una versión nueva.
+- Resultados por fuente, sin ROAS.
+- Revisión del ciclo con decisión humana.
+- Todo es sólo DEMO; nada llega a Google, Meta ni Canva.
+
+**Resultados:**
+- `pnpm test`: 517 PASS. Typecheck y lint, 0 errores. Foundation, 0 errores. Validador de UI: PASS.
+- `phase4-campaigns`: PASS en los cinco proyectos sobre `9e373b4` y de nuevo sobre `4c692df`.
+- Regresión completa sobre `9e373b4`: 310 ejecuciones (62 pruebas × 5 proyectos): 297 PASS, 13 SKIP por diseño según el ancho, 0 FAIL.
+- Corrección `4c692df`: `pnpm test` 517 PASS (con las nuevas aserciones de autorización), `phase4-campaigns` PASS en los cinco proyectos y `pnpm test:pilot:e2e` 10/10, todo sobre `4c692df`. El cambio sólo afecta a `campaigns.ts`; la regresión completa se ejecutó sobre `9e373b4`.
+- `test:visual` y comparación al píxel: `test:visual` 10 PASS · 1 SKIP (sólo estructura); las 17 canónicas, comparadas al píxel (umbral: suma RGB > 48 de 765) con las capturas generadas sobre `4c692df`: 0 % de diferencia en las 17. No se cambió ninguna referencia
+- `pnpm test:pilot:e2e`: 10/10 sobre `4c692df`.
+
+**Estado por tipo (matriz v22):**
+- **Implementado y validado en DEMO:** CNV-001/002 con simulador; creación en pausa en Google con simulador;
+  EXT-006, 010, 011, 012; RES-001 y RES-003; ACC-06.
+- **Implementado, validado en unitarias:** Meta (tráfico).
+- **Parcial:** EXT-008, EXT-017, revisión del ciclo sin enlace con Validación, ACC-01.
+- **Incidencia abierta:** el 503 de `phase3.spec.ts:58`, en observación.
+- **Pendiente de decisión:** activación y gasto, medición verificada para captación, correo.
+- **Pendiente de proveedor o evidencia real:** cuentas y API de Google, Meta y Canva, métricas y rechazos reales.
+
+**Sin cambios:** producción, DNS, proveedores reales, correo, IA real. ADR-0035 sigue propuesto; Atomic y Chatwoot no
+están adoptados. **Not release-ready**; la Fase 4 no está cerrada.
+
 ## 2026-10-11 · PHASE 4 · sitios en DEMO completos en su alcance local (bloque 7, cierre)
 
 **Punto de partida:** rama `feat/phase4-marketing-web-collaboration`, HEAD `ab95faa` (después de `8d00287`,

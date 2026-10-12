@@ -623,6 +623,112 @@ sumaron archivos generados o de otras carpetas de referencia que no son el conju
 referencia (`phase10b/`, `brando-b1/`, `phase10a/encoding-proof/`, `future-concepts/`) son evidencia histórica o
 conceptos, no se regeneran con `test:visual` y no entran en esa cifra. Comparación de esta entrega: `test:visual` 10 PASS · 1 SKIP (sólo estructura); comparación al píxel (umbral: suma RGB > 48 de 765) de las 17 canónicas contra las capturas de `test-results/visual/` generadas sobre `28bb7d0`: 17 de 17 con 0 % de píxeles cambiados y los mismos tamaños. Ninguna referencia se actualizó y no hay cambios visuales previstos en esas pantallas
 
+## Incidencia de navegación en Clientes (regresión del 2026-10-11)
+
+**Resultado original, conservado:** regresión completa sobre `28bb7d0`, con 300 ejecuciones: 286 PASS, 13 SKIP y
+1 FAIL. El fallo fue `phase4-clients.spec.ts:16` en compact: tras recargar, el clic en Clientes mostró «Objetivo
+estratégico». **Aparte, como diagnóstico:** tres repeticiones aisladas de esa prueba en compact, las tres PASS. No
+sustituyen al resultado original.
+
+**Diagnóstico (traza conservada): defecto del producto, no de la prueba ni del entorno.**
+- Tras recargar, `#workspace` se muestra después de `/api/me` y antes de que llegue la lista de marcas.
+- Un clic en ese intervalo llamaba a `enterView`, que marcaba Clientes como actual y devolvía `false` (aún no
+  había marca). El clic se perdía sin aviso, y la traza confirma que no hubo ninguna petición `/api/clients`.
+- Después, la carga inicial dibujaba el módulo de la URL.
+- Hay una segunda ventana: con la marca ya conocida, una respuesta tardía de `/api/context` volvía a dibujar la
+  vista inicial y quitaba la marca de sección actual de la que eligió la persona.
+
+**Corrección (`5356f57`):** un contador de navegación. La sección pedida durante la carga se recuerda y se abre al
+terminar, y ni el dibujo inicial ni Inicio sustituyen una elección posterior. La prueba
+`phase4-clients.spec.ts` «a section chosen while the workspace is still loading…» reproduce las dos ventanas
+reteniendo respuestas con `page.route`, sin esperas arbitrarias. Antes de la corrección falló en ambas ventanas
+(evidencia conservada); después pasa en compact, desktop y mobile, y en la regresión completa: PASS en los cinco proyectos sobre `9e373b4` (la prueba original y la nueva).
+La prueba original no cambió: esperar `#workspace` era razonable para una persona; el defecto era del producto.
+
+**El 503 de `phase3.spec.ts:58`** sigue en observación, sin causa confirmada.
+
+## Comprobación puntual de idempotencia del formulario (2026-10-11)
+
+Mecanismo sin cambios (`28bb7d0`). Cobertura en `tests/site-cases.ts`, caso «SITE-006 · duplicates are stopped by
+the server…», ampliado en `5356f57`:
+
+| Caso | Resultado esperado y comprobado |
+|---|---|
+| Primer contenido con un identificador | una oportunidad |
+| Mismo identificador con otro contenido | otra oportunidad, con sus propios datos |
+| Reintento del segundo contenido | la misma referencia que su primer envío |
+| Dos envíos simultáneos del segundo contenido | una sola referencia, la misma |
+| Reintento del primer contenido después de lo anterior | su referencia original |
+| Mismo identificador en el sitio de otra marca | se guarda sólo en esa marca |
+| Solicitud nueva intencional (página recargada) | referencia nueva, registrada |
+
+Resultado: PASS dentro de `pnpm test` (517 PASS).
+
+## Estado de implementación · bloque 8 local con simuladores (2026-10-11, v22)
+
+**Código:**
+- Dominio: `src/domain/campaign.ts`.
+- Aplicación: `src/application/{campaigns,canva-adapter,canva-designs,cycle-reviews}.ts`. Cambios en
+  `external-operations.ts` (la huella actual de la campaña se comprueba antes de cada envío; lectura de estado) y en
+  `provider-adapter.ts` (fallos por recurso, límite del proveedor, acceso insuficiente, estado, persistencia).
+- Transporte: `src/transport/external-demo.ts`, `scripts/external-worker.ts` (supervisor + worker separado).
+- Interfaz: Marketing › Campañas digitales, Materiales de venta (panel de Canva en el brief) y Resultados (campañas
+  y revisión del ciclo).
+- Migración aditiva 0031 (seis tablas nuevas), aplicada sólo en las bases aisladas.
+- Todos los endpoints son sólo DEMO (404 en PILOT).
+
+Commits: `9e373b4` (implementación) y `4c692df` (corrección de autorización hallada por la revisión
+automática de seguridad del commit: vínculo y autoría para cambiar el estado de una conexión simulada; sólo
+versiones aprobadas de ofertas y anuncios pueden citarse).
+
+**Separación de actos:**
+1. Preparar una propuesta: Brando no escribe ni autoriza.
+2. Aprobar la versión: criterio y huella; no encola nada.
+3. Solicitar la operación: pantalla de confirmación construida en el servidor y repetida por huella, con
+   `AUTHORIZE_SPEND`. La autorización y la reserva de un trabajo se hacen en la misma transacción, y un reintento con
+   la misma clave no duplica.
+4. Confirmar el resultado: el worker registra cada intento. «Comprobar en el proveedor» concilia y «Leer estado»
+   guarda la lectura con su fuente.
+5. Activar o gastar: no existe en esta fase.
+
+**Evidencia por prueba, proyecto y código:**
+
+| Prueba | Qué cubre | Proyectos | Código |
+|---|---|---|---|
+| `tests/campaign-cases.ts` (9 casos) | dominio; separación de actos y permisos; respuesta perdida y conciliación sin reenvío; recurso con retraso («no lo veo» no es evidencia); límite del proveedor con reintento humano; acceso insuficiente; acceso vencido; versión aprobada nueva → `CONTENT_CHANGED`; cancelar antes de enviar; resultados por fuente; revisión del ciclo; Canva | unitarias | `9e373b4` + `4c692df` |
+| `tests/browser/phase4-campaigns.spec.ts` (1 recorrido) | cuenta simulada → campaña Google → propuesta → edición → revisión → pantalla exacta → escenario de respuesta perdida → pendiente → comprobar → creada en pausa → estado simulado → Resultados → revisión del ciclo → Canva | wide, desktop, compact, tablet y mobile | PASS en los cinco proyectos sobre `9e373b4` y de nuevo sobre `4c692df` |
+| Regresión completa (17 archivos, tramos A: 6 y B: 11, sin duplicados ni reintentos) | todas las pruebas de navegador | 310 ejecuciones (62 pruebas × 5 proyectos): 297 PASS, 13 SKIP por diseño según el ancho, 0 FAIL | `9e373b4` |
+
+**Estado por criterio:**
+
+| Criterio | Estado | Evidencia o motivo |
+|---|---|---|
+| CNV-001 (recuperar un diseño crea una versión nueva que exige revisión; la aprobada no cambia) | Validado en DEMO con simulador | unitarias y E2E; el servidor decide la referencia del diseño. La compatibilidad real con Canva está pendiente del proveedor |
+| CNV-002 (capacidad no disponible o no verificada se muestra y lo demás sigue útil) | Validado en DEMO con simulador | autocompletar y plantillas de marca: «no disponible en el plan»; abrir el editor: «sin verificar». Nada se marca como verificado con el simulador |
+| Google Ads · Búsqueda con anuncios adaptables, crear en pausa | Implementado y validado en DEMO (simulador) | recorrido E2E completo |
+| Meta Ads · tráfico, crear en pausa | Implementado; validado en unitarias (dominio y misma cola) | el recorrido de navegador usa Google; la captación en Meta sigue sin ofrecerse (necesita medición verificada) |
+| Activar, pausar, cambiar presupuesto | Pendiente de decisión y proveedor | no se ofrecen: activar es otra autorización con cuenta real |
+| EXT-006 (paso incierto con pasos previos correctos; los dependientes no se envían) | Validado en DEMO (simulador) | respuesta perdida en «campaña» con «presupuesto» creado |
+| EXT-008 (cancelar no se presenta como cancelado si ya se envió) | Parcial | cancelar antes de enviar, validado; el caso «ya enviado» usa la lógica del bloque 2, con mensaje en la interfaz, pero sin prueba de navegador propia |
+| EXT-010 (estados editorial, de operación y de proveedor separados; presupuesto diario no es tope total) | Validado en DEMO; la sincronización de rechazos reales está pendiente del proveedor | línea de estados en la tarjeta; regla de presupuesto en la pantalla |
+| EXT-011 / EXT-012 (los pasos siguientes revalidan; un paso rechazado sólo se reintenta bajo autorización vigente y con criterio) | Validado en DEMO (simulador) | `CONTENT_CHANGED`; límite del proveedor con dos intentos conservados |
+| EXT-017 (pérdida de acceso antes del intento → no se envía) | Parcial | conexión vencida: nada se envía, validado; la revocación de la autorización a mitad de trabajo, sin prueba nueva |
+| EXT-003, EXT-014 | Sin prueba nueva en este bloque | siguen con la cobertura del bloque 2 |
+| RES-001 (sin conexión no es cero; fuente etiquetada) | Validado en DEMO | gasto «Sin conectar»; lectura «Simulado (no es dato real)»; presupuesto planificado aparte |
+| RES-002 (conversiones del proveedor no se suman como personas) | Regla aplicada, sin datos reales | ningún cálculo suma conversiones a oportunidades; no hay conversiones reales |
+| RES-003 (mantener, ajustar o volver a probar sólo por acción humana con criterio; nada automático) | Validado en DEMO | revisión del ciclo de solo añadir; no cambia plan, campañas ni decisiones |
+| Revisión del ciclo enlazada con el motor de Validación | Parcial | las propuestas se guardan para el siguiente periodo; todavía no crean experimentos de Validación |
+| ROAS | No se muestra | faltan gasto real e ingresos atribuibles (ventas en Fase 5) |
+| ACC-06 (reintento, caída o timeout no duplican; acceso vencido explicado; estado remoto comprobado) | Validado en DEMO con simulador | una creación por recurso en todos los escenarios |
+| ACC-01 (lanzamiento completo) | Parcial | recorrido completo con simuladores etiquetados; faltan campañas conectadas reales y publicación autorizada |
+
+**Pendiente de proveedor o evidencia real:** cuentas de Google Ads, Meta y Canva; versiones de API; registros de
+cambios del proveedor; credenciales por persona en Canva (el adaptador real deberá recibir la credencial sellada);
+sincronización de rechazos y métricas reales.
+
+**Pendiente de decisión:** autorizar la activación y el gasto en una fase posterior, la medición verificada para
+captación y el proveedor de correo para avisos.
+
 ## Historial de revisiones
 
 | Versión | Fecha | Cambio |
@@ -647,4 +753,5 @@ conceptos, no se regeneran con `test:visual` y no entran en esa cifra. Comparaci
 | v18 | 2026-10-11 | Capturas aprobadas aplicadas: I10-UI-03 validado en DEMO; aceptación visual del bloque Clientes y Resultados satisfecha (no cierra Fase 4) |
 | v19 | 2026-10-11 | Exportaciones (bloque 6): estado de EXP-001…005 con aplicaciones de verificación |
 | v20 | 2026-10-11 | Sitios (bloque 7): estado de SITE, DOM, MEA y CNS con evidencia de DEMO; nota de DOM-002 (reserva al verificar) |
+| v22 | 2026-10-11 | Incidencia de Clientes diagnosticada y corregida; idempotencia del formulario comprobada; bloque 8 local con simuladores: estado por criterio (CNV, EXT, RES, ACC-01/06) |
 | v21 | 2026-10-11 | Sitios en DEMO completos en su alcance local: SITE-004 (testimonios y cifras con fuente), DOM-004 (nueva verificación periódica), duplicados del formulario en el servidor, vista por tamaño, ZIP; evidencia por prueba, proyecto y código; inventario de capturas corregido (17 canónicas) |
