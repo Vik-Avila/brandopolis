@@ -40,6 +40,7 @@
     "skills:check": "tsx scripts/sync-skills.ts --check",
     "sites:public": "tsx scripts/sites-server.ts --public",
     "external:worker": "tsx scripts/external-worker.ts",
+    "demo:phase4": "tsx scripts/phase4-demo.ts",
     "sites:preview": "tsx scripts/sites-server.ts --preview"
   },
   "dependencies": {

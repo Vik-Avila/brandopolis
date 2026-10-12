@@ -48,7 +48,7 @@ export async function canvaRetrievePlan(tx: Transaction, a: BrandActor, input: {
   if (design.status === 'RETRIEVED') return { replay: { designId: design.id, versionId: design.retrievedVersionId, replayed: true } };
   const [connection] = await tx.select().from(t.connections).where(and(eq(t.connections.workspaceId, a.workspaceId), eq(t.connections.id, design.connectionId)));
   if (!connection || connection.status !== 'ACTIVE' || connection.ownerUserId !== a.userId) throw new AppError('CONFLICT', 'Reconnect the Canva account that created this design');
-  return { plan: { designId: design.id, designRef: design.designRef, deliverableId: design.deliverableId, simulated: design.simulated } };
+  return { plan: { designId: design.id, designRef: design.designRef, deliverableId: design.deliverableId, simulated: design.simulated, connectionId: design.connectionId } };
 }
 
 /** Phase 3 of «retrieve»: a NEW draft of the brief carrying the design; it needs review. The approved one stays. */

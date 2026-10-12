@@ -83,6 +83,7 @@ export function campaignChecks(c: CampaignContent, ctx: { today: string; offerAp
   else if (!ctx.offerApproved) out.push({ code: 'OFFER', message: 'La oferta elegida ya no está aprobada o activa.' });
   if (!c.destination) out.push({ code: 'DESTINATION', message: 'Elige a dónde llega quien hace clic: tu sitio publicado o una dirección https.' });
   else if (c.destination.kind === 'SITE' && !ctx.destinationLive) out.push({ code: 'DESTINATION', message: 'El sitio de destino no tiene una versión publicada.' });
+  else if (!c.destination.url) out.push({ code: 'DESTINATION', message: 'El destino no tiene dirección: guarda de nuevo el borrador con el sitio ya publicado.' });
   if (c.search) {
     if (c.search.headlines.length < 3) out.push({ code: 'HEADLINES', message: 'Google pide al menos 3 títulos.' });
     if (c.search.headlines.some(h => h.length > LIMITS.headline)) out.push({ code: 'HEADLINES', message: `Cada título tiene como máximo ${LIMITS.headline} caracteres.` });

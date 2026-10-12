@@ -178,6 +178,8 @@ export async function saveCampaignDraft(tx: Transaction, a: BrandActor, input: {
   if (!draft || draft.status !== 'DRAFT') throw new AppError('CONFLICT', 'This version is no longer a draft');
   const content = await resolveDestination(tx, a, normalizeCampaign({ ...(input.content as object), name: (input.content as { name?: unknown })?.name ?? c.name }, c.provider as CampaignProvider, c.objective as 'SEARCH' | 'TRAFFIC' | 'LEADS'));
   await checkReferences(tx, a, content);
+  // The offer's name is the one of the cited version, never what the browser sent (security review F1).
+  if (content.offer) { const [ov] = await tx.select({ content: t.offerVersions.content }).from(t.offerVersions).where(eq(t.offerVersions.id, content.offer.offerVersionId)); content.offer = { ...content.offer, name: String((ov?.content as { name?: string })?.name ?? '').slice(0, 120) }; }
   const siteVersionId = content.destination?.kind === 'SITE' ? (await liveSites(tx, a)).find(s => s.siteId === (content.destination as { siteId: string }).siteId)?.publishedVersionId ?? null : null;
   const provenance = input.provenance === 'AI_ASSISTED' || draft.provenance === 'AI_ASSISTED' ? 'AI_ASSISTED' : 'MANUAL';
   await tx.update(t.campaignVersions).set({ content, fingerprint: campaignFingerprint(content), manifest: manifestOf(content, siteVersionId), provenance }).where(eq(t.campaignVersions.id, draft.id));

@@ -23,14 +23,21 @@ export class SimulatedCanva implements CanvaAdapter {
   readonly name = 'SIMULATOR';
   readonly simulated = true;
   private seq = 0;
+  /** Which credential created each design: another person's design is not found with your credential. */
+  private owners = new Map<string, string>();
   async capabilities(): Promise<CanvaCapability[]> {
     return [
       { key: 'UPLOAD_ASSETS', state: 'SIMULATED' }, { key: 'CREATE_DESIGN', state: 'SIMULATED' }, { key: 'LINK_DESIGN', state: 'SIMULATED' }, { key: 'OPEN_EDITOR', state: 'NOT_VERIFIED' },
       { key: 'EXPORT', state: 'SIMULATED' }, { key: 'AUTOFILL', state: 'UNAVAILABLE' }, { key: 'BRAND_TEMPLATES', state: 'UNAVAILABLE' },
     ];
   }
-  async createDesign(input: { title: string }) { return { designRef: `sim-design-${Date.now().toString(36)}-${++this.seq}-${createHash('sha256').update(input.title).digest('hex').slice(0, 6)}`, editUrl: null }; }
-  /** Simulated: any reference with the simulator's shape exists; others do not. */
-  async findDesign(input: { designRef: string }) { return /^sim-design-[a-z0-9-]{4,60}$/.test(input.designRef) ? { designRef: input.designRef } : null; }
+  async createDesign(input: { title: string; credential: string }) { const designRef = `sim-design-${Date.now().toString(36)}-${++this.seq}-${createHash('sha256').update(input.title).digest('hex').slice(0, 6)}`; this.owners.set(designRef, input.credential); return { designRef, editUrl: null }; }
+  /** Simulated: «sim-design-existing-…» stands for a design already in the person's account; designs created here are
+   *  found only with the credential that created them (another person's or brand's design is not accessible). */
+  async findDesign(input: { designRef: string; credential: string }) {
+    if (!input.credential) return null;
+    if (/^sim-design-existing-[a-z0-9-]{1,40}$/.test(input.designRef)) return { designRef: input.designRef };
+    return this.owners.get(input.designRef) === input.credential ? { designRef: input.designRef } : null;
+  }
   async exportDesign(input: { designRef: string }) { return { format: 'PNG' as const, sha256: createHash('sha256').update(`export:${input.designRef}`).digest('hex'), pages: 1 }; }
 }

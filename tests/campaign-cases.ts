@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { KitAssetInfo } from '../src/domain/kit-assets.js';
 import { and, eq } from 'drizzle-orm';
 import type { connect } from '../src/persistence/database.js';
@@ -7,6 +10,7 @@ import { Engine } from '../src/application/engine.js';
 import { DEFAULT_EXTERNAL_CONFIG, ExternalOperations, type ExternalConfig } from '../src/application/external-operations.js';
 import { SimulatedProvider } from '../src/application/provider-adapter.js';
 import { SimulatedCanva } from '../src/application/canva-adapter.js';
+import { createDemoExternal } from '../src/transport/external-demo.js';
 import { createVault } from '../src/application/credential-vault.js';
 import { budgetRule, campaignChecks, normalizeCampaign, plannedMinor } from '../src/domain/campaign.js';
 import { seedIdentity } from '../scripts/seed.js';
@@ -80,6 +84,17 @@ export function campaignCases(connection: () => ReturnType<typeof connect>) {
   };
 
   describe('Block 8 · campaigns, Canva and cycle review (simulator)', () => {
+    it('adapter separation: the DEMO wiring only ever builds the simulators (no real provider can be selected) and refuses to run in production', async () => {
+      const root = process.env.BRANDOPOLIS_EXTERNAL_ROOT;
+      process.env.BRANDOPOLIS_EXTERNAL_ROOT = mkdtempSync(join(tmpdir(), 'bp-external-'));
+      const external = createDemoExternal({} as never);
+      expect([external.adapter.name, external.canva.name, external.simulated]).toEqual(['SIMULATOR', 'SIMULATOR', true]);
+      expect(external.adapter).toBeInstanceOf(SimulatedProvider);
+      const env = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+      try { expect(() => createDemoExternal({} as never)).toThrow(); } finally { process.env.NODE_ENV = env; if (root === undefined) delete process.env.BRANDOPOLIS_EXTERNAL_ROOT; else process.env.BRANDOPOLIS_EXTERNAL_ROOT = root; }
+    });
+
     it('domain: provider limits, dates, budget rules; a daily budget is an average, never a total cap; planned amount over the dates', () => {
       const c = normalizeCampaign({ name: 'x', search: { headlines: ['Un título demasiado largo para Google Ads', 'b'], descriptions: ['d'], keywords: [] }, audience: { geo: [] }, budget: { type: 'TOTAL', amount: '0', currency: 'MXN' }, schedule: { startDate: '2020-01-01' } }, 'GOOGLE_ADS');
       expect(c.budget.type).toBe('DAILY'); // Google: daily only
@@ -535,6 +550,56 @@ export function campaignCases(connection: () => ReturnType<typeof connect>) {
       const other = await x.engine.createBrand(x.who.token, 'Otra marca');
       await expect(x.engine.canvaRetrieve(x.who.token, { brandId: other.id, designId: linked.designId })).rejects.toMatchObject({ code: 'NOT_FOUND' });
       expect(await x.engine.canvaRetrieve(x.who.token, { brandId: x.brand.id, designId: linked.designId })).toMatchObject({ replayed: false });
+    });
+
+    it('security review fixes: the offer name comes from the cited version; an empty destination blocks; a pause never waits on editorial state; another person cannot link someone else\'s Canva design; two people at once create one experiment', async () => {
+      // F1 · forged offer name is replaced by the cited version's name.
+      const x = await setup();
+      const offer = await x.approvedOffer('Café de verdad');
+      const created = await x.cmd('create', { provider: 'GOOGLE_ADS', name: 'C', idempotencyKey: randomUUID() }) as { campaignId: string };
+      let c = (await x.read()).campaigns.find(z => z.id === created.campaignId)!;
+      await x.cmd('draft', { campaignId: c.id, expectedRevision: c.revision, content: x.google({ ...offer, name: 'Oferta Premium 50% off' }) });
+      c = (await x.read()).campaigns.find(z => z.id === created.campaignId)!;
+      expect(c.draft!.content.offer!.name).toBe('Café de verdad');
+      // F2 · a destination without an address never passes the checks.
+      const empty = normalizeCampaign({ ...x.google(offer), destination: { kind: 'SITE', siteId: 's1', url: '' } }, 'GOOGLE_ADS');
+      expect(campaignChecks(empty, { today: '2026-01-01', offerApproved: true, destinationLive: true, imageValid: true, outdated: [] }).map(i => i.code)).toContain('DESTINATION');
+      // F3 · pause authorized, then someone approves a newer version: the pause is still sent.
+      const a = await x.approvedCampaign();
+      const { linkId } = await x.connect();
+      await x.request(a.campaignId, linkId); await x.work();
+      await x.request(a.campaignId, linkId, 'NORMAL', randomUUID(), 'ACTIVATE'); await x.work();
+      const pause = await x.request(a.campaignId, linkId, 'NORMAL', randomUUID(), 'PAUSE');
+      let cc = (await x.read()).campaigns.find(z => z.id === a.campaignId)!;
+      await x.cmd('new-draft', { campaignId: cc.id, expectedRevision: cc.revision });
+      cc = (await x.read()).campaigns.find(z => z.id === a.campaignId)!;
+      const sub = await x.cmd('submit', { campaignId: cc.id, expectedRevision: cc.revision }) as { versionId: string; fingerprint: string };
+      await x.cmd('decide', { campaignId: cc.id, versionId: sub.versionId, fingerprint: sub.fingerprint, decision: 'APPROVE', criterion: 'Otra versión aprobada', idempotencyKey: randomUUID() });
+      await x.work();
+      expect((await x.job(pause.jobId)).status).toBe('SUCCEEDED');
+      // F4 · Canva designs are found only with the credential that created them.
+      const brief = { type: 'DESIGN_BRIEF', name: 'Cartel', offerId: null, sourceDecisionVersionIds: [], body: { for: 'CANVA', piece: 'Cartel', format: 'A3', audience: '', message: 'Café', mustInclude: '', avoid: '', dueDate: null } };
+      const d = await x.engine.deliverableCommand(x.who.token, 'create', { brandId: x.brand.id, content: brief, idempotencyKey: randomUUID() }) as { deliverableId: string };
+      const dv = await x.engine.deliverableCommand(x.who.token, 'submit', { brandId: x.brand.id, deliverableId: d.deliverableId, expectedRevision: 0 }) as { versionId: string; fingerprint: string };
+      await x.engine.deliverableCommand(x.who.token, 'decide', { brandId: x.brand.id, deliverableId: d.deliverableId, versionId: dv.versionId, fingerprint: dv.fingerprint, decision: 'APPROVE', criterion: 'Brief aprobado', idempotencyKey: randomUUID() });
+      await x.engine.connectSimulated(x.who.token, { brandId: x.brand.id, provider: 'CANVA' });
+      const mine = await x.engine.canvaSend(x.who.token, { brandId: x.brand.id, deliverableId: d.deliverableId, idempotencyKey: randomUUID() }) as { designRef: string };
+      const colleague = await seedIdentity(x.db, 'ADMIN', x.who.workspaceId);
+      await x.engine.connectSimulated(colleague.token, { brandId: x.brand.id, provider: 'CANVA' });
+      await expect(x.engine.canvaLink(colleague.token, { brandId: x.brand.id, deliverableId: d.deliverableId, designRef: mine.designRef, idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      expect(await x.engine.canvaLink(x.who.token, { brandId: x.brand.id, deliverableId: d.deliverableId, designRef: mine.designRef, idempotencyKey: randomUUID() })).toMatchObject({ replayed: false });
+      // P1 · two people create the experiment of the same proposal at the same time: one experiment, one link.
+      const hypothesis = await x.engine.captureContext(x.who.token, x.brand.id, 'hypothesis', { statement: 'La búsqueda trae cafeterías' });
+      const ctx = await x.engine.context(x.who.token, x.brand.id), q = ctx.questions.find(z => z.module === 'Priority Experiment')!;
+      await x.engine.prepareQuestion(x.who.token, x.brand.id, q.id, null);
+      const priority = await x.engine.commitDecision(x.who.token, { brandId: x.brand.id, questionId: q.id, selectedOption: 'Probar la búsqueda', rationale: 'Criterio', expectedActiveVersion: null, sourceRecommendationId: null, idempotencyKey: randomUUID(), actorUserId: x.who.userId });
+      const saved = await x.engine.cycleReviewSave(x.who.token, { brandId: x.brand.id, periodStart: '2026-09-11', periodEnd: '2026-10-11', proposals: [{ text: 'Probar la campaña', origin: 'PERSON', campaignId: a.campaignId }], decision: 'RETEST', criterion: 'Volvemos a probar', idempotencyKey: randomUUID() });
+      const body = { brandId: x.brand.id, reviewId: saved.reviewId, proposalIndex: 0, mode: 'CREATE', hypothesisId: hypothesis.id, decisionId: priority.decisionId };
+      const results = await Promise.allSettled([x.engine.cycleExperiment(x.who.token, body), x.engine.cycleExperiment(colleague.token, body)]);
+      const ids = results.filter(r => r.status === 'fulfilled').map(r => (r as PromiseFulfilledResult<{ experimentId: string }>).value.experimentId);
+      expect(ids.length).toBeGreaterThan(0);
+      expect(new Set(ids).size).toBe(1);
+      expect(await x.db.select().from(t.experiments).where(eq(t.experiments.brandId, x.brand.id))).toHaveLength(1);
     });
   });
 }

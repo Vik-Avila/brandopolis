@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { reviewShot } from './review-shots.js';
 import { demoIdentity } from './demo-identity.js';
 
 // ACC-01 · local launch in DEMO with a fictional brand, an agency person and an invited client:
@@ -154,6 +155,7 @@ test('ACC-01 · local launch: offer, plan, kit, client review, site, form, oppor
   const proposal = view.locator('#cycle-experiment');
   await expect(proposal).toContainText('Propuesta revisable: nada se crea hasta que lo confirmes');
   await expect(proposal.getByLabel('Señal que se observará')).toHaveValue(/utm_campaign=/);
+  await reviewShot(page, info, '08-validacion-experimento-propuesto');
   await proposal.getByRole('button', { name: 'Crear el experimento en Validación' }).click();
   await expect(page.locator('#notice')).toContainText('Experimento creado en Validación como planificado');
   await expect(view.locator('#cycle-review')).toContainText('Experimento creado en Validación');

@@ -311,7 +311,8 @@ export class ExternalOperations {
         worker: { instanceId, leaseNumber, terminated: !worker || !!worker.terminatedAt },
         step: { status: next.status as StepStatus, released: !!release },
         authorization: { status: auth.status as AuthorizationStatus, reservedJobId: auth.reservedJobId, expiresAt: auth.expiresAt, contentFingerprint: auth.contentFingerprint },
-        expectedFingerprint: await this.currentContentFingerprint(tx, job.workspaceId, job.brandId, auth.subjectKind, auth.subjectId, auth.contentFingerprint),
+        // Pausing reduces spend: it never waits on editorial state (a newer approved version must not keep a campaign spending).
+        expectedFingerprint: job.operation === 'PAUSE' ? auth.contentFingerprint : await this.currentContentFingerprint(tx, job.workspaceId, job.brandId, auth.subjectKind, auth.subjectId, auth.contentFingerprint),
         connection: { status: connection.status, linkedToBrand: !link.unlinkedAt && link.brandId === job.brandId },
         actorHoldsSpend: await this.actorHoldsSpend(tx, job.workspaceId, job.brandId, auth.actorUserId),
         brandClosing: false,
@@ -602,6 +603,16 @@ export class ExternalOperations {
     if (!plan || !this.adapter.campaignStatus) return null;
     const reading = await this.adapter.campaignStatus(plan.provider, plan.providerIds, plan.secret, currency);
     return reading ? { reading, scopes: plan.scopes } : null;
+  }
+
+  /**
+   * Block 8 · opens the person's OWN connection credential (Canva is per person) so the adapter acts with it; never
+   * returned to a browser. Fails when the connection is not that person's or not active.
+   */
+  async personalCredential(tx: Transaction, workspaceId: string, userId: string, connectionId: string) {
+    const [c] = await tx.select().from(t.connections).where(and(eq(t.connections.workspaceId, workspaceId), eq(t.connections.id, connectionId)));
+    if (!c || c.ownerUserId !== userId || c.status !== 'ACTIVE') throw new AppError('CONFLICT', 'Reconnect your account first');
+    return this.requireVault().open(c.credentialCiphertext ?? '', c.credentialKeyId ?? '', this.aad(c.workspaceId, c.id));
   }
 
   /** Closure window helper exposed for the interface (when a human retry could first become possible). */

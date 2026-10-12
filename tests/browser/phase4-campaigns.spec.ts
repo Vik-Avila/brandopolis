@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { reviewShot } from './review-shots.js';
 
 // Block 8 (ADR-0031) in DEMO with the simulator: connect a simulated Google Ads account → create a campaign → Brando
 // proposes (incorporated by the person) → complete and save → review and approve → confirm the exact screen and
@@ -84,12 +85,14 @@ test('block 8: campaign created in pause through the simulator, uncertain step c
   await expect(screen).toContainText('Cuenta simulada (sin conexión real)');
   await expect(screen).toContainText('no es un tope total');
   await expect(screen).toContainText('No se activa ni gasta');
+  await reviewShot(page, info, '01-google-pantalla-de-confirmacion');
   await screen.getByLabel('Escenario del simulador').selectOption('LOST_RESPONSE');
   await screen.getByRole('button', { name: 'Autorizar y solicitar la creación en pausa' }).click();
   await expect(page.locator('#notice')).toContainText('La creación en pausa está en la cola del simulador');
   const operation = area.locator('.campaign-operation').first();
   await expect(operation).toContainText('Pendiente de comprobación', { timeout: 30000 });
   await expect(operation).toContainText('Se perdió la respuesta: pudo haberse creado.');
+  await reviewShot(page, info, '02-google-pendiente-de-comprobacion');
   await operation.getByRole('button', { name: 'Comprobar en el proveedor' }).click();
   await expect(page.locator('#notice')).toContainText('se vinculó y no se repite');
   await expect(area.locator('.campaign-operation').first()).toContainText('Creada en pausa', { timeout: 30000 });
@@ -112,6 +115,7 @@ test('block 8: campaign created in pause through the simulator, uncertain step c
   await area.locator('.campaign-screen').getByRole('button', { name: 'Autorizar y solicitar la pausa' }).click();
   await expect(area.locator('.campaign-card').first()).toContainText('En pausa en la cuenta', { timeout: 30000 });
   await expect(area).toContainText('En esta DEMO todo ocurre en el simulador');
+  await reviewShot(page, info, '03-google-activada-y-pausada');
 
   // Resultados: sources apart, no ROAS; cycle review saved without changing anything else.
   await openNav(page); await page.locator('#results').click();
@@ -122,6 +126,7 @@ test('block 8: campaign created in pause through the simulator, uncertain step c
   await expect(campaigns).toContainText('Retorno de la inversión publicitaria (ROAS)');
   const review = view.locator('#cycle-review');
   await expect(review).toContainText('No hay cuentas reales de Google o Meta conectadas');
+  await reviewShot(page, info, '04-resultados-y-revision-del-ciclo');
   await review.getByLabel('¿Qué aprendiste en este periodo?').fill('Todavía no hay datos reales de campañas.');
   await review.getByLabel('Volver a probar').check();
   await review.getByLabel(/^¿Por qué\?/).fill('Repetimos con una cuenta real cuando haya acceso');
@@ -151,5 +156,6 @@ test('block 8: campaign created in pause through the simulator, uncertain step c
   await expect(briefCard).toContainText('Aprobada · v1');
   await expect(briefCard).toContainText('Borrador · v2');
   await expect(briefCard.locator('.canva-panel')).toContainText('Recuperado en una versión nueva');
+  await reviewShot(page, info, '05-canva-en-el-brief');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });

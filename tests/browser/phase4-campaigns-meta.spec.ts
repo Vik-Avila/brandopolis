@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { reviewShot } from './review-shots.js';
 
 // Block 8 · Meta Ads lead capture in DEMO with the simulator: a live site as destination → campaign created in pause →
 // activation is not offered while the destination's measurement is unverified → SIMULATED verification → second
@@ -77,10 +78,12 @@ test('block 8 · Meta lead capture: activation only with verified (simulated) me
   await expect(area.locator('.campaign-measurement')).toContainText('Sin verificar');
   await expect(area.getByRole('button', { name: 'Solicitar la activación (segunda autorización)' })).toHaveCount(0);
   await expect(area).toContainText('primero verifica la medición del sitio de destino');
+  await reviewShot(page, info, '06-meta-captacion-sin-medicion');
   await area.getByRole('button', { name: 'Registrar verificación simulada' }).click();
   await expect(area.locator('.campaign-measurement')).toContainText('Verificada (simulada)');
   await area.getByRole('button', { name: 'Solicitar la activación (segunda autorización)' }).click();
   await expect(area.locator('.campaign-screen')).toContainText('Verificada (simulada)');
+  await reviewShot(page, info, '07-meta-segunda-autorizacion');
   await area.locator('.campaign-screen').getByRole('button', { name: 'Autorizar y solicitar la activación' }).click();
   await expect(area.locator('.campaign-card').first()).toContainText('Activa en la cuenta', { timeout: 30000 });
   await area.locator('.campaign-operation').first().getByRole('button', { name: 'Leer estado en el proveedor' }).click();

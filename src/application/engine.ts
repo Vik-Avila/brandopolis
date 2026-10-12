@@ -320,7 +320,8 @@ export class Engine {
     const brandId=String(input.brandId??'');
     const first=await this.withBrandActor(token,brandId,(tx,actor)=>canvaSendPlan(tx,actor,input));
     if('replay' in first)return first.replay;
-    const created=await ext.canva.createDesign({title:first.plan.title,brief:first.plan.brief,assetCount:first.plan.assetCount,credential:''});
+    const credential=await this.withBrandActor(token,brandId,(tx,actor)=>ext.ops.personalCredential(tx,actor.workspaceId,actor.userId,first.plan.connectionId));
+    const created=await ext.canva.createDesign({title:first.plan.title,brief:first.plan.brief,assetCount:first.plan.assetCount,credential});
     return this.withBrandActor(token,brandId,async(tx,actor)=>{const r=await canvaRecordDesign(tx,actor,first.plan,created.designRef);if(!r.replayed)await this.audit(tx,actor,{operation:'CANVA_DESIGN_CREATE',idempotencyKey:first.plan.idempotencyKey,newVersion:r.designId});return {...r,editUrl:created.editUrl};});
   }
   /** Canva: link an EXISTING design of the person to the approved brief (the provider confirms it exists). */
@@ -330,7 +331,8 @@ export class Engine {
     if(!/^[A-Za-z0-9_-]{6,80}$/.test(designRef))throw new AppError('INVALID','Write the design reference');
     const first=await this.withBrandActor(token,brandId,(tx,actor)=>canvaSendPlan(tx,actor,input));
     if('replay' in first)return first.replay;
-    if(!(await ext.canva.findDesign({designRef,credential:''})))throw new AppError('NOT_FOUND','That design is not available to your Canva account');
+    const credential=await this.withBrandActor(token,brandId,(tx,actor)=>ext.ops.personalCredential(tx,actor.workspaceId,actor.userId,first.plan.connectionId));
+    if(!(await ext.canva.findDesign({designRef,credential})))throw new AppError('NOT_FOUND','That design is not available to your Canva account');
     return this.withBrandActor(token,brandId,async(tx,actor)=>{const r=await canvaRecordDesign(tx,actor,first.plan,designRef);if(!r.replayed)await this.audit(tx,actor,{operation:'CANVA_DESIGN_LINK',idempotencyKey:first.plan.idempotencyKey,newVersion:r.designId});return r;});
   }
   /** Canva: retrieve the design into a NEW draft version of the brief that needs review (CNV-001). */
@@ -339,7 +341,8 @@ export class Engine {
     const brandId=String(input.brandId??'');
     const first=await this.withBrandActor(token,brandId,(tx,actor)=>canvaRetrievePlan(tx,actor,input));
     if('replay' in first)return first.replay;
-    const exported=await ext.canva.exportDesign({designRef:first.plan.designRef,credential:''});
+    const credential=await this.withBrandActor(token,brandId,(tx,actor)=>ext.ops.personalCredential(tx,actor.workspaceId,actor.userId,first.plan.connectionId));
+    const exported=await ext.canva.exportDesign({designRef:first.plan.designRef,credential});
     return this.withBrandActor(token,brandId,async(tx,actor)=>{const r=await canvaRecordRetrieval(tx,actor,first.plan,exported);if(!r.replayed)await this.audit(tx,actor,{operation:'CANVA_DESIGN_RETRIEVE',idempotencyKey:randomUUID(),newVersion:String(r.versionId)});return r;},true);
   }
   async cycleReview(token:string,brandId:string) {
@@ -358,14 +361,26 @@ export class Engine {
     const brandId=String(input.brandId??'');
     const p=await this.withBrandActor(token,brandId,(tx,actor)=>experimentProposal(tx,actor,input));
     if(p.linked)return {...p.linked,replayed:true};
-    let experimentId:string,mode:'CREATED'|'LINKED';
-    if(input.mode==='LINK'){experimentId=String(input.experimentId??'');mode='LINKED';}
-    else{
-      const text=(v:unknown,f:string)=>typeof v==='string'&&v.trim()?v.trim().slice(0,4000):f;
-      const created=await this.createLearningObject(token,brandId,'experiment',{hypothesisId:String(input.hypothesisId??''),intendedSignal:text(input.intendedSignal,p.draft.intendedSignal).slice(0,4000),method:text(input.method,p.draft.method),plannedPeriod:text(input.plannedPeriod,p.draft.plannedPeriod).slice(0,200),limitations:p.draft.limitations},String(input.decisionId??''),{objective:text(input.objective,p.draft.objective),successCriteria:text(input.successCriteria,p.draft.successCriteria)},`cycle:${p.reviewId}:${p.proposalIndex}`);
-      experimentId=String(created.id);mode='CREATED';
+    const link=(experimentId:string,mode:'CREATED'|'LINKED')=>({reviewId:p.reviewId,proposalIndex:p.proposalIndex,experimentId,mode,campaignId:p.sources.campaignId,campaignVersionId:p.sources.campaignVersionId,periodStart:p.sources.periodStart,periodEnd:p.sources.periodEnd});
+    if(input.mode==='LINK')return this.withBrandActor(token,brandId,async(tx,actor)=>{const r=await recordExperimentLink(tx,actor,link(String(input.experimentId??''),'LINKED'));if(!r.replayed)await this.audit(tx,actor,{operation:'CYCLE_EXPERIMENT_LINKED',idempotencyKey:`cycle:${p.reviewId}:${p.proposalIndex}`,newVersion:r.experimentId});return r;});
+    // The experiment and its link are written in ONE transaction, serialized on the review row: two people acting at the
+    // same time never leave an orphan experiment (security review P1); the second one gets the existing link.
+    const text=(v:unknown,f:string)=>typeof v==='string'&&v.trim()?v.trim().slice(0,4000):f;
+    let actorScope:BrandActor|null=null;
+    try{
+      const created=await this.createLearningObject(token,brandId,'experiment',{hypothesisId:String(input.hypothesisId??''),intendedSignal:text(input.intendedSignal,p.draft.intendedSignal).slice(0,4000),method:text(input.method,p.draft.method),plannedPeriod:text(input.plannedPeriod,p.draft.plannedPeriod).slice(0,200),limitations:p.draft.limitations},String(input.decisionId??''),{objective:text(input.objective,p.draft.objective),successCriteria:text(input.successCriteria,p.draft.successCriteria)},`cycle:${p.reviewId}:${p.proposalIndex}`,{
+        before:async tx=>{
+          const [review]=await tx.select({id:t.cycleReviews.id,workspaceId:t.cycleReviews.workspaceId,createdBy:t.cycleReviews.createdBy}).from(t.cycleReviews).where(eq(t.cycleReviews.id,p.reviewId)).for('update');
+          const [existing]=await tx.select().from(t.cycleReviewExperiments).where(and(eq(t.cycleReviewExperiments.reviewId,p.reviewId),eq(t.cycleReviewExperiments.proposalIndex,p.proposalIndex)));
+          if(!review||existing)throw new AppError('CONFLICT','ALREADY_LINKED');
+        },
+        after:async(tx,payload)=>{const who=await this.identity(tx,token);const s=await this.scope(tx,token,brandId);actorScope={workspaceId:s.workspaceId,brandId:s.brandId,userId:s.userId,role:who.member.role,capabilities:[]};await recordExperimentLink(tx,actorScope,link(String(payload.id),'CREATED'));await this.audit(tx,s,{operation:'CYCLE_EXPERIMENT_CREATED',idempotencyKey:`cycle:${p.reviewId}:${p.proposalIndex}`,newVersion:String(payload.id)});}
+      });
+      return {experimentId:String(created.id),mode:'CREATED' as const,replayed:!actorScope};
+    }catch(error){
+      if(error instanceof AppError&&error.message==='ALREADY_LINKED'){const again=await this.withBrandActor(token,brandId,(tx,actor)=>experimentProposal(tx,actor,input));if(again.linked)return {...again.linked,replayed:true};}
+      throw error;
     }
-    return this.withBrandActor(token,brandId,async(tx,actor)=>{const r=await recordExperimentLink(tx,actor,{reviewId:p.reviewId,proposalIndex:p.proposalIndex,experimentId,mode,campaignId:p.sources.campaignId,campaignVersionId:p.sources.campaignVersionId,periodStart:p.sources.periodStart,periodEnd:p.sources.periodEnd});if(!r.replayed)await this.audit(tx,actor,{operation:`CYCLE_EXPERIMENT_${mode}`,idempotencyKey:`cycle:${p.reviewId}:${p.proposalIndex}`,newVersion:experimentId});return r;});
   }
   async cycleReviewSave(token:string,input:Record<string,unknown>) {
     return this.withBrandActor(token,String(input.brandId??''),async(tx,actor)=>{const r=await saveCycleReview(tx,actor,input);if(!r.replayed)await this.audit(tx,actor,{operation:'CYCLE_REVIEW',idempotencyKey:String(input.idempotencyKey),newVersion:r.reviewId,rationale:String(input.criterion??'')});return r;});
@@ -2019,7 +2034,7 @@ export class Engine {
       await this.event(tx,s,'recommendation_rejected');return {resolution:'REJECTED'};
     });
   }
-  async createLearningObject(token:string,brandId:string,kind:string,input:Record<string,unknown>,decisionId?:string,plan?:{objective:string;successCriteria:string},idempotencyKey?:string) {
+  async createLearningObject(token:string,brandId:string,kind:string,input:Record<string,unknown>,decisionId?:string,plan?:{objective:string;successCriteria:string},idempotencyKey?:string,hooks?:{before?:(tx:Transaction)=>Promise<void>;after?:(tx:Transaction,payload:Record<string,unknown>)=>Promise<void>}) {
     if(!['experiment','signal','learning'].includes(kind)||!input||Array.isArray(input)||JSON.stringify(input).length>16000)throw new AppError('INVALID','Invalid learning object');
     if(plan&&[plan.objective,plan.successCriteria].some(v=>typeof v!=='string'||!v.trim()||v.length>4000))throw new AppError('INVALID','Experiment plan required');
     if(idempotencyKey!==undefined&&(typeof idempotencyKey!=='string'||!idempotencyKey.trim()||idempotencyKey.length>200))throw new AppError('INVALID','Invalid idempotency key');
@@ -2028,6 +2043,7 @@ export class Engine {
     if(kind==='learning'){const {origin:_o,brandoAssisted:_b,assistanceProof:_p,...rest}=input;input=rest;}
     return this.db.transaction(async tx=>{
       const s=await this.scope(tx,token,brandId),now=new Date(),objectId=id();
+      await hooks?.before?.(tx);
       const command=`CREATE_${kind.toUpperCase()}`,fingerprint=hash(JSON.stringify([input,proofId,decisionId??null,plan??null]));
       let consumeProof=false;
       if(kind==='learning'){
@@ -2074,6 +2090,7 @@ export class Engine {
       if(kind==='experiment'||kind==='signal')await this.practiceEvent(tx,s,kind==='experiment'?'Diseñaste un experimento y definiste qué señal observar para poner a prueba una hipótesis.':'Registraste una observación con su fuente, separada de su interpretación.');
       if(consumeProof)await tx.insert(t.idempotency).values({workspaceId:s.workspaceId,brandId:s.brandId,actorUserId:s.userId,command:'BRANDO_ASSISTANCE_PROOF',key:proofId!,fingerprint:hash(objectId),result:{learningId:objectId}});
       if(idempotencyKey)await tx.insert(t.idempotency).values({workspaceId:s.workspaceId,brandId:s.brandId,actorUserId:s.userId,command,key:idempotencyKey,fingerprint,result:payload});
+      await hooks?.after?.(tx,payload);
       return payload;
     });
   }
