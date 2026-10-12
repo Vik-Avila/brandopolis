@@ -1,0 +1,403 @@
+{
+    "package":  "Brandopolis_Traspaso_2026-10-12",
+    "date":  "2026-10-12",
+    "type":  "context_and_design_handoff",
+    "includes_current_repository":  false,
+    "candidate_reported":  {
+                               "code":  "c660124",
+                               "docs":  "6c4756b",
+                               "independently_verified":  false
+                           },
+    "files":  [
+                  {
+                      "path":  ".gitattributes",
+                      "bytes":  8,
+                      "sha256":  "705fd4d6451a31d36b3df7de96f83f30ac976c9b4a6d1e51671d8e2f33e2d0da"
+                  },
+                  {
+                      "path":  "00_ESTADO_TRASPASO_ACTUAL.md",
+                      "bytes":  731,
+                      "sha256":  "41e0ab7ef90cf34909e22d7377d3271afab2ffe97d504462b7b63d9809317986"
+                  },
+                  {
+                      "path":  "00_LEEME_PRIMERO.md",
+                      "bytes":  4391,
+                      "sha256":  "dbc55384f89813446080281412c2d7bfed3de0b953ec8d7fb81278ac33859bea"
+                  },
+                  {
+                      "path":  "01_Direccion/01_ESTILO_VISUAL_TRANSVERSAL.md",
+                      "bytes":  13231,
+                      "sha256":  "8e2c40acd724e6289168f5829506f1886bccf574dadbef9b4a89da041d42979d"
+                  },
+                  {
+                      "path":  "01_Direccion/02_BLOQUE_PARA_CLAUDE.md",
+                      "bytes":  11410,
+                      "sha256":  "9e853f7fb0c0caa5898f5e94202c12f1b8f8b5604605f55ae028b5511292e586"
+                  },
+                  {
+                      "path":  "01_Direccion/03_MATRIZ_DE_ACEPTACION.md",
+                      "bytes":  4080,
+                      "sha256":  "53dbe507c9da34bb9df58ea0db6e21adb40473ccf0d2262c4db3738b870fbd24"
+                  },
+                  {
+                      "path":  "02_Continuidad/01_ESTADO_Y_LIMITES.md",
+                      "bytes":  5429,
+                      "sha256":  "7d4048d4de7a2e72fc6ff6eae76895468e333379b3a320f1d284606d4f547012"
+                  },
+                  {
+                      "path":  "02_Continuidad/02_ROADMAP_Y_DECISIONES.md",
+                      "bytes":  5344,
+                      "sha256":  "2a8c8339d016e3e6c0e6d04bf8dd695b496976154a49ebfcbb8afc2cb1ef6f95"
+                  },
+                  {
+                      "path":  "03_Referencias/00_INDICE_Y_PRECEDENCIA.md",
+                      "bytes":  3182,
+                      "sha256":  "102b46cf7439d268c7636b2fc48b1bb183136a3a8c8f3d19e12bd4606bfa96df"
+                  },
+                  {
+                      "path":  "03_Referencias/Brandopolis_Fase4_Revision_DEMO_y_Bloque_Claude_2026-10-12.md",
+                      "bytes":  22742,
+                      "sha256":  "14f1470068e9fa9ecb02afbd1a3c6fe78791a48e2cfabfa55265a79cf2b6e87b"
+                  },
+                  {
+                      "path":  "03_Referencias/Brandopolis_Plan_Desarrollo_Actualizado_2026-10-11.md",
+                      "bytes":  13637,
+                      "sha256":  "be34331d43d46c9a7192fbc8aa5cd8c068acf8fa1991b990b7e20adbad1f886b"
+                  },
+                  {
+                      "path":  "03_Referencias/Brandopolis_Revision_Marketing_Canvas_y_Calendario_2026-10-12.md",
+                      "bytes":  26503,
+                      "sha256":  "cc200b75b5bbc5c8f99eedf7c0840848b31d8943b822d770713a0529a0e083de"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-060100).png",
+                      "bytes":  34428,
+                      "sha256":  "8782fceb8236aab55cc62ccbea195c52df4a1bd8c3ad4099fb0e80119935608f"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-060312).png",
+                      "bytes":  24481,
+                      "sha256":  "3f3cead8f12228a2129fedbf6485c754c8f77ddbff09383bf9415259dded49cd"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-060525).png",
+                      "bytes":  119830,
+                      "sha256":  "725f7f57985e8da557d8953fafd18325ed41111554836881f41cea7b9e27de8b"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-061223).png",
+                      "bytes":  351007,
+                      "sha256":  "e6d8b25bc52119cbef48cbd3111a11282664d7a86bf79b4f5905430685884f3e"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-061826).png",
+                      "bytes":  34507,
+                      "sha256":  "d5f0fefeb15bf311aab6f7bb15d8e6d0a36b0bb9de56b13627500d0e3f2d1d37"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-062148).png",
+                      "bytes":  28549,
+                      "sha256":  "eacf14c05a7bd38e14b2fcbaf2fed09bb64508cf07bfd6a866b06317cd1e606e"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-062248).png",
+                      "bytes":  61580,
+                      "sha256":  "b4229eb6c0b0681462e8c52c4be7ca3d8184c3f5ea0001f54f2972308c4e141c"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-062459).png",
+                      "bytes":  204433,
+                      "sha256":  "349dd65b2ae2a49393592adb27d3efc397e5c3e46c28c1a75cb182bb3768738a"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-063049).png",
+                      "bytes":  246621,
+                      "sha256":  "5a8c6316e44bff7ea6c8a2c4277308e31170839776c3402036fd07c09723f129"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-063616).png",
+                      "bytes":  15734,
+                      "sha256":  "aad58fb4799ea5b2ced12814b38d13a3dbc81229d0fec02f64a926170fdf3805"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-064502).png",
+                      "bytes":  274913,
+                      "sha256":  "d9d1994ebaff06acc08726b5baaf61c1867c562d2838e344199cfd636b4ff6c9"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-065054).png",
+                      "bytes":  10791,
+                      "sha256":  "bd464d329605726688e41dd7aa2627be621b177002e3c14103e35b59aeebb709"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-065522).png",
+                      "bytes":  33113,
+                      "sha256":  "beb3188009624b18ee16d2d155d26763605903acbb0257b1443e4a53d34801dd"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-065846).png",
+                      "bytes":  215559,
+                      "sha256":  "67fbfeadb965af853f942fe4f8ec744db9fe8914c3c273cbd666a849cc890f2a"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-070354).png",
+                      "bytes":  628080,
+                      "sha256":  "b6527bae6ef418f72c3488f1519fd19532abb528567031e0dc813ec4e493d350"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-070727).png",
+                      "bytes":  252145,
+                      "sha256":  "8300099da4a2fd8bb6313f770985b8dcd6b59ccb2bff8340a2bd9f1588f068f1"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-070854).png",
+                      "bytes":  459506,
+                      "sha256":  "b21da30763df65458094dc71245a3d4fee72a6f195158cca048819a9188a5df2"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-133754).png",
+                      "bytes":  58107,
+                      "sha256":  "f19c12ae4b7e4da1aecb91321e6c294e4d4fc3eb9aa6b1c7ac6e556419978a33"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-134058).png",
+                      "bytes":  61574,
+                      "sha256":  "3caf5e62d76059c5074d8d2d11c3b74d3d1863e71144537326fdbb69e2709c0c"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-134614).png",
+                      "bytes":  273678,
+                      "sha256":  "087ed613e6a34319730aa8a22d04e09877201cc2d24b65342a41e5b1c91c6962"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-135054).png",
+                      "bytes":  47954,
+                      "sha256":  "a33087de0d603aa3f7ee8720e2df72ba71f0565691a37480832111fb88861a48"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-152000).png",
+                      "bytes":  287145,
+                      "sha256":  "afeaefbffaf6b88035061be7f7a5ee1c5e327cd6952e7105566c522e85a307af"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-152119).png",
+                      "bytes":  291356,
+                      "sha256":  "9eeabadcea1b476fe83e61406bc0c663696f54def3064dec88d7f25fa14fe43d"
+                  },
+                  {
+                      "path":  "03_Referencias/Capturas_usuario/image(20261012-184105).png",
+                      "bytes":  203734,
+                      "sha256":  "81bd0b313b5294812a8054fe823be7931bb0823affeb8e7a0b9d3528543b6a3e"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_especificacion_Fase4_2026-10-10/.agents/skills/brandopolis-brando/SKILL.md",
+                      "bytes":  5039,
+                      "sha256":  "69f9f4b0411e69c6c1b3ca9056350c26e4932c7cc08a259696e833e84fc54d4d"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_especificacion_Fase4_2026-10-10/.agents/skills/brandopolis-security/SKILL.md",
+                      "bytes":  4432,
+                      "sha256":  "3c01fdb4568ac0542d7dce8ee31d35533c7c07b76dd4e4b00018d65f5cad3668"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_especificacion_Fase4_2026-10-10/.claude/skills/brandopolis-brando/SKILL.md",
+                      "bytes":  5039,
+                      "sha256":  "69f9f4b0411e69c6c1b3ca9056350c26e4932c7cc08a259696e833e84fc54d4d"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_especificacion_Fase4_2026-10-10/.claude/skills/brandopolis-security/SKILL.md",
+                      "bytes":  4432,
+                      "sha256":  "3c01fdb4568ac0542d7dce8ee31d35533c7c07b76dd4e4b00018d65f5cad3668"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_especificacion_Fase4_2026-10-10/CHANGELOG.md",
+                      "bytes":  90862,
+                      "sha256":  "a6c6c386468b69d0c680c8173ae886964f646643d709f2aa7db241ed7d7916fc"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_especificacion_Fase4_2026-10-10/docs/01-product/non-goals.md",
+                      "bytes":  1308,
+                      "sha256":  "062d2e4c02a16fc880a06fa94f52ddda1158feb8255911a628d04bba7727a1be"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_especificacion_Fase4_2026-10-10/docs/01-product/scope-mvp.md",
+                      "bytes":  7233,
+                      "sha256":  "4091de3378b40271b054a74883f0f9287353ecb89056d2f7b879368ed092057d"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_especificacion_Fase4_2026-10-10/docs/05-ai/brand-intelligence-engine.md",
+                      "bytes":  5988,
+                      "sha256":  "d7f2e9b73cf406517417b783dddaa591d9e6dd3dca87b07752e9941fd5acd5ac"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_especificacion_Fase4_2026-10-10/docs/14-decisions/ADR-0030.md",
+                      "bytes":  13719,
+                      "sha256":  "32f458704c8b7fa4b319e2b6db01d6786898b5b6f246ffa965849d838c806266"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_especificacion_Fase4_2026-10-10/docs/14-decisions/ADR-0031.md",
+                      "bytes":  20205,
+                      "sha256":  "4718dddf847a4c2c35310f549067f8dcc3e34891c159b12c64868e47ae8b232f"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_especificacion_Fase4_2026-10-10/docs/14-decisions/ADR-0032.md",
+                      "bytes":  17197,
+                      "sha256":  "f4fbd092b03da0f1a3a62b70829f03e43027ad1ba3131b756ba10e3b01b2b2cf"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_especificacion_Fase4_2026-10-10/docs/14-decisions/ADR-0033.md",
+                      "bytes":  6650,
+                      "sha256":  "1a6f1d6771cf6dfafe08286f9eb08f3fcf4d19474d2b6aced793682e563adaa7"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_especificacion_Fase4_2026-10-10/docs/14-decisions/ADR-0034.md",
+                      "bytes":  9645,
+                      "sha256":  "c3a58b90f553a5cd19693298a9aaf2047194787e4c4c79bc5197a2807a183777"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_especificacion_Fase4_2026-10-10/docs/14-decisions/README.md",
+                      "bytes":  2759,
+                      "sha256":  "1dd2c11de37058963d9bb84e01470c10323fe0d407153ac2fb57d31eee879359"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_especificacion_Fase4_2026-10-10/docs/15-handoff/NEXT_DEVELOPER_START_HERE.md",
+                      "bytes":  19587,
+                      "sha256":  "5ed8ad701bca0b21b81a05dcc3efb6487a91d1dc69cd524f203d84afa4cc1be5"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_especificacion_Fase4_2026-10-10/docs/15-handoff/PHASE4_ACCEPTANCE_MATRIX.md",
+                      "bytes":  22541,
+                      "sha256":  "bde41ebcb4d86141b36095fab453d5203a24c9e2d85e16200f4993a73bfd986b"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_especificacion_Fase4_2026-10-10/docs/15-handoff/PHASE4_EXTERNAL_REQUIREMENTS.md",
+                      "bytes":  12026,
+                      "sha256":  "98c7a7a71b6512e33136fba890c92e48734174b72beab49de89c488ff041ecde"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_especificacion_Fase4_2026-10-10/docs/15-handoff/PHASE4_HANDOFF.md",
+                      "bytes":  6089,
+                      "sha256":  "90f447076ef5f49773d7b39577f79b4ae3f9d25cce0a9b4d733fa451629407c0"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_especificacion_Fase4_2026-10-10/docs/15-handoff/PHASE4_SPEC.md",
+                      "bytes":  40800,
+                      "sha256":  "8e4de63e165cb323b4d4f9beb3fdafde082ddc6f3f1af711ddcf312b68b7d383"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_especificacion_Fase4_2026-10-10/docs/15-handoff/POST_MVP_DEFERRED_SCOPE.md",
+                      "bytes":  4876,
+                      "sha256":  "aa3adc2b9260cf0b652cd3924dd7f90ed3ed7bf500c876b278a46ced4d34d0f0"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_especificacion_Fase4_2026-10-10/SESSION_STATE.md",
+                      "bytes":  128077,
+                      "sha256":  "4fa358cbfc779d10c8051add850087f911aac8418c993e60456a7fff712aa0bb"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_roadmap_2026-10-10/02_ROADMAP_SEIS_FASES.md",
+                      "bytes":  1442,
+                      "sha256":  "335169a81982d70f7098e36a72057bb73dc697203f89731f36469ec3dc2b2c18"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_roadmap_2026-10-10/03_CAPACIDADES_Y_DECISIONES.md",
+                      "bytes":  2645,
+                      "sha256":  "9deee8a6363ec076a463940a1064fae9257fa900015ef7e0833a1a42d58d9f05"
+                  },
+                  {
+                      "path":  "03_Referencias/Historico_roadmap_2026-10-10/04_DECISIONES_ARQUITECTONICAS_Y_QA.md",
+                      "bytes":  1899,
+                      "sha256":  "97efdb3ec04ce2845daa3d77f75b7c0495e8170aa792d8ff85735416cc512b5b"
+                  },
+                  {
+                      "path":  "03_Referencias/Planificacion_Clientes_Resultados_2026-10-11/00_LEEME.md",
+                      "bytes":  376,
+                      "sha256":  "55fffbb6a777ffbc0c22caba84127fe6d191db4e0b745bfbcff4507d2c57707e"
+                  },
+                  {
+                      "path":  "03_Referencias/Planificacion_Clientes_Resultados_2026-10-11/03_ATOMIC_CHATWOOT_REQUISITOS.md",
+                      "bytes":  15343,
+                      "sha256":  "a9455fd21758f32e2f38d96b80ed11fcb846e998edc22cf464e27e89346a4a9f"
+                  },
+                  {
+                      "path":  "03_Referencias/Planificacion_Clientes_Resultados_2026-10-11/08_ALCANCE_V5_FLUJO_ATRIBUCION_METAS_FORECAST.md",
+                      "bytes":  16113,
+                      "sha256":  "f82a78dcd5fa443b95f3704bd8fd85386cca534b0ac4dce32e7c8b37ff1276bf"
+                  },
+                  {
+                      "path":  "03_Referencias/Planificacion_Clientes_Resultados_2026-10-11/09_TRAZABILIDAD_PLAN_V5.md",
+                      "bytes":  4675,
+                      "sha256":  "f49337873a91cdcca1eec2d8b5e555163f15a2b21d392252311fcbde80d86cd9"
+                  },
+                  {
+                      "path":  "03_Referencias/Planificacion_Clientes_Resultados_2026-10-11/Brandopolis_Plan_Clientes_y_Resultados_2026-10-11.md",
+                      "bytes":  56416,
+                      "sha256":  "3bfd61c1a0637eb7a715fb355e3e0864d54e44ef59c0ac5e21ad9c84593216ce"
+                  },
+                  {
+                      "path":  "03_Referencias/Plantillas_originales/Copia de Plantillas HubSpot - Calendario de contenido para redes sociales.xlsx",
+                      "bytes":  767108,
+                      "sha256":  "4d984de8110735ba8d14ac7ff20208a88b648b026e214f74594a35d93701088b"
+                  },
+                  {
+                      "path":  "03_Referencias/Plantillas_originales/excel-plantilla_plan_de_marketing_excel_gratis-1768932413.xlsx",
+                      "bytes":  19632,
+                      "sha256":  "7cea2ca3c389a05ec2918febc6b08281ac9f86b716291b523b36ef3950a4b3e2"
+                  },
+                  {
+                      "path":  "04_Migracion/01_CAMBIAR_DE_EQUIPO.md",
+                      "bytes":  5807,
+                      "sha256":  "a2d7b807f083db712316627f419dd6e446c0cce2e3792648dac336b59e34ebd3"
+                  },
+                  {
+                      "path":  "04_Migracion/02_exportar_codigo.mjs",
+                      "bytes":  3879,
+                      "sha256":  "e95c21d86dad697d97deb207231908e5ecea68cfbacbdd38f8acf998324afd3d"
+                  },
+                  {
+                      "path":  "04_Migracion/03_restaurar_codigo.mjs",
+                      "bytes":  2251,
+                      "sha256":  "efca39b3e6124f3c37a4fb8c6d32e1a6543a2a50cea77bc44e70e1ccc6d1023e"
+                  },
+                  {
+                      "path":  "04_Migracion/04_RESPALDO_REAL_Y_RESTAURACION.md",
+                      "bytes":  7621,
+                      "sha256":  "1bfa0cf9806c365f7dcfc8c94dd6dd1dfc4f32bd365282db82b71f818727ce4a"
+                  },
+                  {
+                      "path":  "04_Migracion/05_INVENTARIAR_ENLACES.mjs",
+                      "bytes":  2011,
+                      "sha256":  "31da9d260f97dba33e2685d8517a47c683000acfdc00032025d946b9ff2de95e"
+                  },
+                  {
+                      "path":  "05_Verificacion/PRUEBA_TRASPASO.json",
+                      "bytes":  452,
+                      "sha256":  "85c3719170ac04d4608146e0c0047ac1dec2251a11c879cf7ade1f811276b2be"
+                  },
+                  {
+                      "path":  "05_Verificacion/VERIFICACION_DEL_PAQUETE.md",
+                      "bytes":  2167,
+                      "sha256":  "88875c425a0c2fc3ef7cce87c056e79fb05538d1e35d21af1b33ca343c36b3a0"
+                  },
+                  {
+                      "path":  "05_Verificacion/verificar_paquete.mjs",
+                      "bytes":  960,
+                      "sha256":  "8606d5b988c14c1ad5d0629d74742a7d18a697f2b1c8c651f48a2439579ac08a"
+                  }
+              ],
+    "backup_reported":  {
+                            "folder":  "C:\\Proyectos\\Brandopolis_respaldo_20261012_132719",
+                            "git_restoration":  "PASS, same HEAD and clean tree",
+                            "bundle_sha256":  "C709D4847E8BD28D74460EE4E3C9AAC4B59402923456520A475400CB123DAF40",
+                            "copy_errors":  0,
+                            "copy_mismatches":  0,
+                            "database_test":  "isolated startup and shutdown PASS",
+                            "evidence":  "Results executed and supplied by owner in Windows",
+                            "pending":  [
+                                            "excluded links",
+                                            "external storage paths",
+                                            "transport to new device",
+                                            "DEMO content review in new environment"
+                                        ]
+                        }
+}

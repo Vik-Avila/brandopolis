@@ -1,0 +1,18 @@
+{
+  "mechanism": "node scripts -> git bundle roundtrip",
+  "platform": "Linux, not Windows",
+  "checks": [
+    "node syntax",
+    "clean export",
+    "clone active branch",
+    "HEAD identical",
+    "tracked content identical",
+    "tag preserved",
+    "existing destination rejected",
+    "dirty tree rejected",
+    "nested output rejected",
+    "corrupted bundle rejected before restore"
+  ],
+  "result": "PASS",
+  "brandopolis_repo_tested": false
+}

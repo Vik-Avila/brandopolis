@@ -1,0 +1,43 @@
+Status: derived
+Owner: Product / Engineering
+Canonical: no
+Last reviewed: 2026-10-04
+Related: docs/15-handoff/MVP_PHASES_1_TO_9_CLOSURE.md
+Depends on: MVP phases 1–9 closure 2026-09-25
+
+# Post-MVP deferred scope register
+
+Work below is **not** required to start Phase 10 (real testers). Listing it here closes the question for phases 1–9; reopening any item needs a new, explicit decision.
+
+| Area | Deferred item | Why it does not block the pilot |
+|---|---|---|
+| Learning | Automatic learning synthesis; hypothesis status updated from accepted learnings; external/generalized signal ingestion; cross-brand learning; experiment analytics | Experiment → Signal → Learning works with human review; the team learns via telemetry and feedback. |
+| Capabilities | Advanced capability model, scoring or certification | Strategic Practice records behavior without score (intentional). |
+| Blueprint | Deeper Blueprint (narrative synthesis, export, sharing, visual graph) | Current Blueprint is derived from persistent state and shows strategic coherence. |
+| Evidence | Rich evidence ingestion (documents, URLs, research provider), live research | Evidence is captured by people with provenance and limitations; no unsupported evidence is invented. |
+| AI | Multi-provider support, evaluation beyond deterministic checks, cost reporting in currency, refusal fallbacks | One provider behind a neutral gateway, caps, notice and safe failure. |
+| Idempotency | Universal idempotency for non-strategic creates (context, experiment, signal, learning, brand) | Strategic Decision commits are idempotent; duplicates of other creates are visible and harmless. |
+| Auth | Production account recovery, MFA inside Brandopolis, SSO/SCIM | OIDC provider handles credentials and recovery. Self-service sign-up is no longer deferred: OIDC self-provisioning behind `PILOT_AUTO_PROVISION` exists ([ADR-0016](../14-decisions/ADR-0016.md)). |
+| Scale | Distributed rate limiting, horizontal scaling | PILOT runs one instance, enforced by an advisory lock. |
+| Security | Enterprise hardening, external pentest, certification | Launch review has no open blocker. |
+| Operations | Hosted `pg_dump`/`pg_restore` rehearsal on the chosen host | Must be rehearsed once at deployment (external step); local recovery is tested. |
+| Product surfaces | Search, notifications, profile menu, «Nueva decisión» beyond the journey questions (exception 2026-10-06: Strategic Objective and Market Arena were reopened, out of production only, by [ADR-0021](../14-decisions/ADR-0021.md), Brand Promise by [ADR-0022](../14-decisions/ADR-0022.md) GTM Priority by [ADR-0023](../14-decisions/ADR-0023.md) and Priority Experiment by [ADR-0024](../14-decisions/ADR-0024.md); the nine canonical journey decisions are now in scope out of production), landing pages «Producto / Para quién / Recursos», decision tabs | Visual mockup elements without an approved MVP capability. |
+| Collaboration | Real-time collaboration, comments, team analytics, exports, public API | Not part of MVP scope. |
+| Commercial | Billing, subscriptions, CRM | Not needed for testers. |
+| Quality | Formal WCAG audit, browsers beyond Chrome | Keyboard, focus, contrast and reduced motion verified by automated checks. |
+| Hand-off | Completion hand-off for the document-claims review in Brand Context | Found 2026-09-29 while fixing the missing hand-off in Entorno competitivo. Document claims share the same resolvable review shape (CANDIDATE/ACCEPTED/REJECTED) and also offer no next step, but their completion is ambiguous: processing another document reopens it, so a «fase completada» panel there is a product decision, not a defect fix. `showPhaseHandoff()` is already reusable if that decision is taken. The learning loop has no comparable canonical completed state. |
+
+## 2026-10-08 · «Próximamente» (ADR-0027)
+
+Productos y servicios (portafolio/ofertas), Plan de marketing (activación) y Resultados (medición) aparecen en la
+navegación sólo como «Próximamente». Siguen diferidos: sin modelo, pantalla, formularios, conectores ni datos.
+Corresponden a decisiones futuras (puente Fase 3–4, Fase 4 y Fase 5) que requieren aprobación expresa.
+
+## 2026-10-10 · Fase 4 reabre parte del alcance diferido
+
+Por decisión del propietario ([scope-mvp · Resolución 2026-10-10](../01-product/scope-mvp.md),
+[ADR-0030](../14-decisions/ADR-0030.md)) salen de este registro, sólo fuera de producción: Productos y
+servicios, Plan de marketing, Resultados esenciales, comentarios, exportaciones, invitación y aprobación del
+cliente, sitios multipágina, Google Ads, Meta Ads, Canva e identidad visual de cada marca
+([ADR-0034](../14-decisions/ADR-0034.md)). Siguen diferidos: CRM, billing, colaboración en
+tiempo real, API pública, búsqueda global, notificaciones, analítica avanzada (Fase 5) y el resto de la tabla.
