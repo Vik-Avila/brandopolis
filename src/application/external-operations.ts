@@ -259,6 +259,19 @@ export class ExternalOperations {
     });
   }
 
+  /**
+   * Block 8 · the content a step may still send: the campaign's CURRENT approved version (a newer approval, or none,
+   * changes it → CONTENT_CHANGED and nothing is sent). Subjects without a campaign row keep the authorized fingerprint.
+   */
+  private async currentContentFingerprint(tx: Transaction, workspaceId: string, brandId: string, subjectKind: string, subjectId: string, authorized: string) {
+    if (subjectKind !== 'CAMPAIGN') return authorized;
+    const [campaign] = await tx.select({ approvedVersionId: t.campaigns.approvedVersionId }).from(t.campaigns).where(and(eq(t.campaigns.workspaceId, workspaceId), eq(t.campaigns.brandId, brandId), eq(t.campaigns.id, subjectId)));
+    if (!campaign) return authorized;
+    if (!campaign.approvedVersionId) return '';
+    const [v] = await tx.select({ fingerprint: t.campaignVersions.fingerprint }).from(t.campaignVersions).where(eq(t.campaignVersions.id, campaign.approvedVersionId));
+    return v?.fingerprint ?? '';
+  }
+
   private async actorHoldsSpend(tx: Transaction, workspaceId: string, brandId: string, userId: string) {
     const [member] = await tx.select().from(t.memberships).where(and(eq(t.memberships.workspaceId, workspaceId), eq(t.memberships.userId, userId)));
     if (!member?.active) return false;
@@ -297,7 +310,7 @@ export class ExternalOperations {
         worker: { instanceId, leaseNumber, terminated: !worker || !!worker.terminatedAt },
         step: { status: next.status as StepStatus, released: !!release },
         authorization: { status: auth.status as AuthorizationStatus, reservedJobId: auth.reservedJobId, expiresAt: auth.expiresAt, contentFingerprint: auth.contentFingerprint },
-        expectedFingerprint: auth.contentFingerprint,
+        expectedFingerprint: await this.currentContentFingerprint(tx, job.workspaceId, job.brandId, auth.subjectKind, auth.subjectId, auth.contentFingerprint),
         connection: { status: connection.status, linkedToBrand: !link.unlinkedAt && link.brandId === job.brandId },
         actorHoldsSpend: await this.actorHoldsSpend(tx, job.workspaceId, job.brandId, auth.actorUserId),
         brandClosing: false
@@ -557,6 +570,26 @@ export class ExternalOperations {
     }
     const live = [...liveAt.entries()].filter(([subject, at]) => !((pausedAt.get(subject) ?? -Infinity) > at)).length;
     return open + live;
+  }
+
+  /**
+   * Block 8 · read-only status and basic metrics of what a succeeded job created. The credential is opened here and
+   * only handed to the adapter; the lookup runs outside any transaction; null when the provider has nothing to report.
+   */
+  async campaignStatus(jobId: string, currency: string) {
+    const plan = await this.db.transaction(async tx => {
+      const [job] = await tx.select().from(t.externalJobs).where(eq(t.externalJobs.id, jobId));
+      if (!job || job.status !== 'SUCCEEDED') return null;
+      const [auth] = await tx.select().from(t.operationAuthorizations).where(eq(t.operationAuthorizations.id, job.authorizationId));
+      const [link] = await tx.select().from(t.connectionBrandLinks).where(eq(t.connectionBrandLinks.id, auth.linkId));
+      const [connection] = await tx.select().from(t.connections).where(and(eq(t.connections.workspaceId, job.workspaceId), eq(t.connections.id, link.connectionId)));
+      if (connection.status !== 'ACTIVE') throw new AppError('CONFLICT', 'Reconnect the account to read its status');
+      const steps = await tx.select().from(t.externalSteps).where(eq(t.externalSteps.jobId, job.id));
+      return { provider: connection.provider, providerIds: Object.assign({}, ...steps.map(s => s.providerIds)), secret: this.requireVault().open(connection.credentialCiphertext ?? '', connection.credentialKeyId ?? '', this.aad(connection.workspaceId, connection.id)), scopes: connection.scopes as string[] };
+    });
+    if (!plan || !this.adapter.campaignStatus) return null;
+    const reading = await this.adapter.campaignStatus(plan.provider, plan.providerIds, plan.secret, currency);
+    return reading ? { reading, scopes: plan.scopes } : null;
   }
 
   /** Closure window helper exposed for the interface (when a human retry could first become possible). */

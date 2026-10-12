@@ -76,7 +76,21 @@
         "message": { "type": "string", "maxLength": 1000 },
         "mustInclude": { "type": "string", "maxLength": 1000 },
         "avoid": { "type": "string", "maxLength": 1000 },
-        "dueDate": { "type": ["string", "null"], "format": "date" }
+        "dueDate": { "type": ["string", "null"], "format": "date" },
+        "design": {
+          "description": "Block 8 · design retrieved from Canva into a NEW version of the brief (CNV-001); simulated while only the simulator exists.",
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "provider": { "const": "CANVA" },
+            "designRef": { "type": "string", "minLength": 1, "maxLength": 200 },
+            "format": { "const": "PNG" },
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "pages": { "type": "integer", "minimum": 1, "maximum": 100 },
+            "simulated": { "type": "boolean" },
+            "retrievedAt": { "type": "string", "format": "date-time" }
+          },
+          "required": ["provider", "designRef", "format", "sha256", "pages", "simulated", "retrievedAt"]
+        }
       },
       "required": ["for", "piece", "format", "audience", "message", "mustInclude", "avoid", "dueDate"]
     }

@@ -502,6 +502,22 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         // ADR-0033 · collaboration. Team routes go through membership + brand scope; portal routes through the guest
         // context of that exact brand. Neither path reads the other's data.
         // ADR-0032 · sites (team). Publishing renders and writes the immutable snapshot between the two phases.
+        // Block 8 · campaigns, simulated connections, Canva and cycle review. DEMO only (simulator): 404 in PILOT. Spend,
+        // scope, 409 and idempotency are enforced in the engine and ExternalOperations; creation reaches PAUSED only.
+        if(path.startsWith('/api/campaigns/')||path.startsWith('/api/connections/')||path.startsWith('/api/canva/')||path==='/api/cycle-review/save'){
+          if(pilot)return send(res,404,{code:'NOT_FOUND'});
+          const action=path.slice(path.indexOf('/',5)+1);
+          if(path.startsWith('/api/campaigns/')){
+            if(['create','draft','propose','submit','decide','new-draft'].includes(action)){const r=await engine.campaignsCommand(token,action as 'create',input);return send(res,action==='create'?(r.replayed?200:201):200,r);}
+            const ops:Record<string,(t:string,i:Record<string,unknown>)=>Promise<unknown>>={screen:(t,i)=>engine.campaignScreen(t,i),request:(t,i)=>engine.campaignRequest(t,i),reconcile:(t,i)=>engine.campaignReconcile(t,i),retry:(t,i)=>engine.campaignRetry(t,i),cancel:(t,i)=>engine.campaignCancel(t,i),status:(t,i)=>engine.campaignReadStatus(t,i),release:(t,i)=>engine.simulatorRelease(t,i)};
+            if(ops[action])return send(res,action==='request'?201:200,await ops[action](token,input));
+          }
+          if(path==='/api/connections/simulated')return send(res,201,await engine.connectSimulated(token,input));
+          if(path==='/api/connections/status')return send(res,200,await engine.connectionStatus(token,input));
+          if(path==='/api/canva/send')return send(res,201,await engine.canvaSend(token,input));
+          if(path==='/api/canva/retrieve')return send(res,200,await engine.canvaRetrieve(token,input));
+          if(path==='/api/cycle-review/save')return send(res,201,await engine.cycleReviewSave(token,input));
+        }
         if(path==='/api/sites/publish'){const r=await engine.publishSite(token,input,async plan=>{const built=await buildSiteFiles(await engine.siteRenderPlan(plan,plan.versionId),loadExportFile,{baseUrl:`${siteConfig().publicScheme}://${plan.host}`,noindex:false});await writeSnapshot(snapshotDir(plan.workspaceId,plan.brandId,plan.siteId,plan.versionId),built.files);});return send(res,'replayed' in r&&r.replayed?200:201,r);}
         if(path.startsWith('/api/sites/')){const action=path.slice('/api/sites/'.length);if(['create','draft','propose','submit','decide','new-draft','domain-add','domain-check','domain-remove'].includes(action)){const r=await engine.sitesCommand(token,action as 'create',input,resolveTxtRecords);return send(res,action==='create'||action==='domain-add'?(r.replayed?200:201):200,r);}}
         // ADR-0032 · preview code for the person's own session (team member or guest with the exact version shared).
@@ -798,6 +814,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           res.writeHead(200,{'Content-Type':'application/zip','Content-Length':String(z.bytes.length),'Content-Disposition':`attachment; filename="${z.filename}"`,'Cache-Control':'no-store','X-Brandopolis-Notices':encodeURIComponent(JSON.stringify(z.notices.map(message=>({message}))))});
           res.end(z.bytes);return;
         }
+        if(path==='/api/campaigns'||path==='/api/cycle-review'){if(pilot)return send(res,404,{code:'NOT_FOUND'});const brandId=string(url.searchParams.get('brandId'));return send(res,200,path==='/api/campaigns'?await engine.campaigns(token,brandId):await engine.cycleReview(token,brandId));}
         if(path==='/api/sites') return send(res,200,await engine.sites(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/clients') return send(res,200,await engine.clients(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/results') return send(res,200,await engine.results(token,string(url.searchParams.get('brandId'))));

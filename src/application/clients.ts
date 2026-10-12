@@ -9,6 +9,7 @@ import {
 import type { Transaction } from '../persistence/database.js';
 import * as t from '../persistence/schema.js';
 import type { BrandActor } from './brand-access.js';
+import { budgetRule, plannedMinor, type CampaignContent } from '../domain/campaign.js';
 
 /**
  * ADR-0035 · Clientes (Phase 4 capture). Team operations receive a BrandActor (membership + brand scope from
@@ -237,7 +238,8 @@ export async function readResults(tx: Transaction, a: BrandActor, now = new Date
   const rows = await tx.select().from(t.clientOpportunities).where(byBrand(t.clientOpportunities, a));
   const recent = rows.filter(r => r.receivedAt >= since);
   const firsts = new Map<string, string>();
-  if (recent.length) for (const i of await tx.select({ opportunityId: t.clientInteractions.opportunityId, campaignStatus: t.clientInteractions.campaignStatus }).from(t.clientInteractions).where(and(byBrand(t.clientInteractions, a), inArray(t.clientInteractions.opportunityId, recent.map(r => r.id)))).orderBy(asc(t.clientInteractions.receivedAt))) if (!firsts.has(i.opportunityId)) firsts.set(i.opportunityId, i.campaignStatus);
+  const firstUtm = new Map<string, string | null>();
+  if (recent.length) for (const i of await tx.select({ opportunityId: t.clientInteractions.opportunityId, campaignStatus: t.clientInteractions.campaignStatus, utm: t.clientInteractions.utm }).from(t.clientInteractions).where(and(byBrand(t.clientInteractions, a), inArray(t.clientInteractions.opportunityId, recent.map(r => r.id)))).orderBy(asc(t.clientInteractions.receivedAt))) if (!firsts.has(i.opportunityId)) { firsts.set(i.opportunityId, i.campaignStatus); firstUtm.set(i.opportunityId, (i.utm as Record<string, string>)?.campaign ?? null); }
   const forms = await tx.select({ id: t.leadForms.id }).from(t.leadForms).where(byBrand(t.leadForms, a));
   const year = Number(day.slice(0, 4));
   const [plan] = await tx.select({ id: t.marketingPlans.id }).from(t.marketingPlans).where(and(byBrand(t.marketingPlans, a), eq(t.marketingPlans.year, year)));
@@ -254,7 +256,7 @@ export async function readResults(tx: Transaction, a: BrandActor, now = new Date
   const last30 = { label: 'Últimos 30 días', from: since.toISOString(), to: computedAt }, current = { label: 'Estado actual', from: null, to: computedAt }, planYear = { label: `Plan de Marketing ${year}`, from: null, to: computedAt };
   const clients = 'Clientes · oportunidades guardadas de esta marca';
   type Period = { label: string; from: string | null; to: string };
-  type Kind = 'INTERNAL_RECORD' | 'PLANNED_BUDGET' | 'PROVIDER';
+  type Kind = 'INTERNAL_RECORD' | 'PLANNED_BUDGET' | 'PROVIDER' | 'SIMULATED';
   const metric = (id: string, label: string, value: number, definition: string, period: Period, limitations: string, kind: Kind = 'INTERNAL_RECORD', source = clients, extra: Record<string, unknown> = {}) =>
     ({ id, label, value, available: true, kind, definition, source, limitations, scope: 'Marca activa', period, timezone: RESULTS_TIMEZONE, computedAt, ...extra });
   const missing = (id: string, label: string, reason: string, state: 'NOT_CONNECTED' | 'NO_DATA', kind: Kind) =>
@@ -266,8 +268,35 @@ export async function readResults(tx: Transaction, a: BrandActor, now = new Date
       `Es un presupuesto previsto${b.estimated ? ', con importes estimados' : ''}, no gasto real ni inversión ejecutada. Cada moneda se muestra aparte, sin conversión.`,
       'PLANNED_BUDGET', `Plan de Marketing ${year} · acciones de esta marca`, { currency }))
     : [missing('planned_budget', 'Presupuesto planificado', `Sin datos: el Plan de Marketing ${year} no tiene acciones con presupuesto.`, 'NO_DATA', 'PLANNED_BUDGET')];
+  // Block 8 · per campaign: planned budget of its approved version, spend only from the provider, simulator readings
+  // apart, opportunities that arrived with its campaign reference (captured, unverified). Never a ROAS without both
+  // real spend and attributable revenue.
+  const campaignRows = await tx.select().from(t.campaigns).where(byBrand(t.campaigns, a)).orderBy(asc(t.campaigns.createdAt));
+  const approvedVersions = campaignRows.some(c => c.approvedVersionId) ? await tx.select().from(t.campaignVersions).where(and(byBrand(t.campaignVersions, a), inArray(t.campaignVersions.id, campaignRows.map(c => c.approvedVersionId).filter((x): x is string => !!x)))) : [];
+  const readings = campaignRows.length ? await tx.select().from(t.campaignMetrics).where(and(byBrand(t.campaignMetrics, a), inArray(t.campaignMetrics.campaignId, campaignRows.map(c => c.id)))).orderBy(desc(t.campaignMetrics.recordedAt)) : [];
+  const campaigns = campaignRows.map(c => {
+    const v = approvedVersions.find(x => x.id === c.approvedVersionId), content = v?.content as CampaignContent | undefined;
+    const planned = content ? plannedMinor(content) : null, provider = readings.find(r => r.campaignId === c.id && r.source === 'PROVIDER'), sim = readings.find(r => r.campaignId === c.id && r.source === 'SIMULATED');
+    const arrived = recent.filter(r => firstUtm.get(r.id) === c.utmCampaign).length;
+    const window = content ? { label: content.schedule.endDate ? `${content.schedule.startDate} a ${content.schedule.endDate}` : `Desde ${content.schedule.startDate}`, from: content.schedule.startDate || null, to: content.schedule.endDate ?? computedAt } : current;
+    return {
+      id: c.id, name: c.name, provider: c.provider, utmCampaign: c.utmCampaign, version: v?.sequence ?? null,
+      metrics: [
+        planned !== null && content
+          ? metric(`planned_${c.id}`, `Presupuesto planificado (${content.budget.currency})`, planned / 100, `${budgetRule(content)} Calculado sobre la versión aprobada ${v!.sequence}.`, window, 'Es lo previsto en la campaña, no gasto: la campaña sólo se crea en pausa en esta fase.', 'PLANNED_BUDGET', `Campaña «${c.name}» · versión ${v!.sequence}`, { currency: content.budget.currency })
+          : missing(`planned_${c.id}`, 'Presupuesto planificado', content ? 'Sin datos: el presupuesto diario necesita fecha de fin para calcular un total.' : 'Sin datos: la campaña todavía no tiene una versión aprobada.', 'NO_DATA', 'PLANNED_BUDGET'),
+        provider
+          ? metric(`spend_${c.id}`, `Gasto confirmado por el proveedor (${provider.currency})`, (provider.spendMinor ?? 0) / 100, 'Gasto informado por la cuenta publicitaria.', { label: `${provider.periodStart} a ${provider.periodEnd}`, from: provider.periodStart, to: provider.periodEnd }, 'Dato del proveedor en su última lectura.', 'PROVIDER', c.provider === 'GOOGLE_ADS' ? 'Google Ads' : 'Meta Ads', { currency: provider.currency })
+          : missing(`spend_${c.id}`, 'Gasto confirmado por el proveedor', 'Sin conectar: no hay una cuenta real de Google o Meta conectada. El presupuesto no lo sustituye.', 'NOT_CONNECTED', 'PROVIDER'),
+        ...(sim ? [metric(`simulated_${c.id}`, `Lectura del simulador (${sim.currency})`, (sim.spendMinor ?? 0) / 100, `Estado simulado: ${sim.providerStatus === 'PAUSED' ? 'en pausa' : sim.providerStatus}; ${sim.impressions ?? 0} impresiones, ${sim.clicks ?? 0} clics.`, { label: `${sim.periodStart} a ${sim.periodEnd}`, from: sim.periodStart, to: sim.periodEnd }, 'Simulado: no es gasto ni actividad real y no se suma a ningún resultado.', 'SIMULATED' as Kind, 'Simulador de Brandopolis', { currency: sim.currency })] : []),
+        metric(`arrived_${c.id}`, 'Oportunidades con su referencia de campaña', arrived, `Oportunidades de los últimos 30 días cuyo primer origen trae utm_campaign=${c.utmCampaign}.`, last30, 'Referencia capturada sin verificar: no es atribución ni una venta.'),
+        missing(`sales_${c.id}`, 'Ventas', 'Sin datos: las ventas y sus importes llegan con el núcleo comercial de la Fase 5. Una oportunidad no es una venta.', 'NO_DATA', 'INTERNAL_RECORD'),
+        missing(`roas_${c.id}`, 'Retorno de la inversión publicitaria (ROAS)', 'No disponible: hacen falta gasto real confirmado por el proveedor e ingresos atribuibles a la campaña. Hoy no hay ninguno de los dos.', 'NO_DATA', 'PROVIDER'),
+      ],
+    };
+  });
   return {
-    computedAt, timezone: RESULTS_TIMEZONE,
+    computedAt, timezone: RESULTS_TIMEZONE, campaigns,
     marketing: [
       forms.length
         ? metric('web_requests', 'Solicitudes del formulario web', web.length, 'Oportunidades recibidas por un formulario web de la marca.', last30, 'Son solicitudes guardadas en Brandopolis, no conversiones de Google, Meta u otro proveedor. Por ahora el formulario es la página de desarrollo.')

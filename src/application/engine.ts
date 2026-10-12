@@ -17,6 +17,11 @@ import { draftView, expectVersion, lockDraft, resolveSources } from './brand-set
 import { DECLARED_PREFIX, IDENTITY_CHOICES, declaredStatements, fieldsFromDeclared, latestDeclared, mergeFields, type SetupFields } from '../domain/brand-setup.js';
 import { changeCapability, grantedCapabilities, listCapabilityGrants, readWorkPriority, recordWorkPriority, type BrandActor } from './brand-access.js';
 import { ExternalOperations } from './external-operations.js';
+import type { ProviderAdapter, Fault } from './provider-adapter.js';
+import type { CanvaAdapter } from './canva-adapter.js';
+import { authorizationScreen, createCampaign, decideCampaign, newCampaignDraft, proposeCampaign, readCampaigns, recordCampaignReading, saveCampaignDraft, setSimulatedConnectionStatus, SIMULATED_ACCOUNT, SIMULATED_SCOPE, submitCampaign } from './campaigns.js';
+import { canvaRecordDesign, canvaRecordRetrieval, canvaRetrievePlan, canvaSendPlan, readCanvaDesigns } from './canva-designs.js';
+import { cycleReviewDraft, saveCycleReview } from './cycle-reviews.js';
 import { actionStatus, addAction, addObjective, createPlan, createSnapshot, decideSnapshot, readPlan, readSharedPlan, updateAction, updateObjective, updatePlan } from './marketing-plan.js';
 import { IdentityDirectionsStore, directionValues, identityPacket, validIdentityProposal } from '../domain/brando-identity.js';
 import { MarketingAssistance, marketingPacket, proposalContent, type MarketingPacket } from '../domain/brando-marketing.js';
@@ -42,6 +47,10 @@ export class Engine {
   private marketingAssistance=new MarketingAssistance();
   private identityDirections=new IdentityDirectionsStore();
   constructor(private db:Database, private impactHook?:()=>void,private gateway=new ModelGateway(new DemoProvider())) {}
+  /** Block 8 · external operations (DEMO: simulator only). Without it every campaign/Canva operation is unavailable. */
+  private external?:{ops:ExternalOperations;adapter:ProviderAdapter&{armTag?:(tag:string,...f:Fault[])=>void;release?:(tag:string)=>void};canva:CanvaAdapter;simulated:boolean};
+  useExternal(external:NonNullable<Engine['external']>){this.external=external;return this;}
+  private requireExternal(){if(!this.external)throw new AppError('UNAVAILABLE','External operations are not available here');return this.external;}
   /** Whether explicit AI requests reach a real provider (local live AI) or the deterministic DEMO fixture. */
   get aiMode():'LIVE'|'DEMO' {return this.gateway.providerName==='DEMO_FIXTURE'?'DEMO':'LIVE';}
   private async identity(tx:Transaction,token:string) {
@@ -188,6 +197,137 @@ export class Engine {
   }
   async siteRenderPlan(scope:{workspaceId:string;brandId:string},versionId:string) {
     return this.db.transaction(tx=>renderPlan(tx,scope,versionId));
+  }
+  // ─── Block 8 · campaigns, Canva and cycle review (ADR-0031; DEMO simulator only) ───
+  async campaigns(token:string,brandId:string) {
+    const ext=this.external;
+    return this.withBrandActor(token,brandId,async(tx,actor)=>({...(await readCampaigns(tx,actor)),designs:await readCanvaDesigns(tx,actor),available:!!ext,simulatedOnly:ext?.simulated??true,canvaCapabilities:ext?await ext.canva.capabilities(''):[]}));
+  }
+  async campaignsCommand(token:string,action:'create'|'draft'|'propose'|'submit'|'decide'|'new-draft',input:Record<string,unknown>) {
+    if(!input||typeof input!=='object'||Array.isArray(input))throw new AppError('INVALID','Invalid campaign request');
+    const run={create:createCampaign,draft:saveCampaignDraft,propose:proposeCampaign,submit:submitCampaign,decide:decideCampaign,'new-draft':newCampaignDraft}[action];
+    if(!run)throw new AppError('INVALID','Unknown campaign operation');
+    return this.withBrandActor(token,String(input.brandId??''),async(tx,actor)=>{
+      const result=await (run as (tx:Transaction,a:BrandActor,i:Record<string,unknown>)=>Promise<Record<string,unknown>>)(tx,actor,input);
+      if(action!=='propose'&&!result.replayed)await this.audit(tx,actor,{operation:`CAMPAIGN_${action.toUpperCase().replace(/-/g,'_')}`,idempotencyKey:typeof input.idempotencyKey==='string'?input.idempotencyKey:randomUUID(),newVersion:String(result.versionId??result.campaignId??''),rationale:action==='decide'?String(input.criterion??''):undefined});
+      return result;
+    },true);
+  }
+  /** The confirmation screen built on the server (account, brand, exact version, destination, budget rule, dates). */
+  async campaignScreen(token:string,input:Record<string,unknown>) {
+    return this.withBrandActor(token,String(input.brandId??''),(tx,actor)=>authorizationScreen(tx,actor,input));
+  }
+  /**
+   * Requests creation IN PAUSE: a person with AUTHORIZE_SPEND confirms the exact screen (its fingerprint must match),
+   * which records the authorization and reserves it for one queued job in the same transaction. A retry with the same
+   * key returns the same authorization and job. In DEMO a simulator scenario can be armed for that job's steps only.
+   */
+  async campaignRequest(token:string,input:Record<string,unknown>) {
+    const ext=this.requireExternal();
+    const scenarios:Record<string,[string,Fault[]][]>={LOST_RESPONSE:[['campaign',['TIMEOUT_AFTER_SEND']]],LOST_AND_DELAYED:[['campaign',['TIMEOUT_AFTER_SEND','DELAYED_VISIBILITY']]],RATE_LIMIT:[['*',['RATE_LIMIT']]],PERMISSION_DENIED:[['*',['PERMISSION_DENIED']]]};
+    const scenario=typeof input.scenario==='string'&&input.scenario!=='NORMAL'?input.scenario:null;
+    if(scenario&&!scenarios[scenario])throw new AppError('INVALID','Unknown simulator scenario');
+    if(typeof input.idempotencyKey!=='string'||!input.idempotencyKey||input.idempotencyKey.length>200)throw new AppError('INVALID','Invalid idempotency key');
+    return this.withBrandActor(token,String(input.brandId??''),async(tx,actor)=>{
+      const screen=await authorizationScreen(tx,actor,input);
+      if(input.screenFingerprint!==screen.screenFingerprint)throw new AppError('CONFLICT','What you confirmed has changed: review the summary again');
+      if(scenario&&!screen.simulated)throw new AppError('INVALID','Scenarios exist only for simulated accounts');
+      const auth=await ext.ops.authorize(tx,actor,{linkId:screen.linkId,operation:'CREATE_PAUSED',subject:{kind:'CAMPAIGN',id:screen.campaignId,versionId:screen.versionId},summary:screen.summary,contentFingerprint:screen.contentFingerprint,idempotencyKey:String(input.idempotencyKey)});
+      const job=await ext.ops.enqueue(tx,actor,auth.id);
+      if(scenario&&!job.replayed&&ext.adapter.armTag){
+        const steps=await tx.select().from(t.externalSteps).where(eq(t.externalSteps.jobId,job.jobId)).orderBy(asc(t.externalSteps.ordinal));
+        for(const [stepKey,faults] of scenarios[scenario]){const step=stepKey==='*'?steps[0]:steps.find(x=>x.stepKey===stepKey)??steps[0];ext.adapter.armTag(step.remoteTag,...faults);}
+      }
+      if(!job.replayed)await this.audit(tx,actor,{operation:'CAMPAIGN_REQUEST_CREATE_PAUSED',idempotencyKey:String(input.idempotencyKey),newVersion:screen.versionId});
+      return {authorizationId:auth.id,jobId:job.jobId,replayed:job.replayed,simulated:screen.simulated};
+    },true);
+  }
+  /** Read-only check of uncertain steps with the provider (found → linked, never repeated; not found → still pending). */
+  async campaignReconcile(token:string,input:Record<string,unknown>) {
+    const ext=this.requireExternal();
+    const jobId=String(input.jobId??'');
+    await this.withBrandActor(token,String(input.brandId??''),(tx,actor)=>ext.ops.jobView(tx,actor,jobId));
+    return {jobId,results:await ext.ops.reconcile(jobId)};
+  }
+  async campaignRetry(token:string,input:Record<string,unknown>) {
+    const ext=this.requireExternal();
+    return this.withBrandActor(token,String(input.brandId??''),async(tx,actor)=>{const r=await ext.ops.humanRetry(tx,actor,{jobId:String(input.jobId??''),stepKey:String(input.stepKey??''),criterion:String(input.criterion??'')});await this.audit(tx,actor,{operation:'CAMPAIGN_STEP_RELEASE',idempotencyKey:randomUUID(),newVersion:r.jobId,rationale:String(input.criterion??'')});return r;},true);
+  }
+  async campaignCancel(token:string,input:Record<string,unknown>) {
+    const ext=this.requireExternal();
+    return this.withBrandActor(token,String(input.brandId??''),(tx,actor)=>ext.ops.cancelAuthorization(tx,actor,String(input.authorizationId??'')),true);
+  }
+  /** Reads status and basic metrics of a created campaign; a simulated account's reading is stored as SIMULATED. */
+  async campaignReadStatus(token:string,input:Record<string,unknown>) {
+    const ext=this.requireExternal();
+    const target=await this.withBrandActor(token,String(input.brandId??''),async(tx,actor)=>{
+      const [c]=await tx.select().from(t.campaigns).where(and(eq(t.campaigns.workspaceId,actor.workspaceId),eq(t.campaigns.brandId,actor.brandId),eq(t.campaigns.id,String(input.campaignId??''))));
+      if(!c)throw new AppError('NOT_FOUND','Campaign not available');
+      const [job]=await tx.select().from(t.externalJobs).where(and(eq(t.externalJobs.workspaceId,actor.workspaceId),eq(t.externalJobs.brandId,actor.brandId),eq(t.externalJobs.subjectKind,'CAMPAIGN'),eq(t.externalJobs.subjectId,c.id),eq(t.externalJobs.status,'SUCCEEDED'))).orderBy(desc(t.externalJobs.updatedAt)).limit(1);
+      if(!job)throw new AppError('CONFLICT','The campaign has not been created yet');
+      const [auth]=await tx.select().from(t.operationAuthorizations).where(eq(t.operationAuthorizations.id,job.authorizationId));
+      return {campaignId:c.id,jobId:job.id,currency:String((auth.summary as {currency?:string}).currency??'MXN'),scope:{workspaceId:actor.workspaceId,brandId:actor.brandId}};
+    });
+    const read=await ext.ops.campaignStatus(target.jobId,target.currency);
+    if(!read)return {campaignId:target.campaignId,reading:null};
+    const simulated=read.scopes.includes(SIMULATED_SCOPE);
+    await this.db.transaction(tx=>recordCampaignReading(tx,target.scope,{campaignId:target.campaignId,jobId:target.jobId,simulated,reading:read.reading}));
+    return {campaignId:target.campaignId,reading:read.reading,simulated};
+  }
+  /** DEMO: connects a SIMULATED account (visibly labelled; no real provider). Ads accounts are linked to this brand. */
+  async connectSimulated(token:string,input:Record<string,unknown>) {
+    const ext=this.requireExternal();
+    if(!ext.simulated)throw new AppError('UNAVAILABLE','Simulated accounts exist only in the DEMO');
+    const provider=input.provider;
+    if(provider!=='GOOGLE_ADS'&&provider!=='META_ADS'&&provider!=='CANVA')throw new AppError('INVALID','Unknown provider');
+    return this.withBrandActor(token,String(input.brandId??''),async(tx,actor)=>{
+      const labels={GOOGLE_ADS:'Google Ads · simulador',META_ADS:'Meta Ads · simulador',CANVA:'Canva · simulador'};
+      const conn=await ext.ops.storeConnection(tx,actor,{provider,accountLabel:labels[provider],scopes:[SIMULATED_SCOPE],secret:`simulated-${randomUUID()}`,perUser:provider==='CANVA'});
+      const link=provider==='CANVA'?null:await ext.ops.linkAccount(tx,actor,{connectionId:conn.id,externalAccountId:SIMULATED_ACCOUNT.id,externalAccountLabel:SIMULATED_ACCOUNT.label});
+      await this.audit(tx,actor,{operation:'CONNECTION_SIMULATED',idempotencyKey:randomUUID(),newVersion:conn.id});
+      return {connectionId:conn.id,linkId:link?.id??null,provider,simulated:true};
+    },true);
+  }
+  async connectionStatus(token:string,input:Record<string,unknown>) {
+    return this.withBrandActor(token,String(input.brandId??''),(tx,actor)=>setSimulatedConnectionStatus(tx,actor,input),true);
+  }
+  /** DEMO tool: a simulated resource created «with delay» becomes visible, so reconciliation can find it. */
+  async simulatorRelease(token:string,input:Record<string,unknown>) {
+    const ext=this.requireExternal();
+    if(!ext.simulated||!ext.adapter.release)throw new AppError('UNAVAILABLE','Only the simulator has this tool');
+    const tag=await this.withBrandActor(token,String(input.brandId??''),async(tx,actor)=>{
+      const [job]=await tx.select().from(t.externalJobs).where(and(eq(t.externalJobs.workspaceId,actor.workspaceId),eq(t.externalJobs.brandId,actor.brandId),eq(t.externalJobs.id,String(input.jobId??''))));
+      if(!job)throw new AppError('NOT_FOUND','Operation not available');
+      const [step]=await tx.select().from(t.externalSteps).where(and(eq(t.externalSteps.jobId,job.id),eq(t.externalSteps.stepKey,String(input.stepKey??''))));
+      if(!step)throw new AppError('NOT_FOUND','Step not available');
+      return step.remoteTag;
+    });
+    ext.adapter.release(tag);
+    return {released:true};
+  }
+  /** Canva: send the approved brief to the person's own connection (provider call outside any transaction). */
+  async canvaSend(token:string,input:Record<string,unknown>) {
+    const ext=this.requireExternal();
+    const brandId=String(input.brandId??'');
+    const first=await this.withBrandActor(token,brandId,(tx,actor)=>canvaSendPlan(tx,actor,input));
+    if('replay' in first)return first.replay;
+    const created=await ext.canva.createDesign({title:first.plan.title,brief:first.plan.brief,assetCount:first.plan.assetCount,credential:''});
+    return this.withBrandActor(token,brandId,async(tx,actor)=>{const r=await canvaRecordDesign(tx,actor,first.plan,created.designRef);if(!r.replayed)await this.audit(tx,actor,{operation:'CANVA_DESIGN_CREATE',idempotencyKey:first.plan.idempotencyKey,newVersion:r.designId});return {...r,editUrl:created.editUrl};});
+  }
+  /** Canva: retrieve the design into a NEW draft version of the brief that needs review (CNV-001). */
+  async canvaRetrieve(token:string,input:Record<string,unknown>) {
+    const ext=this.requireExternal();
+    const brandId=String(input.brandId??'');
+    const first=await this.withBrandActor(token,brandId,(tx,actor)=>canvaRetrievePlan(tx,actor,input));
+    if('replay' in first)return first.replay;
+    const exported=await ext.canva.exportDesign({designRef:first.plan.designRef,credential:''});
+    return this.withBrandActor(token,brandId,async(tx,actor)=>{const r=await canvaRecordRetrieval(tx,actor,first.plan,exported);if(!r.replayed)await this.audit(tx,actor,{operation:'CANVA_DESIGN_RETRIEVE',idempotencyKey:randomUUID(),newVersion:String(r.versionId)});return r;},true);
+  }
+  async cycleReview(token:string,brandId:string) {
+    return this.withBrandActor(token,brandId,(tx,actor)=>cycleReviewDraft(tx,actor));
+  }
+  async cycleReviewSave(token:string,input:Record<string,unknown>) {
+    return this.withBrandActor(token,String(input.brandId??''),async(tx,actor)=>{const r=await saveCycleReview(tx,actor,input);if(!r.replayed)await this.audit(tx,actor,{operation:'CYCLE_REVIEW',idempotencyKey:String(input.idempotencyKey),newVersion:r.reviewId,rationale:String(input.criterion??'')});return r;});
   }
   /** ZIP export source of one approved version (team only; exporting changes nothing). */
   async siteExport(token:string,brandId:string,versionId:unknown) {
@@ -1310,7 +1450,7 @@ export class Engine {
         // before decisions; the self reference of versions is satisfied because the whole chain goes in one statement.
         // Phase 4 rows of this Brand (append-only tables allow it only inside this registered deletion). Workspace
         // connections are NOT deleted here: only this Brand's links to them (a credential may serve other brands).
-        for(const table of [t.sitePreviewSessions,t.sitePreviewCodes,t.siteDomains,t.sitePublications,t.siteApprovals,t.siteVersions,t.sites,t.clientOpportunityEvents,t.clientInteractions,t.clientOpportunities,t.leadForms,t.clientSegments,t.portalApprovals,t.portalComments,t.portalShares,t.brandGuests,t.brandInvitations,t.brandSetupDrafts,t.brandKitPublications,t.brandKitApprovals,t.brandKitVersions,t.brandKits,t.kitAssets,t.deliverablePublications,t.deliverableApprovals,t.deliverableVersions,t.deliverables,t.planProgressUpdates,t.planSnapshotApprovals,t.planSnapshots,t.planChanges,t.planActions,t.planObjectives,t.marketingPlans,t.offerApprovals,t.offerVersions,t.offers,t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
+        for(const table of [t.cycleReviews,t.canvaDesigns,t.campaignMetrics,t.campaignApprovals,t.campaignVersions,t.campaigns,t.sitePreviewSessions,t.sitePreviewCodes,t.siteDomains,t.sitePublications,t.siteApprovals,t.siteVersions,t.sites,t.clientOpportunityEvents,t.clientInteractions,t.clientOpportunities,t.leadForms,t.clientSegments,t.portalApprovals,t.portalComments,t.portalShares,t.brandGuests,t.brandInvitations,t.brandSetupDrafts,t.brandKitPublications,t.brandKitApprovals,t.brandKitVersions,t.brandKits,t.kitAssets,t.deliverablePublications,t.deliverableApprovals,t.deliverableVersions,t.deliverables,t.planProgressUpdates,t.planSnapshotApprovals,t.planSnapshots,t.planChanges,t.planActions,t.planObjectives,t.marketingPlans,t.offerApprovals,t.offerVersions,t.offers,t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));
         for(const table of [t.audits,t.telemetry,t.idempotency,t.reviewReceipts,t.reviews,t.impacts,t.dependencies,t.learningSignals,t.signals,t.learnings,t.experiments,t.analyses,t.documentClaims,t.documentExtractions,t.sourceDocuments,t.versions,t.decisions,t.recommendations,t.questions,t.userInputs,t.evidence,t.hypotheses,t.openQuestions,t.brandProfiles,t.assignments] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));

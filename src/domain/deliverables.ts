@@ -23,7 +23,8 @@ function normalizeBody(type: DeliverableType, raw: Record<string, unknown>): Rec
     case 'AD':
       return { channel: raw.channel, objective: raw.objective, headlines: list(raw.headlines), descriptions: list(raw.descriptions), callToAction: text(raw.callToAction), landingUrl: text(raw.landingUrl) || null };
     case 'DESIGN_BRIEF':
-      return { for: raw.for, piece: text(raw.piece), format: text(raw.format), audience: text(raw.audience), message: text(raw.message), mustInclude: text(raw.mustInclude), avoid: text(raw.avoid), dueDate: dateOrNull(raw.dueDate) };
+      // A retrieved Canva design (CNV-001) is kept as given by the server; the schema validates its shape.
+      return { for: raw.for, piece: text(raw.piece), format: text(raw.format), audience: text(raw.audience), message: text(raw.message), mustInclude: text(raw.mustInclude), avoid: text(raw.avoid), dueDate: dateOrNull(raw.dueDate), ...(raw.design && typeof raw.design === 'object' ? { design: raw.design } : {}) };
   }
 }
 

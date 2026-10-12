@@ -1016,3 +1016,17 @@ button.danger:disabled { background: #E8D5D2; border-color: #E8D5D2; color: #6E5
 .site-proof-source .check-option { font-weight: 400; }
 .site-domains li { flex-wrap: wrap; }
 .site-domain-reqs { flex-basis: 100%; }
+
+/* Block 8 · campaigns, Canva and cycle review */
+.campaigns-area { margin-top: 28px; display: grid; gap: 14px; }
+.campaign-sim { border: 1px dashed var(--ws-line); border-radius: 10px; padding: 8px 12px; margin: 6px 0; }
+.campaign-screen { border: 2px solid var(--ws-line); border-radius: 12px; padding: 12px 14px; margin: 10px 0; background: var(--surface-card); }
+.campaign-operation { border-top: 1px solid var(--ws-line); padding-top: 8px; margin-top: 8px; }
+.campaign-steps li { flex-wrap: wrap; }
+.campaign-retry { display: grid; gap: 4px; flex-basis: 100%; }
+.campaign-states { font-size: 0.95em; }
+.campaign-editor textarea, .campaign-editor input, .campaign-editor select, .campaign-retry input { font: inherit; width: 100%; box-sizing: border-box; }
+.canva-panel { border-top: 1px solid var(--ws-line); margin-top: 10px; padding-top: 8px; }
+.cycle-results { margin: 6px 0; padding-left: 18px; }
+.result-campaign h4 { margin: 8px 0 4px; }
+

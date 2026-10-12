@@ -147,9 +147,9 @@ describe('PHASE4_SPEC §3/§4.4 · area tabs and deliverable views', () => {
     expect(published).toContain('Publicada el 4 de noviembre de 2026');
     expect(published).toContain('rel="noopener noreferrer"');
   });
-  it('the plain text export carries the content of each type; ads say publication and spend come later', () => {
+  it('the plain text export carries the content of each type; ads say campaigns are created only in pause, in the simulator, without spend', () => {
     expect(v.deliverableText(post().approved.content)).toBe('Lanzamiento <b>\n\nLinkedIn · Publicación · 2026-11-03\n\nHola\n\n#marca\n');
-    expect(v.deliverablesHtml('ads', [], [])).toContain('La publicación y el gasto en anuncios llegarán con las conexiones');
+    expect(v.deliverablesHtml('ads', [], [])).toContain('una campaña sólo se crea en pausa y con el simulador, sin gasto');
     expect(v.AREA_TYPES.materials).toEqual(['SALES_PRESENTATION', 'OFFER_COPY', 'DESIGN_BRIEF']);
   });
   it('an offer copy form requires an offer and only offers active offers of the brand', () => {

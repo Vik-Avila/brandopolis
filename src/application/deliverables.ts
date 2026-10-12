@@ -82,7 +82,7 @@ export async function listDeliverables(tx: Transaction, a: BrandActor, types: re
 
 /** Creates a deliverable with its first DRAFT. Provenance is MANUAL unless the server verified an AI proposal. */
 export async function createDeliverable(tx: Transaction, a: BrandActor, input: { content?: unknown; idempotencyKey?: unknown }, provenance: 'MANUAL' | 'AI_ASSISTED' = 'MANUAL') {
-  const idempotencyKey = key(input.idempotencyKey), content = normalizeDeliverable(input.content), fingerprint = contentFingerprint(content);
+  const idempotencyKey = key(input.idempotencyKey), content = serverDesign(normalizeDeliverable(input.content), undefined), fingerprint = contentFingerprint(content);
   const replay = async () => {
     const [prior] = await tx.select().from(t.deliverables).where(and(byBrand(t.deliverables, a), eq(t.deliverables.createdBy, a.userId), eq(t.deliverables.idempotencyKey, idempotencyKey)));
     if (!prior) return null;
@@ -100,6 +100,13 @@ export async function createDeliverable(tx: Transaction, a: BrandActor, input: {
   return { deliverableId: id, versionId, replayed: false };
 }
 
+/** A retrieved Canva design is decided by the server only (CNV-001): whatever the browser sends is replaced. */
+export function serverDesign(content: DeliverableContent, design: unknown): DeliverableContent {
+  if (content.type !== 'DESIGN_BRIEF') return content;
+  const { design: _ignored, ...body } = content.body;
+  return { ...content, body: design ? { ...body, design } : body };
+}
+
 /** Saves the working draft. The type never changes; an edit by a person keeps the provenance it had. */
 export async function saveDeliverableDraft(tx: Transaction, a: BrandActor, input: { deliverableId?: unknown; expectedRevision?: unknown; content?: unknown }) {
   const row = await lockDeliverable(tx, a, input.deliverableId, input.expectedRevision);
@@ -107,7 +114,7 @@ export async function saveDeliverableDraft(tx: Transaction, a: BrandActor, input
   if (!row.draftVersionId) throw new AppError('CONFLICT', 'There is no draft; start a new version first');
   const [draft] = await tx.select().from(t.deliverableVersions).where(eq(t.deliverableVersions.id, row.draftVersionId)).for('update');
   if (draft.status !== 'DRAFT') throw new AppError('CONFLICT', 'Only a draft can be edited');
-  const content = normalizeDeliverable(input.content);
+  const content = serverDesign(normalizeDeliverable(input.content), (draft.content as DeliverableContent).body.design);
   if (content.type !== row.type) throw new AppError('INVALID', 'The type of a deliverable cannot change');
   const manifest = await manifestFor(tx, a, content);
   await tx.update(t.deliverableVersions).set({ content, fingerprint: contentFingerprint(content), manifest }).where(eq(t.deliverableVersions.id, draft.id));

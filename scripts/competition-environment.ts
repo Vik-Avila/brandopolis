@@ -48,4 +48,6 @@ export function applySiteEnvironment(profile:ReturnType<typeof competitionProfil
   process.env.BRANDOPOLIS_PREVIEW_ORIGIN??=`http://127.0.0.2:${profile.previewPort}`;
   process.env.BRANDOPOLIS_APP_ORIGIN??=`http://127.0.0.1:${profile.port}`;
   process.env.BRANDOPOLIS_SITES_ROOT??=profile.sitesRoot;
+  // Block 8 · DEMO simulator state and the local key that seals simulated credentials (never a real provider secret).
+  process.env.BRANDOPOLIS_EXTERNAL_ROOT??=resolve(profile.root,'external');
 }

@@ -1,6 +1,6 @@
 import {createBrandoPresence} from './brando-presence.js';
 const $=s=>document.querySelector(s);
-import {sitesHtml,newSection,clientsHtml,resultsHtml,guideHtml,collaborationHtml,invitationLinkHtml,portalHtml,setupHtml,SETUP_LABELS,SETUP_STAGES,identityDirectionsHtml,identityHtml,kitFormHtml,brandoProposalHtml,areaTabsHtml,deliverablesHtml,deliverableFormHtml,deliverableText,AREA_TYPES,planHtml,sharedPlanHtml,objectiveFormHtml,focusFormHtml,actionFormHtml,offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
+import {campaignsHtml,canvaPanelHtml,cycleReviewHtml,sitesHtml,newSection,clientsHtml,resultsHtml,guideHtml,collaborationHtml,invitationLinkHtml,portalHtml,setupHtml,SETUP_LABELS,SETUP_STAGES,identityDirectionsHtml,identityHtml,kitFormHtml,brandoProposalHtml,areaTabsHtml,deliverablesHtml,deliverableFormHtml,deliverableText,AREA_TYPES,planHtml,sharedPlanHtml,objectiveFormHtml,focusFormHtml,actionFormHtml,offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
 import {trapFocus,decisionTabs,viewTabs} from './product-interactions.js';
 import * as analytics from './analytics.js';
 import {PILOT_EVENTS} from './analytics.js';
@@ -2202,6 +2202,9 @@ async function showDeliverables(area){
  deliverableOffers=offers.map(o=>({id:o.id,status:o.status,approved:Boolean(o.approved),name:(o.approved??o.draft??o.inReview[0])?.content.name??'Oferta'}));
  const root=$('#decision');root.innerHTML=deliverablesHtml(area,list,deliverableOffers);
  if(inMarketing){marketingTab=area;mountAreaTabs('marketing',area);}else{offersTab='materials';mountAreaTabs('offers','materials');}
+ // Loaded inside the view's own operation (run() does not nest): failures are shown, never silent.
+ if(area==='ads')mountCampaigns().catch(()=>notice('No se pudieron cargar las campañas. Vuelve a abrir la pestaña.',true));
+ if(area==='materials'&&list.some(d=>d.type==='DESIGN_BRIEF'))mountCanva(list,()=>showDeliverables(area)).catch(()=>notice('No se pudo cargar Canva.',true));
  const byId=id=>deliverableCache.find(d=>d.id===id);
  const versionById=id=>deliverableCache.flatMap(d=>[d.approved,d.draft,...d.inReview]).find(v=>v?.id===id);
  const reload=message=>async()=>{await showDeliverables(area);notice(message);};
@@ -2451,8 +2454,78 @@ async function showClients(filter=clientFilter,focusId){
 /** ADR-0035 · Resultados: marketing, commercial operation and sales with their real availability. */
 async function showResults(){
  if(!enterView('#results','Resultados'))return;
+ const seq=navSeq;
  const data=await api(`/api/results?brandId=${encodeURIComponent(brandId)}`);
+ if(seq!==navSeq)return;
  $('#decision').innerHTML=resultsHtml(data);
+ const review=await api(`/api/cycle-review?brandId=${encodeURIComponent(brandId)}`);
+ const host=$('#cycle-review');if(!host||seq!==navSeq)return;
+ host.innerHTML=cycleReviewHtml(review);
+ $('#cycle-form')?.addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget,criterion=$('#cycle-criterion').value.trim();
+  if(criterion.length<10){$('#cycle-status').textContent='Explica tu decisión con al menos diez caracteres.';$('#cycle-criterion').focus();return;}
+  const proposals=[...host.querySelectorAll('[data-suggestion]:checked')].map(x=>({text:review.suggestions.items[Number(x.dataset.suggestion)].text,origin:'BRANDO'})).concat($('#cycle-proposals').value.split('\n').map(x=>x.trim()).filter(Boolean).map(text=>({text,origin:'PERSON'})));
+  form.dataset.key??=crypto.randomUUID();
+  run(async()=>{await api('/api/cycle-review/save',{brandId,periodStart:$('#cycle-start').value,periodEnd:$('#cycle-end').value,learnings:$('#cycle-learnings').value,proposals,decision:form.querySelector('input[name="cycle-decision"]:checked')?.value,criterion,idempotencyKey:form.dataset.key});await showResults();notice('Revisión guardada. No cambia la estrategia, el plan ni las campañas: las propuestas quedan para el siguiente periodo.');},event.submitter);});
+}
+// ─── Block 8 · Campañas digitales (simulator in DEMO): connections, versions, request in pause, operations ───
+let campaignUi={proposals:{},screens:{}},campaignData=null;
+async function mountCampaigns(){
+ const seq=navSeq;
+ const data=await api(`/api/campaigns?brandId=${encodeURIComponent(brandId)}`);
+ if(seq!==navSeq)return;
+ let host=$('#ads-campaigns');if(!host){host=document.createElement('div');host.id='ads-campaigns';$('#decision').append(host);}
+ campaignData=data;renderCampaigns();
+}
+const campaignContent=(form,c)=>{
+ const v=id=>form.querySelector(`#${id}-${CSS.escape(c.id)}`)?.value??'';const ls=id=>v(id).split('\n').map(x=>x.trim()).filter(Boolean);
+ const [offerId,offerVersionId,...offerName]=v('cmp-offer').split('|'),dest=v('cmp-dest'),[deliverableId,versionId]=v('cmp-ad').split('|');
+ const destination=dest.startsWith('SITE:')?{kind:'SITE',siteId:dest.slice(5)}:dest==='URL'?{kind:'URL',url:v('cmp-url').trim()}:null;
+ const base={name:v('cmp-name'),offer:offerId?{offerId,offerVersionId,name:offerName.join('|')}:null,destination,adDeliverable:deliverableId?{deliverableId,versionId}:null,audience:{geo:ls('cmp-geo'),ageMin:v('cmp-amin')?Number(v('cmp-amin')):null,ageMax:v('cmp-amax')?Number(v('cmp-amax')):null},budget:{type:v('cmp-btype')||'DAILY',amount:v('cmp-amt'),currency:v('cmp-cur')},schedule:{startDate:v('cmp-start'),endDate:v('cmp-end')||null}};
+ return c.provider==='GOOGLE_ADS'?{...base,search:{keywords:ls('cmp-kw').map(text=>({text,match:'PHRASE'})),headlines:ls('cmp-h'),descriptions:ls('cmp-d')}}:{...base,social:{primaryText:v('cmp-pt'),headline:v('cmp-hl'),imageAssetId:v('cmp-img')||null,imageAlt:v('cmp-alt')}};
+};
+function renderCampaigns(){
+ const host=$('#ads-campaigns');if(!host||!campaignData)return;
+ host.innerHTML=campaignsHtml(campaignData,campaignUi);
+ const reload=async message=>{campaignData=await api(`/api/campaigns?brandId=${encodeURIComponent(brandId)}`);renderCampaigns();if(message)notice(message);};
+ const byId=id=>campaignData.campaigns.find(c=>c.id===id);
+ const call=(path,payload,message,button)=>run(async()=>{const r=await api(path,{brandId,...payload});await reload(typeof message==='function'?message(r):message);return r;},button);
+ // Operations run in the worker: refresh while something is still on its way (observable state, bounded).
+ const pending=campaignData.campaigns.some(c=>c.operations.some(o=>['QUEUED','CLAIMED','RUNNING'].includes(o.status)));
+ if(pending){const seq=navSeq,tick=()=>setTimeout(()=>{if(seq!==navSeq||!$('#ads-campaigns'))return;if(operationPending){tick();return;}reload().catch(()=>undefined);},1500);tick();}
+ host.querySelectorAll('[data-conn-sim]').forEach(b=>b.addEventListener('click',()=>call('/api/connections/simulated',{provider:b.dataset.connSim},'Cuenta simulada conectada. Nada llega a un proveedor real.',b)));
+ host.querySelectorAll('[data-conn-status]').forEach(b=>b.addEventListener('click',()=>call('/api/connections/status',{connectionId:b.dataset.connStatus,status:b.dataset.to},b.dataset.to==='EXPIRED'?'Acceso vencido (simulado): no se envía ningún paso hasta volver a conectar.':'Cuenta conectada de nuevo.',b)));
+ $('#campaign-create')?.addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget,name=$('#cmp-new-name').value.trim();if(!name){$('#cmp-new-name').focus();return;}form.dataset.key??=crypto.randomUUID();call('/api/campaigns/create',{provider:form.querySelector('input[name="cmp-provider"]:checked').value,name,idempotencyKey:form.dataset.key},'Campaña creada en borrador. Complétala o pide una propuesta a Brando.',event.submitter);});
+ host.querySelectorAll('.campaign-editor').forEach(form=>{
+  const c=byId(form.dataset.campaign);
+  form.querySelector(`#cmp-dest-${CSS.escape(c.id)}`)?.addEventListener('change',e=>{form.querySelector(`#cmp-url-${CSS.escape(c.id)}`).hidden=e.target.value!=='URL';});
+  form.addEventListener('submit',event=>{event.preventDefault();call('/api/campaigns/draft',{campaignId:c.id,expectedRevision:c.revision,content:campaignContent(form,c)},'Borrador guardado.',event.submitter);});
+ });
+ host.querySelectorAll('[data-campaign-propose]').forEach(b=>b.addEventListener('click',()=>run(async()=>{const r=await api('/api/campaigns/propose',{brandId,campaignId:b.dataset.campaignPropose});campaignUi.proposals[b.dataset.campaignPropose]=r;renderCampaigns();notice('Propuesta lista. Revísala: no se ha guardado nada.');},b)));
+ host.querySelectorAll('[data-proposal-discard]').forEach(b=>b.addEventListener('click',()=>{delete campaignUi.proposals[b.dataset.proposalDiscard];renderCampaigns();}));
+ host.querySelectorAll('[data-proposal-apply]').forEach(b=>b.addEventListener('click',()=>{const c=byId(b.dataset.proposalApply),p=campaignUi.proposals[c.id].proposal,form=host.querySelector(`.campaign-editor[data-campaign="${CSS.escape(c.id)}"]`),current=campaignContent(form,c);
+  const merged={...current,offer:p.offer??current.offer,destination:p.destination??current.destination,adDeliverable:p.adDeliverable??current.adDeliverable,...(p.search?{search:{keywords:p.search.keywords.length?p.search.keywords:current.search.keywords,headlines:p.search.headlines.length?p.search.headlines:current.search.headlines,descriptions:p.search.descriptions.length?p.search.descriptions:current.search.descriptions}}:{}),...(p.social?{social:{...current.social,primaryText:p.social.primaryText||current.social.primaryText,headline:p.social.headline||current.social.headline,imageAssetId:p.social.imageAssetId??current.social.imageAssetId}}:{})};
+  delete campaignUi.proposals[c.id];call('/api/campaigns/draft',{campaignId:c.id,expectedRevision:c.revision,content:merged,provenance:'AI_ASSISTED'},'Propuesta incorporada al borrador. Sigue sin aprobar.',b);}));
+ host.querySelectorAll('[data-campaign-submit]').forEach(b=>b.addEventListener('click',()=>{const c=byId(b.dataset.campaignSubmit);call('/api/campaigns/submit',{campaignId:c.id,expectedRevision:c.revision},'Versión enviada a revisión. Ya no se edita.',b);}));
+ host.querySelectorAll('.campaign-decide').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const criterion=form.querySelector('textarea').value.trim();if(criterion.length<10){form.querySelector('textarea').focus();notice('Escribe al menos diez caracteres para explicar tu decisión.',true);return;}const decision=event.submitter?.value;form.dataset[`key${decision}`]??=crypto.randomUUID();call('/api/campaigns/decide',{campaignId:form.dataset.campaign,versionId:form.dataset.version,fingerprint:form.dataset.fingerprint,decision,criterion,idempotencyKey:form.dataset[`key${decision}`]},decision==='APPROVE'?'Versión aprobada. Solicitar su creación es otro paso.':'Pediste cambios. Crea una versión nueva para corregirla.',event.submitter);}));
+ host.querySelectorAll('[data-campaign-new-draft]').forEach(b=>b.addEventListener('click',()=>{const c=byId(b.dataset.campaignNewDraft);call('/api/campaigns/new-draft',{campaignId:c.id,expectedRevision:c.revision},'Nueva versión en borrador. La aprobada no cambia.',b);}));
+ host.querySelectorAll('[data-campaign-screen]').forEach(b=>b.addEventListener('click',()=>run(async()=>{campaignUi.screens[b.dataset.campaignScreen]=await api('/api/campaigns/screen',{brandId,campaignId:b.dataset.campaignScreen,linkId:b.dataset.link});renderCampaigns();host.querySelector('.campaign-screen h4')?.focus?.();},b)));
+ host.querySelectorAll('[data-screen-close]').forEach(b=>b.addEventListener('click',()=>{delete campaignUi.screens[b.dataset.screenClose];renderCampaigns();}));
+ host.querySelectorAll('[data-campaign-request]').forEach(b=>b.addEventListener('click',()=>{b.dataset.key??=crypto.randomUUID();const scenario=$('#cmp-scenario')?.value??'NORMAL';call('/api/campaigns/request',{campaignId:b.dataset.campaignRequest,linkId:b.dataset.link,screenFingerprint:b.dataset.fingerprint,scenario,idempotencyKey:b.dataset.key},r=>{delete campaignUi.screens[b.dataset.campaignRequest];return r.simulated?'Solicitud en la cola del simulador. El worker la procesa; la campaña sólo se crea en pausa.':'Solicitud en la cola. La campaña sólo se crea en pausa.';},b);}));
+ host.querySelectorAll('[data-campaign-reconcile]').forEach(b=>b.addEventListener('click',()=>call('/api/campaigns/reconcile',{jobId:b.dataset.campaignReconcile},r=>r.results.some(x=>x.resolution==='FOUND')?'Encontrado en el proveedor: se vinculó y no se repite.':'Sigue pendiente de comprobación: no se repite a ciegas.',b)));
+ host.querySelectorAll('[data-sim-release]').forEach(b=>b.addEventListener('click',()=>call('/api/campaigns/release',{jobId:b.dataset.simRelease,stepKey:b.dataset.step},'Simulador: el recurso ya es visible. Pulsa «Comprobar en el proveedor».',b)));
+ host.querySelectorAll('.campaign-retry').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const criterion=form.querySelector('input').value.trim();if(criterion.length<10){form.querySelector('input').focus();notice('Explica por qué reintentar (al menos diez caracteres).',true);return;}call('/api/campaigns/retry',{jobId:form.dataset.job,stepKey:form.dataset.step,criterion},'Paso liberado para un intento nuevo bajo la autorización vigente.',event.submitter);}));
+ host.querySelectorAll('[data-campaign-cancel]').forEach(b=>b.addEventListener('click',()=>call('/api/campaigns/cancel',{authorizationId:b.dataset.campaignCancel},r=>r.inFlight?'Hay un paso en curso: no se envía nada más, pero ese paso queda pendiente de comprobación.':'Cancelada antes de enviar: nada llegó al proveedor.',b)));
+ host.querySelectorAll('[data-campaign-status]').forEach(b=>b.addEventListener('click',()=>call('/api/campaigns/status',{campaignId:b.dataset.campaignStatus},r=>r.reading?(r.simulated?'Estado leído del simulador: en pausa, sin gasto.':'Estado leído del proveedor.'):'El proveedor no informó nada todavía.',b)));
+}
+/** Canva panels on design briefs (Materiales de venta). */
+async function mountCanva(list,refresh){
+ const seq=navSeq;
+ const data=await api(`/api/campaigns?brandId=${encodeURIComponent(brandId)}`);
+ if(seq!==navSeq||!data.available)return;
+ for(const d of list.filter(x=>x.type==='DESIGN_BRIEF')){const card=document.querySelector(`.deliverable-card[data-deliverable-id="${CSS.escape(d.id)}"]`);if(card)card.insertAdjacentHTML('beforeend',canvaPanelHtml(d,data));}
+ document.querySelectorAll('.canva-panel [data-conn-sim]').forEach(b=>b.addEventListener('click',()=>run(async()=>{await api('/api/connections/simulated',{brandId,provider:'CANVA'});await refresh();notice('Canva simulado conectado a tu usuario.');},b)));
+ document.querySelectorAll('[data-canva-send]').forEach(b=>b.addEventListener('click',()=>{b.dataset.key??=crypto.randomUUID();run(async()=>{await api('/api/canva/send',{brandId,deliverableId:b.dataset.canvaSend,idempotencyKey:b.dataset.key});await refresh();notice('Brief enviado a Canva (simulado). Cuando el diseño esté listo, recupéralo.');},b);}));
+ document.querySelectorAll('[data-canva-retrieve]').forEach(b=>b.addEventListener('click',()=>run(async()=>{await api('/api/canva/retrieve',{brandId,designId:b.dataset.canvaRetrieve});await refresh();notice('Diseño recuperado en una versión nueva del brief. Revísala: la aprobada no cambia.');},b)));
 }
 /** ADR-0033 · an invitation link opens the app with #invitacion=…; it is kept until a session exists, then accepted once. */
 const INVITATION_KEY='brandopolis.invitation';
