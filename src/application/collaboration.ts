@@ -11,6 +11,8 @@ import type { Transaction } from '../persistence/database.js';
 import * as t from '../persistence/schema.js';
 import type { BrandActor } from './brand-access.js';
 import { siteConfig } from './site-config.js';
+import { emailsOfInvitations } from './email-outbox.js';
+import { notify } from './notifications.js';
 
 /**
  * ADR-0033 · collaboration. Team operations receive a BrandActor (membership + brand scope from Engine.withBrandActor);
@@ -32,20 +34,21 @@ const needsShareCapability = (a: BrandActor) => { if (!a.capabilities.includes('
 // ─── Team side ───────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** Invites one email to this brand. Returns the single-use token only now; the database keeps its hash. */
-export async function createInvitation(tx: Transaction, a: BrandActor, input: { email?: unknown; idempotencyKey?: unknown }) {
+export async function createInvitation(tx: Transaction, a: BrandActor, input: { email?: unknown; idempotencyKey?: unknown }, delivery: 'EMAIL' | 'LINK' = 'LINK') {
   needsGuestsCapability(a);
   const email = normalizeEmail(input.email), idempotencyKey = key(input.idempotencyKey);
   const [prior] = await tx.select().from(t.brandInvitations).where(and(byBrand(t.brandInvitations, a), eq(t.brandInvitations.invitedBy, a.userId), eq(t.brandInvitations.idempotencyKey, idempotencyKey)));
   if (prior) {
     if (prior.normalizedEmail !== email) throw new AppError('CONFLICT', 'Idempotency key already used for another invitation');
     // The token cannot be shown again (only its hash exists): revoke and invite again if the link was lost.
-    return { invitationId: prior.id, token: null, expiresAt: prior.expiresAt.toISOString(), replayed: true };
+    return { invitationId: prior.id, token: null, email, expiresAt: prior.expiresAt.toISOString(), replayed: true };
   }
   const { token, hash } = newInvitationToken(), now = new Date(), id = randomUUID();
   const expiresAt = new Date(now.getTime() + INVITATION_DAYS * 86400000);
-  // Email delivery needs a configured provider (none yet): the invitation is delivered by link and says so.
-  await tx.insert(t.brandInvitations).values({ id, workspaceId: a.workspaceId, brandId: a.brandId, normalizedEmail: email, tokenHash: hash, status: 'PENDING', delivery: 'LINK', expiresAt, invitedBy: a.userId, idempotencyKey, createdAt: now });
-  return { invitationId: id, token, expiresAt: expiresAt.toISOString(), replayed: false };
+  // PHASE4_SPEC §13 · EMAIL when the engine queued the message in this same transaction (same invitation, same
+  // recipient check); otherwise the link is shared by the person and the screen says so.
+  await tx.insert(t.brandInvitations).values({ id, workspaceId: a.workspaceId, brandId: a.brandId, normalizedEmail: email, tokenHash: hash, status: 'PENDING', delivery, expiresAt, invitedBy: a.userId, idempotencyKey, createdAt: now });
+  return { invitationId: id, token, email, expiresAt: expiresAt.toISOString(), replayed: false };
 }
 
 export async function revokeInvitation(tx: Transaction, a: BrandActor, input: { invitationId?: unknown }) {
@@ -132,6 +135,25 @@ export async function shareToPortal(tx: Transaction, a: BrandActor, input: { tar
   return { shareId: id, fingerprint: target.fingerprint, replayed: false };
 }
 
+/**
+ * PHASE4_SPEC §13 · shares several items in one act (each one is the same exact-version share as above; a draft is
+ * never shareable). All or nothing; idempotent per author and key (each item derives its own key).
+ */
+export async function shareManyToPortal(tx: Transaction, a: BrandActor, input: { targets?: unknown; idempotencyKey?: unknown }) {
+  needsShareCapability(a);
+  const idempotencyKey = key(input.idempotencyKey);
+  if (!Array.isArray(input.targets) || !input.targets.length || input.targets.length > 20) throw new AppError('INVALID', 'Choose between 1 and 20 items to share');
+  const seen = new Set<string>(), results = [];
+  for (const [i, raw] of input.targets.entries()) {
+    const target = (raw && typeof raw === 'object' ? raw : {}) as { targetType?: unknown; targetId?: unknown };
+    const k = `${String(target.targetType)}:${String(target.targetId ?? '')}`;
+    if (seen.has(k)) throw new AppError('INVALID', 'The same item is listed twice');
+    seen.add(k);
+    results.push(await shareToPortal(tx, a, { targetType: target.targetType, targetId: target.targetId, idempotencyKey: `${idempotencyKey}:${i}` }));
+  }
+  return { shareIds: results.map(r => r.shareId), shareId: results.map(r => r.shareId).join(','), replayed: results.every(r => r.replayed) };
+}
+
 export async function withdrawShare(tx: Transaction, a: BrandActor, input: { shareId?: unknown }) {
   needsShareCapability(a);
   const [row] = await tx.select().from(t.portalShares).where(and(byBrand(t.portalShares, a), eq(t.portalShares.id, idOf(input.shareId, 'Share')))).for('update');
@@ -152,6 +174,8 @@ async function addComment(tx: Transaction, s: Scoped, authorId: string, context:
   if (share.withdrawnAt) throw new AppError('CONFLICT', 'This share was withdrawn');
   const id = randomUUID();
   await tx.insert(t.portalComments).values({ id, workspaceId: s.workspaceId, brandId: s.brandId, shareId: share.id, authorId, actorContext: context, visibility, body, idempotencyKey, createdAt: new Date() });
+  // PHASE4_SPEC §13 · a client's comment reaches whoever shared the item.
+  if (context === 'GUEST') await notify(tx, s, [share.sharedBy], { kind: 'GUEST_COMMENT', subjectType: 'SHARE', subjectId: share.id, actorId: authorId, title: `Comentario del cliente en: ${share.title}`, dedupe: `guest-comment:${id}` });
   return { commentId: id, replayed: false };
 }
 export const teamComment = (tx: Transaction, a: BrandActor, input: Parameters<typeof addComment>[4]) => addComment(tx, a, a.userId, 'TEAM', input);
@@ -163,7 +187,7 @@ const authorName = async (tx: Transaction, ids: string[]) => {
 };
 
 /** Colaboración (team view): invitations, guests, shares with every comment and approval, and what can be shared. */
-export async function readCollaboration(tx: Transaction, a: BrandActor) {
+export async function readCollaboration(tx: Transaction, a: BrandActor, email: { configured: boolean; simulated: boolean } = { configured: false, simulated: false }) {
   const now = new Date();
   const invitations = await tx.select().from(t.brandInvitations).where(byBrand(t.brandInvitations, a)).orderBy(desc(t.brandInvitations.createdAt));
   const guests = await tx.select().from(t.brandGuests).where(byBrand(t.brandGuests, a)).orderBy(desc(t.brandGuests.createdAt));
@@ -178,14 +202,20 @@ export async function readCollaboration(tx: Transaction, a: BrandActor) {
   const siteVersions = await tx.select({ id: t.siteVersions.id, sequence: t.siteVersions.sequence, status: t.siteVersions.status, content: t.siteVersions.content }).from(t.siteVersions).where(and(byBrand(t.siteVersions, a), inArray(t.siteVersions.status, ['IN_REVIEW', 'APPROVED'])));
   const activeTargets = new Set(shares.filter(s => !s.withdrawnAt).map(s => `${s.targetType}:${s.targetId}`));
   const strategy = await strategyContent(tx, a);
+  const emails = await emailsOfInvitations(tx, a, invitations.map(i => i.id));
+  // Team comments marked SHARED on a shared deliverable version are shown with the share (PHASE4_SPEC §13).
+  const reviewComments = await tx.select().from(t.reviewComments).where(and(byBrand(t.reviewComments, a), eq(t.reviewComments.visibility, 'SHARED'))).orderBy(asc(t.reviewComments.createdAt));
+  const commentNames = await authorName(tx, [...new Set(reviewComments.map(c => c.authorId))]);
   return {
     canManageGuests: a.capabilities.includes('MANAGE_GUESTS'),
-    emailDelivery: false,
-    invitations: invitations.map(i => ({ id: i.id, email: i.normalizedEmail, state: invitationState(i, now), delivery: i.delivery, expiresAt: i.expiresAt.toISOString(), createdAt: i.createdAt.toISOString() })),
+    emailDelivery: email.configured,
+    emailSimulated: email.simulated,
+    invitations: invitations.map(i => ({ id: i.id, email: i.normalizedEmail, state: invitationState(i, now), delivery: i.delivery, expiresAt: i.expiresAt.toISOString(), createdAt: i.createdAt.toISOString(), message: emails.get(i.id) ?? null })),
     guests: guests.map(g => ({ id: g.id, name: names.get(g.userId) ?? invitationEmail.get(g.invitationId) ?? 'Invitado', email: invitationEmail.get(g.invitationId) ?? '', status: g.status, createdAt: g.createdAt.toISOString(), revokedAt: g.revokedAt?.toISOString() ?? null })),
     shares: shares.map(s => ({
       id: s.id, targetType: s.targetType, targetId: s.targetId, title: s.title, fingerprint: s.fingerprint, sharedAt: s.sharedAt.toISOString(), withdrawnAt: s.withdrawnAt?.toISOString() ?? null,
       comments: comments.filter(c => c.shareId === s.id).map(c => ({ id: c.id, author: names.get(c.authorId) ?? (c.actorContext === 'GUEST' ? 'Invitado' : 'Equipo'), context: c.actorContext, visibility: c.visibility, body: c.body, createdAt: c.createdAt.toISOString() })),
+      versionComments: s.targetType === 'DELIVERABLE_VERSION' ? reviewComments.filter(c => c.versionId === s.targetId).map(c => ({ id: c.id, author: commentNames.get(c.authorId) ?? 'Equipo', body: c.body, createdAt: c.createdAt.toISOString() })) : [],
       approvals: approvals.filter(x => x.shareId === s.id).map(x => ({ id: x.id, actor: names.get(x.actorId) ?? 'Invitado', context: x.actorContext, decision: x.decision, comment: x.comment, fingerprint: x.fingerprint, createdAt: x.createdAt.toISOString() }))
     })),
     shareable: {
@@ -282,11 +312,17 @@ export async function readPortal(tx: Transaction, g: GuestActor) {
   const ids = shares.map(s => s.id);
   const comments = ids.length ? await tx.select().from(t.portalComments).where(and(byBrand(t.portalComments, g), inArray(t.portalComments.shareId, ids), eq(t.portalComments.visibility, 'SHARED'))).orderBy(asc(t.portalComments.createdAt)) : [];
   const approvals = ids.length ? await tx.select().from(t.portalApprovals).where(and(byBrand(t.portalApprovals, g), inArray(t.portalApprovals.shareId, ids))).orderBy(asc(t.portalApprovals.createdAt)) : [];
-  const names = await authorName(tx, [...new Set([...comments.map(c => c.authorId), ...approvals.map(x => x.actorId)])]);
+  // Team comments marked SHARED on the exact shared deliverable version (never INTERNAL ones, never other versions).
+  const versionIds = shares.filter(s => s.targetType === 'DELIVERABLE_VERSION').map(s => s.targetId);
+  const shared = versionIds.length ? await tx.select().from(t.reviewComments).where(and(byBrand(t.reviewComments, g), eq(t.reviewComments.visibility, 'SHARED'), inArray(t.reviewComments.versionId, versionIds))).orderBy(asc(t.reviewComments.createdAt)) : [];
+  const names = await authorName(tx, [...new Set([...comments.map(c => c.authorId), ...approvals.map(x => x.actorId), ...shared.map(c => c.authorId)])]);
   const items = [];
   for (const s of shares) items.push({
     id: s.id, targetType: s.targetType, title: s.title, fingerprint: s.fingerprint, sharedAt: s.sharedAt.toISOString(), body: await shareBody(tx, g, s),
-    comments: comments.filter(c => c.shareId === s.id).map(c => ({ id: c.id, author: c.authorId === g.userId ? 'Tú' : names.get(c.authorId) ?? (c.actorContext === 'GUEST' ? 'Invitado' : 'Equipo'), context: c.actorContext, body: c.body, createdAt: c.createdAt.toISOString() })),
+    comments: [
+      ...shared.filter(c => s.targetType === 'DELIVERABLE_VERSION' && c.versionId === s.targetId).map(c => ({ id: c.id, author: names.get(c.authorId) ?? 'Equipo', context: 'TEAM', body: c.body, createdAt: c.createdAt.toISOString() })),
+      ...comments.filter(c => c.shareId === s.id).map(c => ({ id: c.id, author: c.authorId === g.userId ? 'Tú' : names.get(c.authorId) ?? (c.actorContext === 'GUEST' ? 'Invitado' : 'Equipo'), context: c.actorContext, body: c.body, createdAt: c.createdAt.toISOString() }))
+    ].sort((x, y) => x.createdAt.localeCompare(y.createdAt)),
     approvals: approvals.filter(x => x.shareId === s.id).map(x => ({ actor: x.actorId === g.userId ? 'Tú' : names.get(x.actorId) ?? 'Invitado', decision: x.decision, comment: x.comment, createdAt: x.createdAt.toISOString() }))
   });
   return { brand: { id: g.brandId, name: brand?.name ?? '' }, guide: await publishedGuide(tx, g), shares: items };
@@ -311,6 +347,7 @@ export async function guestDecide(tx: Transaction, g: GuestActor, input: { share
   if (input.fingerprint !== share.fingerprint) throw new AppError('CONFLICT', 'This version changed since you opened it; reload before deciding');
   const id = randomUUID();
   await tx.insert(t.portalApprovals).values({ id, workspaceId: g.workspaceId, brandId: g.brandId, shareId: share.id, targetType: share.targetType, targetId: share.targetId, fingerprint: share.fingerprint, actorId: g.userId, actorContext: 'GUEST', decision, comment, idempotencyKey, createdAt: new Date() });
+  await notify(tx, g, [share.sharedBy], { kind: 'GUEST_DECISION', subjectType: 'SHARE', subjectId: share.id, actorId: g.userId, title: `${decision === 'APPROVE' ? 'El cliente aprobó' : 'El cliente pidió cambios en'}: ${share.title}`, dedupe: `guest-decision:${id}` });
   return { approvalId: id, decision, replayed: false };
 }
 

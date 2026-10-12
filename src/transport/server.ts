@@ -9,7 +9,7 @@ import { createApp,purgePendingBrandFiles } from './http.js';
 import { DemoCompetitiveResearch } from './competitive-research.js';
 import { databaseUrl } from '../../scripts/local-db.js';
 import { runtimeAssets,loadAsset } from './assets.js';
-import { createDemoExternal } from './external-demo.js';
+import { createDemoEmail, createDemoExternal } from './external-demo.js';
 export { runtimeAssets };
 /** Local DEMO server. `gateway` is only passed by `competition:start --live-ai`; the default stays the DEMO fixture. */
 export async function startServer(url=databaseUrl(),port=3000,gateway?:ModelGateway) {
@@ -19,7 +19,8 @@ export async function startServer(url=databaseUrl(),port=3000,gateway?:ModelGate
   if(state!=='READY'){await pool.end();throw new Error(state==='MIGRATIONS_REQUIRED'?'Faltan migraciones o no coinciden. Ejecuta pnpm competition:start.':'PostgreSQL local no está disponible. Ejecuta pnpm competition:start o pnpm db:start.');}
   const violation=await dataClassViolation(pool,'DEMO');if(violation){await pool.end();throw new Error('Esta base contiene datos PILOT; la demo sólo usa su base DEMO local.');}
   // Block 8 · DEMO only: campaigns and Canva use the ADR-0031 queue with the simulator (worker: pnpm external:worker).
-  const engine=new Engine(db,undefined,gateway).useExternal(createDemoExternal(db));
+  // PHASE4_SPEC §13 · DEMO only: email goes to the simulated provider (a local folder); nothing is sent to anyone.
+  const external=createDemoExternal(db),engine=new Engine(db,undefined,gateway).useExternal(external).useEmail(createDemoEmail(external.vault));
   const server=createApp(
     engine,
     loadAsset,

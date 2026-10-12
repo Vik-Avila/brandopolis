@@ -7,7 +7,8 @@ import { hostname } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { applySiteEnvironment, competitionProfile, localCompetitionUrl } from './competition-environment.js';
 import { connect } from '../src/persistence/database.js';
-import { createDemoExternal } from '../src/transport/external-demo.js';
+import { createDemoEmail, createDemoExternal } from '../src/transport/external-demo.js';
+import { drainEmails } from '../src/application/email-outbox.js';
 import { superviseWorker } from '../src/application/worker-supervisor.js';
 
 if (process.env.NODE_ENV === 'production') throw new Error('El worker simulado sólo se ejecuta en la DEMO local.');
@@ -15,7 +16,7 @@ const isolated = process.argv.includes('--isolated'), profile = competitionProfi
 applySiteEnvironment(profile);
 const url = localCompetitionUrl(profile);
 if (!url) throw new Error('Inicia primero la DEMO (pnpm competition:start).');
-const { db, pool } = connect(url), external = createDemoExternal(db);
+const { db, pool } = connect(url), external = createDemoExternal(db), email = createDemoEmail(external.vault);
 
 if (process.argv.includes('--child')) {
   const instanceId = await external.ops.registerWorker(hostname(), process.pid);
@@ -27,6 +28,9 @@ if (process.argv.includes('--child')) {
         const claim = await external.ops.claimNext(instanceId);
         if (claim) { const end = await external.ops.runJob(instanceId, claim); console.log(`Trabajo ${claim.jobId.slice(0, 8)}: ${end}`); continue; }
       } catch { console.error('El worker simulado no pudo procesar un trabajo; lo reintentará.'); }
+      // PHASE4_SPEC §13 · queued emails (simulated provider): atomic claims, so the web server may also send them.
+      try { const sent = await drainEmails(db, email, 5); if (sent.length) console.log(`Correo simulado: ${sent.join(', ')}`); }
+      catch { console.error('El worker no pudo procesar el correo; lo reintentará.'); }
       await new Promise(r => setTimeout(r, 1000));
     }
     await pool.end();

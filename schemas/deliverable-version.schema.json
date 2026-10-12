@@ -64,7 +64,20 @@
         "scheduledDate": { "type": ["string", "null"], "format": "date" },
         "text": { "type": "string", "maxLength": 2200 },
         "hashtags": { "type": "array", "maxItems": 30, "items": { "type": "string", "minLength": 1, "maxLength": 60 } },
-        "materials": { "type": "string", "maxLength": 1000 }
+        "materials": { "type": "string", "maxLength": 1000 },
+        "variants": {
+          "type": "array", "maxItems": 6,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "properties": {
+              "network": { "type": "string", "enum": ["INSTAGRAM", "FACEBOOK", "LINKEDIN", "TIKTOK", "X", "OTHER"] },
+              "format": { "type": "string", "enum": ["POST", "CAROUSEL", "REEL", "STORY", "VIDEO", "ARTICLE"] },
+              "text": { "type": "string", "maxLength": 3000 },
+              "hashtags": { "type": "array", "maxItems": 30, "items": { "type": "string", "minLength": 1, "maxLength": 60 } }
+            },
+            "required": ["network", "format", "text", "hashtags"]
+          }
+        }
       },
       "required": ["network", "format", "objective", "scheduledDate", "text", "hashtags", "materials"]
     },

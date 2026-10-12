@@ -35,6 +35,14 @@ const STEP_PLANS: Record<string, Partial<Record<Operation, string[]>>> = {
   META_ADS: { CREATE_PAUSED: ['campaign', 'ad_set', 'creative', 'ad'], ACTIVATE: ['activate'], PAUSE: ['pause'], UPDATE_BUDGET: ['budget_update'] }
 };
 
+/**
+ * ADR-0036 · campaign types with their own remote steps. Performance Max: budget → campaign → asset group → its
+ * assets (Google Ads API). Meta messaging keeps Meta's campaign → ad set → creative → ad.
+ */
+const OBJECTIVE_PLANS: Record<string, Partial<Record<Operation, string[]>>> = {
+  'GOOGLE_ADS:PMAX': { CREATE_PAUSED: ['budget', 'campaign', 'asset_group', 'asset_group_assets'] }
+};
+
 type Hooks = { beforeNetworkWrite?: (attemptId: string) => Promise<void> | void };
 
 /**
@@ -166,7 +174,8 @@ export class ExternalOperations {
     if (await this.subjectBlocked(tx, actor.workspaceId, actor.brandId, auth.subjectKind, auth.subjectId)) throw new AppError('CONFLICT', 'An earlier operation on this campaign is pending verification');
     const [link] = await tx.select().from(t.connectionBrandLinks).where(eq(t.connectionBrandLinks.id, auth.linkId));
     const [connection] = await tx.select().from(t.connections).where(and(eq(t.connections.workspaceId, actor.workspaceId), eq(t.connections.id, link.connectionId)));
-    const plan = STEP_PLANS[connection.provider]?.[auth.operation as Operation];
+    const [subject] = auth.subjectKind === 'CAMPAIGN' ? await tx.select({ objective: t.campaigns.objective }).from(t.campaigns).where(and(eq(t.campaigns.workspaceId, actor.workspaceId), eq(t.campaigns.brandId, actor.brandId), eq(t.campaigns.id, auth.subjectId))) : [];
+    const plan = (subject && OBJECTIVE_PLANS[`${connection.provider}:${subject.objective}`]?.[auth.operation as Operation]) ?? STEP_PLANS[connection.provider]?.[auth.operation as Operation];
     if (!plan) throw new AppError('INVALID', 'Operation not supported for this provider');
     // A new authorization over the same subject, operation and content CONTINUES an interrupted job instead of
     // creating another one: its succeeded steps and remote tags are kept, so nothing already created is repeated.

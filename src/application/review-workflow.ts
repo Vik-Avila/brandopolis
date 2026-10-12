@@ -69,16 +69,22 @@ export async function setApprovalPolicy(tx: Transaction, a: BrandActor, input: {
   return { subjectType: input.subjectType, revision: values.revision, versionId: null };
 }
 
+/**
+ * Who counts as an author of a version: the person who created the draft and the person who sends it. A reviewer who
+ * is either of them reviews alone (recorded with that author, so the SQL guard selfApproval = reviewer is author holds).
+ */
+const authorship = (submitterId: string, creatorId: string, reviewerId: string) => ({ selfApproval: reviewerId === submitterId || reviewerId === creatorId, authorId: reviewerId === creatorId ? creatorId : submitterId });
+
 /** Resolves who reviews a version being submitted and records the assignment (same transaction as the submit). */
-export async function assignReviewer(tx: Transaction, a: BrandActor, subject: { type: SubjectType; id: string; versionId: string; title: string }, requested: unknown) {
+export async function assignReviewer(tx: Transaction, a: BrandActor, subject: { type: SubjectType; id: string; versionId: string; title: string; creatorId: string }, requested: unknown) {
   const policy = await policyOf(tx, a, subject.type);
   const reviewerId = requested == null || requested === '' ? policy.defaultReviewerId : idOf(requested, 'Reviewer');
   if (!reviewerId) throw new AppError('CONFLICT', 'Choose who reviews this version before sending it');
   const team = await brandTeam(tx, a);
   if (!team.some(m => m.userId === reviewerId)) throw new AppError('INVALID', 'The reviewer must belong to this brand’s team');
-  const selfApproval = reviewerId === a.userId;
+  const { selfApproval, authorId } = authorship(a.userId, subject.creatorId, reviewerId);
   if (selfApproval && !policy.allowSelfApproval) throw new AppError('FORBIDDEN', 'This brand requires another person to review this type');
-  await tx.insert(t.reviewAssignments).values({ id: randomUUID(), workspaceId: a.workspaceId, brandId: a.brandId, subjectType: subject.type, subjectId: subject.id, versionId: subject.versionId, authorId: a.userId, reviewerId, selfApproval, assignedBy: a.userId, assignedAt: new Date(), active: true });
+  await tx.insert(t.reviewAssignments).values({ id: randomUUID(), workspaceId: a.workspaceId, brandId: a.brandId, subjectType: subject.type, subjectId: subject.id, versionId: subject.versionId, authorId, reviewerId, selfApproval, assignedBy: a.userId, assignedAt: new Date(), active: true });
   if (!selfApproval) await notify(tx, a, [reviewerId], { kind: 'REVIEW_ASSIGNED', subjectType: subject.type, subjectId: subject.id, versionId: subject.versionId, actorId: a.userId, title: `Te pidieron revisar: ${subject.title}`, dedupe: `assigned:${subject.versionId}:${reviewerId}` });
   return { reviewerId, selfApproval };
 }
@@ -129,11 +135,13 @@ export async function reassignReview(tx: Transaction, a: BrandActor, input: { su
   const version = await subjectVersion(tx, a, input.subjectType, subjectId, versionId);
   if (version.status !== 'IN_REVIEW') throw new AppError('CONFLICT', 'Only a version in review can be reassigned');
   const current = await activeAssignment(tx, a, versionId);
-  const authorId = current?.authorId ?? version.authorId;
-  if (!(a.role === 'ADMIN' || a.userId === authorId || a.userId === current?.reviewerId)) throw new AppError('FORBIDDEN', 'Only the author, the reviewer or an administrator reassigns a review');
+  // The submitter is who opened the first assignment of this version (reassignments never change it); the creator is the version's.
+  const [first] = await tx.select({ assignedBy: t.reviewAssignments.assignedBy }).from(t.reviewAssignments).where(and(eq(t.reviewAssignments.workspaceId, a.workspaceId), eq(t.reviewAssignments.brandId, a.brandId), eq(t.reviewAssignments.versionId, versionId))).orderBy(asc(t.reviewAssignments.assignedAt)).limit(1);
+  const submitterId = first?.assignedBy ?? version.authorId;
+  if (!(a.role === 'ADMIN' || a.userId === submitterId || a.userId === version.authorId || a.userId === current?.reviewerId)) throw new AppError('FORBIDDEN', 'Only the author, the reviewer or an administrator reassigns a review');
   if (current?.reviewerId === reviewerId) return { versionId, reviewerId, replayed: true };
   if (!(await brandTeam(tx, a)).some(m => m.userId === reviewerId)) throw new AppError('INVALID', 'The reviewer must belong to this brand’s team');
-  const selfApproval = reviewerId === authorId;
+  const { selfApproval, authorId } = authorship(submitterId, version.authorId, reviewerId);
   if (selfApproval && !(await policyOf(tx, a, input.subjectType)).allowSelfApproval) throw new AppError('FORBIDDEN', 'This brand requires another person to review this type');
   if (current) await tx.update(t.reviewAssignments).set({ active: false, closedAt: new Date(), closeReason: 'REASSIGNED' }).where(eq(t.reviewAssignments.id, current.id));
   await tx.insert(t.reviewAssignments).values({ id: randomUUID(), workspaceId: a.workspaceId, brandId: a.brandId, subjectType: input.subjectType, subjectId, versionId, authorId, reviewerId, selfApproval, assignedBy: a.userId, assignedAt: new Date(), active: true });

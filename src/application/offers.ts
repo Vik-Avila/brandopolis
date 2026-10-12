@@ -118,7 +118,7 @@ export async function submitOffer(tx: Transaction, a: BrandActor, input: { offer
   editorialTransition(draft.status as EditorialStatus, 'IN_REVIEW');
   await tx.update(t.offerVersions).set({ status: 'IN_REVIEW', submittedAt: new Date() }).where(eq(t.offerVersions.id, draft.id));
   // PHASE4_SPEC §13 · without a reviewer the version is not sent (same transaction: no unassigned version exists).
-  const review = await assignReviewer(tx, a, { type: 'OFFER', id: offer.id, versionId: draft.id, title: `${(draft.content as OfferContent).name} · versión ${draft.sequence}` }, input.reviewerId);
+  const review = await assignReviewer(tx, a, { type: 'OFFER', id: offer.id, versionId: draft.id, title: `${(draft.content as OfferContent).name} · versión ${draft.sequence}`, creatorId: draft.createdBy }, input.reviewerId);
   await touch(tx, offer.id, { draftVersionId: null, revision: offer.revision + 1 });
   return { offerId: offer.id, versionId: draft.id, revision: offer.revision + 1, fingerprint: draft.fingerprint, ...review };
 }

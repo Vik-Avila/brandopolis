@@ -19,7 +19,7 @@ const day = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test
 
 /** What the review starts from: results with their kind and source, the limitations they imply and Brando's suggestions. */
 export async function cycleReviewDraft(tx: Transaction, a: BrandActor, now = new Date()) {
-  const results = await readResults(tx, a, now);
+  const results = await readResults(tx, a, {}, now);
   const all = [...results.marketing, ...results.operations, ...results.sales, ...results.campaigns.flatMap(c => c.metrics.map(m => ({ ...m, label: `${c.name} · ${m.label}` })))] as Metric[];
   const limitations: string[] = [];
   if (all.some(m => m.state === 'NOT_CONNECTED' && m.kind === 'PROVIDER')) limitations.push('No hay cuentas reales de Google o Meta conectadas: no hay gasto ni actividad real de campañas.');

@@ -10,6 +10,30 @@ export type FinalArt = { fileId: string; name: string; format: string; bytes: nu
 export type DeliverableContent = { type: DeliverableType; name: string; offerId: string | null; sourceDecisionVersionIds: string[]; body: Record<string, unknown>; finalArt?: FinalArt };
 
 const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
+
+/**
+ * PHASE4_SPEC §13 · one base piece adapted per network. The rules are checked when the draft is saved and shown while
+ * typing; choosing networks never authorizes publishing (a person publishes outside Brandopolis and records it).
+ */
+export const NETWORK_RULES: Record<string, { maxText: number; maxHashtags: number; formats: readonly string[] }> = {
+  INSTAGRAM: { maxText: 2200, maxHashtags: 30, formats: ['POST', 'CAROUSEL', 'REEL', 'STORY', 'VIDEO'] },
+  FACEBOOK: { maxText: 3000, maxHashtags: 30, formats: ['POST', 'CAROUSEL', 'REEL', 'STORY', 'VIDEO'] },
+  LINKEDIN: { maxText: 3000, maxHashtags: 30, formats: ['POST', 'CAROUSEL', 'VIDEO', 'ARTICLE'] },
+  TIKTOK: { maxText: 2200, maxHashtags: 30, formats: ['VIDEO', 'CAROUSEL'] },
+  X: { maxText: 280, maxHashtags: 10, formats: ['POST', 'VIDEO'] },
+  OTHER: { maxText: 3000, maxHashtags: 30, formats: ['POST', 'CAROUSEL', 'REEL', 'STORY', 'VIDEO', 'ARTICLE'] }
+};
+export type VariantIssue = 'TEXT_TOO_LONG' | 'TOO_MANY_HASHTAGS' | 'FORMAT_NOT_AVAILABLE' | 'EMPTY_TEXT';
+/** Problems of one network variant (empty when it is ready). Hashtags count toward the text as they are published. */
+export function variantIssues(v: { network: string; format: string; text: string; hashtags: string[] }): VariantIssue[] {
+  const rule = NETWORK_RULES[v.network] ?? NETWORK_RULES.OTHER, issues: VariantIssue[] = [];
+  const published = [v.text, v.hashtags.join(' ')].filter(Boolean).join('\n\n');
+  if (!v.text) issues.push('EMPTY_TEXT');
+  if (published.length > rule.maxText) issues.push('TEXT_TOO_LONG');
+  if (v.hashtags.length > rule.maxHashtags) issues.push('TOO_MANY_HASHTAGS');
+  if (!rule.formats.includes(v.format)) issues.push('FORMAT_NOT_AVAILABLE');
+  return issues;
+}
 const list = (value: unknown) => (Array.isArray(value) ? value.map(text).filter(Boolean) : []);
 const dateOrNull = (value: unknown) => text(value) || null;
 
@@ -20,7 +44,7 @@ function normalizeBody(type: DeliverableType, raw: Record<string, unknown>): Rec
     case 'OFFER_COPY':
       return { headline: text(raw.headline), short: text(raw.short), long: text(raw.long), callToAction: text(raw.callToAction) };
     case 'SOCIAL_POST':
-      return { network: raw.network, format: raw.format, objective: text(raw.objective), scheduledDate: dateOrNull(raw.scheduledDate), text: text(raw.text), hashtags: list(raw.hashtags).map(h => (h.startsWith('#') ? h : `#${h}`)), materials: text(raw.materials) };
+      return { network: raw.network, format: raw.format, objective: text(raw.objective), scheduledDate: dateOrNull(raw.scheduledDate), text: text(raw.text), hashtags: list(raw.hashtags).map(h => (h.startsWith('#') ? h : `#${h}`)), materials: text(raw.materials), ...(Array.isArray(raw.variants) ? { variants: raw.variants.map(v => { const x = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>; return { network: x.network, format: x.format, text: text(x.text), hashtags: list(x.hashtags).map(h => (h.startsWith('#') ? h : `#${h}`)) }; }) } : {}) };
     case 'AD':
       return { channel: raw.channel, objective: raw.objective, headlines: list(raw.headlines), descriptions: list(raw.descriptions), callToAction: text(raw.callToAction), landingUrl: text(raw.landingUrl) || null };
     case 'DESIGN_BRIEF':
@@ -37,6 +61,13 @@ export function normalizeDeliverable(input: unknown): DeliverableContent {
   const body = raw.body && typeof raw.body === 'object' && !Array.isArray(raw.body) ? raw.body as Record<string, unknown> : {};
   const content: DeliverableContent = { type, name: text(raw.name), offerId: text(raw.offerId) || null, sourceDecisionVersionIds: [...new Set(list(raw.sourceDecisionVersionIds))], body: normalizeBody(type, body) };
   validate('deliverable-version', content);
+  if (type === 'SOCIAL_POST' && Array.isArray(content.body.variants)) {
+    const variants = content.body.variants as { network: string; format: string; text: string; hashtags: string[] }[];
+    const networks = variants.map(v => v.network);
+    if (new Set(networks).size !== networks.length || networks.includes(content.body.network as string)) throw new AppError('INVALID', 'Each network appears once (the base piece already covers its own network)');
+    const bad = variants.find(v => variantIssues(v).some(i => i !== 'EMPTY_TEXT'));
+    if (bad) throw new AppError('INVALID', `The ${bad.network} variant does not fit that network: ${variantIssues(bad).join(', ')}`);
+  }
   return content;
 }
 

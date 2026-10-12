@@ -13,6 +13,7 @@ import { open,mkdir,rename,rm,readFile,writeFile,stat } from 'node:fs/promises';
 import { dirname,relative,resolve,sep } from 'node:path';
 import { extractDocument } from '../documents/extractor.js';
 import { inspectKitAsset,KIT_ASSET_MAX_BYTES } from '../domain/kit-assets.js';
+import { inspectBrandFile,BRAND_FILE_MAX_BYTES } from '../domain/brand-files.js';
 import { kitCandidatesFromText } from '../domain/brand-kit.js';
 import { chooseFonts, type FontFile } from '../domain/export-fonts.js';
 import { FONT_MAX_BYTES } from '../domain/ttf.js';
@@ -341,6 +342,25 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           return send(res,result.reused?200:201,result);
         }
 
+        // PHASE4_SPEC §13 · brand files (references, final art, templates): raw body, format decided by the file's own
+        // structure, private storage under <root>/<ws>/<brand>; checked before storing so a refusal leaves no file.
+        if(req.method==='POST'&&path==='/api/brand-files'){
+          const brandId=string(requestHeader(req,'x-brand-id'));
+          const originalName=sourceFileName(requestHeader(req,'x-file-name'));
+          const declared=Number(requestHeader(req,'content-length')??0);
+          if(declared&&(!Number.isSafeInteger(declared)||declared<=0||declared>BRAND_FILE_MAX_BYTES))throw new AppError('INVALID','Invalid file size');
+          const {scope,intent}=await engine.brandFileIntent(token,brandId,{purpose:requestHeader(req,'x-file-purpose'),deliverableId:requestHeader(req,'x-deliverable-id'),previousFileId:requestHeader(req,'x-previous-file-id'),category:requestHeader(req,'x-file-category')});
+          const chunks:Buffer[]=[];let size=0;
+          for await(const chunk of req){size+=(chunk as Buffer).length;if(size>BRAND_FILE_MAX_BYTES)throw new AppError('INVALID','File too large');chunks.push(chunk as Buffer);}
+          const data=Buffer.concat(chunks);
+          const info=inspectBrandFile(new Uint8Array(data));
+          const fileId=randomUUID(),storageKey=`${scope.workspaceId}/${scope.brandId}/file-${fileId}/original`;
+          const target=resolveDocumentStoragePath(storageKey);
+          await mkdir(dirname(target),{recursive:true});
+          await writeFile(target,data,{flag:'wx'});
+          try{return send(res,201,{...await engine.registerBrandFile(token,brandId,intent,{id:fileId,originalName,info,bytes:data.length,sha256:createHash('sha256').update(data).digest('hex'),storageKey}),format:info.format});}
+          catch(error){await rm(dirname(target),{recursive:true,force:true});throw error;}
+        }
         // ADR-0034 · kit files: raw body, format decided by signature, private original under <root>/<ws>/<brand>.
         if(req.method==='POST'&&path==='/api/brand-kit/assets'){
           const brandId=string(requestHeader(req,'x-brand-id'));
@@ -528,7 +548,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(path==='/api/site-preview/code')return send(res,200,await engine.issueSitePreviewCode(token,input));
         // ADR-0035 · Clientes (team): membership + brand scope; guests never pass the brand scope.
         if(path.startsWith('/api/clients/')){const action=path.slice('/api/clients/'.length);if(['create','update','segment','form','disable-form'].includes(action)){const r=await engine.clientsCommand(token,action as 'create',input);return send(res,action==='update'||action==='disable-form'||r.replayed?200:201,r);}}
-        if(path.startsWith('/api/collaboration/')){const action=path.slice('/api/collaboration/'.length);if(['invite','revoke-invitation','revoke-guest','share','withdraw','comment'].includes(action))return send(res,action==='invite'||action==='share'?201:200,await engine.collaborationCommand(token,action as 'invite',input));}
+        if(path.startsWith('/api/collaboration/')){const action=path.slice('/api/collaboration/'.length);if(['invite','revoke-invitation','revoke-guest','share','share-many','withdraw','comment','retry-email'].includes(action))return send(res,action==='invite'||action==='share'||action==='share-many'?201:200,await engine.collaborationCommand(token,action as 'invite',input));}
         if(path==='/api/invitations/accept') return send(res,200,await engine.acceptInvitation(token,{token:input.token}));
         if(path==='/api/portal/comment') return send(res,201,await engine.portalComment(token,{brandId:input.brandId,shareId:input.shareId,body:input.body,idempotencyKey:input.idempotencyKey}));
         if(path==='/api/portal/decide') return send(res,200,await engine.portalDecide(token,{brandId:input.brandId,shareId:input.shareId,fingerprint:input.fingerprint,decision:input.decision,comment:input.comment,idempotencyKey:input.idempotencyKey}));
@@ -542,6 +562,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         // PHASE4_SPEC §13 · approval circuit, comments per version and notifications (authorization in the engine).
         if(path.startsWith('/api/reviews/')){const action=path.slice('/api/reviews/'.length);if(['policy','reassign','comment'].includes(action))return send(res,action==='comment'?201:200,await engine.reviewCommand(token,action as 'policy',input));}
         if(path==='/api/notifications/read') return send(res,200,await engine.notificationCommand(token,'read',input));
+        if(path==='/api/brand-files/retire') return send(res,200,await engine.retireBrandFile(token,input));
         if(path==='/api/notifications/open') return send(res,200,await engine.notificationCommand(token,'open',input));
         if(path==='/api/brands/capabilities') return send(res,200,await engine.changeBrandCapability(token,{brandId:input.brandId,userId:input.userId,capability:input.capability,grant:input.grant}));
         if(path==='/api/brands') return send(res,201,await engine.createBrand(token,string(input.name),input.initialContext===undefined?undefined:string(input.initialContext)));
@@ -827,7 +848,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         if(path==='/api/campaigns'||path==='/api/cycle-review'){if(pilot)return send(res,404,{code:'NOT_FOUND'});const brandId=string(url.searchParams.get('brandId'));return send(res,200,path==='/api/campaigns'?await engine.campaigns(token,brandId):await engine.cycleReview(token,brandId));}
         if(path==='/api/sites') return send(res,200,await engine.sites(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/clients') return send(res,200,await engine.clients(token,string(url.searchParams.get('brandId'))));
-        if(path==='/api/results') return send(res,200,await engine.results(token,string(url.searchParams.get('brandId'))));
+        if(path==='/api/results') return send(res,200,await engine.results(token,string(url.searchParams.get('brandId')),{preset:url.searchParams.get('preset'),from:url.searchParams.get('from'),to:url.searchParams.get('to'),compare:url.searchParams.get('compare')}));
         if(path==='/api/brand-guide') return send(res,200,await engine.brandGuide(token,string(url.searchParams.get('brandId'))));
         if(path==='/api/portal/brands') return send(res,200,await engine.portalBrands(token));
         if(path==='/api/portal') return send(res,200,await engine.portal(token,url.searchParams.get('brandId')));
@@ -841,6 +862,16 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           return res.end(data);
         }
         if(path==='/api/brand-kit') return send(res,200,await engine.brandKit(token,string(url.searchParams.get('brandId'))));
+        // PHASE4_SPEC §13 · brand files: list, download (always an attachment) and raster preview (sandboxed, no-store).
+        if(path==='/api/brand-files') return send(res,200,await engine.brandFiles(token,string(url.searchParams.get('brandId')),{purpose:url.searchParams.get('purpose'),deliverableIds:url.searchParams.get('deliverableIds')?.split(',').filter(Boolean)}));
+        if(path==='/api/brand-files/download'||path==='/api/brand-files/preview'||path==='/api/portal/final-art'){
+          const file=path==='/api/portal/final-art'?await engine.portalFinalArt(token,url.searchParams.get('brandId'),url.searchParams.get('fileId')):await engine.brandFile(token,string(url.searchParams.get('brandId')),url.searchParams.get('fileId'));
+          const inline=path==='/api/brand-files/preview';
+          if(inline&&!['PNG','JPEG','WEBP'].includes(file.format))throw new AppError('NOT_FOUND','Preview not available');
+          const data=await readFile(resolveDocumentStoragePath(file.storageKey));
+          res.writeHead(200,{'Content-Type':file.mediaType,'Content-Length':data.length,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox",'Content-Disposition':inline?'inline':`attachment; filename="${file.originalName.replace(/[^\w.\- ]+/g,'_').slice(0,120)||'archivo'}"`});
+          return res.end(data);
+        }
         // ADR-0034 · preview of a raster kit file only (never SVG, PDF or fonts), authorized on every request.
         if(path==='/api/brand-kit/assets/preview'){
           const asset=await engine.kitAssetFile(token,string(url.searchParams.get('brandId')),url.searchParams.get('assetId'));

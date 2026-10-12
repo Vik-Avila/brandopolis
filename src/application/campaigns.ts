@@ -3,7 +3,7 @@ import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { AppError } from '../domain/contracts.js';
 import { approve, contentFingerprint, editorialTransition, type EditorialStatus } from '../domain/editorial-versions.js';
-import { budgetRule, campaignChecks, campaignFingerprint, CAMPAIGN_PROVIDERS, NON_BLOCKING_CAMPAIGN, minorUnits, normalizeCampaign, plannedMinor, type CampaignContent, type CampaignProvider } from '../domain/campaign.js';
+import { budgetRule, campaignChecks, campaignFingerprint, CAMPAIGN_PROVIDERS, NON_BLOCKING_CAMPAIGN, minorUnits, normalizeCampaign, plannedMinor, type CampaignContent, type CampaignProvider, objectiveFor, OBJECTIVES_BY_PROVIDER, type CampaignObjective } from '../domain/campaign.js';
 import { slugify } from '../domain/site.js';
 import { today } from '../domain/clients.js';
 import { MAX_IMAGE_PIXELS } from './pdf-brand.js';
@@ -63,6 +63,9 @@ async function checkReferences(tx: Transaction, a: Scoped, c: CampaignContent) {
   if (c.destination?.kind === 'SITE') { const [s] = await tx.select({ id: t.sites.id }).from(t.sites).where(and(byBrand(t.sites, a), eq(t.sites.id, c.destination.siteId))); if (!s) throw new AppError('INVALID', 'Unknown site for this brand'); }
   if (c.adDeliverable) { const [v] = await tx.select({ deliverableId: t.deliverableVersions.deliverableId, status: t.deliverableVersions.status }).from(t.deliverableVersions).where(and(byBrand(t.deliverableVersions, a), eq(t.deliverableVersions.id, c.adDeliverable.versionId))); if (!v || v.deliverableId !== c.adDeliverable.deliverableId) throw new AppError('INVALID', 'Unknown ad for this brand'); if (!wasApproved(v.status)) throw new AppError('INVALID', 'Only an approved version of the ad can be cited'); }
   if (c.social?.imageAssetId && !(await kitImages(tx, a)).some(i => i.id === c.social!.imageAssetId)) throw new AppError('INVALID', 'This image is not a valid image of the brand kit');
+  // ADR-0036 · Performance Max images and logo must be images of this brand's kit too.
+  const pmaxImages = [c.pmax?.landscapeImageAssetId, c.pmax?.squareImageAssetId, c.pmax?.logoAssetId].filter((x): x is string => Boolean(x));
+  if (pmaxImages.length) { const kit = new Set((await kitImages(tx, a)).map(i => i.id)); if (pmaxImages.some(id => !kit.has(id))) throw new AppError('INVALID', 'This image is not a valid image of the brand kit'); }
 }
 /** Destination address resolved on the server (a live site's address is never taken from the browser). */
 async function resolveDestination(tx: Transaction, a: Scoped, c: CampaignContent): Promise<CampaignContent> {
@@ -70,7 +73,7 @@ async function resolveDestination(tx: Transaction, a: Scoped, c: CampaignContent
   const site = (await liveSites(tx, a)).find(s => s.siteId === (c.destination as { siteId: string }).siteId);
   return { ...c, destination: { kind: 'SITE', siteId: c.destination.siteId, url: site?.url ?? '' } };
 }
-const manifestOf = (c: CampaignContent, siteVersionId: string | null) => ({ offerVersionId: c.offer?.offerVersionId ?? null, siteVersionId, adVersionId: c.adDeliverable?.versionId ?? null, imageAssetId: c.social?.imageAssetId ?? null });
+const manifestOf = (c: CampaignContent, siteVersionId: string | null) => ({ offerVersionId: c.offer?.offerVersionId ?? null, siteVersionId, adVersionId: c.adDeliverable?.versionId ?? null, imageAssetId: c.social?.imageAssetId ?? c.pmax?.landscapeImageAssetId ?? null, ...(c.pmax ? { pmaxAssetIds: [c.pmax.landscapeImageAssetId, c.pmax.squareImageAssetId, c.pmax.logoAssetId] } : {}) });
 
 /** What changed since a version was made (notices; nothing changes by itself). */
 async function outdated(tx: Transaction, a: Scoped, c: CampaignContent, manifest: Record<string, unknown>) {
@@ -83,14 +86,16 @@ async function outdated(tx: Transaction, a: Scoped, c: CampaignContent, manifest
 async function checksFor(tx: Transaction, a: Scoped, c: CampaignContent, manifest: Record<string, unknown>) {
   const offerApproved = !!c.offer && (await approvedOffers(tx, a)).some(o => o.offerId === c.offer!.offerId);
   const destinationLive = c.destination?.kind !== 'SITE' || (await liveSites(tx, a)).some(s => s.siteId === (c.destination as { siteId: string }).siteId);
-  const imageValid = !c.social?.imageAssetId || (await kitImages(tx, a)).some(i => i.id === c.social!.imageAssetId);
-  return campaignChecks(c, { today: today(new Date()), offerApproved, destinationLive, imageValid, outdated: await outdated(tx, a, c, manifest) });
+  const kit = await kitImages(tx, a);
+  const imageValid = !c.social?.imageAssetId || kit.some(i => i.id === c.social!.imageAssetId);
+  // ADR-0036 · in the DEMO every linked account is simulated and so is its WhatsApp number; a real link is checked by its adapter.
+  return campaignChecks(c, { today: today(new Date()), offerApproved, destinationLive, imageValid, outdated: await outdated(tx, a, c, manifest), images: new Map(kit.map(i => [i.id, { width: i.width, height: i.height }])), whatsappLinked: true });
 }
 
 // ─── Reading ─────────────────────────────────────────────────────────────────────────────────────────────────────
 type VersionRow = typeof t.campaignVersions.$inferSelect;
 const versionView = (v: VersionRow) => ({ id: v.id, sequence: v.sequence, status: v.status, fingerprint: v.fingerprint, content: v.content as CampaignContent, manifest: v.manifest, provenance: v.provenance, createdAt: v.createdAt.toISOString(), decidedAt: v.decidedAt?.toISOString() ?? null, decisionCriterion: v.decisionCriterion });
-const STEP_WORDS: Record<string, string> = { budget: 'Presupuesto', campaign: 'Campaña', ad_group: 'Grupo de anuncios', keywords: 'Palabras clave', ad: 'Anuncio', ad_set: 'Conjunto de anuncios', creative: 'Creatividad' };
+const STEP_WORDS: Record<string, string> = { budget: 'Presupuesto', campaign: 'Campaña', ad_group: 'Grupo de anuncios', keywords: 'Palabras clave', ad: 'Anuncio', ad_set: 'Conjunto de anuncios', creative: 'Creatividad', asset_group: 'Grupo de recursos', asset_group_assets: 'Recursos del grupo' };
 
 /** Connections usable by this brand: Ads accounts linked to it and the person's own Canva connection. Never secrets. */
 export async function brandConnections(tx: Transaction, a: BrandActor) {
@@ -150,7 +155,7 @@ export async function readCampaigns(tx: Transaction, a: BrandActor) {
 }
 
 // ─── Editorial ───────────────────────────────────────────────────────────────────────────────────────────────────
-const emptyContent = (provider: CampaignProvider, name: string, objective: 'SEARCH' | 'TRAFFIC' | 'LEADS'): CampaignContent => normalizeCampaign({ name, budget: { type: 'DAILY', amount: '', currency: 'MXN' }, audience: { geo: ['México'] } }, provider, objective);
+const emptyContent = (provider: CampaignProvider, name: string, objective: CampaignObjective): CampaignContent => normalizeCampaign({ name, budget: { type: 'DAILY', amount: '', currency: 'MXN' }, audience: { geo: ['México'] } }, provider, objective);
 
 export async function createCampaign(tx: Transaction, a: BrandActor, input: { provider?: unknown; name?: unknown; objective?: unknown; idempotencyKey?: unknown }) {
   const idempotencyKey = key(input.idempotencyKey);
@@ -161,7 +166,9 @@ export async function createCampaign(tx: Transaction, a: BrandActor, input: { pr
   if (prior) return { campaignId: prior.id, versionId: prior.draftVersionId, replayed: true };
   const provider = input.provider as CampaignProvider, now = new Date(), campaignId = randomUUID(), versionId = randomUUID();
   if (input.objective === 'LEADS' && provider !== 'META_ADS') throw new AppError('INVALID', 'Lead capture is offered for Meta campaigns');
-  const objective = provider === 'GOOGLE_ADS' ? 'SEARCH' as const : input.objective === 'LEADS' ? 'LEADS' as const : 'TRAFFIC' as const;
+  // ADR-0036 · each provider offers its own types; an objective of the other provider is refused, never converted.
+  if (input.objective != null && input.objective !== '' && !OBJECTIVES_BY_PROVIDER[provider].includes(input.objective as CampaignObjective)) throw new AppError('INVALID', 'This campaign type is not offered for that provider');
+  const objective = objectiveFor(provider, input.objective);
   // Campaign reference for UTM tags: links opportunities that arrive with it (captured, unverified) to this campaign.
   const utmCampaign = `bp-${(slugify(name).slice(0, 40) || 'campana').replace(/-+$/, '')}-${randomBytes(3).toString('hex')}`;
   const content = emptyContent(provider, name, objective);
@@ -176,7 +183,7 @@ export async function saveCampaignDraft(tx: Transaction, a: BrandActor, input: {
   if (!c.draftVersionId) throw new AppError('CONFLICT', 'Start a new version first');
   const [draft] = await tx.select().from(t.campaignVersions).where(eq(t.campaignVersions.id, c.draftVersionId)).for('update');
   if (!draft || draft.status !== 'DRAFT') throw new AppError('CONFLICT', 'This version is no longer a draft');
-  const content = await resolveDestination(tx, a, normalizeCampaign({ ...(input.content as object), name: (input.content as { name?: unknown })?.name ?? c.name }, c.provider as CampaignProvider, c.objective as 'SEARCH' | 'TRAFFIC' | 'LEADS'));
+  const content = await resolveDestination(tx, a, normalizeCampaign({ ...(input.content as object), name: (input.content as { name?: unknown })?.name ?? c.name }, c.provider as CampaignProvider, c.objective as CampaignObjective));
   await checkReferences(tx, a, content);
   // The offer's name is the one of the cited version, never what the browser sent (security review F1).
   if (content.offer) { const [ov] = await tx.select({ content: t.offerVersions.content }).from(t.offerVersions).where(eq(t.offerVersions.id, content.offer.offerVersionId)); content.offer = { ...content.offer, name: String((ov?.content as { name?: string })?.name ?? '').slice(0, 120) }; }
@@ -200,19 +207,24 @@ export async function proposeCampaign(tx: Transaction, a: BrandActor, input: { c
   if (!offer) missing.push('Una oferta aprobada en Productos y servicios'); else sources.offer = `Oferta «${offer.name}» versión ${offer.sequence}`;
   if (!site) missing.push('Un sitio publicado o una dirección https de destino'); else sources.destination = `Sitio «${site.name}» publicado`;
   if (!ad) missing.push('Un anuncio aprobado en Campañas digitales para tomar sus textos'); else sources.texts = `Anuncio «${ad.name}» versión ${ad.sequence}`;
-  const google = c.provider === 'GOOGLE_ADS';
-  if (!google && !images.length) missing.push('Una imagen válida del kit de marca');
+  const google = c.provider === 'GOOGLE_ADS', pmax = c.objective === 'PMAX', messages = c.objective === 'MESSAGES';
+  if ((!google || pmax) && !images.length) missing.push('Una imagen válida del kit de marca');
   const words = [offer?.name, offer?.need].filter(Boolean).join(' ').toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(w => w.length > 3).slice(0, 5);
   const proposal = {
     name: c.name, offer: offer ? { offerId: offer.offerId, offerVersionId: offer.offerVersionId, name: offer.name } : null,
     destination: site ? { kind: 'SITE', siteId: site.siteId, url: site.url } : null,
     adDeliverable: ad ? { deliverableId: ad.deliverableId, versionId: ad.versionId } : null,
-    search: google ? { keywords: words.map(w => ({ text: w, match: 'PHRASE' })), headlines: (ad?.headlines ?? []).slice(0, 15), descriptions: (ad?.descriptions ?? []).slice(0, 4) } : null,
+    search: google && !pmax ? { keywords: words.map(w => ({ text: w, match: 'PHRASE' })), headlines: (ad?.headlines ?? []).slice(0, 15), descriptions: (ad?.descriptions ?? []).slice(0, 4) } : null,
+    // ADR-0036 · Performance Max: texts from the approved ad, images chosen by shape from the kit (the person checks them).
+    ...(pmax ? { pmax: { headlines: (ad?.headlines ?? []).filter(h => h.length <= 30).slice(0, 15), longHeadlines: [offer?.outcome || offer?.need || ''].filter(Boolean).map(x => x.slice(0, 90)), descriptions: (ad?.descriptions ?? []).slice(0, 5), businessName: '', landscapeImageAssetId: images.find(i => Math.abs(i.width / i.height - 1.91) <= 0.04)?.id ?? null, squareImageAssetId: images.find(i => i.width === i.height)?.id ?? null, logoAssetId: images.find(i => i.width === i.height)?.id ?? null, audienceSignal: '' } } : {}),
+    ...(messages ? { messaging: { destination: 'WHATSAPP', welcomeMessage: offer ? `Hola, gracias por escribirnos sobre «${offer.name}». ¿En qué podemos ayudarte?` : '', iceBreakers: [] } } : {}),
     social: google ? null : { primaryText: (ad?.descriptions ?? [])[0] ?? '', headline: ((ad?.headlines ?? [])[0] ?? '').slice(0, 40), imageAssetId: images[0]?.id ?? null, imageAlt: '' },
     audience: { geo: ['México'] },
     budget: { type: 'DAILY', amount: '', currency: 'MXN' },
   };
   if (words.length) sources.keywords = 'Palabras de la oferta aprobada (revísalas: Brando no consulta volúmenes de búsqueda)';
+  if (pmax) { missing.push('El nombre de la empresa (máximo 25 caracteres) y la revisión de las imágenes elegidas por forma'); sources.assets = 'Imágenes del kit de marca elegidas por su proporción'; }
+  if (messages) { missing.push('Confirma el destino de la conversación (WhatsApp o Messenger) y el número vinculado en la cuenta'); sources.welcome = 'Mensaje de bienvenida a partir del nombre de la oferta aprobada'; }
   missing.push('Presupuesto, fechas y ubicaciones: los decides tú; Brando no propone gasto');
   return { proposal, sources, missing, provenance: 'AI_ASSISTED', mode: 'DETERMINISTIC_DEMO' };
 }
@@ -368,7 +380,9 @@ export async function authorizationScreen(tx: Transaction, a: BrandActor, input:
   if (!link || link.provider !== c.provider) throw new AppError('NOT_FOUND', 'Linked account not available');
   if (link.status !== 'ACTIVE') throw new AppError('CONFLICT', 'Reconnect the account before requesting an operation');
   const [brand] = await tx.select({ name: t.brands.name }).from(t.brands).where(and(eq(t.brands.workspaceId, a.workspaceId), eq(t.brands.id, a.brandId)));
-  const summary = { accountLabel: link.account, destination: content.destination!.url, currency: content.budget.currency, budget: operation === 'PAUSE' ? null : { kind: content.budget.type === 'DAILY' ? 'DAILY_AVERAGE' : 'LIFETIME_TOTAL', amountMinor: minorUnits(content.budget.amount) }, startsOn: content.schedule.startDate, endsOn: content.schedule.endDate, timeZone: content.schedule.timezone };
+  // ADR-0036 · a messaging campaign has no web destination: the conversation opens in WhatsApp or Messenger.
+  const destination = content.messaging ? (content.messaging.destination === 'WHATSAPP' ? `Conversación en WhatsApp con el número vinculado a la página${link.simulated ? ' (simulado)' : ''}` : 'Conversación en Messenger de la página') : content.destination!.url;
+  const summary = { accountLabel: link.account, destination, currency: content.budget.currency, budget: operation === 'PAUSE' ? null : { kind: content.budget.type === 'DAILY' ? 'DAILY_AVERAGE' : 'LIFETIME_TOTAL', amountMinor: minorUnits(content.budget.amount) }, startsOn: content.schedule.startDate, endsOn: content.schedule.endDate, timeZone: content.schedule.timezone };
   const measurement = c.objective === 'LEADS' ? await campaignMeasurement(tx, a, c.id) : null;
   const screen = { operation, provider: c.provider, objective: c.objective, simulated: link.simulated, brand: brand?.name ?? '', campaign: c.name, campaignId: c.id, versionId: v.id, sequence: v.sequence, contentFingerprint: v.fingerprint, linkId: link.linkId, budgetRule: operation === 'PAUSE' ? 'Pausar no confirma importes: reduce el gasto.' : budgetRule(content), plannedMinor: plannedMinor(content), summary, effect: EFFECTS[operation], measurement: measurement ? { verified: measurement.verifiedForLivePublication, simulated: true } : null };
   return { ...screen, screenFingerprint: contentFingerprint(screen) };

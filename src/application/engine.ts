@@ -29,7 +29,7 @@ import { DELIVERABLE_TYPES, type DeliverableType } from '../domain/deliverables.
 import { deliverableSource, guideSource } from './exports.js';
 import { addCustomDomain, checkDomain, createSite, decideSite, exchangePreviewCode, finishPublication, issuePreviewCode, newSiteDraft, previewAccess, proposeSite, readSites, removeDomain, renderPlan, resolvePublicHost, reverifyNextDomain, saveSiteDraft, siteExportSource, startPublication, submitSite, type TxtResolver } from './sites.js';
 import { createForm, createOpportunity, createSegment, disableForm, publicForm, readClients, readResults, submitWebForm, updateOpportunity } from './clients.js';
-import { acceptInvitation, brandGuide, createInvitation, guestAsset, guestBrands, guestComment, guestDecide, readCollaboration, readPortal, resolveGuest, revokeGuest, revokeInvitation, shareToPortal, teamComment, withdrawShare, type GuestActor } from './collaboration.js';
+import { acceptInvitation, brandGuide, createInvitation, guestAsset, guestBrands, guestComment, guestDecide, readCollaboration, readPortal, resolveGuest, revokeGuest, revokeInvitation, shareManyToPortal, shareToPortal, teamComment, withdrawShare, type GuestActor } from './collaboration.js';
 import { applyDirection, draftValueIds, adoptKitValues, decideKit, kitAsset, mergeKitCandidates, reusableDocument, publishKit, readKit, registerKitAsset, saveKitDraft, startKitDraft, submitKit } from './brand-kit.js';
 import type { KitAssetInfo } from '../domain/kit-assets.js';
 import type { KitContent } from '../domain/brand-kit.js';
@@ -37,6 +37,9 @@ import { createDeliverable, decideDeliverable, listDeliverables, newDeliverableD
 import { createOffer, createOfferFrom, decideOffer, listOffers, newOfferDraft, retireOffer, saveOfferDraft, submitOffer } from './offers.js';
 import { addReviewComment, readApprovalPolicies, reassignReview, setApprovalPolicy } from './review-workflow.js';
 import { listNotifications, markNotificationsRead, openNotification } from './notifications.js';
+import { drainEmails, enqueueInvitationEmail, retryEmail, type EmailService } from './email-outbox.js';
+import { brandFileForTeam, brandFileUploadIntent, finalArtForGuest, listBrandFiles, registerBrandFile, retireBrandFile, type UploadIntent } from './brand-files.js';
+import type { BrandFileInfo } from '../domain/brand-files.js';
 
 const id=()=>randomUUID();
 export const hash=(value:string)=>createHash('sha256').update(value).digest('hex');
@@ -52,6 +55,11 @@ export class Engine {
   /** Block 8 · external operations (DEMO: simulator only). Without it every campaign/Canva operation is unavailable. */
   private external?:{ops:ExternalOperations;adapter:ProviderAdapter&{armTag?:(tag:string,...f:Fault[])=>void;release?:(tag:string)=>void};canva:CanvaAdapter;simulated:boolean};
   useExternal(external:NonNullable<Engine['external']>){this.external=external;return this;}
+  /** PHASE4_SPEC §13 · email outbox (DEMO: simulated provider). Without it invitations are delivered by link only. */
+  private email?:EmailService;
+  useEmail(email:EmailService){this.email=email;return this;}
+  /** Sends the emails that are due (worker loop, tests, and right after a message is queued). */
+  async processEmails(limit=20){return this.email?drainEmails(this.db,this.email,limit):[];}
   private requireExternal(){if(!this.external)throw new AppError('UNAVAILABLE','External operations are not available here');return this.external;}
   /** Whether explicit AI requests reach a real provider (local live AI) or the deterministic DEMO fixture. */
   get aiMode():'LIVE'|'DEMO' {return this.gateway.providerName==='DEMO_FIXTURE'?'DEMO':'LIVE';}
@@ -191,18 +199,26 @@ export class Engine {
   /** Scope for a kit file upload (the transport validates and stores the bytes privately). */
   // ─── ADR-0033 · collaboration (team side: membership + brand scope; capability checks in collaboration.ts) ───
   async collaboration(token:string,brandId:string) {
-    return this.withBrandActor(token,brandId,(tx,actor)=>readCollaboration(tx,actor));
+    return this.withBrandActor(token,brandId,(tx,actor)=>readCollaboration(tx,actor,{configured:Boolean(this.email),simulated:this.email?.provider.simulated??false}));
   }
   async brandGuide(token:string,brandId:string) {
     return this.withBrandActor(token,brandId,(tx,actor)=>brandGuide(tx,actor));
   }
-  async collaborationCommand(token:string,action:'invite'|'revoke-invitation'|'revoke-guest'|'share'|'withdraw'|'comment',input:Record<string,unknown>) {
-    return this.withBrandActor(token,String(input.brandId??''),async(tx,actor)=>{
-      const run={invite:createInvitation,'revoke-invitation':revokeInvitation,'revoke-guest':revokeGuest,share:shareToPortal,withdraw:withdrawShare,comment:teamComment}[action];
+  async collaborationCommand(token:string,action:'invite'|'revoke-invitation'|'revoke-guest'|'share'|'share-many'|'withdraw'|'comment'|'retry-email',input:Record<string,unknown>) {
+    const sendEmail=action==='invite'&&input.sendEmail===true;
+    if(sendEmail&&!this.email)throw new AppError('UNAVAILABLE','Email delivery is not configured here; share the link instead');
+    const result=await this.withBrandActor(token,String(input.brandId??''),async(tx,actor)=>{
+      const run={invite:(t2:Transaction,a:BrandActor,i:Record<string,unknown>)=>createInvitation(t2,a,i,sendEmail?'EMAIL':'LINK'),'revoke-invitation':revokeInvitation,'revoke-guest':revokeGuest,share:shareToPortal,'share-many':shareManyToPortal,withdraw:withdrawShare,comment:teamComment,'retry-email':retryEmail}[action];
+      if(!run)throw new AppError('INVALID','Unknown collaboration operation');
       const result=await run(tx,actor,input) as Record<string,unknown>;
-      if(!result.replayed)await this.audit(tx,actor,{operation:`COLLAB_${action.toUpperCase().replace(/-/g,'_')}`,idempotencyKey:String(input.idempotencyKey??randomUUID()),newVersion:String(result.invitationId??result.guestId??result.shareId??result.commentId??'')});
+      // PHASE4_SPEC §13 · the invitation email is queued in the same transaction (one per invitation; never duplicated).
+      if(sendEmail&&!result.replayed&&typeof result.token==='string')result.emailId=await enqueueInvitationEmail(tx,actor,this.email!,{invitationId:String(result.invitationId),recipient:String(result.email),token:result.token,expiresAt:String(result.expiresAt)});
+      if(!result.replayed)await this.audit(tx,actor,{operation:`COLLAB_${action.toUpperCase().replace(/-/g,'_')}`,idempotencyKey:String(input.idempotencyKey??randomUUID()),newVersion:String(result.invitationId??result.guestId??result.shareId??result.commentId??result.emailId??'')});
       return result;
     },true);
+    // Best effort right away (the worker also sends due messages; claims are atomic, nothing is sent twice).
+    if((result.emailId||action==='retry-email')&&this.email)void drainEmails(this.db,this.email,3).catch(()=>undefined);
+    return result;
   }
   // ─── ADR-0032 · sites (team side: membership + brand scope; publishing and domains need PUBLISH_SITE) ───
   async sites(token:string,brandId:string) {
@@ -458,8 +474,8 @@ export class Engine {
   async clients(token:string,brandId:string) {
     return this.withBrandActor(token,brandId,(tx,actor)=>readClients(tx,actor));
   }
-  async results(token:string,brandId:string) {
-    return this.withBrandActor(token,brandId,(tx,actor)=>readResults(tx,actor));
+  async results(token:string,brandId:string,query:{preset?:unknown;from?:unknown;to?:unknown;compare?:unknown}={}){
+    return this.withBrandActor(token,brandId,(tx,actor)=>readResults(tx,actor,query));
   }
   /** One Clientes operation; every change is audited with ids only (never names, contacts or needs). */
   async clientsCommand(token:string,action:'create'|'update'|'segment'|'form'|'disable-form',input:Record<string,unknown>) {
@@ -513,6 +529,35 @@ export class Engine {
   }
   async portalAssetFile(token:string,brandId:unknown,assetId:unknown) {
     return this.withGuest(token,brandId,(tx,g)=>guestAsset(tx,g,assetId));
+  }
+  /** PHASE4_SPEC §13 · final art of a deliverable version shared with this guest (checked on every request). */
+  async portalFinalArt(token:string,brandId:unknown,fileId:unknown) {
+    return this.withGuest(token,brandId,(tx,g)=>finalArtForGuest(tx,g,fileId));
+  }
+  // ─── PHASE4_SPEC §13 · brand files: references of a brief, final art of a deliverable, templates ───
+  /** Checks an upload before its bytes are stored (a refused one leaves no file). */
+  async brandFileIntent(token:string,brandId:string,input:Record<string,unknown>) {
+    return this.withBrandActor(token,brandId,async(tx,actor)=>({scope:{workspaceId:actor.workspaceId,brandId:actor.brandId},intent:await brandFileUploadIntent(tx,actor,input)}));
+  }
+  async registerBrandFile(token:string,brandId:string,intent:UploadIntent,file:{id:string;originalName:string;info:BrandFileInfo;bytes:number;sha256:string;storageKey:string}) {
+    return this.withBrandActor(token,brandId,async(tx,actor)=>{
+      const result=await registerBrandFile(tx,actor,intent,file);
+      await this.audit(tx,{...actor},{operation:`BRAND_FILE_${intent.purpose}_UPLOAD`,idempotencyKey:file.id,newVersion:result.versionId??result.fileId,previousVersion:intent.previousFileId});
+      return result;
+    },true);
+  }
+  async brandFiles(token:string,brandId:string,input:Record<string,unknown>) {
+    return this.withBrandActor(token,brandId,(tx,actor)=>listBrandFiles(tx,actor,input));
+  }
+  async brandFile(token:string,brandId:string,fileId:unknown) {
+    return this.withBrandActor(token,brandId,(tx,actor)=>brandFileForTeam(tx,actor,fileId));
+  }
+  async retireBrandFile(token:string,input:Record<string,unknown>) {
+    return this.withBrandActor(token,String(input.brandId??''),async(tx,actor)=>{
+      const result=await retireBrandFile(tx,actor,input);
+      if(!result.replayed)await this.audit(tx,{...actor},{operation:'BRAND_FILE_RETIRE',idempotencyKey:randomUUID(),newVersion:result.fileId});
+      return result;
+    },true);
   }
   async kitUploadScope(token:string,brandId:string) {
     return this.withBrandActor(token,brandId,async(_tx,actor)=>({workspaceId:actor.workspaceId,brandId:actor.brandId}));
