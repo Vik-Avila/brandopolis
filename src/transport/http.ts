@@ -13,7 +13,7 @@ import { open,mkdir,rename,rm,readFile,writeFile,stat } from 'node:fs/promises';
 import { dirname,relative,resolve,sep } from 'node:path';
 import { extractDocument } from '../documents/extractor.js';
 import { inspectKitAsset,KIT_ASSET_MAX_BYTES } from '../domain/kit-assets.js';
-import { inspectBrandFile,BRAND_FILE_MAX_BYTES } from '../domain/brand-files.js';
+import { inspectBrandFile,downloadName,BRAND_FILE_MAX_BYTES,type BrandFileFormat } from '../domain/brand-files.js';
 import { kitCandidatesFromText } from '../domain/brand-kit.js';
 import { chooseFonts, type FontFile } from '../domain/export-fonts.js';
 import { FONT_MAX_BYTES } from '../domain/ttf.js';
@@ -559,6 +559,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         // PHASE4_SPEC §4.2 · marketing plan: one path per operation; authorization, revision and audit in the engine.
         if(path.startsWith('/api/plan/')){const action=path.slice('/api/plan/'.length);if(['create','update','add-objective','update-objective','add-action','update-action','action-status','share','decide-share'].includes(action))return send(res,action==='create'||action==='share'||action.startsWith('add-')?201:200,await engine.planCommand(token,action as 'create',input));}
         if(path.startsWith('/api/offers/')){const action=path.slice('/api/offers/'.length);if(['create','create-from','draft','submit','decide','new-draft','retire'].includes(action))return send(res,action==='create'||action==='create-from'?201:200,await engine.offerCommand(token,action as 'create',input));}
+        if(path==='/api/offers/propose') return send(res,200,await engine.offerProposal(token,string(input.brandId)));
         // PHASE4_SPEC §13 · approval circuit, comments per version and notifications (authorization in the engine).
         if(path.startsWith('/api/reviews/')){const action=path.slice('/api/reviews/'.length);if(['policy','reassign','comment'].includes(action))return send(res,action==='comment'?201:200,await engine.reviewCommand(token,action as 'policy',input));}
         if(path==='/api/notifications/read') return send(res,200,await engine.notificationCommand(token,'read',input));
@@ -869,7 +870,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
           const inline=path==='/api/brand-files/preview';
           if(inline&&!['PNG','JPEG','WEBP'].includes(file.format))throw new AppError('NOT_FOUND','Preview not available');
           const data=await readFile(resolveDocumentStoragePath(file.storageKey));
-          res.writeHead(200,{'Content-Type':file.mediaType,'Content-Length':data.length,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox",'Content-Disposition':inline?'inline':`attachment; filename="${file.originalName.replace(/[^\w.\- ]+/g,'_').slice(0,120)||'archivo'}"`});
+          res.writeHead(200,{'Content-Type':file.mediaType,'Content-Length':data.length,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox",'Content-Disposition':inline?'inline':`attachment; filename="${downloadName(file.originalName,file.format as BrandFileFormat)}"`});
           return res.end(data);
         }
         // ADR-0034 · preview of a raster kit file only (never SVG, PDF or fonts), authorized on every request.

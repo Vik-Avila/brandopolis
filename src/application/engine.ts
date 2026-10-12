@@ -34,7 +34,7 @@ import { applyDirection, draftValueIds, adoptKitValues, decideKit, kitAsset, mer
 import type { KitAssetInfo } from '../domain/kit-assets.js';
 import type { KitContent } from '../domain/brand-kit.js';
 import { createDeliverable, decideDeliverable, listDeliverables, newDeliverableDraft, recordPublication, retireDeliverable, saveDeliverableDraft, submitDeliverable } from './deliverables.js';
-import { createOffer, createOfferFrom, decideOffer, listOffers, newOfferDraft, retireOffer, saveOfferDraft, submitOffer } from './offers.js';
+import { createOffer, createOfferFrom, decideOffer, listOffers, newOfferDraft, proposeOffer, retireOffer, saveOfferDraft, submitOffer } from './offers.js';
 import { addReviewComment, readApprovalPolicies, reassignReview, setApprovalPolicy } from './review-workflow.js';
 import { listNotifications, markNotificationsRead, openNotification } from './notifications.js';
 import { drainEmails, enqueueInvitationEmail, retryEmail, type EmailService } from './email-outbox.js';
@@ -153,6 +153,10 @@ export class Engine {
     if(action==='submit')await this.audit(tx,{...actor},{operation:result.selfApproval?`${kind}_REVIEW_SELF_ASSIGNED`:`${kind}_REVIEW_ASSIGNED`,idempotencyKey:randomUUID(),newVersion:(result.versionId as string)??null,rationale:`reviewer:${String(result.reviewerId)}`});
     if(action==='decide'&&result.selfApproval)await this.audit(tx,{...actor},{operation:`${kind}_SELF_APPROVAL`,idempotencyKey:randomUUID(),newVersion:(result.versionId as string)??null});
   }
+  /** PHASE4_SPEC §13 · Brando's offer proposal from approved decisions (propose-only; writes nothing). */
+  async offerProposal(token:string,brandId:string) {
+    return this.withBrandActor(token,brandId,(tx,actor)=>proposeOffer(tx,actor));
+  }
   /** PHASE4_SPEC §13 · approval circuit of a brand: policies per type and the team that can review. */
   async approvalPolicies(token:string,brandId:string) {
     return this.withBrandActor(token,brandId,(tx,actor)=>readApprovalPolicies(tx,actor));
@@ -217,7 +221,7 @@ export class Engine {
       return result;
     },true);
     // Best effort right away (the worker also sends due messages; claims are atomic, nothing is sent twice).
-    if((result.emailId||action==='retry-email')&&this.email)void drainEmails(this.db,this.email,3).catch(()=>undefined);
+    if((result.emailId||action==='retry-email')&&this.email&&this.email.autoDrain!==false)void drainEmails(this.db,this.email,3).catch(()=>undefined);
     return result;
   }
   // ─── ADR-0032 · sites (team side: membership + brand scope; publishing and domains need PUBLISH_SITE) ───

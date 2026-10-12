@@ -1045,3 +1045,69 @@ body.app { background: var(--bp-brand-ivory); }
 .area-tabs [role="tab"][aria-selected="true"] { font-weight: 700; }
 .area-tabs [role="tab"]:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 
+
+/* ============================================================================================================
+   PHASE4_SPEC §13 (owner review 2026-10-12): approval circuit, comments per version, notification centre, origin
+   decisions, price plans, brand files and templates, network variants, sharing several items and Results periods.
+   System tokens only; every state carries a word, never colour alone.
+   ============================================================================================================ */
+.rail-tool { position: relative; }
+.notification-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--bp-radius-pill); background: var(--bp-brand-emerald-deep); color: var(--bp-white); font-size: 11px; font-weight: 700; line-height: 1; }
+.rail-tool .notification-count { position: absolute; top: 2px; right: 2px; }
+.mobile-tools .notification-count { margin-left: 4px; }
+.notification-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.notification-open { display: grid; gap: 4px; width: 100%; min-height: 44px; padding: 10px 12px; text-align: left; justify-items: start; background: var(--bp-white); color: var(--bp-neutral-900, inherit); border: 1px solid var(--ws-line); border-radius: 12px; font-weight: 500; }
+.notification.is-unread .notification-open { border-left: 4px solid var(--bp-brand-emerald); }
+.notification-title { font-weight: 650; }
+.notifications-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.home-actions .notification-list { margin-top: 8px; }
+
+.review-status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; }
+.review-steps { margin: 8px 0 4px; padding-left: 20px; display: grid; gap: 4px; }
+.review-submit { margin-top: 10px; }
+.review-reassign, .version-comments, .review-history { margin-top: 8px; }
+.review-reassign summary, .version-comments summary, .review-history summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
+.review-decision { margin-top: 6px; }
+.comment-list { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px; }
+.comment { padding: 10px 12px; border: 1px solid var(--ws-line); border-radius: 12px; background: var(--bp-white); }
+.comment.is-internal { background: var(--bp-neutral-50); border-style: dashed; }
+.comment p { margin: 0; }
+.comment-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 4px !important; font-size: 13px; }
+.comment-mentions { margin-top: 8px; }
+
+.source-group .source-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 4px; }
+.source-group .source-all { border-bottom: 1px solid var(--ws-line); }
+
+.brando-start { margin: 8px 0 14px; padding: 14px 16px; border: 1px solid var(--ws-line); border-radius: 14px; background: var(--bp-white); }
+.brando-start h3 { margin: 0 0 4px; font-size: 16px; }
+.brando-start-actions { flex-wrap: wrap; }
+.brando-start-offer { margin-top: 10px; }
+
+.price-plans > div { display: grid; gap: 10px; }
+.price-plan { border: 1px dashed var(--ws-line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; }
+
+.final-art, .brief-references { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--ws-line); }
+.brand-file-list, .template-list { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px; }
+.brand-file { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.file-upload { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin: 6px 0 0; font-weight: 600; cursor: pointer; }
+.file-upload input[type="file"] { width: auto; min-height: 0; padding: 4px; border: 0; background: transparent; }
+.template-card { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid var(--ws-line); border-radius: 14px; background: var(--bp-white); }
+.template-card h4 { margin: 0; }
+.template-filter { display: flex; align-items: center; gap: 8px; margin: 12px 0; max-width: 360px; }
+.template-filter label { margin: 0; white-space: nowrap; }
+
+.social-networks .social-variants { display: grid; gap: 10px; margin-top: 8px; }
+.social-variant { border: 1px dashed var(--ws-line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; }
+.social-variant h5 { margin: 0; font-size: 14px; }
+
+.share-summary ul { margin: 4px 0 0; padding-left: 20px; }
+.share-version-comments { margin-top: 8px; }
+
+.results-period-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.results-period-row > div { min-width: 180px; flex: 1 1 180px; }
+.rp-compare { margin-top: 8px; }
+.results-range { margin: 8px 0 0; }
+.result-compare { margin: 4px 0 0; font-size: 13px; color: var(--bp-neutral-700); }
+
+.policy-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
+.offer-derived { margin: 4px 0 0; }

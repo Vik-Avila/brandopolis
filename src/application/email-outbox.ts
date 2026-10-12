@@ -24,7 +24,8 @@ import { notify } from './notifications.js';
  */
 export type EmailSendError = Error & { kind: 'TRANSIENT' | 'PERMANENT'; code: string };
 export type EmailProvider = { name: string; simulated: boolean; send(message: EmailMessage & { id: string; to: string }): Promise<{ providerMessageId: string }> };
-export type EmailService = { provider: EmailProvider; vault: Vault; appOrigin: string; backoffSeconds: number; maxAttempts: number };
+/** autoDrain false: messages are sent only by the worker or an explicit processEmails() (tests). */
+export type EmailService = { provider: EmailProvider; vault: Vault; appOrigin: string; backoffSeconds: number; maxAttempts: number; autoDrain?: boolean };
 export const emailError = (kind: 'TRANSIENT' | 'PERMANENT', code: string): EmailSendError => Object.assign(new Error(code), { kind, code });
 
 const aad = (id: string) => `email-outbox:${id}`;

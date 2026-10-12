@@ -79,7 +79,7 @@ export function campaignCases(connection: () => ReturnType<typeof connect>) {
     const work = async () => { const results: string[] = []; for (let i = 0; i < 5; i++) { const claim = await ops.claimNext(worker, brand.id); if (!claim) break; results.push(await ops.runJob(worker, claim)); } return results; };
     const job = async (jobId: string) => (await read()).campaigns.flatMap(c => c.operations).find(o => o.jobId === jobId)!;
     /** A valid raster image of the kit (metadata as the kit inspector leaves it) for Meta ads. */
-    const kitImage = async () => (await engine.registerKitAsset(who.token, brand.id, { id: randomUUID(), role: 'REFERENCE', originalName: 'taza.png', info: { format: 'PNG', kind: 'RASTER', mediaType: 'image/png', width: 1080, height: 1080, alpha: false, previewable: true } as KitAssetInfo, bytes: 1000, sha256: createHash('sha256').update(randomUUID()).digest('hex'), storageKey: `${who.workspaceId}/${brand.id}/kit/${randomUUID()}` })).assetId as string;
+    const kitImage = async (width = 1080, height = 1080) => (await engine.registerKitAsset(who.token, brand.id, { id: randomUUID(), role: 'REFERENCE', originalName: 'taza.png', info: { format: 'PNG', kind: 'RASTER', mediaType: 'image/png', width, height, alpha: false, previewable: true } as KitAssetInfo, bytes: 1000, sha256: createHash('sha256').update(randomUUID()).digest('hex'), storageKey: `${who.workspaceId}/${brand.id}/kit/${randomUUID()}` })).assetId as string;
     return { db, engine, ops, adapter, who, brand, cmd, read, google, approvedOffer, approvedCampaign, approvedCampaignFor, liveSite, connect, request, work, job, hooks, advance, kitImage };
   };
 
@@ -600,6 +600,72 @@ export function campaignCases(connection: () => ReturnType<typeof connect>) {
       expect(ids.length).toBeGreaterThan(0);
       expect(new Set(ids).size).toBe(1);
       expect(await x.db.select().from(t.experiments).where(eq(t.experiments.brandId, x.brand.id))).toHaveLength(1);
+    });
+  });
+
+  describe('ADR-0036 · Google Performance Max and Meta messaging campaigns (simulator only)', () => {
+    it('each type belongs to its provider; Performance Max checks its asset group against Google’s limits and creates budget → campaign → asset group → assets in pause', async () => {
+      const x = await setup();
+      await expect(x.cmd('create', { provider: 'META_ADS', objective: 'PMAX', name: 'Mal', idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'INVALID' });
+      await expect(x.cmd('create', { provider: 'GOOGLE_ADS', objective: 'MESSAGES', name: 'Mal', idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'INVALID' });
+      const offer = await x.approvedOffer();
+      const landscape = await x.kitImage(1200, 628), square = await x.kitImage(1200, 1200), small = await x.kitImage(100, 100);
+      const pmax = (over: Record<string, unknown> = {}) => ({ ...x.google(offer), name: 'Performance Max café', search: undefined, pmax: { headlines: ['Café de origen', 'Entrega semanal', 'Prueba sin costo'], longHeadlines: ['Café de especialidad para cafeterías que quieren constancia'], descriptions: ['Café de especialidad para tu barra.', 'Pedidos fijos cada semana.'], businessName: 'Café Ñandú', landscapeImageAssetId: landscape, squareImageAssetId: square, logoAssetId: square, audienceSignal: 'cafeterías de especialidad', ...over } });
+      // Checks: too few headlines, a long business name and a logo below the minimum block the request.
+      const created = await x.cmd('create', { provider: 'GOOGLE_ADS', objective: 'PMAX', name: 'Performance Max café', idempotencyKey: randomUUID() }) as { campaignId: string };
+      let c = (await x.read()).campaigns.find(z => z.id === created.campaignId)!;
+      expect(c.objective).toBe('PMAX');
+      await x.cmd('draft', { campaignId: c.id, expectedRevision: c.revision, content: pmax({ headlines: ['Solo uno'], businessName: 'Un nombre de empresa demasiado largo', logoAssetId: small }) });
+      c = (await x.read()).campaigns.find(z => z.id === created.campaignId)!;
+      expect(c.draft!.checks.map((i: { code: string }) => i.code)).toEqual(expect.arrayContaining(['PMAX_HEADLINES', 'PMAX_BUSINESS', 'PMAX_LOGO']));
+      expect(c.draft!.content.search).toBeNull();
+      // An image of another brand never enters the content.
+      await expect(x.cmd('draft', { campaignId: c.id, expectedRevision: c.revision, content: { ...pmax(), pmax: { ...pmax().pmax, squareImageAssetId: 'imagen-ajena' } } })).rejects.toMatchObject({ code: 'INVALID' });
+      const a = await x.approvedCampaignFor('GOOGLE_ADS', pmax(), 'PMAX');
+      const approved = (await x.read()).campaigns.find(z => z.id === a.campaignId)!;
+      expect(approved.approved!.checks.filter((i: { code: string }) => i.code !== 'OUTDATED')).toEqual([]);
+      const { linkId } = await x.connect('GOOGLE_ADS');
+      const req = await x.request(a.campaignId, linkId);
+      await x.work();
+      const job = await x.job(req.jobId);
+      expect(job.status).toBe('SUCCEEDED');
+      expect(job.steps.map((s: { key: string }) => s.key)).toEqual(['budget', 'campaign', 'asset_group', 'asset_group_assets']);
+      expect((await x.read()).campaigns.find(z => z.id === a.campaignId)!.delivery).toBe('PAUSED');
+      // Activation is a second authorization, as for every type.
+      const act = await x.request(a.campaignId, linkId, 'NORMAL', randomUUID(), 'ACTIVATE');
+      await x.work();
+      expect((await x.job(act.jobId)).status).toBe('SUCCEEDED');
+      expect((await x.read()).campaigns.find(z => z.id === a.campaignId)!.delivery).toBe('ACTIVE');
+    });
+
+    it('Meta messaging: WhatsApp or Messenger instead of a web destination; its own checks; the screen names the conversation; conversations are reported apart', async () => {
+      const x = await setup();
+      const offer = await x.approvedOffer();
+      const image = await x.kitImage();
+      const content = (over: Record<string, unknown> = {}) => ({ ...x.google(offer), name: 'Mensajes café', search: undefined, destination: { kind: 'URL', url: 'https://ignorado.example' }, social: { primaryText: 'Escríbenos y te mandamos muestras', headline: 'Café para tu barra', imageAssetId: image, imageAlt: 'Una taza de café' }, messaging: { destination: 'WHATSAPP', welcomeMessage: 'Hola, ¿qué café buscas?', iceBreakers: ['¿Hacen envíos?'], ...over } });
+      const created = await x.cmd('create', { provider: 'META_ADS', objective: 'MESSAGES', name: 'Mensajes café', idempotencyKey: randomUUID() }) as { campaignId: string };
+      let c = (await x.read()).campaigns.find(z => z.id === created.campaignId)!;
+      await x.cmd('draft', { campaignId: c.id, expectedRevision: c.revision, content: content({ welcomeMessage: '' }) });
+      c = (await x.read()).campaigns.find(z => z.id === created.campaignId)!;
+      expect(c.draft!.content.destination).toBeNull(); // the conversation happens in Meta's apps
+      expect(c.draft!.content.messaging).toMatchObject({ destination: 'WHATSAPP', iceBreakers: [] }); // starters are a Messenger feature
+      const codes = c.draft!.checks.map((i: { code: string }) => i.code);
+      expect(codes).toContain('WELCOME');
+      expect(codes).not.toContain('DESTINATION');
+      const a = await x.approvedCampaignFor('META_ADS', content({ destination: 'MESSENGER', iceBreakers: ['¿Hacen envíos?', '¿Tienen descafeinado?'] }), 'MESSAGES');
+      const { linkId } = await x.connect('META_ADS');
+      const screen = await x.engine.campaignScreen(x.who.token, { brandId: x.brand.id, campaignId: a.campaignId, linkId, operation: 'CREATE_PAUSED' });
+      expect(screen.summary.destination).toBe('Conversación en Messenger de la página');
+      const req = await x.request(a.campaignId, linkId);
+      await x.work();
+      expect((await x.job(req.jobId)).steps.map((s: { key: string }) => s.key)).toEqual(['campaign', 'ad_set', 'creative', 'ad']);
+      await x.request(a.campaignId, linkId, 'NORMAL', randomUUID(), 'ACTIVATE');
+      await x.work();
+      await x.engine.campaignReadStatus(x.who.token, { brandId: x.brand.id, campaignId: a.campaignId });
+      const results = await x.engine.results(x.who.token, x.brand.id);
+      const metrics = results.campaigns.find((z: { id: string }) => z.id === a.campaignId)!.metrics.map((m: { label: string }) => m.label);
+      expect(metrics).toContain('Conversaciones iniciadas según Meta Ads');
+      expect(metrics.some((l: string) => l.startsWith('Conversiones atribuidas'))).toBe(false);
     });
   });
 }

@@ -171,7 +171,9 @@ describe('ADR-0030 · Brando marketing proposal view', () => {
     expect(html).toContain('<strong>Por qué:</strong> Usa tu mensaje');
     expect(html).toContain('Lo que falta para afinarla');
     expect(html).toContain('Preguntas para ti');
-    expect(html).toContain('Usar esta propuesta en el formulario');
+    // PHASE4_SPEC §13 R12-06: a proposal fills only empty fields unless the person explicitly chooses to replace.
+    expect(html).toContain('Completar sólo lo vacío');
+    expect(html).toContain('Reemplazar lo que escribí');
     expect(v.brandoProposalHtml({ proposal: null, error: 'UNAVAILABLE' })).toContain('el formulario sigue disponible');
   });
   it('the Brando panel appears only when creating; editing an existing draft keeps the manual form', () => {

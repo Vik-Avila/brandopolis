@@ -18,11 +18,21 @@ export type BrandFileInfo = { format: BrandFileFormat; mediaType: string; previe
 export const isBrandFilePurpose = (v: unknown): v is BrandFilePurpose => typeof v === 'string' && (BRAND_FILE_PURPOSES as readonly string[]).includes(v);
 export const isTemplateCategory = (v: unknown): v is TemplateCategory => typeof v === 'string' && (TEMPLATE_CATEGORIES as readonly string[]).includes(v);
 
+/** The main part that makes each Office document what it is (exactly one must be present). */
 const OFFICE: Record<string, { format: BrandFileFormat; mediaType: string }> = {
-  'ppt/': { format: 'PPTX', mediaType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' },
-  'word/': { format: 'DOCX', mediaType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
-  'xl/': { format: 'XLSX', mediaType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
+  'ppt/presentation.xml': { format: 'PPTX', mediaType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' },
+  'word/document.xml': { format: 'DOCX', mediaType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+  'xl/workbook.xml': { format: 'XLSX', mediaType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
 };
+/** Active content is refused: macro-enabled documents must never pass as macro-free .pptx/.docx/.xlsx. */
+const ACTIVE_PART = /(^|\/)(vbaProject\.bin|vbaData\.xml)$|(^|\/)activeX\//i;
+/** Canonical extension per format: downloads are always named by what the file is, never by what it was called. */
+export const FORMAT_EXTENSION: Record<BrandFileFormat, string> = { PNG: 'png', JPEG: 'jpg', WEBP: 'webp', PDF: 'pdf', PPTX: 'pptx', DOCX: 'docx', XLSX: 'xlsx' };
+/** A safe download name: the original base name (sanitized) with the detected format's extension. */
+export function downloadName(originalName: string, format: BrandFileFormat) {
+  const base = originalName.replace(/\.[^.]*$/, '').replace(/[^\w\- ]+/g, '_').trim().slice(0, 100) || 'archivo';
+  return `${base}.${FORMAT_EXTENSION[format]}`;
+}
 const u16 = (b: Uint8Array, o: number) => b[o] | (b[o + 1] << 8);
 const u32 = (b: Uint8Array, o: number) => (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0;
 
@@ -51,9 +61,10 @@ export function inspectBrandFile(bytes: Uint8Array): BrandFileInfo {
   if (u32(bytes, 0) === 0x04034b50) {
     const names = zipEntryNames(bytes);
     if (!names.includes('[Content_Types].xml')) throw new AppError('INVALID', 'Unsupported file type');
-    const kind = Object.keys(OFFICE).find(prefix => names.some(n => n.startsWith(prefix)));
-    if (!kind) throw new AppError('INVALID', 'Unsupported file type');
-    return { ...OFFICE[kind], previewable: false, width: null, height: null };
+    if (names.some(n => ACTIVE_PART.test(n))) throw new AppError('INVALID', 'Documents with macros or active content are not accepted');
+    const kinds = Object.keys(OFFICE).filter(part => names.includes(part));
+    if (kinds.length !== 1) throw new AppError('INVALID', 'Unsupported file type');
+    return { ...OFFICE[kinds[0]], previewable: false, width: null, height: null };
   }
   const info = inspectKitAsset(bytes);
   if (!['PNG', 'JPEG', 'WEBP', 'PDF'].includes(info.format)) throw new AppError('INVALID', 'Unsupported file type for this use');

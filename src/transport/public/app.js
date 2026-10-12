@@ -2,6 +2,7 @@ import {createBrandoPresence} from './brando-presence.js';
 const $=s=>document.querySelector(s);
 import {campaignsHtml,canvaPanelHtml,cycleReviewHtml,cycleExperimentHtml,sitesHtml,newSection,clientsHtml,resultsHtml,guideHtml,collaborationHtml,invitationLinkHtml,portalHtml,setupHtml,SETUP_LABELS,SETUP_STAGES,identityDirectionsHtml,identityHtml,kitFormHtml,brandoProposalHtml,areaTabsHtml,deliverablesHtml,deliverableFormHtml,deliverableText,AREA_TYPES,planHtml,sharedPlanHtml,objectiveFormHtml,focusFormHtml,actionFormHtml,offersHtml,offerFormHtml,workIntentFieldsHtml,escape,labels,questionText,questionHelp,railAttentionHtml,railHistoryHtml,strategyProgress,decisionGuide,strategicSectionsHtml,reviewUpdates,reviewUpdatesHtml,validationNextHtml,planQualityHtml,hypothesisWords,directionWords,declaredContextHtml,decisionIntelligenceHtml,evaluatorLabel,fmt,brandoPlainText,brandoAnswerHtml,brandoContextHtml,brandoSectionOrientation,brandoSectionHtml,brandoTicketExpired,needsReview,stateBadge,capabilityLabel,practiceHtml,homeHtml,impactPair as impactView,historyHtml as historyView} from './product-views.js';
 import {trapFocus,decisionTabs,viewTabs} from './product-interactions.js';
+import {submitDialogHtml,notificationsPanelHtml,homeActionsHtml,offerProposalHtml,planRowHtml,templatesHtml,shareSummaryHtml,variantIssues,variantIssueText,policiesHtml} from './product-views.js';
 import * as analytics from './analytics.js';
 import {PILOT_EVENTS} from './analytics.js';
 let activeDecisionTab='overview';
@@ -30,7 +31,7 @@ function nextPhase(){
    is Focus Mode. The rail shows ONE tool at a time (Brando · Contexto · Atención · Historial). Session-scoped, best
    effort; switching tools never touches drafts, Brando's conversation, the open view or strategy, and never asks AI. */
 const panelKey='brandopolis:panels';
-const RAIL_TOOLS={brando:'Brando',context:'Contexto',attention:'Atención',history:'Historial'};
+const RAIL_TOOLS={brando:'Brando',context:'Contexto',attention:'Atención',history:'Historial',notifications:'Notificaciones'};
 let panels={left:false,right:true,tool:'context',strategy:false};
 try{panels={...panels,...JSON.parse(sessionStorage.getItem(panelKey)??'{}')};}catch{/* private mode: defaults */}
 if(!Object.hasOwn(RAIL_TOOLS,panels.tool))panels.tool='context';
@@ -2077,6 +2078,8 @@ async function showHome(){
  // Areas that already exist in this build; the others are named as not available yet (never a fake button).
  $('#decision').innerHTML=homeHtml(context,documentState,priority.current,{SELL_OFFER:true,MARKETING_PLAN:true,CONTENT:true,CAMPAIGN:true,SOCIAL_MEDIA:true,SALES_MATERIALS:true,VISUAL_IDENTITY:true,WEBSITE:true});
  bindWorkPriorityForm();
+ await refreshNotifications();
+ if(seq===navSeq){$('#decision .next-step')?.insertAdjacentHTML('afterend',homeActionsHtml(notificationData));const actions=$('#decision .home-actions');if(actions){bindNotificationLinks(actions);actions.querySelector('[data-open-notifications]')?.addEventListener('click',event=>selectRailTool('notifications',event.currentTarget));}}
  const setupView=await api(`/api/brand-setup?brandId=${encodeURIComponent(brandId)}`).catch(()=>null);
  if(setupView?.draft){
   const d=setupView.draft;
@@ -2098,33 +2101,121 @@ async function showHome(){
  $('#attention-context')?.addEventListener('click',()=>run(showBrandContext));
  $('#attention-documents')?.addEventListener('click',()=>openDocuments());
 }
+// ─── PHASE4_SPEC §13 · approval circuit, comments, origin decisions and brand files (views in product-review.js) ───
+let reviewPolicies=null;
+async function loadReviewPolicies(){reviewPolicies=await api(`/api/reviews/policies?brandId=${encodeURIComponent(brandId)}`);return reviewPolicies;}
+/** Origin-decision groups: «select all / none», the group control (all, none or partial) and the counter. What the
+ *  person unchecks stays unchecked: the form is never re-rendered while it is open. */
+function bindSourceGroups(root){
+ root.querySelectorAll('[data-source-group]').forEach(group=>{
+  const name=group.dataset.sourceGroup,boxes=()=>[...group.querySelectorAll(`input[name="${CSS.escape(name)}"]`)],all=group.querySelector('[data-source-all]'),count=group.querySelector('[data-source-count]');
+  const sync=()=>{const b=boxes(),n=b.filter(x=>x.checked).length;all.checked=b.length>0&&n===b.length;all.indeterminate=n>0&&n<b.length;count.textContent=`${n} de ${b.length}`;};
+  const setAll=value=>{boxes().forEach(x=>{x.checked=value;});sync();};
+  all.addEventListener('change',()=>setAll(all.checked));
+  group.querySelector('[data-source-select]')?.addEventListener('click',()=>setAll(true));
+  group.querySelector('[data-source-clear]')?.addEventListener('click',()=>setAll(false));
+  boxes().forEach(x=>x.addEventListener('change',sync));sync();
+ });
+}
+/** The dialog under a card: the person chooses who reviews before sending; without a choice nothing is sent. */
+function openSubmitDialog(host,subjectType,subjectId,versionLabel,send){
+ if(!host)return;
+ host.innerHTML=submitDialogHtml(reviewPolicies,subjectType,{subjectId,versionLabel});
+ const form=host.querySelector('form'),button=form.querySelector('button[type="submit"]');
+ form.querySelectorAll('input[name="review-reviewer"]').forEach(r=>r.addEventListener('change',()=>{button.disabled=false;}));
+ form.querySelector('[data-review-cancel]').addEventListener('click',()=>{host.innerHTML='';});
+ (form.querySelector('input[name="review-reviewer"]:checked')??form.querySelector('input[name="review-reviewer"]')??button).focus();
+ form.addEventListener('submit',event=>{event.preventDefault();const reviewerId=form.querySelector('input[name="review-reviewer"]:checked')?.value;if(!reviewerId){form.querySelector('.review-submit-status').textContent='Elige quién la revisa.';return;}send(reviewerId,event.submitter);});
+}
+const submittedMessage=r=>r.selfApproval?'Versión enviada. La revisarás tú: aprobación individual, queda registrada.':'Versión enviada a revisión. Ya no se edita; la persona responsable la aprueba o pide cambios.';
+/** Reassignment and comments of the versions inside a view (each reloads that view). */
+function bindReviewActions(root,reload){
+ root.querySelectorAll('.review-reassign-form').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();run(async()=>{await api('/api/reviews/reassign',{brandId,subjectType:form.dataset.subject,subjectId:form.dataset.subjectId,versionId:form.dataset.version,reviewerId:form.querySelector('select').value});await reload('Revisión reasignada. Sólo cambia quién decide; no concede permisos.');},event.submitter);}));
+ root.querySelectorAll('.version-comment-form').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const text=form.querySelector('textarea'),body=text.value.trim();if(!body){text.focus();notice('Escribe tu comentario.',true);return;}form.dataset.key??=crypto.randomUUID();
+  const visibility=form.querySelector('input[name="visibility"]:checked')?.value??form.querySelector('input[name="visibility"]')?.value??'INTERNAL';
+  run(async()=>{await api('/api/reviews/comment',{brandId,subjectType:form.dataset.kind,subjectId:form.dataset.subjectId,versionId:form.dataset.version,body,visibility,mentions:[...form.querySelectorAll('input[name="mention"]:checked')].map(x=>x.value),idempotencyKey:form.dataset.key});await reload(visibility==='SHARED'?'Comentario publicado. Tu cliente lo verá si esta versión está compartida.':'Comentario interno publicado.');},event.submitter);}));
+}
+const FILE_ERRORS={'Unsupported file type':'Ese tipo de archivo no se acepta: usa PNG, JPEG, WebP, PDF, PowerPoint, Word o Excel.','Unsupported file type for this use':'Ese tipo de archivo no se acepta aquí: usa PNG, JPEG, WebP, PDF, PowerPoint, Word o Excel.','File too large':'El archivo supera 15 MB.','Invalid file size':'El archivo supera 15 MB.','Documents with macros or active content are not accepted':'No se aceptan documentos con macros o contenido activo.','Damaged document':'El documento parece dañado.','Empty file':'El archivo está vacío.','Choose a category for the template':'Elige la categoría de la plantilla.'};
+/** Uploads one brand file (reference, final art or template); the server decides the format and checks access. */
+async function uploadBrandFile(file,{purpose,deliverableId=null,previousFileId=null,category=null}){
+ const headers={'Content-Type':'application/octet-stream','X-Brand-Id':brandId,'X-File-Name':encodeURIComponent(file.name),'X-File-Purpose':purpose};
+ if(deliverableId)headers['X-Deliverable-Id']=deliverableId;if(previousFileId)headers['X-Previous-File-Id']=previousFileId;if(category)headers['X-File-Category']=category;
+ const response=await fetch('/api/brand-files',{method:'POST',headers,body:file,credentials:'same-origin'});const body=await response.json().catch(()=>({}));
+ if(!response.ok){const error=new Error(FILE_ERRORS[body.message]??body.message??'No se pudo subir el archivo.');error.code=body.code;throw error;}
+ return body;
+}
+/** Fields of a form that a proposal may fill: only the empty ones, unless the person chose to replace. */
+const fillField=(el,value,replace)=>{if(!el||value==null||value==='')return;if(replace||!el.value.trim())el.value=value;};
+
 /** PHASE4_SPEC §4.1 · Productos y servicios. Every change goes through the engine (scope, revision 409, audit). */
 let offersCache=[];
 async function showOffers(){
  if(!enterView('#offers','Productos y servicios'))return;
  const [nextContext,offers]=await Promise.all([api(`/api/context?brandId=${encodeURIComponent(brandId)}`),api(`/api/offers?brandId=${encodeURIComponent(brandId)}`)]);
+ await loadReviewPolicies();
  context=nextContext;offersCache=offers;renderContext();
- $('#decision').innerHTML=offersHtml(offers);offersTab='offers';mountAreaTabs('offers','offers');
+ $('#decision').innerHTML=offersHtml(offers,{policies:reviewPolicies,me:user.userId});offersTab='offers';mountAreaTabs('offers','offers');
  $('#offer-new').addEventListener('click',()=>openOfferEditor(null));
  const byId=id=>offersCache.find(o=>o.id===id);
  $('#decision').querySelectorAll('[data-offer-edit]').forEach(b=>b.addEventListener('click',()=>openOfferEditor(byId(b.dataset.offerEdit))));
  const command=(action,payload,message)=>run(async()=>{await api(`/api/offers/${action}`,{brandId,...payload});await showOffers();notice(message);});
- $('#decision').querySelectorAll('[data-offer-submit]').forEach(b=>b.addEventListener('click',()=>{const o=byId(b.dataset.offerSubmit);command('submit',{offerId:o.id,expectedRevision:o.revision},'Versión enviada a revisión. Ya no se edita; una persona la aprueba o pide cambios.');}));
+ // PHASE4_SPEC §13 · sending asks who reviews first (policy default preselected; approving alone only if allowed).
+ $('#decision').querySelectorAll('[data-offer-submit]').forEach(b=>b.addEventListener('click',()=>{const o=byId(b.dataset.offerSubmit);openSubmitDialog($('#decision').querySelector(`[data-submit-host="${CSS.escape(o.id)}"]`),'OFFER',o.id,`versión ${o.draft.sequence}`,(reviewerId,button)=>run(async()=>{const r=await api('/api/offers/submit',{brandId,offerId:o.id,expectedRevision:o.revision,reviewerId});await showOffers();notice(submittedMessage(r));},button));}));
+ $('#decision').querySelectorAll('[data-offer-derive]').forEach(b=>b.addEventListener('click',()=>{const o=byId(b.dataset.offerDerive);b.dataset.key??=crypto.randomUUID();run(async()=>{await api('/api/offers/create-from',{brandId,sourceOfferId:o.id,idempotencyKey:b.dataset.key});await showOffers();notice(`Borrador nuevo creado a partir de «${o.approved.content.name}». Es independiente: no hereda su aprobación, revisores, invitaciones, publicaciones ni autorizaciones.`);},b);}));
+ bindReviewActions($('#decision'),async message=>{await showOffers();notice(message);});
  $('#decision').querySelectorAll('[data-offer-new-draft]').forEach(b=>b.addEventListener('click',()=>{const o=byId(b.dataset.offerNewDraft);command('new-draft',{offerId:o.id,expectedRevision:o.revision},'Nueva versión en borrador. La versión aprobada sigue vigente mientras tanto.');}));
  $('#decision').querySelectorAll('[data-offer-retire]').forEach(b=>b.addEventListener('click',()=>{const o=byId(b.dataset.offerRetire);command('retire',{offerId:o.id,expectedRevision:o.revision},'Oferta retirada. Se conserva con su historial.');}));
- $('#decision').querySelectorAll('.offer-decide').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const criterion=form.querySelector('textarea').value.trim();if(criterion.length<10){form.querySelector('textarea').focus();notice('Escribe al menos diez caracteres para explicar tu decisión.',true);return;}const decision=event.submitter?.value;const keyName=`key${decision}`;form.dataset[keyName]??=crypto.randomUUID();command('decide',{offerId:form.dataset.offer,versionId:form.dataset.version,fingerprint:form.dataset.fingerprint,decision,criterion,idempotencyKey:form.dataset[keyName]},decision==='APPROVE'?'Versión aprobada. Es la que usarán materiales, sitio y campañas.':'Cambios solicitados. Se crean en una versión nueva.');}));
+ $('#decision').querySelectorAll('.offer-decide').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const criterion=form.querySelector('textarea').value.trim();if(criterion.length<10){form.querySelector('textarea').focus();notice('Escribe al menos diez caracteres para explicar tu decisión.',true);return;}const decision=event.submitter?.value;const keyName=`key${decision}`;form.dataset[keyName]??=crypto.randomUUID();command('decide',{offerId:form.dataset.offer,versionId:form.dataset.version,fingerprint:form.dataset.fingerprint,decision,criterion,idempotencyKey:form.dataset[keyName]},decision==='APPROVE'?'Versión aprobada. Es la que usarán materiales, sitio y campañas.':'Cambios solicitados con tu comentario. Se hacen en una versión nueva.');}));
 }
 function openOfferEditor(offer){
- const host=$('#offer-editor');host.innerHTML=offerFormHtml(context,offer?.draft?.content??null,offer);
- const form=$('#offer-form');$('#offer-name').focus();
- $('#offer-has-price').addEventListener('change',event=>{form.querySelector('.offer-price').hidden=!event.currentTarget.checked;});
+ const approvedOffers=offersCache.filter(o=>o.approved&&o.status==='ACTIVE').map(o=>({id:o.id,name:o.approved.content.name}));
+ const host=$('#offer-editor');host.innerHTML=offerFormHtml(context,offer?.draft?.content??null,offer,{approvedOffers});
+ const form=$('#offer-form'),fields=form.querySelector('.offer-form-fields');
+ const showFields=()=>{fields.hidden=false;};
+ // PHASE4_SPEC §13 · Brando first: build with Brando, fill in by hand, or start from an approved offer.
+ const start=form.querySelector('.brando-start');
+ if(start){
+  start.querySelector('[data-start="brando"]').focus();
+  start.querySelector('[data-start="manual"]').addEventListener('click',()=>{showFields();$('#offer-name').focus();});
+  start.querySelector('[data-start="offer"]')?.addEventListener('click',()=>{start.querySelector('.brando-start-offer').hidden=false;$('#start-offer').focus();});
+  start.querySelector('[data-start-offer-confirm]')?.addEventListener('click',event=>{const source=$('#start-offer').value,name=approvedOffers.find(o=>o.id===source)?.name??'';event.currentTarget.dataset.key??=crypto.randomUUID();const key=event.currentTarget.dataset.key;run(async()=>{await api('/api/offers/create-from',{brandId,sourceOfferId:source,idempotencyKey:key});await showOffers();notice(`Borrador nuevo creado a partir de «${name}». No hereda su aprobación ni nada compartido o autorizado.`);},event.currentTarget);});
+  start.querySelector('[data-start="brando"]').addEventListener('click',event=>run(async()=>{
+   const r=await api('/api/offers/propose',{brandId});showFields();
+   const box=start.querySelector('.brando-start-result');box.innerHTML=offerProposalHtml(r);
+   const apply=replace=>{const p=r.proposal,lines=list=>list.join('\n');
+    fillField($('#offer-segment'),p.segment,replace);fillField($('#offer-outcome'),p.outcome,replace);fillField($('#offer-need'),p.need,replace);
+    fillField($('#offer-benefits'),lines(p.benefits),replace);fillField($('#offer-differentiators'),lines(p.differentiators),replace);
+    // Origin decisions are only added (never unchecked) by a proposal.
+    for(const box2 of form.querySelectorAll('input[name="source"]'))if(p.sourceDecisionVersionIds.includes(box2.value))box2.checked=true;
+    form.querySelector('[data-source-group] input[name="source"]')?.dispatchEvent(new Event('change'));
+    box.innerHTML=`<p class="hint">${replace?'Propuesta aplicada: reemplazó lo que habías escrito en esos campos.':'Propuesta aplicada sólo en los campos vacíos; lo que escribiste no cambió.'} Escribe el nombre, la necesidad y, si existen, precios y condiciones.</p>`;$('#offer-name').focus();};
+   box.querySelector('[data-proposal-fill]').addEventListener('click',()=>apply(false));
+   box.querySelector('[data-proposal-replace]').addEventListener('click',()=>apply(true));
+  },event.currentTarget));
+ } else $('#offer-name').focus();
+ bindSourceGroups(form);
+ // Price plans: add and remove rows; a legacy price arrives as one plan with its periodicity «Sin indicar».
+ const plansHost=form.querySelector('[data-price-plans]');
+ const bindPlan=row=>row.querySelector('[data-plan-remove]').addEventListener('click',()=>{row.remove();form.querySelector('[data-plan-add]').focus();});
+ plansHost.querySelectorAll('.price-plan').forEach(bindPlan);
+ form.querySelector('[data-plan-add]').addEventListener('click',()=>{const next=Math.max(-1,...[...plansHost.querySelectorAll('.price-plan')].map(r=>Number(r.dataset.planIndex)))+1;plansHost.insertAdjacentHTML('beforeend',planRowHtml(null,next));const row=plansHost.lastElementChild;bindPlan(row);row.querySelector('[data-pp="name"]').focus();});
  $('#offer-cancel').addEventListener('click',()=>{host.innerHTML='';$('#offer-new').focus();});
  form.addEventListener('submit',event=>{event.preventDefault();
   const lines=id=>$(id).value.split('\n').map(s=>s.trim()).filter(Boolean),checked=name=>[...form.querySelectorAll(`input[name="${name}"]:checked`)].map(i=>i.value);
-  const amount=Number(String($('#offer-amount')?.value??'').replace(',','.'));
   if(!$('#offer-name').value.trim()){$('#offer-form-status').textContent='Escribe el nombre de la oferta.';$('#offer-name').focus();return;}
-  if($('#offer-has-price').checked&&!(amount>=0&&$('#offer-amount').value.trim())){$('#offer-form-status').textContent='Escribe el monto o desmarca el precio.';$('#offer-amount').focus();return;}
-  const content={name:$('#offer-name').value,kind:$('#offer-kind').value,audience:{customerDecisionVersionId:$('#offer-customer')?.checked?$('#offer-customer').value:null,segment:$('#offer-segment').value},need:$('#offer-need').value,outcome:$('#offer-outcome').value,benefits:lines('#offer-benefits'),differentiators:lines('#offer-differentiators'),conditions:$('#offer-conditions').value,proofIds:checked('proof'),sourceDecisionVersionIds:checked('source'),hypothesisIds:checked('hypothesis'),price:$('#offer-has-price').checked?{amountMinor:Math.round(amount*100),currency:$('#offer-currency').value.trim().toUpperCase(),validFrom:$('#offer-valid-from').value||null,validUntil:$('#offer-valid-until').value||null,certainty:$('#offer-certainty').value}:null};
+  const plans=[];
+  for(const row of form.querySelectorAll('.price-plan')){
+   const f=key=>row.querySelector(`[data-pp="${key}"]`),val=key=>f(key).value.trim(),amount=Number(val('amount').replace(',','.'));
+   const fail=(key,message)=>{$('#offer-form-status').textContent=message;f(key).focus();return null;};
+   if(!val('name'))return fail('name','Ponle nombre a cada plan de precio o quítalo.');
+   if(!val('amount')||!(amount>=0))return fail('amount','Escribe el importe del plan.');
+   if(!/^[A-Za-z]{3}$/.test(val('currency')))return fail('currency','La moneda son tres letras, por ejemplo MXN.');
+   if(val('periodicity')==='CUSTOM'&&!val('customPeriod'))return fail('customPeriod','Describe la periodicidad personalizada.');
+   if(val('unit')==='OTHER'&&!val('unitLabel'))return fail('unitLabel','Describe la unidad.');
+   if(val('validFrom')&&val('validUntil')&&val('validUntil')<val('validFrom'))return fail('validUntil','La fecha final es anterior a la inicial.');
+   plans.push({name:val('name'),amountMinor:Math.round(amount*100),currency:val('currency').toUpperCase(),periodicity:val('periodicity')||null,customPeriod:val('customPeriod'),unit:val('unit'),unitLabel:val('unitLabel'),conditions:val('conditions'),validFrom:val('validFrom')||null,validUntil:val('validUntil')||null,certainty:val('certainty')});
+  }
+  const content={name:$('#offer-name').value,kind:$('#offer-kind').value,audience:{customerDecisionVersionId:$('#offer-customer')?.checked?$('#offer-customer').value:null,segment:$('#offer-segment').value},need:$('#offer-need').value,outcome:$('#offer-outcome').value,benefits:lines('#offer-benefits'),differentiators:lines('#offer-differentiators'),conditions:$('#offer-conditions').value,proofIds:checked('proof'),sourceDecisionVersionIds:checked('source'),hypothesisIds:checked('hypothesis'),price:null,pricePlans:plans};
   run(async()=>{
    if(offer)await api('/api/offers/draft',{brandId,offerId:offer.id,expectedRevision:offer.revision,content});
    else await api('/api/offers/create',{brandId,content,idempotencyKey:crypto.randomUUID()});
@@ -2186,7 +2277,7 @@ const showOffersArea=()=>offersTab==='offers'?showOffers():showDeliverables('mat
 function mountAreaTabs(area,active){
  const hero=$('#decision .ws-hero');if(!hero)return;
  hero.insertAdjacentHTML('afterend',areaTabsHtml(area,active));
- const go=key=>{if(area==='brand')return run(key==='guide'?showGuide:showIdentity);if(area==='marketing'){marketingTab=key;return run(async()=>{await showMarketing();$(`[data-area-tab="${key}"]`)?.focus();});}offersTab=key;return run(async()=>{await showOffersArea();$(`[data-area-tab="${key}"]`)?.focus();});};
+ const go=key=>{if(area==='brand')return run(key==='guide'?showGuide:key==='templates'?showTemplates:showIdentity);if(area==='marketing'){marketingTab=key;return run(async()=>{await showMarketing();$(`[data-area-tab="${key}"]`)?.focus();});}offersTab=key;return run(async()=>{await showOffersArea();$(`[data-area-tab="${key}"]`)?.focus();});};
  const tabs=[...document.querySelectorAll('[data-area-tab]')];
  tabs.forEach(tab=>tab.addEventListener('click',()=>{if(tab.getAttribute('aria-selected')!=='true')go(tab.dataset.areaTab);}));
  $('.area-tabs').addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const i=tabs.indexOf(document.activeElement),n=event.key==='Home'?0:event.key==='End'?tabs.length-1:(i+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;go(tabs[n].dataset.areaTab);});
@@ -2198,9 +2289,11 @@ async function showDeliverables(area){
  const inMarketing=area!=='materials';
  if(!enterView(inMarketing?'#marketing':'#offers',inMarketing?(area==='social'?'Redes sociales':'Campañas digitales'):'Materiales de venta'))return;
  const [nextContext,list,offers]=await Promise.all([api(`/api/context?brandId=${encodeURIComponent(brandId)}`),api(`/api/deliverables?brandId=${encodeURIComponent(brandId)}&types=${AREA_TYPES[area].join(',')}`),api(`/api/offers?brandId=${encodeURIComponent(brandId)}`)]);
+ await loadReviewPolicies();
+ const files=list.length?(await api(`/api/brand-files?brandId=${encodeURIComponent(brandId)}&deliverableIds=${encodeURIComponent(list.map(d=>d.id).join(','))}`)).files:[];
  context=nextContext;deliverableCache=list;renderContext();
  deliverableOffers=offers.map(o=>({id:o.id,status:o.status,approved:Boolean(o.approved),name:(o.approved??o.draft??o.inReview[0])?.content.name??'Oferta'}));
- const root=$('#decision');root.innerHTML=deliverablesHtml(area,list,deliverableOffers);
+ const root=$('#decision');root.innerHTML=deliverablesHtml(area,list,deliverableOffers,{policies:reviewPolicies,me:user.userId,files,brandId});
  if(inMarketing){marketingTab=area;mountAreaTabs('marketing',area);}else{offersTab='materials';mountAreaTabs('offers','materials');}
  // Loaded inside the view's own operation (run() does not nest): failures are shown, never silent.
  if(area==='ads')mountCampaigns().catch(()=>notice('No se pudieron cargar las campañas. Vuelve a abrir la pestaña.',true));
@@ -2211,10 +2304,15 @@ async function showDeliverables(area){
  const command=(action,payload,message)=>run(async()=>{await api(`/api/deliverables/${action}`,{brandId,...payload});await reload(message)();});
  root.querySelectorAll('[data-deliverable-new]').forEach(b=>b.addEventListener('click',()=>openDeliverableEditor(area,b.dataset.deliverableNew,null)));
  root.querySelectorAll('[data-deliverable-edit]').forEach(b=>b.addEventListener('click',()=>{const d=byId(b.dataset.deliverableEdit);openDeliverableEditor(area,d.type,d);}));
- root.querySelectorAll('[data-deliverable-submit]').forEach(b=>b.addEventListener('click',()=>{const d=byId(b.dataset.deliverableSubmit);command('submit',{deliverableId:d.id,expectedRevision:d.revision},'Versión enviada a revisión. Ya no se edita; una persona la aprueba o pide cambios.');}));
+ // PHASE4_SPEC §13 · sending asks who reviews first; final art and brief references are uploaded next to the card.
+ root.querySelectorAll('[data-deliverable-submit]').forEach(b=>b.addEventListener('click',()=>{const d=byId(b.dataset.deliverableSubmit);openSubmitDialog(root.querySelector(`[data-submit-host="${CSS.escape(d.id)}"]`),d.type,d.id,`versión ${d.draft.sequence}`,(reviewerId,button)=>run(async()=>{const r=await api('/api/deliverables/submit',{brandId,deliverableId:d.id,expectedRevision:d.revision,reviewerId});await reload(submittedMessage(r))();},button));}));
+ bindReviewActions(root,async message=>{await reload(message)();});
+ root.querySelectorAll('[data-final-art]').forEach(input=>input.addEventListener('change',()=>{const file=input.files?.[0];if(!file)return;run(async()=>{const r=await uploadBrandFile(file,{purpose:'FINAL_ART',deliverableId:input.dataset.finalArt});await reload(r.newVersion?'Arte final adjunto en una versión nueva que necesita revisión. La versión aprobada no cambia.':'Arte final adjunto al borrador.')();});}));
+ root.querySelectorAll('[data-reference]').forEach(input=>input.addEventListener('change',()=>{const file=input.files?.[0];if(!file)return;run(async()=>{await uploadBrandFile(file,{purpose:'REFERENCE',deliverableId:input.dataset.reference});await reload('Referencia añadida al brief. Es interna: no se comparte con tu cliente ni se envía a Canva.')();});}));
+ root.querySelectorAll('[data-file-retire]').forEach(b=>b.addEventListener('click',()=>run(async()=>{await api('/api/brand-files/retire',{brandId,fileId:b.dataset.fileRetire});await reload('Referencia retirada.')();},b)));
  root.querySelectorAll('[data-deliverable-new-draft]').forEach(b=>b.addEventListener('click',()=>{const d=byId(b.dataset.deliverableNewDraft);command('new-draft',{deliverableId:d.id,expectedRevision:d.revision},'Nueva versión en borrador. La aprobada sigue vigente mientras tanto.');}));
  root.querySelectorAll('[data-deliverable-retire]').forEach(b=>b.addEventListener('click',()=>{const d=byId(b.dataset.deliverableRetire);command('retire',{deliverableId:d.id,expectedRevision:d.revision},'Retirado. Se conserva con su historial.');}));
- root.querySelectorAll('.deliverable-decide').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const criterion=form.querySelector('textarea').value.trim();if(criterion.length<10){form.querySelector('textarea').focus();notice('Escribe al menos diez caracteres para explicar tu decisión.',true);return;}const decision=event.submitter?.value;const keyName=`key${decision}`;form.dataset[keyName]??=crypto.randomUUID();command('decide',{deliverableId:form.dataset.deliverable,versionId:form.dataset.version,fingerprint:form.dataset.fingerprint,decision,criterion,idempotencyKey:form.dataset[keyName]},decision==='APPROVE'?'Versión aprobada.':'Cambios solicitados. Se hacen en una versión nueva.');}));
+ root.querySelectorAll('.deliverable-decide').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const criterion=form.querySelector('textarea').value.trim();if(criterion.length<10){form.querySelector('textarea').focus();notice('Escribe al menos diez caracteres para explicar tu decisión.',true);return;}const decision=event.submitter?.value;const keyName=`key${decision}`;form.dataset[keyName]??=crypto.randomUUID();command('decide',{deliverableId:form.dataset.deliverable,versionId:form.dataset.version,fingerprint:form.dataset.fingerprint,decision,criterion,idempotencyKey:form.dataset[keyName]},decision==='APPROVE'?'Versión aprobada.':'Cambios solicitados con tu comentario. Se hacen en una versión nueva.');}));
  root.querySelectorAll('.publication-form').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const date=form.querySelector('input[type="date"]'),url=form.querySelector('input[type="url"]');if(!date.value){date.focus();notice('Indica la fecha en que la publicaste.',true);return;}if(url.value&&!url.value.startsWith('https://')){url.focus();notice('El enlace debe empezar por https://',true);return;}form.dataset.key??=crypto.randomUUID();command('publication',{deliverableId:form.dataset.deliverable,versionId:form.dataset.version,publishedOn:date.value,url:url.value||null,note:form.querySelector('input:not([type])').value||null,idempotencyKey:form.dataset.key},'Publicación registrada. Brandopolis no publica por ti; sólo guarda este registro.');}));
  root.querySelectorAll('[data-export-version]').forEach(b=>b.addEventListener('click',()=>downloadExport(`/api/exports/deliverable?brandId=${encodeURIComponent(brandId)}&versionId=${encodeURIComponent(b.dataset.exportVersion)}&format=${b.dataset.exportFormat}`,b)));
  root.querySelectorAll('[data-copy-version]').forEach(b=>b.addEventListener('click',async()=>{const v=versionById(b.dataset.copyVersion);try{await navigator.clipboard.writeText(deliverableText(v.content));notice('Texto copiado.');}catch{notice('No se pudo copiar automáticamente. Usa «Descargar .txt».',true);}}));
@@ -2222,13 +2320,33 @@ async function showDeliverables(area){
 }
 function openDeliverableEditor(area,type,d){
  const host=$('#deliverable-editor');host.innerHTML=deliverableFormHtml(type,context,deliverableOffers,d?.draft?.content??null,d);
- const form=$('#deliverable-form');$('#dl-name').focus();
+ const form=$('#deliverable-form'),fields=form.querySelector('.offer-form-fields'),brandoBox=form.querySelector('.brando-marketing');
+ const showFields=()=>{fields.hidden=false;};
+ // PHASE4_SPEC §13 · Brando first: build with Brando, fill in by hand, or start from an approved offer.
+ const start=form.querySelector('.brando-start');
+ if(start){
+  start.querySelector('[data-start="brando"]').focus();
+  start.querySelector('[data-start="manual"]').addEventListener('click',()=>{showFields();$('#dl-name').focus();});
+  start.querySelector('[data-start="brando"]').addEventListener('click',()=>{showFields();brandoBox.hidden=false;$('#dl-request').focus();});
+  start.querySelector('[data-start="offer"]')?.addEventListener('click',()=>{start.querySelector('.brando-start-offer').hidden=false;$('#start-offer').focus();});
+  start.querySelector('[data-start-offer-confirm]')?.addEventListener('click',()=>{showFields();brandoBox.hidden=false;if($('#dl-offer'))$('#dl-offer').value=$('#start-offer').value;start.querySelector('.brando-start-offer').hidden=true;$('#dl-ask-brando').click();});
+  const confirm=start.querySelector('[data-start-offer-confirm]');if(confirm)confirm.textContent='Usar esta oferta y pedir la propuesta';
+ } else $('#dl-name').focus();
+ bindSourceGroups(form);
+ // Network variants: choosing a network shows its variant (base text as a starting point) with live checks.
+ const baseText=()=>({text:$('#dl-text')?.value??'',tags:$('#dl-hashtags')?.value??''});
+ const variantOf=box=>form.querySelector(`.social-variant[data-variant="${CSS.escape(box.value)}"]`);
+ const checkVariant=panel=>{const v={network:panel.dataset.variant,format:panel.querySelector('[data-variant-format]').value,text:panel.querySelector('[data-variant-text]').value.trim(),hashtags:panel.querySelector('[data-variant-tags]').value.split(/[\s,]+/).filter(Boolean)};const issues=variantIssues(v);panel.querySelector('[data-variant-status]').textContent=issues.length?`Revisa: ${variantIssueText(issues)}.`:'Lista para esta red.';return {v,issues};};
+ form.querySelectorAll('input[name="dl-variant-network"]').forEach(box=>box.addEventListener('change',()=>{const panel=variantOf(box);panel.hidden=!box.checked;if(box.checked){const t=panel.querySelector('[data-variant-text]'),g=panel.querySelector('[data-variant-tags]');if(!t.value.trim())t.value=baseText().text;if(!g.value.trim())g.value=baseText().tags;checkVariant(panel);t.focus();}}));
+ form.querySelectorAll('.social-variant').forEach(panel=>{if(!panel.hidden)checkVariant(panel);panel.querySelectorAll('textarea,input,select').forEach(el=>el.addEventListener('input',()=>checkVariant(panel)));});
  form.querySelector('[data-editor-cancel]').addEventListener('click',()=>{host.innerHTML='';});
  // ADR-0030 · Brando proposes from approved information only; using it fills the form, never saves or approves.
  $('#dl-ask-brando')?.addEventListener('click',event=>run(async()=>{
   const r=await api('/api/brando/marketing',{brandId,type,offerId:$('#dl-offer')?.value||null,request:$('#dl-request').value});
   const result=$('#dl-brando-result');result.innerHTML=brandoProposalHtml(r);
-  $('#dl-use-proposal')?.addEventListener('click',()=>{fillDeliverableForm(r.proposal.content);form.dataset.proof=r.assistanceProof?.proofId??'';result.innerHTML='<p class="hint">Propuesta copiada al formulario. Edítala y guarda el borrador cuando esté lista.</p>';$('#dl-name').focus();});
+  const use=replace=>{fillDeliverableForm(r.proposal.content,{replace});form.dataset.proof=r.assistanceProof?.proofId??'';result.innerHTML=`<p class="hint">${replace?'Propuesta aplicada: reemplazó lo que habías escrito en esos campos.':'Propuesta aplicada sólo en los campos vacíos; lo que escribiste no cambió.'} Edítala y guarda el borrador cuando esté lista.</p>`;$('#dl-name').focus();};
+  $('#dl-use-proposal')?.addEventListener('click',()=>use(false));
+  $('#dl-replace-proposal')?.addEventListener('click',()=>use(true));
  },event.currentTarget));
  form.addEventListener('submit',event=>{event.preventDefault();
   const v=id=>$(id)?.value??'',lines=id=>v(id).split('\n').map(x=>x.trim()).filter(Boolean),status=$('#deliverable-form-status');
@@ -2237,7 +2355,7 @@ function openDeliverableEditor(area,type,d){
   const bodies={
    SALES_PRESENTATION:()=>({audience:v('#dl-audience'),slides:v('#dl-slides').split(/\n\s*\n/).map(block=>{const [title,...rest]=block.trim().split('\n');return {title:(title??'').trim(),text:rest.join('\n').trim()};}).filter(sl=>sl.title)}),
    OFFER_COPY:()=>({headline:v('#dl-headline'),short:v('#dl-short'),long:v('#dl-long'),callToAction:v('#dl-cta')}),
-   SOCIAL_POST:()=>({network:v('#dl-network'),format:v('#dl-format'),objective:v('#dl-objective'),scheduledDate:v('#dl-date')||null,text:v('#dl-text'),hashtags:v('#dl-hashtags').split(/[\s,]+/).filter(Boolean),materials:v('#dl-materials')}),
+   SOCIAL_POST:()=>({network:v('#dl-network'),format:v('#dl-format'),objective:v('#dl-objective'),scheduledDate:v('#dl-date')||null,text:v('#dl-text'),hashtags:v('#dl-hashtags').split(/[\s,]+/).filter(Boolean),materials:v('#dl-materials'),variants:[...form.querySelectorAll('input[name="dl-variant-network"]:checked')].filter(box=>box.value!==v('#dl-network')).map(box=>checkVariant(variantOf(box)).v)}),
    AD:()=>({channel:v('#dl-channel'),objective:v('#dl-ad-objective'),headlines:lines('#dl-headlines'),descriptions:lines('#dl-descriptions'),callToAction:v('#dl-ad-cta'),landingUrl:v('#dl-landing')||null}),
    DESIGN_BRIEF:()=>({for:v('#dl-for'),piece:v('#dl-piece'),format:v('#dl-format-size'),audience:v('#dl-brief-audience'),message:v('#dl-message'),mustInclude:v('#dl-must'),avoid:v('#dl-avoid'),dueDate:v('#dl-due')||null})
   };
@@ -2246,6 +2364,7 @@ function openDeliverableEditor(area,type,d){
   if(type==='AD'&&!body.headlines.length){status.textContent='Escribe al menos un título del anuncio.';$('#dl-headlines').focus();return;}
   if(type==='AD'&&body.landingUrl&&!body.landingUrl.startsWith('https://')){status.textContent='La página debe empezar por https://';$('#dl-landing').focus();return;}
   if(type==='DESIGN_BRIEF'&&!body.piece.trim()){status.textContent='Describe la pieza que necesitas.';$('#dl-piece').focus();return;}
+  if(type==='SOCIAL_POST'){const bad=body.variants.map(x=>({x,issues:variantIssues(x)})).find(y=>y.issues.length);if(bad){status.textContent=`La variante para ${bad.x.network} necesita ajustes: ${variantIssueText(bad.issues)}.`;form.querySelector(`.social-variant[data-variant="${CSS.escape(bad.x.network)}"] [data-variant-text]`)?.focus();return;}}
   const content={type,name:v('#dl-name'),offerId:v('#dl-offer')||null,sourceDecisionVersionIds:[...form.querySelectorAll('input[name="dl-source"]:checked')].map(i=>i.value),body};
   run(async()=>{
    if(d)await api('/api/deliverables/draft',{brandId,deliverableId:d.id,expectedRevision:d.revision,content});
@@ -2254,16 +2373,29 @@ function openDeliverableEditor(area,type,d){
   },event.submitter);
  });
 }
-/** Copies a proposal into the deliverable form fields (the person still edits and saves). */
-function fillDeliverableForm(c){
- const set=(id,value)=>{const el=$(id);if(el)el.value=value??'';};
+/** Copies a proposal into the deliverable form. By default only empty fields are filled; replacing what the person
+ *  wrote needs their explicit choice (PHASE4_SPEC §13). Origin decisions are only added, never unchecked. */
+function fillDeliverableForm(c,{replace=false}={}){
+ const set=(id,value)=>fillField($(id),value,replace);
  const b=c.body;set('#dl-name',c.name);
  if(c.type==='SALES_PRESENTATION'){set('#dl-audience',b.audience);set('#dl-slides',b.slides.map(sl=>`${sl.title}\n${sl.text}`).join('\n\n'));}
  if(c.type==='OFFER_COPY'){set('#dl-headline',b.headline);set('#dl-short',b.short);set('#dl-long',b.long);set('#dl-cta',b.callToAction);}
  if(c.type==='SOCIAL_POST'){set('#dl-network',b.network);set('#dl-format',b.format);set('#dl-objective',b.objective);set('#dl-date',b.scheduledDate);set('#dl-text',b.text);set('#dl-hashtags',b.hashtags.join(' '));set('#dl-materials',b.materials);}
  if(c.type==='AD'){set('#dl-channel',b.channel);set('#dl-ad-objective',b.objective);set('#dl-headlines',b.headlines.join('\n'));set('#dl-descriptions',b.descriptions.join('\n'));set('#dl-ad-cta',b.callToAction);set('#dl-landing',b.landingUrl);}
  if(c.type==='DESIGN_BRIEF'){set('#dl-for',b.for);set('#dl-piece',b.piece);set('#dl-format-size',b.format);set('#dl-brief-audience',b.audience);set('#dl-message',b.message);set('#dl-must',b.mustInclude);set('#dl-avoid',b.avoid);set('#dl-due',b.dueDate);}
- for(const box of document.querySelectorAll('input[name="dl-source"]'))box.checked=c.sourceDecisionVersionIds.includes(box.value);
+ for(const box of document.querySelectorAll('input[name="dl-source"]'))if(c.sourceDecisionVersionIds.includes(box.value))box.checked=true;
+ document.querySelector('input[name="dl-source"]')?.dispatchEvent(new Event('change'));
+}
+/** PHASE4_SPEC §13 · Marca y recursos → Plantillas: upload, classify, new versions, download and retire. */
+let templateFilter='';
+async function showTemplates(){
+ if(!enterView('#brand-resources','Plantillas'))return;
+ const data=await api(`/api/brand-files?brandId=${encodeURIComponent(brandId)}&purpose=TEMPLATE`);
+ const root=$('#decision');root.innerHTML=templatesHtml(data,brandId,templateFilter);mountAreaTabs('brand','templates');
+ $('#template-filter').addEventListener('change',event=>{templateFilter=event.currentTarget.value;run(showTemplates);});
+ $('#template-upload').addEventListener('submit',event=>{event.preventDefault();const file=$('#template-file').files?.[0];if(!file){$('#template-status').textContent='Elige un archivo.';$('#template-file').focus();return;}run(async()=>{await uploadBrandFile(file,{purpose:'TEMPLATE',category:$('#template-category').value});await showTemplates();notice('Plantilla subida. Sólo la ve el equipo de esta marca.');},event.submitter);});
+ root.querySelectorAll('[data-template-version]').forEach(input=>input.addEventListener('change',()=>{const file=input.files?.[0];if(!file)return;run(async()=>{const r=await uploadBrandFile(file,{purpose:'TEMPLATE',previousFileId:input.dataset.templateVersion});await showTemplates();notice(`Versión ${r.sequence} de la plantilla subida. Las anteriores siguen disponibles.`);});}));
+ root.querySelectorAll('[data-file-retire]').forEach(b=>b.addEventListener('click',()=>run(async()=>{await api('/api/brand-files/retire',{brandId,fileId:b.dataset.fileRetire});await showTemplates();notice('Plantilla retirada con todas sus versiones.');},b)));
 }
 /** ADR-0034 · Marca y recursos → Identidad visual. Files are validated by the server; values are adopted explicitly. */
 let kitData=null;
@@ -2345,10 +2477,16 @@ async function showCollaboration(link){
  const root=$('#decision');root.innerHTML=collaborationHtml(data);
  if(link){$('#invite-link').innerHTML=invitationLinkHtml(link);$('#invite-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(link);notice('Enlace copiado.');}catch{$('#invite-link-value').select();notice('Selecciona el enlace y cópialo.');}});}
  const command=(action,payload,message,after)=>run(async()=>{const r=await api(`/api/collaboration/${action}`,{brandId,...payload});await showCollaboration(after?.(r));notice(message);});
- $('#invite-form')?.addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget,email=$('#invite-email').value.trim();if(!email){$('#invite-status').textContent='Escribe el correo de tu cliente.';$('#invite-email').focus();return;}form.dataset.key??=crypto.randomUUID();command('invite',{email,idempotencyKey:form.dataset.key},'Invitación creada. Copia el enlace y envíaselo a tu cliente.',r=>r.token?`${location.origin}/#invitacion=${r.token}`:undefined);});
+ $('#invite-form')?.addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget,email=$('#invite-email').value.trim();if(!email){$('#invite-status').textContent='Escribe el correo de tu cliente.';$('#invite-email').focus();return;}form.dataset.key??=crypto.randomUUID();const sendEmail=!!$('#invite-send-email')?.checked;command('invite',{email,sendEmail,idempotencyKey:form.dataset.key},sendEmail?(data.emailSimulated?'Invitación creada y correo en cola (simulado: se guarda en la bandeja local de la DEMO). También puedes copiar el enlace.':'Invitación creada y correo en cola. También puedes copiar el enlace.'):'Invitación creada. Copia el enlace y envíaselo a tu cliente.',r=>r.token?`${location.origin}/#invitacion=${r.token}`:undefined);});
+ root.querySelectorAll('[data-retry-email]').forEach(b=>b.addEventListener('click',()=>command('retry-email',{emailId:b.dataset.retryEmail},'Correo en cola de nuevo. Es el mismo mensaje; no se duplica.')));
+ // PHASE4_SPEC §13 · several items at once; the summary says exactly what the guest will see before sharing.
+ const many=$('#share-many-form');
+ if(many){const boxes=[...many.querySelectorAll('input[name="share-item"]')],submit=many.querySelector('button[type="submit"]');const sync=()=>{const titles=boxes.filter(b=>b.checked).map(b=>b.dataset.title);$('#share-summary').innerHTML=shareSummaryHtml(titles);submit.disabled=!titles.length;};boxes.forEach(b=>b.addEventListener('change',sync));sync();
+  many.addEventListener('submit',event=>{event.preventDefault();const targets=boxes.filter(b=>b.checked).map(b=>{const [targetType,targetId]=b.value.split(':');return {targetType,targetId};});if(!targets.length)return;many.dataset.key??=crypto.randomUUID();command('share-many',{targets,idempotencyKey:many.dataset.key},`Compartido${targets.length>1?`s ${targets.length} elementos`:''}. Tu cliente verá esas versiones exactas en su portal.`);});}
+ // A queued email is sent by the worker: refresh a few times so its status is visible (bounded).
+ if(data.invitations.some(i=>['QUEUED','SENDING'].includes(i.message?.status))){const seq=navSeq,tries=Number(root.dataset.emailTries??0);if(tries<8)setTimeout(()=>{if(seq===navSeq&&!operationPending){root.dataset.emailTries=String(tries+1);showCollaboration(link).catch(()=>undefined);}},2500);}else root.dataset.emailTries='0';
  root.querySelectorAll('[data-revoke-invitation]').forEach(b=>b.addEventListener('click',()=>command('revoke-invitation',{invitationId:b.dataset.revokeInvitation},'Invitación retirada: ese enlace ya no sirve.')));
  root.querySelectorAll('[data-revoke-guest]').forEach(b=>b.addEventListener('click',()=>command('revoke-guest',{guestId:b.dataset.revokeGuest},'Acceso retirado. Surte efecto en su siguiente acción; lo que ya descargó fuera de Brandopolis no se puede retirar.')));
- $('#share-form')?.addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget,[targetType,targetId]=$('#share-target').value.split(':');form.dataset.key??=crypto.randomUUID();command('share',{targetType,targetId,idempotencyKey:form.dataset.key},'Compartido. Tu cliente verá esta versión exacta en su portal.');});
  root.querySelectorAll('.share-comment').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const text=form.querySelector('textarea'),body=text.value.trim();if(!body){text.focus();notice('Escribe tu comentario.',true);return;}form.dataset.key??=crypto.randomUUID();command('comment',{shareId:form.dataset.share,body,visibility:form.querySelector('select').value,idempotencyKey:form.dataset.key},'Comentario publicado.');}));
  root.querySelectorAll('[data-withdraw]').forEach(b=>b.addEventListener('click',()=>command('withdraw',{shareId:b.dataset.withdraw},'Dejaste de compartirlo. Tu cliente ya no lo verá.')));
 }
@@ -2452,12 +2590,23 @@ async function showClients(filter=clientFilter,focusId){
  if(focusId){const card=document.getElementById(`op-${focusId}`);card?.scrollIntoView({block:'center'});}
 }
 /** ADR-0035 · Resultados: marketing, commercial operation and sales with their real availability. */
+let resultsQuery={preset:'LAST_30',compare:'NONE'};
 async function showResults(){
  if(!enterView('#results','Resultados'))return;
  const seq=navSeq;
- const data=await api(`/api/results?brandId=${encodeURIComponent(brandId)}`);
+ const query=new URLSearchParams({brandId,...resultsQuery}).toString();
+ const data=await api(`/api/results?${query}`);
  if(seq!==navSeq)return;
  $('#decision').innerHTML=resultsHtml(data);
+ // PHASE4_SPEC §13 · period, custom dates and comparison; the server resolves the ranges in the results time zone.
+ const period=$('#results-period');
+ if(period){
+  $('#rp-preset').addEventListener('change',event=>{period.querySelectorAll('.rp-custom').forEach(el=>{el.hidden=event.currentTarget.value!=='CUSTOM';});});
+  period.addEventListener('submit',event=>{event.preventDefault();const preset=$('#rp-preset').value,compare=period.querySelector('input[name="rp-compare"]:checked')?.value??'NONE';
+   if(preset==='CUSTOM'){const from=$('#rp-from').value,to=$('#rp-to').value;if(!from||!to){$('#rp-status').textContent='Elige las dos fechas.';(from?$('#rp-to'):$('#rp-from')).focus();return;}if(from>to){$('#rp-status').textContent='La fecha inicial es posterior a la final.';$('#rp-from').focus();return;}resultsQuery={preset,from,to,compare};}
+   else resultsQuery={preset,compare};
+   run(async()=>{await showResults();$('#rp-preset')?.focus();},event.submitter);});
+ }
  const review=await api(`/api/cycle-review?brandId=${encodeURIComponent(brandId)}`);
  const host=$('#cycle-review');if(!host||seq!==navSeq)return;
  host.innerHTML=cycleReviewHtml(review);
@@ -2486,7 +2635,11 @@ const campaignContent=(form,c)=>{
  const [offerId,offerVersionId,...offerName]=v('cmp-offer').split('|'),dest=v('cmp-dest'),[deliverableId,versionId]=v('cmp-ad').split('|');
  const destination=dest.startsWith('SITE:')?{kind:'SITE',siteId:dest.slice(5)}:dest==='URL'?{kind:'URL',url:v('cmp-url').trim()}:null;
  const base={name:v('cmp-name'),offer:offerId?{offerId,offerVersionId,name:offerName.join('|')}:null,destination,adDeliverable:deliverableId?{deliverableId,versionId}:null,audience:{geo:ls('cmp-geo'),ageMin:v('cmp-amin')?Number(v('cmp-amin')):null,ageMax:v('cmp-amax')?Number(v('cmp-amax')):null},budget:{type:v('cmp-btype')||'DAILY',amount:v('cmp-amt'),currency:v('cmp-cur')},schedule:{startDate:v('cmp-start'),endDate:v('cmp-end')||null}};
- return c.provider==='GOOGLE_ADS'?{...base,search:{keywords:ls('cmp-kw').map(text=>({text,match:'PHRASE'})),headlines:ls('cmp-h'),descriptions:ls('cmp-d')}}:{...base,social:{primaryText:v('cmp-pt'),headline:v('cmp-hl'),imageAssetId:v('cmp-img')||null,imageAlt:v('cmp-alt')}};
+ // ADR-0036 · Performance Max: its asset group; Meta messaging: where the conversation happens (no web destination).
+ if(c.objective==='PMAX')return {...base,pmax:{headlines:ls('cmp-ph'),longHeadlines:ls('cmp-plh'),descriptions:ls('cmp-pd'),businessName:v('cmp-pbiz'),landscapeImageAssetId:v('cmp-pland')||null,squareImageAssetId:v('cmp-psq')||null,logoAssetId:v('cmp-plogo')||null,audienceSignal:v('cmp-psig')}};
+ const social={primaryText:v('cmp-pt'),headline:v('cmp-hl'),imageAssetId:v('cmp-img')||null,imageAlt:v('cmp-alt')};
+ if(c.objective==='MESSAGES')return {...base,destination:null,social,messaging:{destination:form.querySelector(`input[name="cmp-msgdest-${CSS.escape(c.id)}"]:checked`)?.value??'WHATSAPP',welcomeMessage:v('cmp-welcome'),iceBreakers:ls('cmp-ice')}};
+ return c.provider==='GOOGLE_ADS'?{...base,search:{keywords:ls('cmp-kw').map(text=>({text,match:'PHRASE'})),headlines:ls('cmp-h'),descriptions:ls('cmp-d')}}:{...base,social};
 };
 function renderCampaigns(){
  const host=$('#ads-campaigns');if(!host||!campaignData)return;
@@ -2499,7 +2652,7 @@ function renderCampaigns(){
  if(pending){const seq=navSeq,tick=()=>setTimeout(()=>{if(seq!==navSeq||!$('#ads-campaigns'))return;if(operationPending){tick();return;}reload().catch(()=>undefined);},1500);tick();}
  host.querySelectorAll('[data-conn-sim]').forEach(b=>b.addEventListener('click',()=>call('/api/connections/simulated',{provider:b.dataset.connSim},'Cuenta simulada conectada. Nada llega a un proveedor real.',b)));
  host.querySelectorAll('[data-conn-status]').forEach(b=>b.addEventListener('click',()=>call('/api/connections/status',{connectionId:b.dataset.connStatus,status:b.dataset.to},b.dataset.to==='EXPIRED'?'Acceso vencido (simulado): no se envía ningún paso hasta volver a conectar.':'Cuenta conectada de nuevo.',b)));
- $('#campaign-create')?.addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget,name=$('#cmp-new-name').value.trim();if(!name){$('#cmp-new-name').focus();return;}form.dataset.key??=crypto.randomUUID();call('/api/campaigns/create',{provider:form.querySelector('input[name="cmp-provider"]:checked').value,objective:$('#cmp-leads')?.checked?'LEADS':undefined,name,idempotencyKey:form.dataset.key},'Campaña creada en borrador. Complétala o pide una propuesta a Brando.',event.submitter);});
+ $('#campaign-create')?.addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget,name=$('#cmp-new-name').value.trim();if(!name){$('#cmp-new-name').focus();return;}form.dataset.key??=crypto.randomUUID();const [provider,objective]=form.querySelector('input[name="cmp-type"]:checked').value.split(':');call('/api/campaigns/create',{provider,objective,name,idempotencyKey:form.dataset.key},'Campaña creada en borrador. Complétala o pide una propuesta a Brando.',event.submitter);});
  host.querySelectorAll('.campaign-editor').forEach(form=>{
   const c=byId(form.dataset.campaign);
   form.querySelector(`#cmp-dest-${CSS.escape(c.id)}`)?.addEventListener('change',e=>{form.querySelector(`#cmp-url-${CSS.escape(c.id)}`).hidden=e.target.value!=='URL';});
@@ -2508,7 +2661,10 @@ function renderCampaigns(){
  host.querySelectorAll('[data-campaign-propose]').forEach(b=>b.addEventListener('click',()=>run(async()=>{const r=await api('/api/campaigns/propose',{brandId,campaignId:b.dataset.campaignPropose});campaignUi.proposals[b.dataset.campaignPropose]=r;renderCampaigns();notice('Propuesta lista. Revísala: no se ha guardado nada.');},b)));
  host.querySelectorAll('[data-proposal-discard]').forEach(b=>b.addEventListener('click',()=>{delete campaignUi.proposals[b.dataset.proposalDiscard];renderCampaigns();}));
  host.querySelectorAll('[data-proposal-apply]').forEach(b=>b.addEventListener('click',()=>{const c=byId(b.dataset.proposalApply),p=campaignUi.proposals[c.id].proposal,form=host.querySelector(`.campaign-editor[data-campaign="${CSS.escape(c.id)}"]`),current=campaignContent(form,c);
-  const merged={...current,offer:p.offer??current.offer,destination:p.destination??current.destination,adDeliverable:p.adDeliverable??current.adDeliverable,...(p.search?{search:{keywords:p.search.keywords.length?p.search.keywords:current.search.keywords,headlines:p.search.headlines.length?p.search.headlines:current.search.headlines,descriptions:p.search.descriptions.length?p.search.descriptions:current.search.descriptions}}:{}),...(p.social?{social:{...current.social,primaryText:p.social.primaryText||current.social.primaryText,headline:p.social.headline||current.social.headline,imageAssetId:p.social.imageAssetId??current.social.imageAssetId}}:{})};
+  const merged={...current,offer:current.offer??p.offer,destination:current.destination??p.destination,adDeliverable:current.adDeliverable??p.adDeliverable,...(p.search?{search:{keywords:current.search.keywords.length?current.search.keywords:p.search.keywords,headlines:current.search.headlines.length?current.search.headlines:p.search.headlines,descriptions:current.search.descriptions.length?current.search.descriptions:p.search.descriptions}}:{}),...(p.social?{social:{...current.social,primaryText:current.social.primaryText||p.social.primaryText,headline:current.social.headline||p.social.headline,imageAssetId:current.social.imageAssetId??p.social.imageAssetId}}:{}),
+   // ADR-0036 / PHASE4_SPEC §13 · a proposal fills what is empty; it never erases what the person wrote.
+   ...(p.pmax&&current.pmax?{pmax:Object.fromEntries(Object.entries(current.pmax).map(([k,val])=>[k,(Array.isArray(val)?val.length:val)?val:p.pmax[k]]))}:{}),
+   ...(p.messaging&&current.messaging?{messaging:{...current.messaging,welcomeMessage:current.messaging.welcomeMessage||p.messaging.welcomeMessage}}:{})};
   delete campaignUi.proposals[c.id];call('/api/campaigns/draft',{campaignId:c.id,expectedRevision:c.revision,content:merged,provenance:'AI_ASSISTED'},'Propuesta incorporada al borrador. Sigue sin aprobar.',b);}));
  host.querySelectorAll('[data-campaign-submit]').forEach(b=>b.addEventListener('click',()=>{const c=byId(b.dataset.campaignSubmit);call('/api/campaigns/submit',{campaignId:c.id,expectedRevision:c.revision},'Versión enviada a revisión. Ya no se edita.',b);}));
  host.querySelectorAll('.campaign-decide').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();const criterion=form.querySelector('textarea').value.trim();if(criterion.length<10){form.querySelector('textarea').focus();notice('Escribe al menos diez caracteres para explicar tu decisión.',true);return;}const decision=event.submitter?.value;form.dataset[`key${decision}`]??=crypto.randomUUID();call('/api/campaigns/decide',{campaignId:form.dataset.campaign,versionId:form.dataset.version,fingerprint:form.dataset.fingerprint,decision,criterion,idempotencyKey:form.dataset[`key${decision}`]},decision==='APPROVE'?'Versión aprobada. Solicitar su creación es otro paso.':'Pediste cambios. Crea una versión nueva para corregirla.',event.submitter);}));
@@ -2591,6 +2747,38 @@ function renderRailTool(){
  if(!context||!brandId)return;
  if(panels.tool==='attention'){const host=$('#rail-attention');host.innerHTML=railAttentionHtml(context);bindAttentionActions(host);host.querySelector('#intelligence-ask-brando')?.addEventListener('click',event=>askBrandoAbout(event.currentTarget,'¿Qué no está alineado en mi estrategia y qué debería revisar primero? Explica por qué y qué cambió.'));host.querySelector('#validation-open')?.addEventListener('click',()=>run(showLearning));}
  if(panels.tool==='history'){const host=$('#rail-history');host.innerHTML=railHistoryHtml(context,$('#decision').dataset.view==='decision'?selected:null);bindAttentionActions(host);}
+ if(panels.tool==='notifications'){renderNotifications();void refreshNotifications();}
+}
+// ─── PHASE4_SPEC §13 · notification centre (right panel, counter and Inicio summary share the same records) ───
+let notificationData={unread:0,items:[]},notificationTimer=null;
+async function refreshNotifications(){
+ if(!user||!brandId)return;
+ try{notificationData=await api('/api/notifications');}catch{return;}
+ document.querySelectorAll('.notification-count').forEach(el=>{el.hidden=!notificationData.unread;el.textContent=notificationData.unread>99?'99+':String(notificationData.unread);});
+ document.querySelectorAll('[data-rail-tool="notifications"]').forEach(b=>{const label=notificationData.unread?`Notificaciones: ${notificationData.unread} sin leer`:'Notificaciones';b.setAttribute('aria-label',label);if(b.dataset.tip!==undefined)b.dataset.tip=label;});
+ if(panels.tool==='notifications')renderNotifications();
+ notificationTimer??=setInterval(()=>void refreshNotifications(),30000);
+}
+function renderNotifications(){
+ const host=$('#rail-notifications');if(!host)return;
+ host.innerHTML=notificationsPanelHtml(notificationData);bindNotificationLinks(host);
+ host.querySelector('#notifications-read-all')?.addEventListener('click',event=>run(async()=>{await api('/api/notifications/read',{all:true});await refreshNotifications();notice('Notificaciones marcadas como leídas. Nada se aprobó ni se resolvió.');},event.currentTarget));
+}
+/** Opening a notification checks access again on the server; a lost access says so and opens nothing. */
+function bindNotificationLinks(root){
+ root.querySelectorAll('[data-notification]').forEach(b=>b.addEventListener('click',()=>run(async()=>{
+  let target;
+  try{target=await api('/api/notifications/open',{notificationId:b.dataset.notification});}
+  catch(error){await refreshNotifications();throw Object.assign(new Error('Ya no tienes acceso a este elemento o dejó de existir.'),{code:error.code});}
+  await refreshNotifications();closeRailDrawer(false);
+  if(target.brandId!==brandId){preserveDraft();resetBrando();brandId=target.brandId;$('#brands').value=brandId;await refresh();}
+  if(target.view==='offers')await showOffers();
+  else if(target.view==='materials'){offersTab='materials';await showOffersArea();}
+  else if(target.view==='social'||target.view==='ads'){marketingTab=target.view;await showMarketing();}
+  else await showCollaboration();
+  const card=target.subjectId&&document.querySelector(`[data-offer-id="${CSS.escape(target.subjectId)}"],[data-deliverable-id="${CSS.escape(target.subjectId)}"]`);
+  if(card){card.scrollIntoView({block:'start'});card.querySelector('h3')?.setAttribute('tabindex','-1');card.querySelector('h3')?.focus();}
+ },b)));
 }
 function mountLearningMoment(question){const m=user.learningMoments?.[question.module];if(m)$('#decision').insertAdjacentHTML('beforeend',`<details class="learning-moment"><summary>Qué estás aprendiendo aquí</summary><div class="learning-moment-body"><p class="eyebrow">${escape(capabilityLabel(m.capability))}</p><p>${escape(m.why)}</p><p><strong>Prueba esto:</strong> ${escape(m.apply)}</p><details><summary>Ver una pista más</summary><p><strong>Observa:</strong> ${escape(m.observe)}</p><p><strong>Cuidado:</strong> ${escape(m.caution)}</p></details></div></details>`);}
 $('#learning-loop').addEventListener('click',()=>run(showLearning));
@@ -2719,6 +2907,10 @@ async function showBrandSettings(){
  <ul class="delete-consequences"><li>Se borran sus decisiones, versiones e historial, su contexto, hipótesis, experimentos, señales, aprendizajes y relaciones.</li><li>Se borran los documentos que subiste a esta marca y sus archivos.</li><li>Tú y cualquier persona con acceso a esta marca perderán el acceso de inmediato.</li><li>Las reflexiones personales se conservan para su autor, desvinculadas de esta marca. Tus otras marcas no cambian.</li><li>No podrás recuperarla desde Brandopolis. Las copias de seguridad externas pueden conservar datos hasta que caduquen.</li></ul>
  <label for="delete-confirm-name">Escribe el nombre exacto de la marca para confirmar</label><input id="delete-confirm-name" autocomplete="off" spellcheck="false" aria-describedby="delete-confirm-hint"><p class="hint" id="delete-confirm-hint">Debe coincidir exactamente: ${escape(brand.name)}</p>
  <div class="actions"><button type="submit" id="delete-brand" class="danger" disabled>Eliminar marca definitivamente</button><button type="button" id="delete-brand-cancel" class="secondary">Cancelar</button></div></form></details></section>`;
+ // PHASE4_SPEC §13 · approval circuit per type (administrators edit; everyone sees it).
+ await loadReviewPolicies();
+ $('#decision .danger-zone')?.insertAdjacentHTML('beforebegin',policiesHtml(reviewPolicies));
+ $('#decision').querySelectorAll('.policy-form').forEach(form=>form.addEventListener('submit',event=>{event.preventDefault();run(async()=>{await api('/api/reviews/policy',{brandId,subjectType:form.dataset.subject,defaultReviewerId:form.querySelector('select').value||null,allowSelfApproval:form.querySelector('[data-policy-self]').checked,clientStep:!!form.querySelector('[data-policy-client]')?.checked,expectedRevision:Number(form.dataset.revision)});await showBrandSettings();notice('Circuito de aprobación guardado. Se aplica a las próximas versiones que se envíen.');},event.submitter);}));
  const setupView=await api(`/api/brand-setup?brandId=${encodeURIComponent(brand.id)}`).catch(()=>null);
  if(setupView?.otherOpen){$('#settings-ficha-state').textContent='Otra persona está preparando esta marca; podrás editar la ficha cuando confirme o descarte su borrador.';$('#settings-edit-ficha').disabled=true;}
  else if(setupView?.draft){$('#settings-ficha-state').textContent='Tienes un borrador abierto de la ficha.';$('#settings-edit-ficha').textContent='Continuar con la ficha';}

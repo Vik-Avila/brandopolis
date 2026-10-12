@@ -68,7 +68,7 @@ export async function listOffers(tx: Transaction, a: BrandActor) {
       approved: approved ? { ...view(approved), originOutdated: originOutdated(approved.content as OfferContent, active, decisionOf) } : null,
       draft: draft ? { ...view(draft), gaps: offerGaps(draft.content as OfferContent) } : null,
       inReview: own.filter(v => v.status === 'IN_REVIEW').map(view),
-      history: own.map(v => ({ id: v.id, sequence: v.sequence, status: v.status, decidedAt: v.decidedAt?.toISOString() ?? null }))
+      history: own.map(v => ({ id: v.id, sequence: v.sequence, status: v.status, decidedAt: v.decidedAt?.toISOString() ?? null, decisionCriterion: v.status === 'CHANGES_REQUESTED' ? v.decisionCriterion : null }))
     };
   });
 }
@@ -212,3 +212,31 @@ export async function createOfferFrom(tx: Transaction, a: BrandActor, input: { s
   await tx.insert(t.offerVersions).values({ id: versionId, workspaceId: a.workspaceId, brandId: a.brandId, offerId, sequence: 1, previousVersionId: null, status: 'DRAFT', content, fingerprint, createdBy: a.userId, createdAt: now });
   return { offerId, versionId, replayed: false, ...origin };
 }
+
+/**
+ * PHASE4_SPEC §13 · Brando as the first step of a new offer (B2, propose-only, deterministic in the DEMO). It reads only
+ * approved, current decisions of this brand and returns what the person may copy into the form. It writes nothing and
+ * never proposes prices, conditions or evidence: those are listed as missing for the person to provide.
+ */
+export async function proposeOffer(tx: Transaction, a: BrandActor) {
+  const rows = await tx.select({ module: t.questions.module, versionId: t.versions.id, sequence: t.versions.sequence, selectedOption: t.versions.selectedOption, status: t.versions.versionStatus, reviewStatus: t.decisions.reviewStatus })
+    .from(t.decisions).innerJoin(t.questions, eq(t.questions.id, t.decisions.questionId)).innerJoin(t.versions, eq(t.versions.id, t.decisions.activeVersionId))
+    .where(and(eq(t.decisions.workspaceId, a.workspaceId), eq(t.decisions.brandId, a.brandId)));
+  const usable = rows.filter(r => (r.status === 'APPROVED' || r.status === 'MODIFIED') && r.reviewStatus !== 'NEEDS_REVIEW');
+  const pick = (module: string) => usable.find(r => r.module === module) ?? null;
+  const customer = pick('Primary Customer'), promise = pick('Brand Promise'), value = pick('Value Mechanism'), message = pick('Core Message'), positioning = pick('Positioning');
+  const used = [customer, promise, value, message, positioning].filter((r): r is NonNullable<typeof r> => Boolean(r));
+  const words: Record<string, string> = { 'Primary Customer': 'Cliente principal', 'Brand Promise': 'Promesa de marca', 'Value Mechanism': 'Modelo de valor', 'Core Message': 'Mensaje principal', Positioning: 'Posicionamiento' };
+  return {
+    proposal: {
+      segment: customer?.selectedOption ?? '', outcome: promise?.selectedOption ?? '', need: '',
+      benefits: [value?.selectedOption, message?.selectedOption].filter((x): x is string => Boolean(x)),
+      differentiators: positioning ? [positioning.selectedOption] : [],
+      sourceDecisionVersionIds: used.map(r => r.versionId)
+    },
+    sources: used.map(r => `${words[r.module]} · versión ${r.sequence}`),
+    missing: ['El nombre de la oferta y la necesidad concreta que resuelve', 'Precios, condiciones y evidencias: Brando no los propone; escríbelos tú si existen', ...(used.length ? [] : ['No hay decisiones aprobadas vigentes: completa la estrategia o escribe la oferta a mano'])],
+    mode: 'DETERMINISTIC_DEMO' as const
+  };
+}
+

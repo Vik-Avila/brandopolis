@@ -43,6 +43,7 @@ import { collaborationCases } from './collaboration-cases.js';
 import { clientCases } from './client-cases.js';
 import { exportCases } from './export-cases.js';
 import { siteCases } from './site-cases.js';
+import { reviewCases } from './review-cases.js';
 let local:Awaited<ReturnType<typeof startLocalDb>>,connection:ReturnType<typeof connect>,engine:Engine;
 brandoCases(()=>connection);
 pilotCases(()=>connection);
@@ -70,6 +71,7 @@ collaborationCases(()=>connection);
 clientCases(()=>connection);
 exportCases(()=>connection);
 siteCases(()=>connection);
+reviewCases(()=>connection);
 beforeAll(async()=>{
   local=await startLocalDb(true);
   const name=`m1_${randomUUID().replaceAll('-','')}`;

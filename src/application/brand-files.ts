@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { AppError } from '../domain/contracts.js';
 import { contentFingerprint } from '../domain/editorial-versions.js';
@@ -99,12 +98,12 @@ export async function listBrandFiles(tx: Transaction, a: BrandActor, input: { pu
   if (input.purpose === 'TEMPLATE') {
     const rows = await tx.select().from(t.brandFiles).where(and(byBrand(a), eq(t.brandFiles.purpose, 'TEMPLATE'))).orderBy(asc(t.brandFiles.sequence));
     const lineages = [...new Set(rows.map(r => r.lineageId))];
-    return { templates: lineages.map(id => { const own = rows.filter(r => r.lineageId === id); const latest = own[own.length - 1]; return { ...view(latest), retired: own.some(r => r.retiredAt), versions: own.map(view).reverse() }; }).filter(x => !x.retired).sort((x, y) => y.createdAt.localeCompare(x.createdAt)) };
+    return { files: [], templates: lineages.map(id => { const own = rows.filter(r => r.lineageId === id); const latest = own[own.length - 1]; return { ...view(latest), retired: own.some(r => r.retiredAt), versions: own.map(view).reverse() }; }).filter(x => !x.retired).sort((x, y) => y.createdAt.localeCompare(x.createdAt)) };
   }
   const ids = Array.isArray(input.deliverableIds) ? input.deliverableIds.filter((x): x is string => typeof x === 'string' && x.length > 0 && x.length <= 200).slice(0, 200) : [];
-  if (!ids.length) return { files: [] };
+  if (!ids.length) return { templates: [], files: [] };
   const rows = await tx.select().from(t.brandFiles).where(and(byBrand(a), inArray(t.brandFiles.deliverableId, ids), isNull(t.brandFiles.retiredAt))).orderBy(asc(t.brandFiles.createdAt));
-  return { files: rows.map(view) };
+  return { templates: [], files: rows.map(view) };
 }
 
 /** A file of this brand for a team download (attachment), authorized now. */

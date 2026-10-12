@@ -21,7 +21,7 @@ export function decisionState(context,question){
 export function stateBadge(version,review){return `<span class="badge ${review?'warn':''}">${review?'Requiere revisión':version?'Vigente · v'+version.sequence:'Por decidir'}</span>`;}
 // ADR-0030 · editorial status vocabulary (offers, deliverables, kit, site, campaign). Canonical values live in
 // schemas/editorial-version; this is the only place that turns them into words. Never colour alone: always a word.
-const EDITORIAL_WORDS={DRAFT:'Borrador',IN_REVIEW:'En revisión',CHANGES_REQUESTED:'Cambios solicitados',APPROVED:'Aprobada',SUPERSEDED:'Reemplazada'};
+const EDITORIAL_WORDS={DRAFT:'Borrador',IN_REVIEW:'Pendiente de revisión',CHANGES_REQUESTED:'Cambios solicitados',APPROVED:'Aprobada',SUPERSEDED:'Reemplazada'};
 export function editorialStateBadge(status,sequence){const word=EDITORIAL_WORDS[status]??'';return `<span class="badge ${status==='CHANGES_REQUESTED'?'warn':''}">${escape(word)}${sequence?` · v${sequence}`:''}</span>`;}
 // Block 8 · ADR-0031 operation and step status words (canonical values in schemas/external-job). Editorial,
 // operation and provider states are always shown apart; «cancelled» is never shown for something already sent.
@@ -529,39 +529,56 @@ export function priceText(price){
  const validity=price.validFrom||price.validUntil?` · vigencia ${price.validFrom??'—'} a ${price.validUntil??'sin fecha final'}`:'';
  return `${amount} · ${price.certainty==='ESTIMATED'?'Estimado, no confirmado':'Confirmado'}${validity}`;
 }
+/** Price of a version: its plans (PHASE4_SPEC §13) or, in versions made before plans, the single price as it was. */
+export function offerPriceRows(content){
+ if(content.pricePlans?.length)return content.pricePlans.map((p,i)=>[i?'':'Planes de precio',planText(p)]);
+ return [['Precio',content.price?`${priceText(content.price)} · periodicidad sin indicar`:priceText(null)]];
+}
 function offerSummaryHtml(content){
- const rows=[['Para quién',content.audience.segment||(content.audience.customerDecisionVersionId?'Cliente principal definido':'')],['Necesidad',content.need],['Resultado buscado',content.outcome],['Beneficios',content.benefits.join(' · ')],['Diferencias',content.differentiators.join(' · ')],['Condiciones',content.conditions],['Precio',priceText(content.price)]].filter(([,v])=>v);
+ const rows=[['Para quién',content.audience.segment||(content.audience.customerDecisionVersionId?'Cliente principal definido':'')],['Necesidad',content.need],['Resultado buscado',content.outcome],['Beneficios',content.benefits.join(' · ')],['Diferencias',content.differentiators.join(' · ')],['Condiciones',content.conditions]].filter(([,v])=>v).concat(offerPriceRows(content));
  return `<dl class="offer-facts">${rows.map(([k,v])=>`<div><dt>${escape(k)}</dt><dd>${escape(v)}</dd></div>`).join('')}</dl>`;
 }
-/** Offers list. Each card shows the approved version, the working draft, versions waiting for review and what is missing. */
-export function offersHtml(offers){
+/** The reviewer's comment on the latest version when changes were requested (it stays with that version). */
+const changesNote=history=>{const last=history?.[history.length-1];return last?.status==='CHANGES_REQUESTED'?`<p class="offer-origin review-changes" role="note"><strong>Cambios pedidos en la versión ${last.sequence}:</strong> «${escape(last.decisionCriterion??'')}». Crea una versión nueva para hacerlos.</p>`:'';};
+/** Offers list. Each card shows the approved version, the working draft, versions waiting for review and what is missing.
+ *  `rv` carries the approval circuit (team, policies, who is viewing): only the assigned reviewer gets the decision form. */
+export function offersHtml(offers,rv={}){
+ const me=rv.me??null,team=rv.policies?.team??[];
+ const comments=(o,v)=>rv.policies?versionCommentsHtml('OFFER',o.id,v.id,o.comments??[],team,me):'';
  const card=o=>{
   const shown=o.approved??o.draft??o.inReview[0];
   const title=shown?.content.name??'Oferta';
   const parts=[];
-  if(o.approved)parts.push(`<div class="offer-version"><p class="offer-version-head">${editorialStateBadge('APPROVED',o.approved.sequence)} <span class="hint">Versión que usan materiales, sitio y campañas.</span></p>${offerSummaryHtml(o.approved.content)}${o.approved.originOutdated.length?`<p class="offer-origin" role="note"><strong>Origen actualizado:</strong> una decisión que cita esta oferta tiene una versión más reciente. Revisa si conviene crear una versión nueva; nada se cambia solo.</p>`:''}</div>`);
-  for(const v of o.inReview)parts.push(`<div class="offer-version"><p class="offer-version-head">${editorialStateBadge('IN_REVIEW',v.sequence)}</p>${offerSummaryHtml(v.content)}<form class="offer-decide" data-offer="${escape(o.id)}" data-version="${escape(v.id)}" data-fingerprint="${escape(v.fingerprint)}"><label for="offer-criterion-${escape(v.id)}">¿Por qué apruebas o pides cambios?</label><textarea id="offer-criterion-${escape(v.id)}" required minlength="10" maxlength="2000" rows="2"></textarea><div class="actions"><button type="submit" name="decision" value="APPROVE">Aprobar esta versión</button><button type="submit" name="decision" value="REQUEST_CHANGES" class="secondary">Pedir cambios</button></div></form></div>`);
-  if(o.draft)parts.push(`<div class="offer-version"><p class="offer-version-head">${editorialStateBadge('DRAFT',o.draft.sequence)}</p>${offerSummaryHtml(o.draft.content)}${o.draft.gaps.length?`<p class="hint">Para que sea útil, aún falta: ${escape(o.draft.gaps.map(g=>GAP_WORDS[g]).join(', '))}.</p>`:''}${o.status==='ACTIVE'?`<div class="actions"><button type="button" class="secondary" data-offer-edit="${escape(o.id)}">Editar borrador</button><button type="button" data-offer-submit="${escape(o.id)}">Enviar a revisión</button></div>`:''}</div>`);
-  const tail=o.status==='RETIRED'?'<p class="hint">Oferta retirada: se conserva con su historial y ya no se edita.</p>':`<div class="actions offer-tail">${!o.draft?`<button type="button" class="secondary" data-offer-new-draft="${escape(o.id)}">Crear una nueva versión</button>`:''}<button type="button" class="link-action" data-offer-retire="${escape(o.id)}">Retirar oferta</button></div>`;
-  return `<article class="offer-card" data-offer-id="${escape(o.id)}" data-revision="${o.revision}"><header><p class="eyebrow">${shown?.content.kind==='PRODUCT'?'Producto':'Servicio'}</p><h3>${escape(title)}</h3></header>${parts.join('')}${tail}</article>`;
+  if(o.approved)parts.push(`<div class="offer-version"><p class="offer-version-head">${editorialStateBadge('APPROVED',o.approved.sequence)} <span class="hint">Versión que usan materiales, sitio y campañas.</span></p>${offerSummaryHtml(o.approved.content)}${decisionNoteHtml(o.approved)}${o.approved.originOutdated.length?`<p class="offer-origin" role="note"><strong>Origen actualizado:</strong> una decisión que cita esta oferta tiene una versión más reciente. Revisa si conviene crear una versión nueva; nada se cambia solo.</p>`:''}${comments(o,o.approved)}</div>`);
+  for(const v of o.inReview)parts.push(`<div class="offer-version"><p class="offer-version-head">${editorialStateBadge('IN_REVIEW',v.sequence)}</p>${offerSummaryHtml(v.content)}${reviewStatusHtml(v.review,me)}${decisionFormHtml('OFFER',o.id,v,me)}${rv.policies&&v.review?reassignHtml(rv.policies,'OFFER',o.id,v.id,v.review):''}${comments(o,v)}</div>`);
+  if(o.draft)parts.push(`<div class="offer-version"><p class="offer-version-head">${editorialStateBadge('DRAFT',o.draft.sequence)}</p>${offerSummaryHtml(o.draft.content)}${o.draft.gaps.length?`<p class="hint">Para que sea útil, aún falta: ${escape(o.draft.gaps.map(g=>GAP_WORDS[g]).join(', '))}.</p>`:''}${o.status==='ACTIVE'?`<div class="actions"><button type="button" class="secondary" data-offer-edit="${escape(o.id)}">Editar borrador</button><button type="button" data-offer-submit="${escape(o.id)}">Enviar a revisión</button></div><div class="review-submit-host" data-submit-host="${escape(o.id)}"></div>`:''}${comments(o,o.draft)}</div>`);
+  const tail=o.status==='RETIRED'?'<p class="hint">Oferta retirada: se conserva con su historial y ya no se edita.</p>':`<div class="actions offer-tail">${!o.draft?`<button type="button" class="secondary" data-offer-new-draft="${escape(o.id)}">Crear una nueva versión</button>`:''}${o.approved?`<button type="button" class="secondary" data-offer-derive="${escape(o.id)}">Crear a partir de esta oferta</button>`:''}<button type="button" class="link-action" data-offer-retire="${escape(o.id)}">Retirar oferta</button></div>`;
+  const derived=o.derivedFrom?`<p class="hint offer-derived">Creada a partir de «${escape(o.derivedFrom.name??'otra oferta')}». Es independiente: no hereda su aprobación ni nada compartido o autorizado.</p>`:'';
+  return `<article class="offer-card" data-offer-id="${escape(o.id)}" data-revision="${o.revision}"><header><p class="eyebrow">${shown?.content.kind==='PRODUCT'?'Producto':'Servicio'}</p><h3>${escape(title)}</h3>${derived}</header>${changesNote(o.history)}${parts.join('')}${tail}</article>`;
  };
  return `<div class="ws-hero"><p class="eyebrow">Productos y servicios</p><h2>Qué ofreces y por qué te elegirían</h2><p class="ws-lead">Cada oferta conecta a quién sirve, qué necesidad resuelve, qué resultado busca y qué la respalda.</p></div>
  <div class="actions"><button type="button" id="offer-new">Nueva oferta</button></div><div id="offer-editor"></div>
  ${offers.length?`<div class="offer-list">${offers.map(card).join('')}</div>`:'<p class="hint offer-empty">Aún no hay ofertas. Empieza con la que más te importa vender ahora; puedes completarla poco a poco.</p>'}`;
 }
+/** Approved, active decision versions of this brand (no pending review): the only ones offered as origin. */
+export function eligibleDecisions(c){
+ const moduleOf=id=>c.questions.find(q=>q.id===c.decisions.find(d=>d.id===id)?.questionId)?.module;
+ return c.decisions.filter(d=>d.activeVersionId&&!needsReview(c,d)).map(d=>c.versions.find(x=>x.id===d.activeVersionId)).filter(v=>v&&['APPROVED','MODIFIED'].includes(v.versionStatus??'APPROVED')).map(v=>({id:v.id,label:`${labels[moduleOf(v.decisionId)]??'Decisión'} · v${v.sequence}: ${v.selectedOption}`}));
+}
 /** Offer form. Only references of this brand are offered (the server checks them again). */
-export function offerFormHtml(c,content=null,offer=null){
+export function offerFormHtml(c,content=null,offer=null,opts={}){
  const v=content??{name:'',kind:'SERVICE',audience:{customerDecisionVersionId:null,segment:''},need:'',outcome:'',benefits:[],differentiators:[],conditions:'',proofIds:[],sourceDecisionVersionIds:[],hypothesisIds:[],price:null};
  const moduleOf=id=>c.questions.find(q=>q.id===c.decisions.find(d=>d.id===id)?.questionId)?.module;
  const activeVersions=c.decisions.filter(d=>d.activeVersionId).map(d=>c.versions.find(x=>x.id===d.activeVersionId)).filter(Boolean);
  const customer=activeVersions.find(x=>moduleOf(x.decisionId)==='Primary Customer');
  const check=(name,id,label,checked)=>`<label class="check-option"><input type="checkbox" name="${name}" value="${escape(id)}"${checked?' checked':''}> <span>${escape(label)}</span></label>`;
  const evidence=(c.evidence??[]).map(e=>check('proof',e.id,e.claim??e.source??'Evidencia',v.proofIds.includes(e.id))).join('');
- const decisions=activeVersions.map(x=>check('source',x.id,`${labels[moduleOf(x.decisionId)]??'Decisión'} · v${x.sequence}: ${x.selectedOption}`,v.sourceDecisionVersionIds.includes(x.id))).join('');
+ const isNew=!content&&!offer;
+ const eligible=eligibleDecisions(c),kept=v.sourceDecisionVersionIds.filter(id=>!eligible.some(e=>e.id===id)).map(id=>{const x=c.versions.find(y=>y.id===id);return {id,label:x?`${labels[moduleOf(x.decisionId)]??'Decisión'} · v${x.sequence}: ${x.selectedOption} (ya no vigente)`:'Decisión anterior'};});
+ const plans=v.pricePlans??(v.price?[{name:'Precio',amountMinor:v.price.amountMinor,currency:v.price.currency,periodicity:null,customPeriod:'',unit:'PER_SERVICE',unitLabel:'',conditions:'',validFrom:v.price.validFrom,validUntil:v.price.validUntil,certainty:v.price.certainty}]:[]);
  const hypotheses=(c.hypotheses??[]).map(h=>check('hypothesis',h.id,h.statement??'Hipótesis',v.hypothesisIds.includes(h.id))).join('');
- const p=v.price;
  return `<form id="offer-form" class="offer-form" data-offer="${escape(offer?.id??'')}" data-revision="${offer?.revision??''}" novalidate>
- <h3>${offer?'Editar borrador':'Nueva oferta'}</h3>
+ <h3>${offer?'Editar borrador':'Nueva oferta'}</h3>${isNew?brandoStartHtml('OFFER',{approvedOffers:opts.approvedOffers??[]}):''}<div class="offer-form-fields"${isNew&&!opts.manual?' hidden':''}>
  <label for="offer-name">Nombre</label><input id="offer-name" maxlength="160" required value="${escape(v.name)}">
  <label for="offer-kind">Tipo</label><select id="offer-kind"><option value="SERVICE"${v.kind==='SERVICE'?' selected':''}>Servicio</option><option value="PRODUCT"${v.kind==='PRODUCT'?' selected':''}>Producto</option></select>
  <fieldset><legend>Para quién</legend>${customer?`<label class="check-option"><input type="checkbox" id="offer-customer" value="${escape(customer.id)}"${v.audience.customerDecisionVersionId===customer.id?' checked':''}> <span>Usar tu cliente principal: ${escape(customer.selectedOption)}</span></label>`:'<p class="hint">Aún no hay un cliente principal definido; puedes describir el público aquí.</p>'}<label for="offer-segment">Segmento o público</label><input id="offer-segment" maxlength="500" value="${escape(v.audience.segment)}" placeholder="Ej. agencias pequeñas con clientes recurrentes"></fieldset>
@@ -571,11 +588,11 @@ export function offerFormHtml(c,content=null,offer=null){
  <label for="offer-differentiators">Qué la diferencia (uno por línea)</label><textarea id="offer-differentiators" rows="2">${escape(v.differentiators.join('\n'))}</textarea>
  <label for="offer-conditions">Condiciones</label><textarea id="offer-conditions" maxlength="1500" rows="2">${escape(v.conditions)}</textarea>
  <fieldset><legend>Pruebas que la respaldan</legend>${evidence||'<p class="hint">Aún no hay evidencias registradas en esta marca.</p>'}</fieldset>
- <fieldset><legend>Decisiones de origen</legend>${decisions||'<p class="hint">Aún no hay decisiones definidas.</p>'}</fieldset>
+ ${sourceGroupHtml('source',[...eligible,...kept],v.sourceDecisionVersionIds,{preselect:isNew})}
  <fieldset><legend>Supuestos que usa (hipótesis)</legend>${hypotheses||'<p class="hint">Aún no hay hipótesis registradas.</p>'}</fieldset>
- <fieldset><legend>Precio <span class="hint">opcional</span></legend><label class="check-option"><input type="checkbox" id="offer-has-price"${p?' checked':''}> <span>Registrar un precio</span></label><div class="offer-price"${p?'':' hidden'}><label for="offer-amount">Monto</label><input id="offer-amount" inputmode="decimal" value="${p?(p.amountMinor/100).toFixed(2):''}"><label for="offer-currency">Moneda</label><input id="offer-currency" maxlength="3" value="${escape(p?.currency??'MXN')}"><label for="offer-valid-from">Vigente desde</label><input id="offer-valid-from" type="date" value="${escape(p?.validFrom??'')}"><label for="offer-valid-until">Vigente hasta</label><input id="offer-valid-until" type="date" value="${escape(p?.validUntil??'')}"><label for="offer-certainty">¿Qué tan seguro es?</label><select id="offer-certainty"><option value="ESTIMATED"${p?.certainty!=='CONFIRMED'?' selected':''}>Estimado</option><option value="CONFIRMED"${p?.certainty==='CONFIRMED'?' selected':''}>Confirmado</option></select></div></fieldset>
+ ${pricePlansHtml(plans)}
  <p id="offer-form-status" role="status" aria-live="polite"></p>
- <div class="actions"><button type="submit">${offer?'Guardar borrador':'Crear borrador'}</button><button type="button" class="secondary" id="offer-cancel">Cancelar</button></div></form>`;
+ <div class="actions"><button type="submit">${offer?'Guardar borrador':'Crear borrador'}</button><button type="button" class="secondary" id="offer-cancel">Cancelar</button></div></div></form>`;
 }
 
 // ─── PHASE4_SPEC §4.2 · Marketing → Plan de Marketing (pure projections; operations live in app.js) ───
@@ -724,7 +741,7 @@ export function actionFormHtml(data,a=null){
 const AREA_TABS={
  marketing:{label:'Marketing',tabs:[['plan','Plan de Marketing'],['social','Redes sociales'],['site','Sitio web'],['ads','Campañas digitales']],later:''},
  offers:{label:'Productos y servicios',tabs:[['offers','Ofertas'],['materials','Materiales de venta']],later:''},
- brand:{label:'Marca y recursos',tabs:[['identity','Identidad visual'],['guide','Guía de marca']],later:'Biblioteca y Plantillas llegarán más adelante.'}
+ brand:{label:'Marca y recursos',tabs:[['identity','Identidad visual'],['guide','Guía de marca'],['templates','Plantillas']],later:'La biblioteca de recursos llegará más adelante.'}
 };
 // R12-19 · icon + text for the sections of an area (the icon never replaces the word).
 const TAB_ICONS={plan:'i-map',social:'i-users',site:'i-link',ads:'i-target'};
@@ -749,7 +766,7 @@ export function deliverableText(c){
  const b=c.body,lines=[c.name,''];
  if(c.type==='SALES_PRESENTATION'){if(b.audience)lines.push(`Para: ${b.audience}`,'');b.slides.forEach((s,i)=>lines.push(`${i+1}. ${s.title}`,s.text,''));}
  if(c.type==='OFFER_COPY')lines.push(b.headline,'',b.short,'',b.long,'',b.callToAction);
- if(c.type==='SOCIAL_POST')lines.push(`${NETWORK_WORDS[b.network]} · ${FORMAT_WORDS[b.format]}${b.scheduledDate?` · ${b.scheduledDate}`:''}`,'',b.text,'',b.hashtags.join(' '),...(b.materials?['',`Materiales: ${b.materials}`]:[]));
+ if(c.type==='SOCIAL_POST')lines.push(`${NETWORK_WORDS[b.network]} · ${FORMAT_WORDS[b.format]}${b.scheduledDate?` · ${b.scheduledDate}`:''}`,'',b.text,'',b.hashtags.join(' '),...(b.materials?['',`Materiales: ${b.materials}`]:[]),...(b.variants??[]).flatMap(v=>['',`— ${NETWORK_WORDS[v.network]} · ${FORMAT_WORDS[v.format]}`,v.text,v.hashtags.join(' ')]));
  if(c.type==='AD')lines.push(`${CHANNEL_WORDS[b.channel]} · ${AD_OBJECTIVE_WORDS[b.objective]}`,'','Títulos:',...b.headlines.map(h=>`- ${h}`),'','Descripciones:',...b.descriptions.map(d=>`- ${d}`),'',b.callToAction,b.landingUrl??'');
  if(c.type==='DESIGN_BRIEF')lines.push(`Para: ${FOR_WORDS[b.for]}`,`Pieza: ${b.piece}`,`Formato: ${b.format}`,`Público: ${b.audience}`,`Mensaje: ${b.message}`,`Debe incluir: ${b.mustInclude}`,`Evitar: ${b.avoid}`,`Fecha de entrega: ${b.dueDate??'sin fecha'}`);
  return lines.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
@@ -759,27 +776,33 @@ function deliverableSummary(c,offers){
  if(offer)rows.push(['Oferta',offer.name]);
  if(c.type==='SALES_PRESENTATION')rows.push(['Para',b.audience],['Diapositivas',b.slides.map((s,i)=>`${i+1}. ${s.title}`).join(' · ')]);
  if(c.type==='OFFER_COPY')rows.push(['Título',b.headline],['Texto corto',b.short],['Llamada a la acción',b.callToAction]);
+ if(c.type==='SOCIAL_POST'&&b.variants?.length)rows.push(['Otras redes',b.variants.map(v=>`${NETWORK_WORDS[v.network]} · ${FORMAT_WORDS[v.format]}`).join(' · ')]);
  if(c.type==='SOCIAL_POST')rows.push(['Red y formato',`${NETWORK_WORDS[b.network]} · ${FORMAT_WORDS[b.format]}`],['Fecha prevista',b.scheduledDate?dayText(b.scheduledDate):''],['Para qué',b.objective],['Texto',b.text],['Etiquetas',b.hashtags.join(' ')],['Materiales',b.materials]);
  if(c.type==='AD')rows.push(['Canal',CHANNEL_WORDS[b.channel]],['Objetivo',AD_OBJECTIVE_WORDS[b.objective]],['Títulos',b.headlines.join(' · ')],['Descripciones',b.descriptions.join(' · ')],['Lleva a',b.landingUrl??'']);
  if(c.type==='DESIGN_BRIEF')rows.push(['Para',FOR_WORDS[b.for]],['Pieza',b.piece],['Formato',b.format],['Mensaje',b.message],['Fecha de entrega',b.dueDate?dayText(b.dueDate):'']);
+ if(c.finalArt)rows.push(['Arte final',`${c.finalArt.name} (${c.finalArt.format})`]);
  return factsHtml(rows.filter(([,v])=>v));
 }
 const provenanceWord=p=>p==='AI_ASSISTED'?'Propuesta de Brando editada por una persona':'Escrito por una persona';
 /** One deliverable: approved version (with copy/download and, for a social post, the manual publication record),
  *  versions in review (decision on the exact version), the working draft and what is missing. */
-function deliverableCard(d,offers){
+function deliverableCard(d,offers,rv={}){
  const shown=d.approved??d.draft??d.inReview[0],name=shown?.content.name??'Material',parts=[];
+ const me=rv.me??null,team=rv.policies?.team??[],files=rv.files??[];
+ const comments=v=>rv.policies?versionCommentsHtml(d.type,d.id,v.id,d.comments??[],team,me):'';
  const exportBar=v=>`<div class="actions deliverable-export"><button type="button" class="secondary" data-export-version="${escape(v.id)}" data-export-format="pdf">Descargar PDF</button>${d.type==='SALES_PRESENTATION'?`<button type="button" class="secondary" data-export-version="${escape(v.id)}" data-export-format="pptx">Descargar PowerPoint</button>`:''}<button type="button" class="secondary" data-export-version="${escape(v.id)}" data-export-format="docx">Descargar Word</button><button type="button" class="tertiary" data-copy-version="${escape(v.id)}">Copiar texto</button><button type="button" class="tertiary" data-download-version="${escape(v.id)}">Descargar .txt</button></div><p class="hint">El documento muestra esta versión exacta con la identidad del kit con el que se escribió. Descargarlo no cambia ni aprueba nada.</p>`;
  if(d.approved){
   const v=d.approved;
   const pubs=d.type==='SOCIAL_POST'?`<div class="deliverable-publications"><h4>Publicación</h4>${d.publications.length?`<ul>${d.publications.map(p=>`<li>Publicada el ${escape(dayText(p.publishedOn))}${p.url?` · <a href="${escape(p.url)}" rel="noopener noreferrer" target="_blank">ver publicación</a>`:''}${p.note?` · ${escape(p.note)}`:''}</li>`).join('')}</ul>`:'<p class="hint">Aún no registras su publicación. Brandopolis no publica por ti: cuando la publiques, registra aquí la fecha.</p>'}
   <form class="publication-form" data-deliverable="${escape(d.id)}" data-version="${escape(v.id)}"><div class="plan-dates"><div><label for="pub-date-${escape(d.id)}">Fecha de publicación</label><input id="pub-date-${escape(d.id)}" type="date" required></div><div><label for="pub-url-${escape(d.id)}">Enlace <span class="hint">opcional, https://</span></label><input id="pub-url-${escape(d.id)}" type="url" maxlength="500" placeholder="https://"></div></div><label for="pub-note-${escape(d.id)}">Nota <span class="hint">opcional</span></label><input id="pub-note-${escape(d.id)}" maxlength="280"><div class="actions"><button type="submit" class="secondary">Registrar publicación</button></div></form></div>`:'';
-  parts.push(`<div class="offer-version"><p class="offer-version-head">${editorialStateBadge('APPROVED',v.sequence)} <span class="hint">${escape(provenanceWord(v.provenance))}</span></p>${deliverableSummary(v.content,offers)}${v.originOutdated.length?'<p class="offer-origin" role="note"><strong>Origen actualizado:</strong> la oferta o una decisión en la que se basa tiene una versión más reciente. Revisa si conviene crear una versión nueva; nada se cambia solo.</p>':''}${exportBar(v)}${pubs}</div>`);
+  parts.push(`<div class="offer-version"><p class="offer-version-head">${editorialStateBadge('APPROVED',v.sequence)} <span class="hint">${escape(provenanceWord(v.provenance))}</span></p>${deliverableSummary(v.content,offers)}${decisionNoteHtml(v)}${v.originOutdated.length?'<p class="offer-origin" role="note"><strong>Origen actualizado:</strong> la oferta o una decisión en la que se basa tiene una versión más reciente. Revisa si conviene crear una versión nueva; nada se cambia solo.</p>':''}${exportBar(v)}${pubs}${comments(v)}</div>`);
  }
- for(const v of d.inReview)parts.push(`<div class="offer-version"><p class="offer-version-head">${editorialStateBadge('IN_REVIEW',v.sequence)}</p>${deliverableSummary(v.content,offers)}<form class="deliverable-decide" data-deliverable="${escape(d.id)}" data-version="${escape(v.id)}" data-fingerprint="${escape(v.fingerprint)}"><label for="deliverable-criterion-${escape(v.id)}">¿Por qué apruebas o pides cambios?</label><textarea id="deliverable-criterion-${escape(v.id)}" required minlength="10" maxlength="2000" rows="2"></textarea><div class="actions"><button type="submit" value="APPROVE">Aprobar esta versión</button><button type="submit" value="REQUEST_CHANGES" class="secondary">Pedir cambios</button></div></form></div>`);
- if(d.draft)parts.push(`<div class="offer-version"><p class="offer-version-head">${editorialStateBadge('DRAFT',d.draft.sequence)} <span class="hint">${escape(provenanceWord(d.draft.provenance))}</span></p>${deliverableSummary(d.draft.content,offers)}${d.draft.gaps.length?`<p class="hint">Para que sea útil, aún falta: ${escape(d.draft.gaps.map(g=>DELIVERABLE_GAP_WORDS[g]).join(', '))}.</p>`:''}${d.status==='ACTIVE'?`<div class="actions"><button type="button" class="secondary" data-deliverable-edit="${escape(d.id)}">Editar borrador</button><button type="button" data-deliverable-submit="${escape(d.id)}">Enviar a revisión</button></div>`:''}</div>`);
+ for(const v of d.inReview)parts.push(`<div class="offer-version"><p class="offer-version-head">${editorialStateBadge('IN_REVIEW',v.sequence)}</p>${deliverableSummary(v.content,offers)}${reviewStatusHtml(v.review,me)}${decisionFormHtml(d.type,d.id,v,me)}${rv.policies&&v.review?reassignHtml(rv.policies,d.type,d.id,v.id,v.review):''}${comments(v)}</div>`);
+ if(d.draft)parts.push(`<div class="offer-version"><p class="offer-version-head">${editorialStateBadge('DRAFT',d.draft.sequence)} <span class="hint">${escape(provenanceWord(d.draft.provenance))}</span></p>${deliverableSummary(d.draft.content,offers)}${d.draft.gaps.length?`<p class="hint">Para que sea útil, aún falta: ${escape(d.draft.gaps.map(g=>DELIVERABLE_GAP_WORDS[g]).join(', '))}.</p>`:''}${d.status==='ACTIVE'?`<div class="actions"><button type="button" class="secondary" data-deliverable-edit="${escape(d.id)}">Editar borrador</button><button type="button" data-deliverable-submit="${escape(d.id)}">Enviar a revisión</button></div><div class="review-submit-host" data-submit-host="${escape(d.id)}"></div>`:''}${comments(d.draft)}</div>`);
  const tail=d.status==='RETIRED'?'<p class="hint">Retirado: se conserva con su historial y ya no se edita.</p>':`<div class="actions offer-tail">${!d.draft?`<button type="button" class="secondary" data-deliverable-new-draft="${escape(d.id)}">Crear una nueva versión</button>`:''}<button type="button" class="link-action" data-deliverable-retire="${escape(d.id)}">Retirar</button></div>`;
- return `<article class="offer-card deliverable-card" data-deliverable-id="${escape(d.id)}"><header><p class="eyebrow">${escape(TYPE_WORDS[d.type])}</p><h3>${escape(name)}</h3></header>${parts.join('')}${tail}</article>`;
+ // PHASE4_SPEC §13 · final art (every type) and, for a brief, its internal references, kept apart from each other.
+ const assets=rv.brandId?`${finalArtHtml(d,files,rv.brandId)}${d.type==='DESIGN_BRIEF'?referencesHtml(d,files,rv.brandId):''}`:'';
+ return `<article class="offer-card deliverable-card" data-deliverable-id="${escape(d.id)}"><header><p class="eyebrow">${escape(TYPE_WORDS[d.type])}</p><h3>${escape(name)}</h3></header>${changesNote(d.history)}${parts.join('')}${assets}${tail}</article>`;
 }
 const AREA_COPY={
  materials:{eyebrow:'Productos y servicios',title:'Materiales de venta',lead:'Presentaciones, textos de tus ofertas y briefs para quien diseña. Cada versión se revisa y aprueba antes de usarse.',empty:'Aún no hay materiales. Empieza por los textos de la oferta que más quieres vender.'},
@@ -787,7 +810,7 @@ const AREA_COPY={
  ads:{eyebrow:'Marketing',title:'Campañas digitales',lead:'Prepara los textos de tus anuncios y tus campañas de Google y Meta. Cada versión se revisa y aprueba; crear en pausa, activar (con una segunda autorización) y pausar ocurren en el simulador, sin campañas ni gasto reales.',empty:'Aún no hay anuncios. Prepara los textos del primero.'}
 };
 /** Materials of one area. Social posts are grouped by planned month (same records, no copies). */
-export function deliverablesHtml(area,list,offers){
+export function deliverablesHtml(area,list,offers,rv={}){
  const copy=AREA_COPY[area],types=AREA_TYPES[area];
  const newButtons=types.map(t=>`<button type="button" class="${types.length>1?'secondary':''}" data-deliverable-new="${t}">Nuevo: ${escape(TYPE_WORDS[t])}</button>`).join('');
  let body;
@@ -795,14 +818,14 @@ export function deliverablesHtml(area,list,offers){
  else if(area==='social'){
   const date=d=>(d.approved??d.draft??d.inReview[0])?.content.body.scheduledDate??'';
   const groups=new Map();for(const d of [...list].sort((x,y)=>(date(x)||'9999').localeCompare(date(y)||'9999'))){const k=date(d).slice(0,7);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(d);}
-  body=[...groups].map(([k,ds])=>`<section class="plan-month"><h4>${k?`${MONTHS[Number(k.slice(5,7))-1]} ${k.slice(0,4)}`:'Sin fecha'}</h4><div class="offer-list">${ds.map(d=>deliverableCard(d,offers)).join('')}</div></section>`).join('');
- } else body=`<div class="offer-list">${list.map(d=>deliverableCard(d,offers)).join('')}</div>`;
+  body=[...groups].map(([k,ds])=>`<section class="plan-month"><h4>${k?`${MONTHS[Number(k.slice(5,7))-1]} ${k.slice(0,4)}`:'Sin fecha'}</h4><div class="offer-list">${ds.map(d=>deliverableCard(d,offers,rv)).join('')}</div></section>`).join('');
+ } else body=`<div class="offer-list">${list.map(d=>deliverableCard(d,offers,rv)).join('')}</div>`;
  return `<div class="ws-hero"><p class="eyebrow">${escape(copy.eyebrow)}</p><h2>${escape(copy.title)}</h2><p class="ws-lead">${escape(copy.lead)}</p></div>
  <div class="actions deliverable-new">${newButtons}</div><p class="hint">Cada versión aprobada se descarga en PDF y Word (y las presentaciones, también en PowerPoint), o se copia como texto.</p><div id="deliverable-editor"></div>${body}`;
 }
 /** Form of one deliverable type. Origin choices are only this brand's offers and active decision versions. */
-export function deliverableFormHtml(type,ctx,offers,content=null,d=null){
- const c=content??{type,name:'',offerId:null,sourceDecisionVersionIds:[],body:{}},b=c.body;
+export function deliverableFormHtml(type,ctx,offers,content=null,d=null,opts={}){
+ const c=content??{type,name:'',offerId:null,sourceDecisionVersionIds:[],body:{}},b=c.body,isNew=!content&&!d;
  const moduleOf=id=>ctx.questions.find(q=>q.id===ctx.decisions.find(x=>x.id===id)?.questionId)?.module;
  const versions=ctx.decisions.filter(x=>x.activeVersionId).map(x=>ctx.versions.find(v=>v.id===x.activeVersionId)).filter(Boolean);
  const usable=offers.filter(o=>o.status==='ACTIVE'||o.id===c.offerId);
@@ -812,19 +835,23 @@ export function deliverableFormHtml(type,ctx,offers,content=null,d=null){
  let fields='';
  if(type==='SALES_PRESENTATION')fields=`${input('dl-audience','¿Para quién es la presentación?',b.audience,'maxlength="500"')}${area('dl-slides','Diapositivas: una por bloque, con el título en la primera línea y una línea vacía entre diapositivas',(b.slides??[]).map(s=>`${s.title}\n${s.text}`).join('\n\n'),'rows="8"')}`;
  if(type==='OFFER_COPY')fields=`${input('dl-headline','Título',b.headline,'maxlength="160"')}${area('dl-short','Texto corto (para redes o tarjetas)',b.short,'maxlength="300"')}${area('dl-long','Texto largo (para tu sitio o catálogo)',b.long,'maxlength="3000" rows="6"')}${input('dl-cta','Llamada a la acción',b.callToAction,'maxlength="80" placeholder="Ej. Agenda una llamada"')}`;
- if(type==='SOCIAL_POST')fields=`<div class="plan-dates"><div>${select('dl-network','Red',NETWORK_WORDS,b.network??'INSTAGRAM')}</div><div>${select('dl-format','Formato',FORMAT_WORDS,b.format??'POST')}</div></div>${input('dl-objective','¿Para qué sirve esta publicación?',b.objective,'maxlength="300"')}${input('dl-date','Fecha prevista',b.scheduledDate,'type="date"')}${area('dl-text','Texto',b.text,'maxlength="2200" rows="5"')}${input('dl-hashtags','Etiquetas (separadas por espacios)',(b.hashtags??[]).join(' '),'maxlength="600"')}${area('dl-materials','Materiales necesarios (imagen, video, carrusel)',b.materials,'maxlength="1000" rows="2"')}`;
+ if(type==='SOCIAL_POST')fields=`<div class="plan-dates"><div>${select('dl-network','Red',NETWORK_WORDS,b.network??'INSTAGRAM')}</div><div>${select('dl-format','Formato',FORMAT_WORDS,b.format??'POST')}</div></div>${input('dl-objective','¿Para qué sirve esta publicación?',b.objective,'maxlength="300"')}${input('dl-date','Fecha prevista',b.scheduledDate,'type="date"')}${area('dl-text','Texto',b.text,'maxlength="2200" rows="5"')}${input('dl-hashtags','Etiquetas (separadas por espacios)',(b.hashtags??[]).join(' '),'maxlength="600"')}${area('dl-materials','Materiales necesarios (imagen, video, carrusel)',b.materials,'maxlength="1000" rows="2"')}${variantsHtml({network:b.network??'INSTAGRAM'},b.variants,NETWORK_WORDS,FORMAT_WORDS)}`;
  if(type==='AD')fields=`<div class="plan-dates"><div>${select('dl-channel','Canal',CHANNEL_WORDS,b.channel??'GOOGLE')}</div><div>${select('dl-ad-objective','Objetivo',AD_OBJECTIVE_WORDS,b.objective??'TRAFFIC')}</div></div>${area('dl-headlines','Títulos (uno por línea)',(b.headlines??[]).join('\n'),'rows="4"')}${area('dl-descriptions','Descripciones (una por línea)',(b.descriptions??[]).join('\n'),'rows="3"')}${input('dl-ad-cta','Llamada a la acción',b.callToAction,'maxlength="80"')}${input('dl-landing','Página a la que lleva (https://)',b.landingUrl,'type="url" maxlength="500" placeholder="https://"')}`;
  if(type==='DESIGN_BRIEF')fields=`${select('dl-for','Para',FOR_WORDS,b.for??'DESIGNER')}${input('dl-piece','¿Qué pieza necesitas?',b.piece,'maxlength="300" required')}${input('dl-format-size','Formato o tamaño',b.format,'maxlength="200" placeholder="Ej. 1080×1350 para Instagram"')}${input('dl-brief-audience','¿A quién va dirigida?',b.audience,'maxlength="500"')}${area('dl-message','Mensaje principal',b.message,'maxlength="1000"')}${area('dl-must','Debe incluir',b.mustInclude,'maxlength="1000" rows="2"')}${area('dl-avoid','Evitar',b.avoid,'maxlength="1000" rows="2"')}${input('dl-due','Fecha de entrega',b.dueDate,'type="date"')}`;
  const offerField=usable.length?`<label for="dl-offer">${type==='OFFER_COPY'?'Oferta':'Oferta relacionada <span class="hint">opcional</span>'}</label><select id="dl-offer"><option value="">${type==='OFFER_COPY'?'Elige una oferta':'Ninguna'}</option>${usable.map(o=>`<option value="${escape(o.id)}"${o.id===c.offerId?' selected':''}>${escape(o.name)}${o.approved?'':' (sin aprobar)'}</option>`).join('')}</select>`:`<p class="hint">${type==='OFFER_COPY'?'Necesitas una oferta: créala primero en Productos y servicios.':'Aún no hay ofertas en esta marca.'}</p>`;
- const sources=versions.length?`<fieldset><legend>Decisiones en las que se basa <span class="hint">opcional</span></legend>${versions.map(v=>`<label class="check-option"><input type="checkbox" name="dl-source" value="${escape(v.id)}"${c.sourceDecisionVersionIds.includes(v.id)?' checked':''}> <span>${escape(labels[moduleOf(v.decisionId)]??'Decisión')} · v${v.sequence}: ${escape(v.selectedOption)}</span></label>`).join('')}</fieldset>`:'';
- return `<form id="deliverable-form" class="offer-form" data-type="${escape(type)}" novalidate><h3>${d?'Editar borrador':'Nuevo'} · ${escape(TYPE_WORDS[type])}</h3>${input('dl-name','Nombre',c.name,'maxlength="160" required')}${offerField}${fields}${sources}${d?'':`<section class="brando-marketing" aria-labelledby="dl-brando-title"><h4 id="dl-brando-title">¿Quieres una propuesta de Brando?</h4><p class="hint">Brando propone un borrador con tu información aprobada: decisiones vigentes, ofertas aprobadas y prioridades de 90 días. Tú lo editas y decides; nada se aprueba ni se publica solo.</p><label for="dl-request">¿Qué necesitas? <span class="hint">opcional</span></label><textarea id="dl-request" maxlength="1000" rows="2" placeholder="Ej. anunciar el lanzamiento con un tono cercano"></textarea><div class="actions"><button type="button" class="secondary brando-action" id="dl-ask-brando">Pedir una propuesta a Brando</button></div><div id="dl-brando-result" aria-live="polite"></div></section>`}<p id="deliverable-form-status" role="status" aria-live="polite"></p><div class="actions"><button type="submit">${d?'Guardar borrador':'Crear borrador'}</button><button type="button" class="secondary" data-editor-cancel>Cancelar</button></div></form>`;
+ const eligible=eligibleDecisions(ctx),kept=c.sourceDecisionVersionIds.filter(id=>!eligible.some(e=>e.id===id)).map(id=>{const x=versions.find(v=>v.id===id);return {id,label:x?`${labels[moduleOf(x.decisionId)]??'Decisión'} · v${x.sequence}: ${x.selectedOption}`:'Decisión anterior'};});
+ const sources=sourceGroupHtml('dl-source',[...eligible,...kept],c.sourceDecisionVersionIds,{preselect:isNew,legend:'Decisiones en las que se basa'});
+ // PHASE4_SPEC §13 · Brando is the first step of a new item: build with Brando, fill in by hand or start from an approved offer.
+ const approvedOffers=offers.filter(o=>o.approved&&o.status==='ACTIVE');
+ const brando=isNew?`${brandoStartHtml(type,{approvedOffers})}<section class="brando-marketing" aria-labelledby="dl-brando-title" hidden><h4 id="dl-brando-title">Propuesta de Brando</h4><p class="hint">Brando propone un borrador con tu información aprobada: decisiones vigentes, ofertas aprobadas y prioridades de 90 días. Tú lo editas y decides; nada se aprueba ni se publica solo.</p><label for="dl-request">¿Qué necesitas? <span class="hint">opcional</span></label><textarea id="dl-request" maxlength="1000" rows="2" placeholder="Ej. anunciar el lanzamiento con un tono cercano"></textarea><div class="actions"><button type="button" class="secondary brando-action" id="dl-ask-brando">Pedir una propuesta a Brando</button></div><div id="dl-brando-result" aria-live="polite"></div></section>`:'';
+ return `<form id="deliverable-form" class="offer-form" data-type="${escape(type)}" novalidate><h3>${d?'Editar borrador':'Nuevo'} · ${escape(TYPE_WORDS[type])}</h3>${brando}<div class="offer-form-fields"${isNew&&!opts.manual?' hidden':''}>${input('dl-name','Nombre',c.name,'maxlength="160" required')}${offerField}${fields}${sources}<p id="deliverable-form-status" role="status" aria-live="polite"></p><div class="actions"><button type="submit">${d?'Guardar borrador':'Crear borrador'}</button><button type="button" class="secondary" data-editor-cancel>Cancelar</button></div></div></form>`;
 }
 /** Brando's marketing proposal: why, which approved information it used, what is missing and questions. Never applied by itself. */
 export function brandoProposalHtml(r){
  if(!r.proposal)return `<p class="hint brando-unavailable">Brando no pudo proponer un borrador ahora. Puedes escribirlo tú: el formulario sigue disponible.</p>`;
  const p=r.proposal,c=p.content;
  const list=(title,items)=>items.length?`<p class="brando-list-title">${escape(title)}</p><ul>${items.map(i=>`<li>${escape(i)}</li>`).join('')}</ul>`:'';
- return `<div class="brando-proposal"><p class="eyebrow">${r.demo?'Propuesta de ejemplo (modo DEMO, no generada por IA)':'Propuesta de Brando · sin aprobar'}</p><p class="brando-proposal-name"><strong>${escape(c.name)}</strong></p><pre class="brando-proposal-text">${escape(deliverableText(c))}</pre><p><strong>Por qué:</strong> ${escape(p.rationale)}</p>${list('Información que usó',p.sources.map(s=>s.label).filter(Boolean))}${list('Lo que falta para afinarla',p.missing)}${list('Preguntas para ti',p.questions)}<div class="actions"><button type="button" id="dl-use-proposal">Usar esta propuesta en el formulario</button></div><p class="hint">Al usarla, el borrador queda marcado como propuesta de Brando editada por ti. Revísalo antes de enviarlo a revisión.</p></div>`;
+ return `<div class="brando-proposal"><p class="eyebrow">${r.demo?'Propuesta de ejemplo (modo DEMO, no generada por IA)':'Propuesta de Brando · sin aprobar'}</p><p class="brando-proposal-name"><strong>${escape(c.name)}</strong></p><pre class="brando-proposal-text">${escape(deliverableText(c))}</pre><p><strong>Por qué:</strong> ${escape(p.rationale)}</p>${list('Información que usó',p.sources.map(s=>s.label).filter(Boolean))}${list('Lo que falta para afinarla',p.missing)}${list('Preguntas para ti',p.questions)}<div class="actions"><button type="button" id="dl-use-proposal">Completar sólo lo vacío</button><button type="button" class="secondary" id="dl-replace-proposal">Reemplazar lo que escribí</button></div><p class="hint">«Completar» no toca lo que ya escribiste; «Reemplazar» lo sustituye en esos campos. Al usarla, el borrador queda marcado como propuesta de Brando editada por ti.</p></div>`;
 }
 
 // ─── ADR-0034 · Marca y recursos → Identidad visual (pure projections; operations live in app.js) ───
@@ -999,13 +1026,13 @@ const approvalsHtml=approvals=>approvals.length?`<ul class="share-approvals">${a
 /** Colaboración (team): invite by link (email delivery not configured), guests, and what the client sees. */
 export function collaborationHtml(d){
  const head=`<div class="ws-hero"><p class="eyebrow">Colaboración</p><h2>Trabaja con tu cliente</h2><p class="ws-lead">Invita a tu cliente a esta marca. Sólo verá lo que compartas, puede comentar y aprobar la versión exacta; nunca edita, publica ni autoriza gasto.</p></div>`;
- const invite=d.canManageGuests?`<form id="invite-form" class="offer-form" novalidate><label for="invite-email">Correo de tu cliente</label><input id="invite-email" type="email" maxlength="254" autocomplete="off" required placeholder="cliente@empresa.com"><p class="hint">${d.emailDelivery?'Le enviaremos la invitación por correo.':'El envío por correo aún no está configurado. Te daremos un enlace de un solo uso para que se lo envíes tú.'} Sólo podrá aceptarla quien inicie sesión con ese correo. Vence en 7 días.</p><p id="invite-status" role="status" aria-live="polite"></p><div class="actions"><button type="submit">Crear invitación</button></div></form><div id="invite-link"></div>`:'<p class="hint">Invitar o retirar invitados necesita el permiso «Gestionar invitados» en esta marca.</p>';
- const invitations=d.invitations.length?`<ul class="collab-list">${d.invitations.map(i=>`<li><span>${escape(i.email)}</span><span class="badge ${i.state==='PENDING'?'':'warn'}">${escape(INVITATION_WORDS[i.state])}</span><span class="hint">vence ${escape(fmt(i.expiresAt))}</span>${d.canManageGuests&&i.state==='PENDING'?`<button type="button" class="tertiary" data-revoke-invitation="${escape(i.id)}">Retirar invitación</button>`:''}</li>`).join('')}</ul>`:'<p class="hint">Aún no has invitado a nadie.</p>';
+ const invite=d.canManageGuests?`<form id="invite-form" class="offer-form" novalidate><label for="invite-email">Correo de tu cliente</label><input id="invite-email" type="email" maxlength="254" autocomplete="off" required placeholder="cliente@empresa.com">${d.emailDelivery?`<label class="check-option"><input type="checkbox" id="invite-send-email"> <span>Enviar también la invitación por correo${d.emailSimulated?' (simulado: se guarda en la bandeja local de la DEMO y no sale a ningún buzón)':''}</span></label>`:''}<p class="hint">${d.emailDelivery?'Además del correo, verás el enlace de un solo uso para compartirlo tú si lo prefieres.':'El envío por correo aún no está configurado. Te daremos un enlace de un solo uso para que se lo envíes tú.'} Sólo podrá aceptarla quien inicie sesión con ese correo. Vence en 7 días.</p><p id="invite-status" role="status" aria-live="polite"></p><div class="actions"><button type="submit">Crear invitación</button></div></form><div id="invite-link"></div>`:'<p class="hint">Invitar o retirar invitados necesita el permiso «Gestionar invitados» en esta marca.</p>';
+ const invitations=d.invitations.length?`<ul class="collab-list">${d.invitations.map(i=>`<li><span>${escape(i.email)}</span><span class="badge ${i.state==='PENDING'?'':'warn'}">${escape(INVITATION_WORDS[i.state])}</span><span class="hint">vence ${escape(fmt(i.expiresAt))}</span>${invitationMessageHtml(i.message,d.canManageGuests)}${d.canManageGuests&&i.state==='PENDING'?`<button type="button" class="tertiary" data-revoke-invitation="${escape(i.id)}">Retirar invitación</button>`:''}</li>`).join('')}</ul>`:'<p class="hint">Aún no has invitado a nadie.</p>';
  const guests=d.guests.length?`<ul class="collab-list">${d.guests.map(g=>`<li><span>${escape(g.name)}${g.email&&g.email!==g.name?` · ${escape(g.email)}`:''}</span><span class="badge ${g.status==='ACTIVE'?'':'warn'}">${g.status==='ACTIVE'?'Con acceso':'Acceso retirado'}</span>${d.canManageGuests&&g.status==='ACTIVE'?`<button type="button" class="tertiary" data-revoke-guest="${escape(g.id)}">Retirar acceso</button>`:''}</li>`).join('')}</ul>`:'<p class="hint">Nadie ha aceptado todavía.</p>';
  const s=d.shareable,option=(type,id,title)=>`<option value="${escape(type)}:${escape(id)}">${escape(title)}</option>`;
  const options=[s.strategy.decisions?option('STRATEGY_SNAPSHOT','strategy',`Estrategia: ${s.strategy.decisions} decisión(es) aprobada(s), tal como están hoy`):'',...s.planSnapshots.map(p=>option('PLAN_SNAPSHOT',p.id,p.title)),...s.deliverables.map(v=>option('DELIVERABLE_VERSION',v.id,`${v.title}${v.status==='IN_REVIEW'?' (en revisión)':''}`)),...s.kitVersions.map(v=>option('KIT_VERSION',v.id,`${v.title}${v.status==='IN_REVIEW'?' (en revisión)':''}`)),...(s.siteVersions??[]).map(v=>option('SITE_VERSION',v.id,`${v.title}${v.status==='IN_REVIEW'?' (en revisión)':''}`))].join('');
- const share=!d.canManageGuests?'<p class="hint">Compartir con tu cliente necesita el permiso «Gestionar invitados» en esta marca.</p>':options?`<form id="share-form" class="offer-form" novalidate><label for="share-target">¿Qué quieres compartir?</label><select id="share-target">${options}</select><p class="hint">Se comparte esa versión exacta. Si después cambia, tu cliente sigue viendo la que compartiste hasta que compartas otra.</p><div class="actions"><button type="submit">Compartir con el cliente</button></div></form>`:`<p class="hint">${d.shares.some(x=>!x.withdrawnAt)?'No hay versiones nuevas para compartir.':'Aún no hay nada que se pueda compartir: aprueba decisiones, una copia del plan, un material o una versión del kit.'}</p>`;
- const shares=d.shares.length?d.shares.map(x=>`<article class="share-card${x.withdrawnAt?' is-withdrawn':''}"><div class="share-head"><p class="eyebrow">${escape(SHARE_WORDS[x.targetType])}</p><h4>${escape(x.title)}</h4><p class="hint">${x.withdrawnAt?`Compartido el ${escape(fmt(x.sharedAt))} · retirado el ${escape(fmt(x.withdrawnAt))}`:`Compartido el ${escape(fmt(x.sharedAt))}`}</p></div>${approvalsHtml(x.approvals)}${commentsHtml(x.comments)}${x.withdrawnAt?'':`<form class="share-comment" data-share="${escape(x.id)}"><label for="comment-${escape(x.id)}">Comentario</label><textarea id="comment-${escape(x.id)}" maxlength="2000" rows="2"></textarea><label for="visibility-${escape(x.id)}">¿Quién lo ve?</label><select id="visibility-${escape(x.id)}"><option value="SHARED">Tu cliente y tu equipo</option><option value="INTERNAL">Sólo tu equipo</option></select><div class="actions"><button type="submit" class="secondary">Comentar</button>${d.canManageGuests?`<button type="button" class="tertiary" data-withdraw="${escape(x.id)}">Dejar de compartir</button>`:''}</div></form>`}</article>`).join(''):'<p class="hint">Todavía no compartes nada.</p>';
+ const share=!d.canManageGuests?'<p class="hint">Compartir con tu cliente necesita el permiso «Gestionar invitados» en esta marca.</p>':options?shareManyHtml(s):`<p class="hint">${d.shares.some(x=>!x.withdrawnAt)?'No hay versiones nuevas para compartir.':'Aún no hay nada que se pueda compartir: aprueba decisiones, una copia del plan, un material o una versión del kit.'}</p>`;
+ const shares=d.shares.length?d.shares.map(x=>`<article class="share-card${x.withdrawnAt?' is-withdrawn':''}"><div class="share-head"><p class="eyebrow">${escape(SHARE_WORDS[x.targetType])}</p><h4>${escape(x.title)}</h4><p class="hint">${x.withdrawnAt?`Compartido el ${escape(fmt(x.sharedAt))} · retirado el ${escape(fmt(x.withdrawnAt))}`:`Compartido el ${escape(fmt(x.sharedAt))}`}</p></div>${approvalsHtml(x.approvals)}${commentsHtml(x.comments)}${(x.versionComments??[]).length?`<div class="share-version-comments"><p class="hint"><strong>Comentarios del equipo junto a esta versión</strong> (compartidos con el cliente):</p><ul class="comment-list">${x.versionComments.map(c=>`<li class="comment"><p class="comment-meta"><strong>${escape(c.author)}</strong> · ${escape(fmt(c.createdAt))}</p><p>${escape(c.body)}</p></li>`).join('')}</ul></div>`:''}${x.withdrawnAt?'':`<form class="share-comment" data-share="${escape(x.id)}"><label for="comment-${escape(x.id)}">Comentario</label><textarea id="comment-${escape(x.id)}" maxlength="2000" rows="2"></textarea><label for="visibility-${escape(x.id)}">¿Quién lo ve?</label><select id="visibility-${escape(x.id)}"><option value="SHARED">Tu cliente y tu equipo</option><option value="INTERNAL">Sólo tu equipo</option></select><div class="actions"><button type="submit" class="secondary">Comentar</button>${d.canManageGuests?`<button type="button" class="tertiary" data-withdraw="${escape(x.id)}">Dejar de compartir</button>`:''}</div></form>`}</article>`).join(''):'<p class="hint">Todavía no compartes nada.</p>';
  return `${head}<section class="plan-block" aria-labelledby="collab-invite-title"><h3 id="collab-invite-title">Invitar a tu cliente</h3>${invite}<h4>Invitaciones</h4>${invitations}<h4>Personas invitadas</h4>${guests}</section>
  <section class="plan-block" aria-labelledby="collab-share-title"><h3 id="collab-share-title">Lo que ve tu cliente</h3>${share}<div class="share-cards">${shares}</div></section>`;
 }
@@ -1026,7 +1053,7 @@ function portalBodyHtml(x,brandIdValue){
  if(x.targetType==='STRATEGY_SNAPSHOT')return `<dl class="portal-strategy">${b.decisions.map(d=>`<dt>${escape(labels[d.module]??d.module)}</dt><dd>${escape(d.selectedOption)}</dd>`).join('')}</dl>`;
  if(x.targetType==='PLAN_SNAPSHOT')return planBodyHtml(b);
  if(x.targetType==='SITE_VERSION')return `<p>Páginas: ${b.pages.map(escape).join(' · ')||'sin páginas'}</p><p><a class="button-link" href="${escape(b.previewUrl)}" target="_blank" rel="noopener">Ver la vista previa de esta versión</a></p><p class="hint">Se abre en otra dirección y te pide confirmar con tu cuenta. Sólo verás esta versión.</p>`;
- if(x.targetType==='DELIVERABLE_VERSION')return `<p class="hint">${escape(TYPE_WORDS[b.type]??'Material')} · versión ${b.sequence}</p><pre class="brando-proposal-text">${escape(deliverableText(b.content))}</pre>`;
+ if(x.targetType==='DELIVERABLE_VERSION')return `<p class="hint">${escape(TYPE_WORDS[b.type]??'Material')} · versión ${b.sequence}</p><pre class="brando-proposal-text">${escape(deliverableText(b.content))}</pre>${b.content.finalArt?`<p><a class="button-link" href="/api/portal/final-art?brandId=${encodeURIComponent(brandIdValue)}&amp;fileId=${encodeURIComponent(b.content.finalArt.fileId)}" download>Descargar el arte final (${escape(b.content.finalArt.format)})</a></p>`:''}`;
  return guideBodyHtml(b,id=>`/api/portal/asset?brandId=${encodeURIComponent(brandIdValue)}&amp;assetId=${encodeURIComponent(id)}`);
 }
 /** Guest portal: only what was shared, the published guide, shared comments and decisions on the exact version. */
@@ -1109,7 +1136,7 @@ const periodText=m=>m.period?`${m.period.label}${m.period.from?` (desde ${fmt(m.
 const KIND_WORDS={INTERNAL_RECORD:'Registro interno de Brandopolis',PLANNED_BUDGET:'Presupuesto planificado (no es gasto)',PROVIDER:'Dato de proveedor',SIMULATED:'Simulado (no es dato real)'};
 const metricValue=m=>m.currency?new Intl.NumberFormat('es-MX',{style:'currency',currency:m.currency}).format(m.value):String(m.value);
 function metricHtml(m){
- const kind=`<p class="result-kind">${escape(KIND_WORDS[m.kind]??'')}</p>`;
+ const kind=`<p class="result-kind">${escape(KIND_WORDS[m.kind]??'')}</p>${m.available?comparisonHtml(m.comparison):''}`;
  if(!m.available)return `<li class="result-card is-missing" data-metric="${escape(m.id)}" data-kind="${escape(m.kind)}"><p class="result-label">${escape(m.label)}</p><p class="result-value">${m.state==='NOT_CONNECTED'?'Sin conectar':'Sin datos'}</p>${kind}<p class="hint">${escape(m.reason)}</p></li>`;
  return `<li class="result-card" data-metric="${escape(m.id)}" data-kind="${escape(m.kind)}"><p class="result-label">${escape(m.label)}</p><p class="result-value">${escape(metricValue(m))}</p>${kind}<details><summary>Cómo se calcula y sus límites</summary><p class="hint">${escape(m.definition)}</p><p class="hint"><strong>Límites:</strong> ${escape(m.limitations)}</p><p class="hint">Fuente: ${escape(m.source)} · Ámbito: ${escape(m.scope)} · Periodo: ${escape(periodText(m))} · Zona horaria: ${escape(m.timezone)} · Calculado: ${escape(fmt(m.computedAt))}</p></details></li>`;
 }
@@ -1117,6 +1144,7 @@ function metricHtml(m){
 export function resultsHtml(r){
  const block=(title,lead,list)=>`<section class="plan-block" aria-label="${escape(title)}"><h3>${escape(title)}</h3><p class="hint">${escape(lead)}</p><ul class="result-grid">${list.map(metricHtml).join('')}</ul></section>`;
  return `<div class="ws-hero"><p class="eyebrow">Resultados</p><h2>Lo que está pasando con tu marca</h2><p class="ws-lead">Cifras calculadas con los registros reales de esta marca. Un cero significa que se midió y no hubo eventos; «Sin conectar» o «Sin datos» significa que todavía falta la fuente.</p></div>
+ ${r.period?periodControlsHtml(r.period):''}
  ${block('Marketing','Solicitudes que llegan y si traen una referencia de campaña. Las conversiones de Google o Meta no se suman como personas.',r.marketing)}
  ${block('Operación comercial','Cómo va la atención de las oportunidades registradas en Clientes.',r.operations)}
  ${block('Ventas','Una oportunidad nueva no es una venta. Las ventas ganadas y perdidas, las metas y el forecast llegan con el núcleo comercial.',r.sales)}
@@ -1206,7 +1234,8 @@ export function sitesHtml(d,ui){
 
 // ─── Block 8 · Campañas digitales (Google Ads, Meta Ads), Canva and cycle review (pure projections) ───
 const PROVIDER_WORDS={GOOGLE_ADS:'Google Ads · Búsqueda',META_ADS:'Meta Ads · Tráfico',CANVA:'Canva'};
-const CAMPAIGN_KIND_WORDS={SEARCH:'Google Ads · Búsqueda',TRAFFIC:'Meta Ads · Tráfico',LEADS:'Meta Ads · Captación'};
+const CAMPAIGN_KIND_WORDS={SEARCH:'Google Ads · Búsqueda',PMAX:'Google Ads · Performance Max',TRAFFIC:'Meta Ads · Tráfico',LEADS:'Meta Ads · Captación',MESSAGES:'Meta Ads · Mensajes'};
+const MESSAGE_DESTINATION_WORDS={WHATSAPP:'WhatsApp',MESSENGER:'Messenger'};
 const OPERATION_WORDS={CREATE_PAUSED:'Crear en pausa',ACTIVATE:'Activar (segunda autorización)',PAUSE:'Pausar'};
 const DELIVERY_WORDS={NOT_CREATED:'Sin crear en la cuenta',PAUSED:'En pausa en la cuenta',ACTIVE:'Activa en la cuenta'};
 const BLOCK_WORDS={MEASUREMENT_NOT_VERIFIED:'La medición del destino ya no está verificada: no se activó. Vuelve a verificarla y solicita otra autorización.',CAPABILITY_REVOKED:'Quien autorizó ya no tiene permiso de gasto: no se envió nada más.',AUTHORIZATION_NOT_RESERVED:'La autorización se canceló o ya no está reservada: no se envió nada más.',CONNECTION_UNAVAILABLE:'La conexión no está activa: vuelve a conectar la cuenta. No se envió el siguiente paso.',AUTHORIZATION_EXPIRED:'La autorización venció: lo que falta necesita una autorización nueva.',CONTENT_CHANGED:'La versión aprobada cambió: lo autorizado ya no coincide y no se envía.',POSSIBLE_DUPLICATE:'Posible duplicado: un resultado tardío contradice lo registrado. Una persona debe revisarlo antes de seguir.',HUMAN_RELEASE_REQUIRED:'Espera a que una persona decida si se reintenta.',AUTHORIZATION_CANCELLED:'Autorización cancelada: no se envían más pasos.',ACTOR_LACKS_SPEND:'Quien autorizó ya no tiene permiso de gasto.',STEP_NOT_DISPATCHABLE:'Hay un paso incierto: se comprueba antes de seguir.'};
@@ -1215,16 +1244,19 @@ const OUTCOME_WORDS={PROVIDER_SUCCESS:'Creado',PROVIDER_REJECTED:'Rechazado',AMB
 const SCENARIO_WORDS={NORMAL:'Normal',LOST_RESPONSE:'Respuesta perdida después de crear',LOST_AND_DELAYED:'Respuesta perdida y recurso visible con retraso',RATE_LIMIT:'Límite del proveedor',PERMISSION_DENIED:'Acceso insuficiente'};
 const lines=v=>(v??[]).join('\n');
 function campaignEditor(c,v,d){
- const x=v.content,g=c.provider==='GOOGLE_ADS';
+ const x=v.content,g=c.provider==='GOOGLE_ADS',pmax=c.objective==='PMAX',msg=c.objective==='MESSAGES';
  const sel=(id,label,opts,val)=>`<label for="${id}">${escape(label)}</label><select id="${id}">${opts.map(([k,l])=>`<option value="${escape(k)}"${k===val?' selected':''}>${escape(l)}</option>`).join('')}</select>`;
  const dest=x.destination?.kind==='SITE'?`SITE:${x.destination.siteId}`:x.destination?.kind==='URL'?'URL':'';
  return `<form class="campaign-editor offer-form" data-campaign="${escape(c.id)}" novalidate>
  <label for="cmp-name-${escape(c.id)}">Nombre</label><input id="cmp-name-${escape(c.id)}" data-f="name" maxlength="120" value="${escape(x.name)}">
  ${sel(`cmp-offer-${c.id}`,'Oferta aprobada que anuncia',[['','Elige una oferta'],...d.offers.map(o=>[`${o.offerId}|${o.offerVersionId}|${o.name}`,`${o.name} · versión ${o.sequence}`])],x.offer?`${x.offer.offerId}|${x.offer.offerVersionId}|${x.offer.name}`:'')}
- ${sel(`cmp-dest-${c.id}`,'¿A dónde llega quien hace clic?',[['','Elige un destino'],...d.sites.map(s=>[`SITE:${s.siteId}`,`Sitio publicado: ${s.name}`]),['URL','Otra dirección https']],dest)}
- <input id="cmp-url-${escape(c.id)}" aria-label="Dirección https de destino" placeholder="https://" maxlength="300" value="${x.destination?.kind==='URL'?escape(x.destination.url):''}"${dest==='URL'?'':' hidden'}>
+ ${msg?`<fieldset><legend>¿Dónde ocurre la conversación?</legend>${Object.entries(MESSAGE_DESTINATION_WORDS).map(([k,l])=>`<label class="check-option"><input type="radio" name="cmp-msgdest-${escape(c.id)}" value="${k}"${(x.messaging?.destination??'WHATSAPP')===k?' checked':''}> <span>${escape(l)}${k==='WHATSAPP'?' <span class="hint">con el número vinculado a la página (simulado en la DEMO)</span>':''}</span></label>`).join('')}</fieldset>
+ <label for="cmp-welcome-${escape(c.id)}">Mensaje de bienvenida <span class="hint">máximo 300 caracteres</span></label><textarea id="cmp-welcome-${escape(c.id)}" rows="2" maxlength="1000">${escape(x.messaging?.welcomeMessage??'')}</textarea>
+ <label for="cmp-ice-${escape(c.id)}">Preguntas de inicio <span class="hint">sólo Messenger · una por línea · hasta 4 · máximo 80 caracteres</span></label><textarea id="cmp-ice-${escape(c.id)}" rows="3">${escape(lines(x.messaging?.iceBreakers))}</textarea>
+ <p class="hint">Las conversaciones ocurren en las aplicaciones de Meta; Brandopolis no las recibe ni las responde. Se informan como «conversaciones iniciadas» del proveedor, nunca como visitas o solicitudes del sitio.</p>`:`${sel(`cmp-dest-${c.id}`,pmax?'URL final (a dónde llega quien hace clic)':'¿A dónde llega quien hace clic?',[['','Elige un destino'],...d.sites.map(s=>[`SITE:${s.siteId}`,`Sitio publicado: ${s.name}`]),['URL','Otra dirección https']],dest)}
+ <input id="cmp-url-${escape(c.id)}" aria-label="Dirección https de destino" placeholder="https://" maxlength="300" value="${x.destination?.kind==='URL'?escape(x.destination.url):''}"${dest==='URL'?'':' hidden'}>`}
  ${sel(`cmp-ad-${c.id}`,'Textos de un anuncio aprobado (opcional)',[['','No usar'],...d.ads.map(a=>[`${a.deliverableId}|${a.versionId}`,`${a.name} · versión ${a.sequence}`])],x.adDeliverable?`${x.adDeliverable.deliverableId}|${x.adDeliverable.versionId}`:'')}
- ${g?`<label for="cmp-kw-${escape(c.id)}">Palabras clave <span class="hint">una por línea</span></label><textarea id="cmp-kw-${escape(c.id)}" rows="3">${escape(lines(x.search.keywords.map(k=>k.text)))}</textarea>
+ ${pmax?pmaxFields(c,x,d,sel):g?`<label for="cmp-kw-${escape(c.id)}">Palabras clave <span class="hint">una por línea</span></label><textarea id="cmp-kw-${escape(c.id)}" rows="3">${escape(lines(x.search.keywords.map(k=>k.text)))}</textarea>
  <label for="cmp-h-${escape(c.id)}">Títulos <span class="hint">uno por línea · de 3 a 15 · máximo 30 caracteres</span></label><textarea id="cmp-h-${escape(c.id)}" rows="4">${escape(lines(x.search.headlines))}</textarea>
  <label for="cmp-d-${escape(c.id)}">Descripciones <span class="hint">una por línea · de 2 a 4 · máximo 90 caracteres</span></label><textarea id="cmp-d-${escape(c.id)}" rows="3">${escape(lines(x.search.descriptions))}</textarea>`
  :`<label for="cmp-pt-${escape(c.id)}">Texto principal</label><textarea id="cmp-pt-${escape(c.id)}" rows="3" maxlength="500">${escape(x.social.primaryText)}</textarea>
@@ -1238,15 +1270,32 @@ function campaignEditor(c,v,d){
  <p class="hint">Zona horaria: ${escape(x.schedule.timezone)}. El presupuesto diario es un promedio: el proveedor puede gastar más un día concreto.</p>
  <div class="actions"><button type="button" class="secondary" data-campaign-propose="${escape(c.id)}">Pedir propuesta a Brando</button><button type="submit">Guardar borrador</button><button type="button" data-campaign-submit="${escape(c.id)}">Enviar a revisión</button></div></form>`;
 }
+/** ADR-0036 · Performance Max asset group (limits from the Google Ads API asset requirements). */
+function pmaxFields(c,x,d,sel){
+ const p=x.pmax??{headlines:[],longHeadlines:[],descriptions:[],businessName:'',landscapeImageAssetId:null,squareImageAssetId:null,logoAssetId:null,audienceSignal:''};
+ const img=(key,label,id,want)=>sel(`cmp-${key}-${c.id}`,label,[['',d.images.length?'Elige una imagen del kit':'El kit no tiene imágenes válidas'],...d.images.map(i=>[i.id,`${i.originalName} · ${i.width}×${i.height}${want(i)?'':' (no cumple la proporción)'}`])],id??'');
+ const near=(i,r)=>Math.abs(i.width/i.height-r)<=r*0.02;
+ return `<label for="cmp-ph-${escape(c.id)}">Títulos <span class="hint">uno por línea · de 3 a 15 · máximo 30 caracteres</span></label><textarea id="cmp-ph-${escape(c.id)}" rows="4">${escape(lines(p.headlines))}</textarea>
+ <label for="cmp-plh-${escape(c.id)}">Títulos largos <span class="hint">uno por línea · de 1 a 5 · máximo 90 caracteres</span></label><textarea id="cmp-plh-${escape(c.id)}" rows="2">${escape(lines(p.longHeadlines))}</textarea>
+ <label for="cmp-pd-${escape(c.id)}">Descripciones <span class="hint">una por línea · de 2 a 5 · máximo 90 caracteres</span></label><textarea id="cmp-pd-${escape(c.id)}" rows="3">${escape(lines(p.descriptions))}</textarea>
+ <label for="cmp-pbiz-${escape(c.id)}">Nombre de la empresa <span class="hint">máximo 25 caracteres</span></label><input id="cmp-pbiz-${escape(c.id)}" maxlength="100" value="${escape(p.businessName)}">
+ ${img('pland','Imagen horizontal (1,91:1, mínimo 600 × 314)',p.landscapeImageAssetId,i=>near(i,1.91)&&i.width>=600)}
+ ${img('psq','Imagen cuadrada (1:1, mínimo 300 × 300)',p.squareImageAssetId,i=>near(i,1)&&i.width>=300)}
+ ${img('plogo','Logotipo cuadrado (1:1, mínimo 128 × 128)',p.logoAssetId,i=>near(i,1)&&i.width>=128)}
+ <label for="cmp-psig-${escape(c.id)}">Señal de audiencia <span class="hint">opcional · un tema o búsqueda que oriente a Google</span></label><input id="cmp-psig-${escape(c.id)}" maxlength="200" value="${escape(p.audienceSignal)}">
+ <p class="hint">Performance Max usa los objetivos de conversión de la cuenta; en esta DEMO no hay cuenta real y se indica así.</p>`;
+}
 function campaignChecks(checks){
  if(!checks)return '';
  const blocking=checks.filter(c=>c.code!=='OUTDATED'),notices=checks.filter(c=>c.code==='OUTDATED');
  return `<div class="site-checks">${blocking.length?`<p><strong>Antes de solicitar su creación falta:</strong></p><ul>${blocking.map(c=>`<li>${escape(c.message)}</li>`).join('')}</ul>`:'<p><span class="badge">Lista para solicitar</span> Las comprobaciones están completas.</p>'}${notices.length?`<ul class="site-notices">${notices.map(c=>`<li class="hint">${escape(c.message)}</li>`).join('')}</ul>`:''}</div>`;
 }
 function campaignSummary(x){
- const rows=[['Oferta',x.offer?.name??''],['Destino',x.destination?.url??''],['Ubicaciones',x.audience.geo.join(', ')],['Presupuesto',x.budget.amount?`${x.budget.amount} ${x.budget.currency} · ${x.budget.type==='DAILY'?'diario promedio':'total'}`:''],['Fechas',x.schedule.startDate?`${x.schedule.startDate}${x.schedule.endDate?` a ${x.schedule.endDate}`:' sin fecha de fin'}`:'']];
+ const rows=[['Oferta',x.offer?.name??''],['Destino',x.messaging?`Conversación en ${MESSAGE_DESTINATION_WORDS[x.messaging.destination]}`:x.destination?.url??''],['Ubicaciones',x.audience.geo.join(', ')],['Presupuesto',x.budget.amount?`${x.budget.amount} ${x.budget.currency} · ${x.budget.type==='DAILY'?'diario promedio':'total'}`:''],['Fechas',x.schedule.startDate?`${x.schedule.startDate}${x.schedule.endDate?` a ${x.schedule.endDate}`:' sin fecha de fin'}`:'']];
  if(x.search)rows.push(['Palabras clave',x.search.keywords.map(k=>k.text).join(', ')],['Títulos',x.search.headlines.join(' · ')],['Descripciones',x.search.descriptions.join(' · ')]);
  if(x.social)rows.push(['Texto',x.social.primaryText],['Titular',x.social.headline]);
+ if(x.pmax)rows.push(['Títulos',x.pmax.headlines.join(' · ')],['Títulos largos',x.pmax.longHeadlines.join(' · ')],['Descripciones',x.pmax.descriptions.join(' · ')],['Empresa',x.pmax.businessName],['Señal de audiencia',x.pmax.audienceSignal]);
+ if(x.messaging)rows.push(['Bienvenida',x.messaging.welcomeMessage],['Preguntas de inicio',x.messaging.iceBreakers.join(' · ')]);
  return `<dl class="facts">${rows.filter(([,v])=>v).map(([k,v])=>`<dt>${escape(k)}</dt><dd>${escape(v)}</dd>`).join('')}</dl>`;
 }
 function operationHtml(o,c,d){
@@ -1269,7 +1318,7 @@ export function campaignsHtml(d,ui){
  if(!d.available)return '<section class="plan-block"><h3>Campañas en Google Ads y Meta Ads</h3><p class="hint">No disponible en este entorno.</p></section>';
  const sim=d.simulatedOnly?'<p class="campaign-sim" role="note"><strong>Simulador.</strong> No hay conexión real con Google ni con Meta: nada de lo que hagas aquí crea anuncios reales ni gasta dinero. Las cuentas reales esperan el acceso del proveedor.</p>':'';
  const conns=`<section class="plan-block" aria-labelledby="cmp-conns"><h4 id="cmp-conns">Cuentas</h4>${d.connections.ads.length?`<ul class="collab-list">${d.connections.ads.map(l=>`<li><span>${escape(PROVIDER_WORDS[l.provider]??l.provider)} · ${escape(l.account)}</span>${l.simulated?'<span class="badge warn">Simulada</span>':''}<span class="badge ${l.status==='ACTIVE'?'':'warn'}">${l.status==='ACTIVE'?'Conectada':'Acceso vencido'}</span>${d.canManageConnections&&l.simulated?`<button type="button" class="tertiary" data-conn-status="${escape(l.connectionId)}" data-to="${l.status==='ACTIVE'?'EXPIRED':'ACTIVE'}">${l.status==='ACTIVE'?'Simular acceso vencido':'Volver a conectar'}</button>`:''}</li>`).join('')}</ul>`:'<p class="hint">Todavía no hay cuentas.</p>'}${d.canManageConnections&&d.simulatedOnly?`<div class="actions">${['GOOGLE_ADS','META_ADS'].filter(p=>!d.connections.ads.some(l=>l.provider===p)).map(p=>`<button type="button" class="secondary" data-conn-sim="${p}">Conectar cuenta simulada de ${p==='GOOGLE_ADS'?'Google Ads':'Meta Ads'}</button>`).join('')}</div>`:''}</section>`;
- const create=`<form id="campaign-create" class="offer-form plan-block" novalidate><h4>Nueva campaña</h4><fieldset><legend class="visually-hidden">Proveedor</legend>${['GOOGLE_ADS','META_ADS'].map((p,i)=>`<label class="check-option"><input type="radio" name="cmp-provider" value="${p}"${i===0?' checked':''}> <span>${escape(PROVIDER_WORDS[p])}</span></label>`).join('')}</fieldset><label class="check-option"><input type="checkbox" id="cmp-leads"> <span>Meta: captación de contactos (necesita un sitio publicado con medición verificada para activarse)</span></label><label for="cmp-new-name">Nombre de la campaña</label><input id="cmp-new-name" maxlength="120"><div class="actions"><button type="submit" class="secondary">Crear campaña</button></div><p class="hint">Google: Búsqueda con anuncios adaptables. Meta: tráfico al sitio o captación.</p></form>`;
+ const create=`<form id="campaign-create" class="offer-form plan-block" novalidate><h4>Nueva campaña</h4><fieldset><legend>Tipo de campaña</legend>${[['GOOGLE_ADS','SEARCH','Google Ads · Búsqueda','anuncios de texto adaptables con palabras clave'],['GOOGLE_ADS','PMAX','Google Ads · Performance Max','títulos, descripciones, imágenes y logotipo del kit en un grupo de recursos'],['META_ADS','TRAFFIC','Meta Ads · Tráfico','visitas a tu sitio'],['META_ADS','LEADS','Meta Ads · Captación','necesita un sitio publicado con medición verificada para activarse'],['META_ADS','MESSAGES','Meta Ads · Mensajes','conversaciones en WhatsApp o Messenger, dentro de las aplicaciones de Meta']].map(([p,o,l,h],i)=>`<label class="check-option"><input type="radio" name="cmp-type" value="${p}:${o}"${i===0?' checked':''}> <span>${escape(l)} <span class="hint">${escape(h)}</span></span></label>`).join('')}</fieldset><label for="cmp-new-name">Nombre de la campaña</label><input id="cmp-new-name" maxlength="120"><div class="actions"><button type="submit" class="secondary">Crear campaña</button></div><p class="hint">Performance Max y Mensajes son ampliaciones de esta fase (ADR-0036): funcionan con el simulador; las cuentas reales siguen pendientes.</p></form>`;
  const cards=d.campaigns.map(c=>{
   const draft=c.draft?`<div class="offer-version"><p class="offer-version-head">${editorialStateBadge('DRAFT',c.draft.sequence)}${c.draft.provenance==='AI_ASSISTED'?' <span class="hint">con propuesta de Brando incorporada</span>':''}</p>${ui.proposals?.[c.id]?`<div class="site-proposal" role="region" aria-label="Propuesta de Brando"><p><strong>Propuesta de Brando</strong> <span class="hint">sin aprobar · no se ha guardado</span></p><ul>${Object.values(ui.proposals[c.id].sources).map(x=>`<li>${escape(x)}</li>`).join('')}</ul>${ui.proposals[c.id].missing.length?`<p class="hint">Falta: ${ui.proposals[c.id].missing.map(escape).join('; ')}.</p>`:''}<div class="actions"><button type="button" data-proposal-apply="${escape(c.id)}">Incorporar al borrador</button><button type="button" class="secondary" data-proposal-discard="${escape(c.id)}">Descartar</button></div></div>`:''}${campaignEditor(c,c.draft,d)}${campaignChecks(c.draft.checks)}</div>`:'';
   const review=c.inReview.map(v=>`<div class="offer-version"><p class="offer-version-head">${editorialStateBadge('IN_REVIEW',v.sequence)}</p>${campaignSummary(v.content)}<form class="campaign-decide offer-form" data-campaign="${escape(c.id)}" data-version="${escape(v.id)}" data-fingerprint="${escape(v.fingerprint)}"><label for="cmp-crit-${escape(v.id)}">¿Por qué apruebas o pides cambios?</label><textarea id="cmp-crit-${escape(v.id)}" maxlength="2000" rows="2"></textarea><div class="actions"><button type="submit" value="APPROVE">Aprobar esta versión</button><button type="submit" value="REQUEST_CHANGES" class="secondary">Pedir cambios</button></div><p class="hint">Aprobar no crea nada en el proveedor: solicitarlo es otro paso, con otra confirmación.</p></form></div>`).join('');
@@ -1341,3 +1390,244 @@ export function cycleExperimentHtml(p){
  <div class="actions"><button type="button" class="tertiary" data-cycle-experiment-close>Cerrar</button></div></form></div>`;
 }
 
+// ═══ PHASE4_SPEC §13 (owner review 2026-10-12) · approval circuit, comments per version, notifications, origin
+// decisions, price plans, Brando as the first step, brand files and templates, network variants, sharing several
+// items and the Results period. Pure presentation: operations live in app.js and the server checks everything again.
+export const SUBJECT_WORDS={OFFER:'Oferta',SALES_PRESENTATION:'Presentación comercial',OFFER_COPY:'Textos de producto o servicio',SOCIAL_POST:'Publicación para redes',AD:'Anuncio',DESIGN_BRIEF:'Brief para diseñador o Canva'};
+
+// ─── Approval circuit ────────────────────────────────────────────────────────────────────────────────────────────
+/**
+ * The dialog shown before sending a version: who reviews it (radio, the policy default preselected; approving alone
+ * only when the policy allows it and named as such), the exact version, and the steps that follow. Without a reviewer
+ * the button stays disabled.
+ */
+export function submitDialogHtml(p,subjectType,{subjectId,versionLabel}){
+ const policy=p.policies[subjectType],me=p.me;
+ const others=p.team.filter(m=>m.userId!==me),self=p.team.find(m=>m.userId===me);
+ const preselected=policy.defaultReviewerId&&(policy.defaultReviewerId!==me||policy.allowSelfApproval)?policy.defaultReviewerId:null;
+ const option=(m,label,hint)=>`<label class="check-option"><input type="radio" name="review-reviewer" value="${escape(m.userId)}"${m.userId===preselected?' checked':''}> <span>${escape(label)}${hint?` <span class="hint">${escape(hint)}</span>`:''}</span></label>`;
+ const steps=[`Tú envías la ${escape(versionLabel)}; ya no se edita.`,'La persona responsable la aprueba o pide cambios (pedir cambios exige un comentario).'];
+ if(policy.clientStep)steps.push('Después, compártela con tu cliente desde Colaboración para su aprobación.');
+ steps.push(subjectType==='OFFER'?'Aprobar no publica nada: los materiales, el sitio y las campañas usan la versión aprobada.':'Aprobar no publica ni autoriza gasto: son pasos aparte.');
+ return `<form class="review-submit offer-form" data-subject="${escape(subjectType)}" data-subject-id="${escape(subjectId)}" novalidate>
+ <h4>Enviar a revisión · ${escape(SUBJECT_WORDS[subjectType])}</h4>
+ <fieldset><legend>¿Quién la revisa?</legend>
+ ${others.map(m=>option(m,m.name,m.role==='ADMIN'?'Administración':'')).join('')||'<p class="hint">No hay otra persona en el equipo de esta marca.</p>'}
+ ${self&&policy.allowSelfApproval?option(self,'Yo: aprobación individual','queda registrada como aprobada por su autor; no simula una segunda persona'):''}
+ ${self&&!policy.allowSelfApproval?'<p class="hint">La política de esta marca pide que revise otra persona.</p>':''}
+ </fieldset>
+ <ol class="review-steps">${steps.map(s=>`<li>${s}</li>`).join('')}</ol>
+ <p class="review-submit-status" role="status" aria-live="polite"></p>
+ <div class="actions"><button type="submit"${preselected?'':' disabled'}>Enviar a revisión</button><button type="button" class="secondary" data-review-cancel>Cancelar</button></div></form>`;
+}
+
+/** Who reviews a version in review, and what the viewer can do about it. */
+export function reviewStatusHtml(review,me){
+ if(!review)return '<p class="hint review-status">Enviada antes del circuito de aprobación: cualquier persona del equipo puede decidirla.</p>';
+ const self=review.selfApproval;
+ const who=review.reviewerId===me?(self?'Tú (aprobación individual)':'Tú'):escape(review.reviewer);
+ const history=review.history.length>1?`<details class="review-history"><summary>Reasignaciones (${review.history.length-1})</summary><ul>${review.history.map(h=>`<li>${escape(h.reviewer)} · ${escape(fmt(h.assignedAt))}${h.closeReason==='REASSIGNED'?' · reasignada':''}</li>`).join('')}</ul></details>`:'';
+ return `<p class="review-status"><span class="badge">Revisa: ${who}</span>${self?' <span class="badge">Aprobación individual</span>':''} <span class="hint">desde el ${escape(fmt(review.assignedAt))}</span></p>${history}`;
+}
+
+/** Reassign control (author, current reviewer or an administrator; the server decides who may). */
+export function reassignHtml(p,subjectType,subjectId,versionId,review){
+ const policy=p.policies[subjectType],choices=p.team.filter(m=>m.userId!==review?.reviewerId&&(m.userId!==p.me||policy.allowSelfApproval));
+ if(!choices.length)return '';
+ return `<details class="review-reassign"><summary>Reasignar la revisión</summary><form class="review-reassign-form" data-subject="${escape(subjectType)}" data-subject-id="${escape(subjectId)}" data-version="${escape(versionId)}"><label for="reassign-${escape(versionId)}">Nueva persona responsable</label><select id="reassign-${escape(versionId)}">${choices.map(m=>`<option value="${escape(m.userId)}">${escape(m.userId===p.me?'Yo: aprobación individual':m.name)}</option>`).join('')}</select><p class="hint">Reasignar sólo cambia quién decide; no concede permisos para publicar, gastar ni gestionar invitados.</p><div class="actions"><button type="submit" class="secondary">Reasignar</button></div></form></details>`;
+}
+
+/** The decision form, only for the assigned reviewer; everyone else sees who decides. Asking for changes needs a comment. */
+export function decisionFormHtml(kind,subjectId,v,me){
+ const review=v.review;
+ if(review&&review.reviewerId!==me)return `<p class="hint">Sólo ${escape(review.reviewer)} puede aprobar o pedir cambios en esta versión.</p>`;
+ const cls=kind==='OFFER'?'offer-decide':'deliverable-decide',attr=kind==='OFFER'?'data-offer':'data-deliverable';
+ return `<form class="${cls}" ${attr}="${escape(subjectId)}" data-version="${escape(v.id)}" data-fingerprint="${escape(v.fingerprint)}"><label for="${kind==='OFFER'?'offer':'deliverable'}-criterion-${escape(v.id)}">Tu comentario: por qué apruebas o qué hay que cambiar</label><textarea id="${kind==='OFFER'?'offer':'deliverable'}-criterion-${escape(v.id)}" required minlength="10" maxlength="2000" rows="2"></textarea><div class="actions"><button type="submit" name="decision" value="APPROVE">${review?.selfApproval?'Aprobar (aprobación individual)':'Aprobar esta versión'}</button><button type="submit" name="decision" value="REQUEST_CHANGES" class="secondary">Pedir cambios</button></div></form>`;
+}
+
+/** Last decision of a version (who and why), shown with changes requested or approved versions. */
+export function decisionNoteHtml(v){
+ if(!v.decisionCriterion||!['CHANGES_REQUESTED','APPROVED','SUPERSEDED'].includes(v.status))return '';
+ return `<p class="hint review-decision">${v.status==='CHANGES_REQUESTED'?'Cambios pedidos':'Decisión'}: «${escape(v.decisionCriterion)}»${v.decidedAt?` · ${escape(fmt(v.decidedAt))}`:''}</p>`;
+}
+
+/** Approval policy per type (administrators edit; everyone sees it). */
+export function policiesHtml(p){
+ const rows=Object.entries(SUBJECT_WORDS).map(([type,word])=>{const pol=p.policies[type],reviewer=p.team.find(m=>m.userId===pol.defaultReviewerId);
+  if(!p.canEdit)return `<li><strong>${escape(word)}</strong>: ${reviewer?`revisa ${escape(reviewer.name)}`:'se elige al enviar'} · ${pol.allowSelfApproval?'aprobación individual permitida':'revisa otra persona'}${pol.clientStep?' · después, el cliente':''}</li>`;
+  return `<li><form class="policy-form" data-subject="${escape(type)}" data-revision="${pol.revision}"><fieldset><legend>${escape(word)}</legend><label for="policy-rev-${type}">Responsable por defecto</label><select id="policy-rev-${type}"><option value="">Se elige al enviar</option>${p.team.map(m=>`<option value="${escape(m.userId)}"${m.userId===pol.defaultReviewerId?' selected':''}>${escape(m.isMe?`${m.name} (tú)`:m.name)}</option>`).join('')}</select><label class="check-option"><input type="checkbox" data-policy-self${pol.allowSelfApproval?' checked':''}> <span>Permitir la aprobación individual (queda registrada)</span></label>${type==='OFFER'?'<p class="hint">El cliente no aprueba ofertas.</p>':`<label class="check-option"><input type="checkbox" data-policy-client${pol.clientStep?' checked':''}> <span>Después, aprobación del cliente desde Colaboración</span></label>`}<div class="actions"><button type="submit" class="secondary">Guardar</button></div></fieldset></form></li>`;}).join('');
+ return `<section class="plan-block" aria-labelledby="policies-title"><h3 id="policies-title">Circuito de aprobación</h3><p class="hint">Quién revisa cada tipo de entrega en esta marca. Aprobar nunca publica ni autoriza gasto.</p><ul class="policy-list">${rows}</ul></section>`;
+}
+
+// ─── Comments next to the item and its version ────────────────────────────────────────────────────────────────────
+/** Comments of one version and the form to add one. Offers only take internal comments (never shared with guests). */
+export function versionCommentsHtml(kind,subjectId,versionId,comments,team,me){
+ const own=comments.filter(c=>c.versionId===versionId);
+ const list=own.length?`<ul class="comment-list">${own.map(c=>`<li class="comment ${c.visibility==='INTERNAL'?'is-internal':''}"><p class="comment-meta"><strong>${escape(c.authorId===me?'Tú':c.author)}</strong> · ${escape(fmt(c.createdAt))} · <span class="badge">${c.visibility==='INTERNAL'?'Interno':'Compartido con el cliente'}</span></p><p>${escape(c.body)}</p>${c.mentions.length?`<p class="hint">Menciona a: ${escape(c.mentions.join(', '))}</p>`:''}</li>`).join('')}</ul>`:'';
+ const others=team.filter(m=>m.userId!==me);
+ const mentions=others.length?`<fieldset class="comment-mentions"><legend>Mencionar <span class="hint">opcional; recibirán una notificación</span></legend>${others.map(m=>`<label class="check-option"><input type="checkbox" name="mention" value="${escape(m.userId)}"> <span>${escape(m.name)}</span></label>`).join('')}</fieldset>`:'';
+ const visibility=kind==='OFFER'?'<input type="hidden" name="visibility" value="INTERNAL"><p class="hint">Comentario interno: las ofertas no se comparten con el cliente.</p>':`<fieldset><legend>¿Quién lo ve?</legend><label class="check-option"><input type="radio" name="visibility" value="INTERNAL" checked> <span>Sólo tu equipo (interno)</span></label><label class="check-option"><input type="radio" name="visibility" value="SHARED"> <span>También tu cliente, si esta versión está compartida</span></label></fieldset>`;
+ return `<details class="version-comments"${own.length?' open':''}><summary>Comentarios de esta versión (${own.length})</summary>${list}<form class="version-comment-form" data-kind="${escape(kind)}" data-subject-id="${escape(subjectId)}" data-version="${escape(versionId)}" novalidate><label for="vc-${escape(versionId)}">Nuevo comentario</label><textarea id="vc-${escape(versionId)}" maxlength="2000" rows="2"></textarea>${visibility}${mentions}<div class="actions"><button type="submit" class="secondary">Comentar</button></div></form></details>`;
+}
+
+// ─── Notifications ──────────────────────────────────────────────────────────────────────────────────────────────
+const NOTIFICATION_KIND_WORDS={REVIEW_ASSIGNED:'Revisión pendiente',REVIEW_REASSIGNED:'Revisión reasignada',CHANGES_REQUESTED:'Cambios pedidos',APPROVED:'Aprobada',COMMENT:'Comentario',MENTION:'Mención',GUEST_COMMENT:'Comentario del cliente',GUEST_DECISION:'Decisión del cliente',EMAIL_FAILED:'Correo no enviado'};
+const notificationItem=n=>`<li class="notification${n.readAt?'':' is-unread'}"><button type="button" class="notification-open" data-notification="${escape(n.id)}"><span class="badge">${escape(NOTIFICATION_KIND_WORDS[n.kind]??'Aviso')}</span><span class="notification-title">${escape(n.title)}</span><span class="hint">${escape(n.brandName)} · ${escape(fmt(n.createdAt))}${n.readAt?'':' · sin leer'}</span></button></li>`;
+/** Right panel: the person's notifications (same records as the Inicio summary). Opening one checks access again. */
+export function notificationsPanelHtml(d){
+ if(!d.items.length)return '<p class="hint">No tienes notificaciones. Aquí verás revisiones que te asignen, cambios pedidos, aprobaciones, menciones y lo que haga tu cliente.</p>';
+ return `<div class="notifications-head"><p class="hint">${d.unread?`${d.unread} sin leer`:'Todo leído'}</p>${d.unread?'<button type="button" class="tertiary" id="notifications-read-all">Marcar todo como leído</button>':''}</div><ul class="notification-list">${d.items.map(notificationItem).join('')}</ul><p class="hint">Marcar como leída no aprueba ni resuelve nada: cada acción se hace en su pantalla.</p>`;
+}
+/** Inicio: what needs the person now (pending reviews first), from the same notifications. */
+export function homeActionsHtml(d){
+ const pending=d.items.filter(n=>!n.readAt);
+ const reviews=pending.filter(n=>n.kind==='REVIEW_ASSIGNED'||n.kind==='REVIEW_REASSIGNED');
+ const rest=pending.filter(n=>!reviews.includes(n)).slice(0,3);
+ if(!pending.length)return '<section class="home-actions plan-block" aria-labelledby="home-actions-title"><h3 id="home-actions-title">Para ti</h3><p class="hint">No tienes revisiones ni avisos pendientes.</p></section>';
+ return `<section class="home-actions plan-block" aria-labelledby="home-actions-title"><h3 id="home-actions-title">Para ti <span class="badge">${pending.length}</span></h3>${reviews.length?`<p class="hint">Revisiones que te asignaron: ${reviews.length}</p>`:''}<ul class="notification-list">${[...reviews,...rest].slice(0,5).map(notificationItem).join('')}</ul><div class="actions"><button type="button" class="tertiary" data-open-notifications>Ver todas las notificaciones</button></div></section>`;
+}
+
+// ─── Origin decisions: preselected group with select all / none (only here; never for consents or permissions) ───
+/**
+ * Approved, active decisions of this brand. On a new item they start selected; what the person unchecks stays
+ * unchecked. The group control shows «all», «none» or a partial selection (set as indeterminate by app.js).
+ */
+export function sourceGroupHtml(name,items,selectedIds,{preselect=false,legend='Decisiones de origen'}={}){
+ if(!items.length)return `<fieldset class="source-group"><legend>${escape(legend)}</legend><p class="hint">Aún no hay decisiones aprobadas en esta marca.</p></fieldset>`;
+ const chosen=new Set(preselect?items.map(i=>i.id):selectedIds);
+ return `<fieldset class="source-group" data-source-group="${escape(name)}"><legend>${escape(legend)} <span class="hint" data-source-count>${chosen.size} de ${items.length}</span></legend>
+ <label class="check-option source-all"><input type="checkbox" data-source-all="${escape(name)}"${chosen.size===items.length?' checked':''}> <span>Seleccionar todas las decisiones aprobadas</span></label>
+ <div class="source-actions"><button type="button" class="tertiary" data-source-select="${escape(name)}">Seleccionar todas</button><button type="button" class="tertiary" data-source-clear="${escape(name)}">Quitar selección</button></div>
+ ${items.map(i=>`<label class="check-option"><input type="checkbox" name="${escape(name)}" value="${escape(i.id)}"${chosen.has(i.id)?' checked':''}> <span>${escape(i.label)}</span></label>`).join('')}
+ ${preselect?'<p class="hint">Marcamos todas las decisiones aprobadas para empezar. Desmarca las que no correspondan; tu elección se respeta.</p>':''}</fieldset>`;
+}
+
+// ─── Brando as the first step ───────────────────────────────────────────────────────────────────────────────────
+/** Three ways to start; nothing is filled until the person picks one. */
+export function brandoStartHtml(kind,{approvedOffers=[],demo=true}={}){
+ const fromOffer=approvedOffers.length?`<button type="button" class="secondary" data-start="offer">Partir de una oferta aprobada</button>`:'';
+ return `<section class="brando-start" aria-labelledby="brando-start-title"><h3 id="brando-start-title">¿Cómo quieres empezar?</h3><p class="hint">Brando propone con tu información aprobada; tú decides qué usar. No inventa precios, evidencias ni condiciones${demo?'. En esta DEMO la propuesta es de ejemplo, no generada por IA':''}.</p><div class="actions brando-start-actions"><button type="button" class="brando-action" data-start="brando">Construir con Brando</button><button type="button" class="secondary" data-start="manual">Completar manualmente</button>${fromOffer}</div>${approvedOffers.length?`<div class="brando-start-offer" hidden><label for="start-offer">Oferta aprobada de origen</label><select id="start-offer">${approvedOffers.map(o=>`<option value="${escape(o.id)}">${escape(o.name)}</option>`).join('')}</select><p class="hint">Se crea un borrador nuevo e independiente con su contenido y sus planes de precio. No hereda la aprobación ni nada compartido o autorizado.</p><div class="actions"><button type="button" data-start-offer-confirm>Crear el borrador</button></div></div>`:''}<div class="brando-start-result" aria-live="polite"></div></section>`;
+}
+
+/** An offer proposal (DEMO deterministic). Only fills empty fields unless the person chooses to replace. */
+export function offerProposalHtml(r){
+ const p=r.proposal,list=(title,items)=>items.length?`<p class="brando-list-title">${escape(title)}</p><ul>${items.map(i=>`<li>${escape(i)}</li>`).join('')}</ul>`:'';
+ const facts=[['Necesidad',p.need],['Resultado',p.outcome],['Beneficios',p.benefits.join(' · ')],['Qué la diferencia',p.differentiators.join(' · ')],['Para quién',p.segment]].filter(([,v])=>v);
+ return `<div class="brando-proposal"><p class="eyebrow">${r.mode==='DETERMINISTIC_DEMO'?'Propuesta de ejemplo (modo DEMO, no generada por IA)':'Propuesta de Brando · sin aprobar'}</p><dl class="offer-facts">${facts.map(([k,v])=>`<div><dt>${escape(k)}</dt><dd>${escape(v)}</dd></div>`).join('')}</dl>${list('Información que usó',r.sources)}${list('Lo que Brando no propone',r.missing)}<div class="actions"><button type="button" data-proposal-fill>Completar sólo lo vacío</button><button type="button" class="secondary" data-proposal-replace>Reemplazar lo que escribí</button></div><p class="hint">«Reemplazar» borra lo que ya escribiste en esos campos; «Completar» no toca nada de lo tuyo.</p></div>`;
+}
+
+// ─── Price plans ────────────────────────────────────────────────────────────────────────────────────────────────
+export const PERIODICITY_WORDS={'':'Sin indicar',ONE_TIME:'Pago único',MONTHLY:'Mensual',QUARTERLY:'Trimestral',YEARLY:'Anual',CUSTOM:'Personalizada'};
+export const UNIT_WORDS={PER_SERVICE:'Por servicio',PER_PERSON:'Por persona',PER_UNIT:'Por unidad',OTHER:'Otra'};
+const money=(minor,currency)=>{try{return new Intl.NumberFormat('es-MX',{style:'currency',currency}).format(minor/100);}catch{return `${(minor/100).toFixed(2)} ${currency}`;}};
+/** One plan in words: amount, periodicity (never invented), unit, certainty and validity apart. */
+export function planText(p){
+ const period=p.periodicity==='CUSTOM'?p.customPeriod:p.periodicity?PERIODICITY_WORDS[p.periodicity].toLowerCase():'periodicidad sin indicar';
+ const unit=p.unit==='OTHER'?p.unitLabel:UNIT_WORDS[p.unit].toLowerCase();
+ const validity=p.validFrom||p.validUntil?` · válido ${p.validFrom?`desde ${p.validFrom} `:''}${p.validUntil?`hasta ${p.validUntil}`:'sin fecha final'}`:'';
+ return `${p.name}: ${money(p.amountMinor,p.currency)} · ${period} · ${unit} · ${p.certainty==='ESTIMATED'?'estimado, no confirmado':'confirmado'}${validity}${p.conditions?` · ${p.conditions}`:''}`;
+}
+const planRow=(p,i)=>`<fieldset class="price-plan" data-plan-index="${i}"><legend>Plan ${i+1}</legend>
+ <label for="pp-name-${i}">Nombre del plan</label><input id="pp-name-${i}" data-pp="name" maxlength="80" value="${escape(p?.name??'')}" placeholder="Ej. Básico">
+ <div class="plan-dates"><div><label for="pp-amount-${i}">Importe</label><input id="pp-amount-${i}" data-pp="amount" inputmode="decimal" value="${p?(p.amountMinor/100).toFixed(2):''}"></div><div><label for="pp-currency-${i}">Moneda</label><input id="pp-currency-${i}" data-pp="currency" maxlength="3" value="${escape(p?.currency??'MXN')}"></div></div>
+ <div class="plan-dates"><div><label for="pp-period-${i}">Periodicidad</label><select id="pp-period-${i}" data-pp="periodicity">${Object.entries(PERIODICITY_WORDS).map(([k,l])=>`<option value="${k}"${(p?.periodicity??(p?'':'ONE_TIME'))===k?' selected':''}>${escape(l)}</option>`).join('')}</select></div><div><label for="pp-custom-${i}">Periodicidad personalizada</label><input id="pp-custom-${i}" data-pp="customPeriod" maxlength="80" value="${escape(p?.customPeriod??'')}" placeholder="Ej. cada dos meses"></div></div>
+ <div class="plan-dates"><div><label for="pp-unit-${i}">Unidad</label><select id="pp-unit-${i}" data-pp="unit">${Object.entries(UNIT_WORDS).map(([k,l])=>`<option value="${k}"${(p?.unit??'PER_SERVICE')===k?' selected':''}>${escape(l)}</option>`).join('')}</select></div><div><label for="pp-unit-label-${i}">Otra unidad</label><input id="pp-unit-label-${i}" data-pp="unitLabel" maxlength="80" value="${escape(p?.unitLabel??'')}" placeholder="Ej. por sesión"></div></div>
+ <label for="pp-conditions-${i}">Condiciones <span class="hint">opcional</span></label><input id="pp-conditions-${i}" data-pp="conditions" maxlength="600" value="${escape(p?.conditions??'')}">
+ <div class="plan-dates"><div><label for="pp-from-${i}">Válido desde <span class="hint">opcional</span></label><input id="pp-from-${i}" data-pp="validFrom" type="date" value="${escape(p?.validFrom??'')}"></div><div><label for="pp-until-${i}">Válido hasta <span class="hint">opcional</span></label><input id="pp-until-${i}" data-pp="validUntil" type="date" value="${escape(p?.validUntil??'')}"></div></div>
+ <label for="pp-certainty-${i}">¿Qué tan seguro es?</label><select id="pp-certainty-${i}" data-pp="certainty"><option value="ESTIMATED"${p?.certainty!=='CONFIRMED'?' selected':''}>Estimado, no confirmado</option><option value="CONFIRMED"${p?.certainty==='CONFIRMED'?' selected':''}>Confirmado</option></select>
+ <div class="actions"><button type="button" class="tertiary" data-plan-remove="${i}">Quitar este plan</button></div></fieldset>`;
+/** Plans editor. A legacy single price arrives as one plan with its periodicity «Sin indicar». */
+export function pricePlansHtml(plans){
+ return `<fieldset class="price-plans"><legend>Planes de precio <span class="hint">opcional; cada uno con su periodicidad y su vigencia</span></legend><div data-price-plans>${plans.map(planRow).join('')}</div><div class="actions"><button type="button" class="secondary" data-plan-add>Añadir un plan de precio</button></div><p class="hint">La vigencia («válido hasta») es la fecha en que deja de aplicar el precio; no es la periodicidad del cobro. Un plan de precio no crea suscripciones ni cobros.</p></fieldset>`;
+}
+export const planRowHtml=planRow;
+
+// ─── Files: references, final art, templates ────────────────────────────────────────────────────────────────────
+const FILE_FORMAT_WORDS={PNG:'Imagen PNG',JPEG:'Imagen JPEG',WEBP:'Imagen WebP',PDF:'PDF',PPTX:'PowerPoint',DOCX:'Word',XLSX:'Excel'};
+const size=b=>b>=1048576?`${(b/1048576).toFixed(1)} MB`:`${Math.max(1,Math.round(b/1024))} KB`;
+export const ACCEPT_FILES='.png,.jpg,.jpeg,.webp,.pdf,.pptx,.docx,.xlsx';
+const fileLine=(f,brandId,extra='')=>`<li class="brand-file"><span><strong>${escape(f.originalName)}</strong> · ${escape(FILE_FORMAT_WORDS[f.format]??f.format)} · ${escape(size(f.bytes))} · versión ${f.sequence} · ${escape(fmt(f.createdAt))}</span><span class="actions"><a class="button tertiary" href="/api/brand-files/download?brandId=${encodeURIComponent(brandId)}&fileId=${encodeURIComponent(f.id)}" download>Descargar</a>${extra}</span></li>`;
+/** Final art of a deliverable version and the upload control (a new upload after approval creates a new version). */
+export function finalArtHtml(d,files,brandId){
+ const art=(d.draft??d.inReview[0]??d.approved)?.content.finalArt;
+ const current=art?files.find(f=>f.id===art.fileId):null;
+ return `<div class="final-art"><h4>Arte final</h4>${current?`<ul class="brand-file-list">${fileLine(current,brandId)}</ul>`:art?`<p class="hint">Arte final: ${escape(art.name)}</p>`:'<p class="hint">Aún no hay arte final adjunto.</p>'}${d.status==='ACTIVE'?`<label class="file-upload"><span>${art?'Subir otra versión del arte final':'Subir el arte final'}</span><input type="file" accept="${ACCEPT_FILES}" data-final-art="${escape(d.id)}"></label><p class="hint">${d.draft?'Se adjunta al borrador abierto.':'Como no hay borrador, se crea una versión nueva que necesita revisión; la aprobada no cambia.'} PNG, JPEG, WebP, PDF, PowerPoint, Word o Excel, hasta 15 MB.</p>`:''}</div>`;
+}
+/** References of a brief: internal material, never shared with guests nor sent to Canva by itself. */
+export function referencesHtml(d,files,brandId){
+ const refs=files.filter(f=>f.purpose==='REFERENCE'&&f.deliverableId===d.id);
+ return `<div class="brief-references"><h4>Referencias del brief <span class="badge">Internas</span></h4>${refs.length?`<ul class="brand-file-list">${refs.map(f=>fileLine(f,brandId,`<button type="button" class="tertiary" data-file-retire="${escape(f.id)}">Retirar</button>`)).join('')}</ul>`:'<p class="hint">Sin referencias.</p>'}${d.status==='ACTIVE'?`<label class="file-upload"><span>Añadir una referencia</span><input type="file" accept="${ACCEPT_FILES}" data-reference="${escape(d.id)}"></label>`:''}<p class="hint">Las referencias no se comparten con tu cliente ni se envían a Canva: sólo el texto aprobado del brief viaja a Canva.</p></div>`;
+}
+export const TEMPLATE_CATEGORY_WORDS={PRESENTATION:'Presentaciones',DOCUMENT:'Documentos',SOCIAL:'Redes sociales',ADVERTISING:'Publicidad',OTHER:'Otras'};
+/** Marca y recursos → Plantillas: upload, classify, versions and download; only this brand's. */
+export function templatesHtml(d,brandId,filter=''){
+ const shown=filter?d.templates.filter(t=>t.category===filter):d.templates;
+ const item=t=>`<li class="template-card"><div><p class="eyebrow">${escape(TEMPLATE_CATEGORY_WORDS[t.category]??'')}</p><h4>${escape(t.originalName)}</h4><p class="hint">${escape(FILE_FORMAT_WORDS[t.format]??t.format)} · ${escape(size(t.bytes))} · versión ${t.sequence} · ${escape(fmt(t.createdAt))}</p></div><div class="actions"><a class="button secondary" href="/api/brand-files/download?brandId=${encodeURIComponent(brandId)}&fileId=${encodeURIComponent(t.id)}" download>Descargar</a><label class="file-upload tertiary"><span>Subir nueva versión</span><input type="file" accept="${ACCEPT_FILES}" data-template-version="${escape(t.id)}"></label><button type="button" class="tertiary" data-file-retire="${escape(t.id)}">Retirar</button></div>${t.versions.length>1?`<details><summary>Versiones anteriores (${t.versions.length-1})</summary><ul class="brand-file-list">${t.versions.slice(1).map(v=>fileLine(v,brandId)).join('')}</ul></details>`:''}</li>`;
+ return `<div class="ws-hero"><p class="eyebrow">Marca y recursos</p><h2>Plantillas</h2><p class="ws-lead">Las plantillas de tu marca, clasificadas y con su historial de versiones. Sólo las ve el equipo de esta marca.</p></div>
+ <form id="template-upload" class="offer-form" novalidate><h3>Subir una plantilla</h3><label for="template-category">Categoría</label><select id="template-category">${Object.entries(TEMPLATE_CATEGORY_WORDS).map(([k,l])=>`<option value="${k}">${escape(l)}</option>`).join('')}</select><label for="template-file">Archivo</label><input id="template-file" type="file" accept="${ACCEPT_FILES}"><p class="hint">PowerPoint, Word, Excel, PDF o imagen, hasta 15 MB. El tipo se comprueba por el contenido del archivo, no por su nombre.</p><p id="template-status" role="status" aria-live="polite"></p><div class="actions"><button type="submit">Subir plantilla</button></div></form>
+ <div class="template-filter" role="group" aria-label="Filtrar por categoría"><label for="template-filter">Mostrar</label><select id="template-filter"><option value="">Todas</option>${Object.entries(TEMPLATE_CATEGORY_WORDS).map(([k,l])=>`<option value="${k}"${filter===k?' selected':''}>${escape(l)}</option>`).join('')}</select></div>
+ ${shown.length?`<ul class="template-list">${shown.map(item).join('')}</ul>`:`<p class="hint">${d.templates.length?'No hay plantillas en esta categoría.':'Aún no hay plantillas. Sube la primera.'}</p>`}`;
+}
+
+// ─── Social networks: one base piece, variants per network ──────────────────────────────────────────────────────
+export const NETWORK_RULES={INSTAGRAM:{maxText:2200,maxHashtags:30,formats:['POST','CAROUSEL','REEL','STORY','VIDEO']},FACEBOOK:{maxText:3000,maxHashtags:30,formats:['POST','CAROUSEL','REEL','STORY','VIDEO']},LINKEDIN:{maxText:3000,maxHashtags:30,formats:['POST','CAROUSEL','VIDEO','ARTICLE']},TIKTOK:{maxText:2200,maxHashtags:30,formats:['VIDEO','CAROUSEL']},X:{maxText:280,maxHashtags:10,formats:['POST','VIDEO']},OTHER:{maxText:3000,maxHashtags:30,formats:['POST','CAROUSEL','REEL','STORY','VIDEO','ARTICLE']}};
+const ISSUE_WORDS={TEXT_TOO_LONG:'el texto con sus etiquetas supera el máximo de la red',TOO_MANY_HASHTAGS:'demasiadas etiquetas para esta red',FORMAT_NOT_AVAILABLE:'ese formato no existe en esta red',EMPTY_TEXT:'falta el texto'};
+/** Same rules as the server (which decides); shown while typing. */
+export function variantIssues(v){
+ const r=NETWORK_RULES[v.network]??NETWORK_RULES.OTHER,out=[],published=[v.text,v.hashtags.join(' ')].filter(Boolean).join('\n\n');
+ if(!v.text)out.push('EMPTY_TEXT');if(published.length>r.maxText)out.push('TEXT_TOO_LONG');if(v.hashtags.length>r.maxHashtags)out.push('TOO_MANY_HASHTAGS');if(!r.formats.includes(v.format))out.push('FORMAT_NOT_AVAILABLE');
+ return out;
+}
+export const variantIssueText=issues=>issues.map(i=>ISSUE_WORDS[i]).join('; ');
+/** Extra networks for the same piece (multiple selection, nothing preselected) and one variant per chosen network. */
+export function variantsHtml(base,variants,networkWords,formatWords){
+ const chosen=new Map((variants??[]).map(v=>[v.network,v]));
+ const nets=Object.keys(networkWords).filter(n=>n!==base.network);
+ return `<fieldset class="social-networks"><legend>Otras redes para esta pieza <span class="hint">opcional; elegirlas no autoriza publicar</span></legend>${nets.map(n=>`<label class="check-option"><input type="checkbox" name="dl-variant-network" value="${n}"${chosen.has(n)?' checked':''}> <span>${escape(networkWords[n])}</span></label>`).join('')}<div class="social-variants">${nets.map(n=>{const v=chosen.get(n);return `<div class="social-variant" data-variant="${n}"${v?'':' hidden'}><h5>Variante para ${escape(networkWords[n])} <span class="hint">máximo ${NETWORK_RULES[n].maxText} caracteres</span></h5><label for="dv-format-${n}">Formato</label><select id="dv-format-${n}" data-variant-format>${NETWORK_RULES[n].formats.map(f=>`<option value="${f}"${(v?.format??NETWORK_RULES[n].formats[0])===f?' selected':''}>${escape(formatWords[f])}</option>`).join('')}</select><label for="dv-text-${n}">Texto</label><textarea id="dv-text-${n}" data-variant-text rows="3" maxlength="3000">${escape(v?.text??'')}</textarea><label for="dv-tags-${n}">Etiquetas</label><input id="dv-tags-${n}" data-variant-tags maxlength="600" value="${escape((v?.hashtags??[]).join(' '))}"><p class="hint" data-variant-status role="status" aria-live="polite"></p></div>`;}).join('')}</div></fieldset>`;
+}
+
+// ─── Collaboration: several items at once with a summary ────────────────────────────────────────────────────────
+/** Multiple selection of what can be shared (nothing preselected), then a summary of what the guest will see. */
+export function shareManyHtml(s){
+ const item=(type,id,title,note='')=>`<label class="check-option"><input type="checkbox" name="share-item" value="${escape(type)}:${escape(id)}" data-title="${escape(title)}"> <span>${escape(title)}${note?` <span class="hint">${escape(note)}</span>`:''}</span></label>`;
+ const groups=[
+  ['Estrategia',s.strategy.decisions?[item('STRATEGY_SNAPSHOT','strategy',`Estrategia: ${s.strategy.decisions} decisión(es) aprobada(s), tal como están hoy`)]:[]],
+  ['Plan de Marketing',s.planSnapshots.map(p=>item('PLAN_SNAPSHOT',p.id,p.title))],
+  ['Materiales',s.deliverables.map(v=>item('DELIVERABLE_VERSION',v.id,v.title,v.status==='IN_REVIEW'?'pendiente de revisión':''))],
+  ['Identidad visual',s.kitVersions.map(v=>item('KIT_VERSION',v.id,v.title,v.status==='IN_REVIEW'?'pendiente de revisión':''))],
+  ['Sitio web',(s.siteVersions??[]).map(v=>item('SITE_VERSION',v.id,v.title,v.status==='IN_REVIEW'?'pendiente de revisión':''))]
+ ].filter(([,list])=>list.length);
+ if(!groups.length)return '';
+ return `<form id="share-many-form" class="offer-form" novalidate><h4>¿Qué quieres compartir?</h4>${groups.map(([title,list])=>`<fieldset><legend>${escape(title)}</legend>${list.join('')}</fieldset>`).join('')}<div id="share-summary" class="share-summary" aria-live="polite"></div><p class="hint">Se comparte cada versión exacta. Tu cliente no ve borradores, notas internas ni versiones futuras; si cambia algo, comparte la nueva versión.</p><div class="actions"><button type="submit" disabled>Compartir lo seleccionado</button></div></form>`;
+}
+export function shareSummaryHtml(titles){
+ if(!titles.length)return '<p class="hint">Elige al menos un elemento.</p>';
+ return `<p><strong>Tu cliente verá (${titles.length}):</strong></p><ul>${titles.map(t=>`<li>${escape(t)}</li>`).join('')}</ul>`;
+}
+const MESSAGE_WORDS={QUEUED:'Correo en cola',SENDING:'Enviando correo',SENT:'Correo enviado',FAILED:'Correo no enviado',CANCELLED:'Correo cancelado'};
+const ERROR_WORDS={RECIPIENT_REJECTED:'el proveedor rechazó la dirección',PROVIDER_UNAVAILABLE:'el proveedor no respondió',PROVIDER_ERROR:'error del proveedor',INVITATION_CLOSED:'la invitación se retiró o venció antes de enviarse',MESSAGE_UNAVAILABLE:'el mensaje ya no puede enviarse'};
+/** Email status of one invitation; «simulated» means it went to the local DEMO folder and reached no one. */
+export function invitationMessageHtml(m,canManage){
+ if(!m)return '<span class="hint">Entrega por enlace</span>';
+ return `<span class="badge ${m.status==='FAILED'?'warn':''}">${escape(MESSAGE_WORDS[m.status]??m.status)}${m.simulated?' · simulado':''}</span>${m.lastError?`<span class="hint">${escape(ERROR_WORDS[m.lastError]??m.lastError)}${m.status==='QUEUED'?` · reintento ${m.attempts}`:''}</span>`:''}${m.status==='SENT'&&m.simulated?'<span class="hint">Guardado en la bandeja local de la DEMO; no salió a ningún buzón.</span>':''}${m.status==='FAILED'&&canManage?`<button type="button" class="tertiary" data-retry-email="${escape(m.id)}">Reintentar el envío</button>`:''}`;
+}
+
+// ─── Results period ─────────────────────────────────────────────────────────────────────────────────────────────
+export const PRESET_WORDS={LAST_7:'Últimos 7 días',LAST_30:'Últimos 30 días',LAST_90:'Últimos 90 días',THIS_MONTH:'Este mes',LAST_MONTH:'Mes anterior',THIS_QUARTER:'Este trimestre',THIS_YEAR:'Este año',CUSTOM:'Fechas personalizadas'};
+export const COMPARE_WORDS={NONE:'Sin comparación',PREVIOUS:'Periodo anterior de igual duración',YEAR_AGO:'Mismo periodo del año anterior'};
+/** Period, custom dates and comparison; both ranges and the time zone are always written out. */
+export function periodControlsHtml(period){
+ return `<form id="results-period" class="results-period plan-block" novalidate><h3>Periodo</h3>
+ <div class="results-period-row"><div><label for="rp-preset">Periodo</label><select id="rp-preset">${Object.entries(PRESET_WORDS).map(([k,l])=>`<option value="${k}"${period.preset===k?' selected':''}>${escape(l)}</option>`).join('')}</select></div>
+ <div class="rp-custom"${period.preset==='CUSTOM'?'':' hidden'}><label for="rp-from">Desde</label><input id="rp-from" type="date" value="${escape(period.current.from)}"></div><div class="rp-custom"${period.preset==='CUSTOM'?'':' hidden'}><label for="rp-to">Hasta</label><input id="rp-to" type="date" value="${escape(period.current.to)}"></div></div>
+ <fieldset class="rp-compare"><legend>Comparar con</legend>${Object.entries(COMPARE_WORDS).map(([k,l])=>`<label class="check-option"><input type="radio" name="rp-compare" value="${k}"${period.compare===k?' checked':''}> <span>${escape(l)}</span></label>`).join('')}</fieldset>
+ <p id="rp-status" role="status" aria-live="polite"></p><div class="actions"><button type="submit" class="secondary">Aplicar</button></div>
+ <p class="results-range"><strong>Mostrando:</strong> ${escape(period.current.label)} (${period.current.days} días)${period.comparison?` · <strong>comparado con:</strong> ${escape(period.comparison.label)} (${period.comparison.days} días)`:''} · Zona horaria: ${escape(period.timezone)}</p>
+ <p class="hint">El periodo filtra la actividad (solicitudes, oportunidades, referencias de campaña y lecturas de las cuentas). Los indicadores marcados «Estado actual» no dependen del periodo.</p></form>`;
+}
+/** Comparison line of one metric (never a percentage over zero; never a sum across providers). */
+export function comparisonHtml(c){
+ if(!c)return '';
+ const sign=c.difference>0?'+':'';
+ return `<p class="result-compare">Antes: ${escape(String(c.previous))} (${escape(c.period?.label??'')}) · Cambio: ${sign}${escape(String(c.difference))}${c.percent!==null?` (${sign}${escape(String(c.percent))} %)`:''}${c.note?` · ${escape(c.note)}`:''}</p>`;
+}

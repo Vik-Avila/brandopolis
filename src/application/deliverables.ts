@@ -78,7 +78,7 @@ export async function listDeliverables(tx: Transaction, a: BrandActor, types: re
       approved: approved ? { ...view(approved), originOutdated: outdated(approved.content as DeliverableContent, approved.manifest as Manifest) } : null,
       draft: draft ? { ...view(draft), gaps: deliverableGaps(draft.content as DeliverableContent) } : null,
       inReview: own.filter(v => v.status === 'IN_REVIEW').map(view),
-      history: own.map(v => ({ id: v.id, sequence: v.sequence, status: v.status })),
+      history: own.map(v => ({ id: v.id, sequence: v.sequence, status: v.status, decisionCriterion: v.status === 'CHANGES_REQUESTED' ? v.decisionCriterion : null })),
       publications: publications.filter(p => p.deliverableId === d.id).map(p => ({ versionId: p.versionId, publishedOn: p.publishedOn, url: p.url, note: p.note, createdAt: p.createdAt.toISOString() }))
     };
   });
