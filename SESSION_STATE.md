@@ -1,3 +1,32 @@
+## 2026-10-12 · PHASE 4 · revisión de la DEMO del propietario implementada en local (sin aceptación)
+
+- **Candidato:** `c660124`. Commits de la iteración, en local y sin push: `0776a8c` (especificación, matriz y ADR-0036 antes de implementar), `6951684` (parte 1: controles, área central, menú, circuito de aprobación, comentarios, notificaciones, planes de precio, migración 0033), `c349d76` (parte 2: archivos, correo simulado, compartir varios, variantes por red, Performance Max y mensajes, periodos), `df13e86` (parte 3: interfaz y 18 pruebas unitarias nuevas), `6969b29` (pruebas de navegador y ajustes de interfaz), `c660124` (panel de herramientas bajo la cabecera en pantallas estrechas) y el commit de documentación de este cierre. El candidato anterior era
+  `0c356ca` (código) con `5a76d0f` (documentación). Aquel informe anunció «cinco commits» y enumeró cuatro sobre
+  `d955645`; eran cuatro.
+- **Alcance:** los 24 criterios R12 de PHASE4_SPEC §13, en la matriz v25:
+  - circuito de aprobación con responsable, comentarios por versión y notificaciones;
+  - correo con proveedor simulado;
+  - planes de precio y crear a partir de una oferta;
+  - Brando como primer paso y decisiones de origen preseleccionadas;
+  - arte final, referencias y plantillas;
+  - variantes por red y compartir varios elementos;
+  - periodos en Resultados;
+  - controles alineados, área central, orden del menú, iconos, indicador de Estrategia y textos conciliados.
+- **Ampliaciones expresas (ADR-0036):** Performance Max y campañas de mensajes en Meta, sólo con simuladores.
+- **Migración aditiva 0033:** aplicada sólo en las bases aisladas (55434 y 55432).
+- **Seguridad:** dos avisos de la revisión automática en segundo plano, corregidos con pruebas:
+  - la prohibición de aprobación individual también cubre a quien creó el borrador;
+  - las descargas se nombran por el formato detectado y se rechazan los documentos de Office con macros.
+- **Defecto previo corregido:** el panel de herramientas en pantallas estrechas quedaba bajo la cabecera.
+- **Resultados:** `pnpm test` 544 PASS (18 nuevas) sobre `c660124`; typecheck y lint sin errores; Foundation 0 errores; validador de UI PASS; `pnpm test:pilot:e2e` 10/10. Regresión completa de navegador sobre `6969b29` con `pnpm demo:phase4` (20 archivos en tres tramos, inventario sin duplicados ni reintentos): 330 ejecuciones, 316 PASS, 13 SKIP por diseño según el ancho y 1 FAIL (`micro-hotfix.spec.ts:166` en móvil: el ajuste de capas del panel tapaba la cabecera). `c660124` lo corrige y cambia sólo esa regla (≤1000 px); sobre él se repitieron `micro-hotfix`, `workspace` y `phase4-review` en compact, tablet y móvil: 50 PASS, 7 SKIP, 0 FAIL. `test:visual` 10 PASS · 1 SKIP. Comparación al píxel de las 17 canónicas: 6 pantallas públicas sin diferencias; 11 del espacio de trabajo difieren por los cambios aprobados (área central contenida, orden del menú, icono de notificaciones y «Para ti» en Inicio). No se actualizó ninguna referencia. El 503 de `phase3.spec.ts:58` no apareció
+- **Estados:** implementado y probado en local; ningún criterio probado con proveedor.
+- **Pendiente de acceso:** proveedor de correo, dominio remitente y bandeja autorizada; cuentas de Google, Meta y
+  Canva; HTTPS y dominio.
+- **Pendiente de decisión:** aceptación de esta DEMO y ADR-0035 (sigue propuesto; Atomic y Chatwoot no adoptados).
+- **Pendientes anteriores:** se conservan.
+- **En observación:** el 503 de `phase3.spec.ts:58`.
+- **Release:** **not release-ready**; producción congelada.
+
 ## 2026-10-11 · PHASE 4 · bloque 8 completado en local con simuladores y bloque 9 (revisión integral)
 
 **Punto de partida:** HEAD `d955645`, árbol limpio. **Commits locales (sin push ni despliegue):** `6e3da74` (bloque 8 completado en local, migración aditiva 0032), `16cc068` (correcciones de la revisión de seguridad independiente y lanzador de la DEMO), `0c356ca` (cabecera de las tarjetas de campaña, hallada en la revisión de las pantallas nuevas) y el commit de documentación. Las

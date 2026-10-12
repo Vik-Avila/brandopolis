@@ -1,3 +1,20 @@
+## 2026-10-12 · Phase 4 — Revisión de la DEMO: circuito de aprobación, notificaciones, correo simulado y nuevas campañas (migración aditiva 0033)
+
+- Antes de enviar una oferta o un material se elige quién lo revisa, y sólo esa persona decide. La aprobación
+  individual es explícita y queda registrada; cada marca puede exigir una segunda persona.
+- Comentarios junto a cada versión, internos o compartidos con el cliente, con menciones.
+- Centro de notificaciones en el panel derecho, con contador y resumen «Para ti» en Inicio.
+- Invitaciones también por correo, con estado, reintentos y errores visibles. En la DEMO el correo es simulado y no
+  sale a ningún buzón.
+- Varios planes de precio por oferta y «Crear a partir de esta oferta».
+- Brando como primer paso: no borra lo que escribiste salvo que lo elijas.
+- Decisiones de origen preseleccionadas, con «Seleccionar todas» y «Quitar selección».
+- Arte final como versión nueva revisable, referencias internas del brief y Plantillas en Marca y recursos.
+- Variantes por red social, compartir varios elementos con un resumen y Resultados por periodo con comparación.
+- Google Performance Max y campañas de mensajes en Meta, en el simulador.
+- Casillas y radios alineados, área central más clara, orden del menú, iconos en Marketing e indicador de Estrategia.
+- Evidencia: unitarias 544; navegador 330 ejecuciones (316 PASS, 13 SKIP, 1 FAIL corregido y repetido en verde); PILOT 10/10; 11 canónicas a revisar por cambios aprobados. Aceptación del propietario pendiente; candidato not release-ready.
+
 ## 2026-10-11 · Phase 4 — DEMO integral lista para la aceptación local (migración aditiva 0032)
 
 - Campañas de Google y Meta: crear en pausa, activar con una segunda autorización y pausar, todo en el simulador y sin gasto.

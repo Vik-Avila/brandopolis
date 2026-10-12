@@ -1,7 +1,7 @@
 Status: derived
 Owner: Product / Engineering
 Canonical: no
-Last reviewed: 2026-10-11
+Last reviewed: 2026-10-12
 Related: docs/15-handoff/PHASE3_LOCAL_CANDIDATE_2026-10-08.md, docs/14-decisions/ADR-0026.md, docs/14-decisions/ADR-0027.md, docs/14-decisions/ADR-0028.md, docs/14-decisions/ADR-0029.md, SESSION_STATE.md
 Depends on: Fase 3 integrada en `main` (ver SESSION_STATE para el SHA exacto y el estado de los gates)
 
@@ -169,3 +169,11 @@ queda dentro de la Fase 4 sin proveedores.
 ejecutado sobre `0c356ca`. Guía de aceptación, instrucciones de inicio y parada, limitaciones, decisiones y
 riesgos en [PHASE4_DEMO_ACCEPTANCE](PHASE4_DEMO_ACCEPTANCE.md). Estado final por criterio en la matriz (v23). La
 aceptación del propietario y la verificación real siguen pendientes; la Fase 4 no está cerrada.
+
+**Actualización · revisión de la DEMO del propietario (2026-10-12).** Candidato `c660124`: los criterios R12-01…R12-24
+(PHASE4_SPEC §13, matriz v25), con la migración aditiva 0033 y las ampliaciones de [ADR-0036](../14-decisions/ADR-0036.md).
+Bases reutilizables para las Fases 5 y 6: circuito de aprobación (`review-workflow.ts`), notificaciones
+(`notifications.ts`), bandeja de salida de correo (`email-outbox.ts`) y archivos de marca (`brand-files.ts`). Guía y
+recorrido en [PHASE4_DEMO_ACCEPTANCE](PHASE4_DEMO_ACCEPTANCE.md). La aceptación del propietario y la verificación real
+siguen pendientes; la Fase 4 no está cerrada.
+

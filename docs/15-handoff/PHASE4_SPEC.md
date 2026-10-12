@@ -804,6 +804,22 @@ local, probado con proveedor o pendiente.
   - Materiales anunciaba PowerPoint, PDF y Word «más adelante», aunque las versiones aprobadas ya descargan PDF y Word,
     más PowerPoint para presentaciones, desde el bloque 6.
 
+### 13.6 Implementación de la iteración (2026-10-12)
+
+Candidato `c660124` (commits de la iteración: `0776a8c` (especificación, matriz y ADR-0036 antes de implementar), `6951684` (parte 1: controles, área central, menú, circuito de aprobación, comentarios, notificaciones, planes de precio, migración 0033), `c349d76` (parte 2: archivos, correo simulado, compartir varios, variantes por red, Performance Max y mensajes, periodos), `df13e86` (parte 3: interfaz y 18 pruebas unitarias nuevas), `6969b29` (pruebas de navegador y ajustes de interfaz), `c660124` (panel de herramientas bajo la cabecera en pantallas estrechas) y el commit de documentación de este cierre). Migración aditiva 0033 (`review_assignments`,
+`approval_policies`, `review_comments`, `notifications`, `email_outbox`, `brand_files`, columnas de origen en `offers`
+y CHECK de campañas ampliado), aplicada sólo en las bases aisladas. Estado por criterio en la matriz (v25).
+Decisiones de diseño:
+- **Aprobación individual por omisión:** la política por defecto la permite, pero siempre hay que elegirla y queda
+  registrada. Un administrador puede exigir otra persona por tipo. Cuentan como autores quien creó el borrador y quien
+  lo envía.
+- **Correo:** un único proveedor simulado en la DEMO. Sin proveedor configurado, la invitación se entrega por enlace
+  y lo dice. El enlace viaja sellado con la bóveda del servidor y se borra al enviarse o cancelarse.
+- **Archivos:** límite de 15 MB. Formatos PNG, JPEG, WebP, PDF, PowerPoint, Word y Excel; se rechazan los documentos
+  con macros. La descarga se nombra siempre con la extensión del formato detectado.
+- **Resultados:** las cifras de actividad dependen del periodo; las de estado actual lo dicen. La zona horaria sigue
+  siendo la de resultados hasta que las marcas tengan la suya.
+
 ### 13.5 Pendientes anteriores que se conservan
 
 Adaptadores reales y OAuth de Google Ads, Meta y Canva; cierre de marca (DEL-002/004/005); versión del kit en el
@@ -825,5 +841,6 @@ Chatwoot no se adoptan.
 | v7 | 2026-10-11 | §4.5: estado de implementación de sitios (bloque 7); sin cambio de alcance |
 | v8 | 2026-10-11 | §4.5: sitios en DEMO completos en su alcance local (DOM-004, SITE-004, ZIP, vista por tamaño); sin cambio de alcance |
 | v9 | 2026-10-11 | §4.6 y §4.8: estado del bloque 8 local con simuladores; sin cambio de alcance |
+| v12 | 2026-10-12 | §13.6: implementación de la iteración (candidato c660124), decisiones de diseño y migración 0033 |
 | v11 | 2026-10-12 | §13: revisión de la DEMO del propietario (sin aceptación): arreglos, mejoras y ampliaciones expresas (Performance Max, mensajes en Meta; ADR-0036); criterios R12; conciliación; pendientes conservados |
 | v10 | 2026-10-11 | §4.6: activación y pausa completadas con simuladores (alcance sin cambios: las dos ya estaban en §4.6); DEMO de aceptación preparada |

@@ -838,7 +838,41 @@ visible sin funcionamiento no cuenta como implementado.
 | R12-23 | §4 | Textos conciliados con lo que funciona; referencia inequívoca del candidato | arreglo |
 | R12-24 | §6 | DEMO en Windows con `pnpm.cmd demo:phase4`, acceso, recorrido y parada comprobada | arreglo |
 
-Estado de cada criterio: en la sección de implementación de esta iteración (más abajo, al cerrarla).
+### Estado de los criterios R12 al cierre de la iteración (candidato c660124)
+
+«Probado en local» significa pruebas automáticas PASS sobre el candidato (unitarias y de navegador en los cinco
+tamaños) y revisión de capturas; ningún criterio está «probado con proveedor». Aceptación del propietario: pendiente.
+
+| ID | Estado | Evidencia | Pendiente |
+|---|---|---|---|
+| R12-01 | implementado · probado en local | `product-workspace.css` (tokens `--bp-brand-ivory`, `--bp-neutral-50`); capturas en los cinco tamaños | revisión visual del propietario |
+| R12-02 | implementado · probado en local (proveedor simulado) | `email-outbox.ts`; `review-cases` (correo: cola, enlace sellado, envío único, cancelación al revocar, reintentos, FAILED con aviso, reintento sin duplicar); `phase4-collaboration.spec` | **de acceso:** proveedor real, dominio remitente verificado y bandeja de prueba autorizada (EXT-REQ-08). Niveles 2 y 3 de evidencia sin acreditar |
+| R12-03 | implementado · probado en local | `index.html`; `pre-tester.test` y `micro-hotfix.spec` (orden), cinco tamaños | — |
+| R12-04 | implementado · probado en local | regla común en `base.css` (casillas y radios), `.check-option`; formularios del sitio y de desarrollo; capturas | revisión visual del propietario |
+| R12-05 | implementado · probado en local | `sourceGroupHtml`/`bindSourceGroups`; `phase4-review.spec` (2 de 2 → 1 de 2 parcial → 0 → 2; elección conservada al reabrir) | — |
+| R12-06 | implementado · probado en local | inicio con Brando en ofertas y materiales; `offerProposal` (sólo decisiones aprobadas, sin precios, condiciones ni evidencias, no escribe); «Completar sólo lo vacío» frente a «Reemplazar»; `phase4-offers/deliverables.spec`, `review-cases` | Brando con IA real (EXT-REQ-10) |
+| R12-07 | implementado · probado en local | `pricePlans` aditivo en offer-version v1; `review-cases` (planes, precio anterior sin periodicidad, personalizada, unidad, vigencia); `phase4-offers.spec` | — |
+| R12-08 | implementado · probado en local | `review-workflow.ts`, migración 0033 (`approval_policies`, `review_assignments` con guardas SQL); `review-cases` (sin responsable no se envía, sólo decide el asignado, aprobación individual explícita y auditada, política que la prohíbe también para quien creó el borrador, reasignación sin permisos nuevos, edición sólo ADMIN con revisión); `phase4-offers/review.spec` | segunda persona real en una DEMO con dos cuentas (cubierta por pruebas automáticas) |
+| R12-09 | implementado · probado en local | `createOfferFrom` (columnas de origen aditivas); `review-cases`; `phase4-offers.spec` | — |
+| R12-10 | implementado · probado en local | `brand-files.ts` (FINAL_ART en el contenido revisado, escrito sólo por el servidor); `review-cases`; `phase4-review.spec` | arte desde Canva real (adaptador pendiente) |
+| R12-11 | implementado · probado en local | REFERENCE sólo en briefs, nunca en el portal ni en el envío a Canva; `review-cases`, `phase4-review.spec` | — |
+| R12-12 | implementado · probado en local | pestaña Plantillas; versiones por linaje; aislamiento por marca; formato por estructura (Office sin macros); `review-cases`, `phase4-review.spec` | Biblioteca de recursos (sigue pendiente) |
+| R12-13 | implementado · probado en local | `variants` en socialPost v1 con reglas por red; `review-cases`, `phase4-deliverables.spec` | límites a reconfirmar con cada red al integrar publicación (fuera de alcance) |
+| R12-14 | implementado · probado en local (simulador) | ADR-0036; `campaign-cases` (pasos budget → campaign → asset_group → asset_group_assets, comprobaciones, activación); `phase4-review.spec` | **de código y acceso:** adaptador real de Google Ads y cuenta de prueba |
+| R12-15 | implementado · probado en local (simulador) | ADR-0036; `campaign-cases` (sin destino web, preguntas sólo Messenger, pantalla, conversaciones aparte en Resultados); `phase4-review.spec` | **de código y acceso:** adaptador real de Meta, número de WhatsApp vinculado, Instagram Direct |
+| R12-16 | implementado · probado en local | `shareManyToPortal` (todo o nada); `review-cases`; `phase4-collaboration.spec` | — |
+| R12-17 | implementado · probado en local | `results-period.ts`; `readResults` por periodo; `review-cases` (rangos, año anterior con 29 de febrero, sin porcentaje sobre cero); `phase4-review.spec` | cortes históricos de estado (Fase 5) |
+| R12-18 | implementado · probado en local | `lead-form` (base.css) y `site-render` | textos de consentimiento definitivos (EXT-REQ-13) |
+| R12-19 | implementado · probado en local | iconos en `areaTabsHtml`; `plan-views.test` | — |
+| R12-20 | implementado · probado en local | `aria-current="true"` en Estrategia; `workspace.spec` (también tras recargar) | — |
+| R12-21 | implementado · probado en local | `notifications.ts`; panel derecho, contador y «Para ti» en Inicio; `review-cases` (por persona, marcas alcanzables, apertura que revalida); `phase4-collaboration/review.spec` | avisos por correo (dependen de R12-02 real) |
+| R12-22 | implementado · probado en local | `review_comments` (solo añadir), menciones del equipo; el portal sólo muestra los compartidos de la versión compartida; `review-cases`, `phase4-review.spec` | — |
+| R12-23 | implementado · probado en local | textos corregidos en Campañas y Materiales; candidato inequívoco (abajo) | — |
+| R12-24 | implementado · comprobado en local | guía `PHASE4_DEMO_ACCEPTANCE` (`pnpm.cmd demo:phase4`, entrada, recorrido y parada comprobada) | `Ctrl+C` del lanzador no comprobable sin consola interactiva |
+
+Pendientes anteriores conservados sin cambios: adaptadores reales y OAuth de Google Ads, Meta y Canva; cierre de marca
+(DEL-002/004/005); IDN-004; fuentes OTF/WOFF2; PDF y búsqueda en el portal; cambio de espacio de trabajo; HTTPS,
+dominio, DNS y medición reales; privacidad y consentimiento definitivos; OIDC del invitado; EXP-001/002/005.
 
 ## Historial de revisiones
 
@@ -864,6 +898,7 @@ Estado de cada criterio: en la sección de implementación de esta iteración (m
 | v18 | 2026-10-11 | Capturas aprobadas aplicadas: I10-UI-03 validado en DEMO; aceptación visual del bloque Clientes y Resultados satisfecha (no cierra Fase 4) |
 | v19 | 2026-10-11 | Exportaciones (bloque 6): estado de EXP-001…005 con aplicaciones de verificación |
 | v20 | 2026-10-11 | Sitios (bloque 7): estado de SITE, DOM, MEA y CNS con evidencia de DEMO; nota de DOM-002 (reserva al verificar) |
+| v25 | 2026-10-12 | Estado de R12-01…R12-24 al cierre de la iteración (candidato c660124): implementados y probados en local; correo, Performance Max y mensajes sólo con simuladores |
 | v24 | 2026-10-12 | Criterios R12-01…R12-24 de la revisión del propietario (sin aceptación), con arreglos, mejoras y ampliaciones expresas |
 | v23 | 2026-10-11 | Bloque 8 completado en local con simuladores (activación con segunda autorización, pausa, medición, EXT-008/017, Canva, RES-002, Validación, ACC-01) y bloque 9: estado final por criterio, categorías de lo pendiente de proveedor, criterios anteriores revisados |
 | v22 | 2026-10-11 | Incidencia de Clientes diagnosticada y corregida; idempotencia del formulario comprobada; bloque 8 local con simuladores: estado por criterio (CNV, EXT, RES, ACC-01/06) |
