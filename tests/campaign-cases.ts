@@ -86,6 +86,9 @@ export function campaignCases(connection: () => ReturnType<typeof connect>) {
       const other = await x.engine.createBrand(x.who.token, 'Otra marca');
       let c = (await x.read()).campaigns[0];
       await expect(x.cmd('draft', { campaignId: c.id, expectedRevision: c.revision, content: x.google({ ...offer, offerId: randomUUID() }) })).rejects.toMatchObject({ code: 'INVALID' });
+      // Security review: a version nobody approved can never be cited (a draft offer version of this same brand).
+      const draftOffer = await x.engine.offerCommand(x.who.token, 'create', { brandId: x.brand.id, content: { name: 'Borrador', kind: 'SERVICE', audience: { customerDecisionVersionId: null, segment: 'x' }, need: 'x', outcome: 'x', benefits: [], differentiators: [], conditions: '', proofIds: [], sourceDecisionVersionIds: [], hypothesisIds: [], price: null }, idempotencyKey: randomUUID() }) as { offerId: string; versionId: string };
+      await expect(x.cmd('draft', { campaignId: c.id, expectedRevision: c.revision, content: x.google({ offerId: draftOffer.offerId, offerVersionId: draftOffer.versionId, name: 'Borrador' }) })).rejects.toMatchObject({ code: 'INVALID', message: 'Only an approved version of the offer can be cited' });
       await x.cmd('draft', { campaignId: c.id, expectedRevision: c.revision, content: x.google(offer) });
       await expect(x.cmd('draft', { campaignId: c.id, expectedRevision: c.revision, content: x.google(offer) })).rejects.toMatchObject({ code: 'CONFLICT' });
       c = (await x.read()).campaigns[0];
@@ -98,6 +101,13 @@ export function campaignCases(connection: () => ReturnType<typeof connect>) {
       const member = await seedIdentity(x.db, 'MEMBER', x.who.workspaceId);
       await x.db.insert(t.assignments).values({ workspaceId: x.who.workspaceId, brandId: x.brand.id, userId: member.userId });
       expect((await x.read(member.token)).canAuthorize).toBe(false);
+      // Security review: a member granted MANAGE_CONNECTIONS who did not connect the account cannot change it, and a brand
+      // without a link to the connection does not see it.
+      await x.engine.changeBrandCapability(x.who.token, { brandId: x.brand.id, userId: member.userId, capability: 'MANAGE_CONNECTIONS', grant: true });
+      const connId = (await x.read()).connections.ads[0].connectionId;
+      await expect(x.engine.connectionStatus(member.token, { brandId: x.brand.id, connectionId: connId, status: 'EXPIRED' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      await expect(x.engine.connectionStatus(x.who.token, { brandId: other.id, connectionId: connId, status: 'EXPIRED' })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      expect((await x.read()).connections.ads[0].status).toBe('ACTIVE');
       const screen = await x.engine.campaignScreen(x.who.token, { brandId: x.brand.id, campaignId: c.id, linkId });
       expect(screen).toMatchObject({ operation: 'CREATE_PAUSED', simulated: true, sequence: 1, summary: { accountLabel: 'Cuenta simulada (sin conexión real)', destination: 'https://cafe-nandu.mx/cafeterias', currency: 'MXN', budget: { kind: 'DAILY_AVERAGE', amountMinor: 15000 } } });
       expect(screen.effect).toContain('EN PAUSA');

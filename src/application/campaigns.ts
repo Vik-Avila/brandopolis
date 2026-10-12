@@ -57,9 +57,11 @@ async function kitImages(tx: Transaction, a: Scoped) {
 }
 /** Every reference must be this brand's: approved offer version, live site, approved ad version, valid kit image. */
 async function checkReferences(tx: Transaction, a: Scoped, c: CampaignContent) {
-  if (c.offer) { const [v] = await tx.select({ offerId: t.offerVersions.offerId }).from(t.offerVersions).where(and(byBrand(t.offerVersions, a), eq(t.offerVersions.id, c.offer.offerVersionId))); if (!v || v.offerId !== c.offer.offerId) throw new AppError('INVALID', 'Unknown offer for this brand'); }
+  // Only versions that a person approved (current or superseded) can be cited; a draft or rejected version never.
+  const wasApproved = (status: string) => status === 'APPROVED' || status === 'SUPERSEDED';
+  if (c.offer) { const [v] = await tx.select({ offerId: t.offerVersions.offerId, status: t.offerVersions.status }).from(t.offerVersions).where(and(byBrand(t.offerVersions, a), eq(t.offerVersions.id, c.offer.offerVersionId))); if (!v || v.offerId !== c.offer.offerId) throw new AppError('INVALID', 'Unknown offer for this brand'); if (!wasApproved(v.status)) throw new AppError('INVALID', 'Only an approved version of the offer can be cited'); }
   if (c.destination?.kind === 'SITE') { const [s] = await tx.select({ id: t.sites.id }).from(t.sites).where(and(byBrand(t.sites, a), eq(t.sites.id, c.destination.siteId))); if (!s) throw new AppError('INVALID', 'Unknown site for this brand'); }
-  if (c.adDeliverable) { const [v] = await tx.select({ deliverableId: t.deliverableVersions.deliverableId }).from(t.deliverableVersions).where(and(byBrand(t.deliverableVersions, a), eq(t.deliverableVersions.id, c.adDeliverable.versionId))); if (!v || v.deliverableId !== c.adDeliverable.deliverableId) throw new AppError('INVALID', 'Unknown ad for this brand'); }
+  if (c.adDeliverable) { const [v] = await tx.select({ deliverableId: t.deliverableVersions.deliverableId, status: t.deliverableVersions.status }).from(t.deliverableVersions).where(and(byBrand(t.deliverableVersions, a), eq(t.deliverableVersions.id, c.adDeliverable.versionId))); if (!v || v.deliverableId !== c.adDeliverable.deliverableId) throw new AppError('INVALID', 'Unknown ad for this brand'); if (!wasApproved(v.status)) throw new AppError('INVALID', 'Only an approved version of the ad can be cited'); }
   if (c.social?.imageAssetId && !(await kitImages(tx, a)).some(i => i.id === c.social!.imageAssetId)) throw new AppError('INVALID', 'This image is not a valid image of the brand kit');
 }
 /** Destination address resolved on the server (a live site's address is never taken from the browser). */
@@ -288,6 +290,14 @@ export async function setSimulatedConnectionStatus(tx: Transaction, a: BrandActo
   if (input.status !== 'EXPIRED' && input.status !== 'ACTIVE') throw new AppError('INVALID', 'Unknown status');
   const [c] = await tx.select().from(t.connections).where(and(eq(t.connections.workspaceId, a.workspaceId), eq(t.connections.id, idOf(input.connectionId, 'Connection'))));
   if (!c || !(c.scopes as string[]).includes(SIMULATED_SCOPE)) throw new AppError('NOT_FOUND', 'Connection not available');
+  // Same rules as linking (ADR-0031): a personal connection only by its owner; an Ads connection only from a brand it is
+  // linked to, and only by who connected it or an ADMIN. Otherwise indistinguishable from a missing connection.
+  if (c.ownerUserId && c.ownerUserId !== a.userId) throw new AppError('NOT_FOUND', 'Connection not available');
+  if (!c.ownerUserId) {
+    const [link] = await tx.select({ id: t.connectionBrandLinks.id }).from(t.connectionBrandLinks).where(and(byBrand(t.connectionBrandLinks, a), eq(t.connectionBrandLinks.connectionId, c.id), isNull(t.connectionBrandLinks.unlinkedAt)));
+    if (!link) throw new AppError('NOT_FOUND', 'Connection not available');
+    if (a.role !== 'ADMIN' && c.connectedBy !== a.userId) throw new AppError('FORBIDDEN', 'Only who connected this account or an administrator can change it');
+  }
   await tx.update(t.connections).set({ status: input.status as string, updatedAt: new Date() }).where(eq(t.connections.id, c.id));
   return { connectionId: c.id, status: input.status };
 }
