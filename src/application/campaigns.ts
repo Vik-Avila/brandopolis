@@ -118,8 +118,12 @@ export async function readCampaigns(tx: Transaction, a: BrandActor) {
   for (const c of rows) {
     const vs = versions.filter(v => v.campaignId === c.id);
     const checked = async (v: VersionRow | undefined) => (v ? { ...versionView(v), checks: await checksFor(tx, a, v.content as CampaignContent, v.manifest) } : null);
+    const delivery = await deliveryState(tx, a, c.id);
+    const dest = (vs.find(v => v.id === c.approvedVersionId)?.content as CampaignContent | undefined)?.destination;
+    const live = c.objective === 'LEADS' && dest?.kind === 'SITE' ? await liveMeasurement(tx, a, dest.siteId) : null;
     out.push({
-      id: c.id, name: c.name, provider: c.provider, objective: c.objective, utmCampaign: c.utmCampaign, revision: c.revision,
+      id: c.id, name: c.name, provider: c.provider, objective: c.objective, utmCampaign: c.utmCampaign, revision: c.revision, delivery: delivery.state,
+      measurement: c.objective === 'LEADS' ? { siteId: dest?.kind === 'SITE' ? dest.siteId : null, live: !!live, verified: !!live?.verified, evidenceId: live?.evidence?.id ?? null, source: live?.evidence?.source ?? null } : null,
       draft: await checked(vs.find(v => v.id === c.draftVersionId)), approved: await checked(vs.find(v => v.id === c.approvedVersionId)),
       inReview: vs.filter(v => v.status === 'IN_REVIEW').map(versionView),
       history: vs.map(v => ({ id: v.id, sequence: v.sequence, status: v.status })),
@@ -146,9 +150,9 @@ export async function readCampaigns(tx: Transaction, a: BrandActor) {
 }
 
 // ─── Editorial ───────────────────────────────────────────────────────────────────────────────────────────────────
-const emptyContent = (provider: CampaignProvider, name: string): CampaignContent => normalizeCampaign({ name, budget: { type: 'DAILY', amount: '', currency: 'MXN' }, audience: { geo: ['México'] } }, provider);
+const emptyContent = (provider: CampaignProvider, name: string, objective: 'SEARCH' | 'TRAFFIC' | 'LEADS'): CampaignContent => normalizeCampaign({ name, budget: { type: 'DAILY', amount: '', currency: 'MXN' }, audience: { geo: ['México'] } }, provider, objective);
 
-export async function createCampaign(tx: Transaction, a: BrandActor, input: { provider?: unknown; name?: unknown; idempotencyKey?: unknown }) {
+export async function createCampaign(tx: Transaction, a: BrandActor, input: { provider?: unknown; name?: unknown; objective?: unknown; idempotencyKey?: unknown }) {
   const idempotencyKey = key(input.idempotencyKey);
   if (!CAMPAIGN_PROVIDERS.includes(input.provider as CampaignProvider)) throw new AppError('INVALID', 'Choose Google Ads or Meta Ads');
   const name = typeof input.name === 'string' ? input.name.trim().slice(0, 120) : '';
@@ -156,9 +160,11 @@ export async function createCampaign(tx: Transaction, a: BrandActor, input: { pr
   const [prior] = await tx.select().from(t.campaigns).where(and(byBrand(t.campaigns, a), eq(t.campaigns.createdBy, a.userId), eq(t.campaigns.idempotencyKey, idempotencyKey)));
   if (prior) return { campaignId: prior.id, versionId: prior.draftVersionId, replayed: true };
   const provider = input.provider as CampaignProvider, now = new Date(), campaignId = randomUUID(), versionId = randomUUID();
+  if (input.objective === 'LEADS' && provider !== 'META_ADS') throw new AppError('INVALID', 'Lead capture is offered for Meta campaigns');
+  const objective = provider === 'GOOGLE_ADS' ? 'SEARCH' as const : input.objective === 'LEADS' ? 'LEADS' as const : 'TRAFFIC' as const;
   // Campaign reference for UTM tags: links opportunities that arrive with it (captured, unverified) to this campaign.
   const utmCampaign = `bp-${(slugify(name).slice(0, 40) || 'campana').replace(/-+$/, '')}-${randomBytes(3).toString('hex')}`;
-  const content = emptyContent(provider, name);
+  const content = emptyContent(provider, name, objective);
   await tx.insert(t.campaigns).values({ id: campaignId, workspaceId: a.workspaceId, brandId: a.brandId, provider, name, objective: content.objective, utmCampaign, status: 'ACTIVE', draftVersionId: null, revision: 0, createdBy: a.userId, idempotencyKey, createdAt: now, updatedAt: now });
   await tx.insert(t.campaignVersions).values({ id: versionId, workspaceId: a.workspaceId, brandId: a.brandId, campaignId, sequence: 1, status: 'DRAFT', content, fingerprint: campaignFingerprint(content), manifest: manifestOf(content, null), provenance: 'MANUAL', createdBy: a.userId, createdAt: now });
   await touch(tx, campaignId, { draftVersionId: versionId });
@@ -170,7 +176,7 @@ export async function saveCampaignDraft(tx: Transaction, a: BrandActor, input: {
   if (!c.draftVersionId) throw new AppError('CONFLICT', 'Start a new version first');
   const [draft] = await tx.select().from(t.campaignVersions).where(eq(t.campaignVersions.id, c.draftVersionId)).for('update');
   if (!draft || draft.status !== 'DRAFT') throw new AppError('CONFLICT', 'This version is no longer a draft');
-  const content = await resolveDestination(tx, a, normalizeCampaign({ ...(input.content as object), name: (input.content as { name?: unknown })?.name ?? c.name }, c.provider as CampaignProvider));
+  const content = await resolveDestination(tx, a, normalizeCampaign({ ...(input.content as object), name: (input.content as { name?: unknown })?.name ?? c.name }, c.provider as CampaignProvider, c.objective as 'SEARCH' | 'TRAFFIC' | 'LEADS'));
   await checkReferences(tx, a, content);
   const siteVersionId = content.destination?.kind === 'SITE' ? (await liveSites(tx, a)).find(s => s.siteId === (content.destination as { siteId: string }).siteId)?.publishedVersionId ?? null : null;
   const provenance = input.provenance === 'AI_ASSISTED' || draft.provenance === 'AI_ASSISTED' ? 'AI_ASSISTED' : 'MANUAL';
@@ -259,26 +265,110 @@ export async function newCampaignDraft(tx: Transaction, a: BrandActor, input: { 
   return { campaignId: c.id, versionId: id };
 }
 
-// ─── Authorization screen (built on the server) ─────────────────────────────────────────────────────────────────────
+// ─── Delivery state, measurement and the authorization screens (built on the server) ─────────────────────────────────
+/** Where the campaign stands in the provider, from the operations that succeeded (never inferred from an approval). */
+export async function deliveryState(tx: Transaction, a: Scoped, campaignId: string) {
+  // In request order: the last operation that succeeded decides (activate → pause → activate…).
+  const jobs = await tx.select().from(t.externalJobs).where(and(byBrand(t.externalJobs, a), eq(t.externalJobs.subjectKind, 'CAMPAIGN'), eq(t.externalJobs.subjectId, campaignId))).orderBy(asc(t.externalJobs.createdAt));
+  const created = jobs.find(j => j.operation === 'CREATE_PAUSED' && j.status === 'SUCCEEDED') ?? null;
+  let state: 'NOT_CREATED' | 'PAUSED' | 'ACTIVE' = created ? 'PAUSED' : 'NOT_CREATED';
+  for (const j of jobs) if (j.status === 'SUCCEEDED' && (j.operation === 'ACTIVATE' || j.operation === 'PAUSE')) state = j.operation === 'ACTIVATE' ? 'ACTIVE' : 'PAUSED';
+  const openJob = jobs.find(j => !['SUCCEEDED', 'CANCELLED', 'FAILED', 'EXPIRED'].includes(j.status)) ?? null;
+  // A PARTIAL job whose authorization is no longer usable is continued by a NEW authorization of the same operation
+  // (ADR-0031: only what is missing is sent). Anything uncertain (NEEDS_CHECK) can never be bypassed (EXT-021).
+  let continuable: string | null = null;
+  if (openJob?.status === 'PARTIAL') { const [auth] = await tx.select({ status: t.operationAuthorizations.status }).from(t.operationAuthorizations).where(eq(t.operationAuthorizations.id, openJob.authorizationId)); if (auth && ['EXPIRED', 'CANCELLED'].includes(auth.status)) continuable = openJob.operation; }
+  return { state, created, open: !!openJob, continuable };
+}
 /**
- * The confirmation a person with AUTHORIZE_SPEND sees before requesting creation in a paused state: account, brand,
- * campaign and exact approved version, destination, currency, budget and its rule, dates and time zone, and whether the
- * account is simulated. Its fingerprint must be echoed back, so a stale screen can never be confirmed.
+ * Measurement requirement of a campaign: a lead campaign needs verified measurement of the LIVE publication of its
+ * destination site (same measurement fingerprint). Evidence is SIMULATED in DEMO and labelled as such.
  */
-export async function authorizationScreen(tx: Transaction, a: BrandActor, input: { campaignId?: unknown; linkId?: unknown }) {
+export async function campaignMeasurement(tx: Transaction, a: Scoped, campaignId: string) {
+  const [c] = await tx.select().from(t.campaigns).where(and(byBrand(t.campaigns, a), eq(t.campaigns.id, campaignId)));
+  if (!c || c.objective !== 'LEADS') return { required: false, verifiedForLivePublication: true };
+  const [v] = c.approvedVersionId ? await tx.select().from(t.campaignVersions).where(eq(t.campaignVersions.id, c.approvedVersionId)) : [];
+  const dest = (v?.content as CampaignContent | undefined)?.destination;
+  if (dest?.kind !== 'SITE') return { required: true, verifiedForLivePublication: false };
+  return { required: true, verifiedForLivePublication: !!(await liveMeasurement(tx, a, dest.siteId))?.verified };
+}
+/** The live publication of a site with its measurement fingerprint and the evidence that verifies it, if any. */
+async function liveMeasurement(tx: Transaction, a: Scoped, siteId: string) {
+  const [pub] = await tx.select().from(t.sitePublications).where(and(byBrand(t.sitePublications, a), eq(t.sitePublications.siteId, siteId), eq(t.sitePublications.status, 'PUBLISHED')));
+  if (!pub) return null;
+  const [sv] = await tx.select({ measurementFingerprint: t.siteVersions.measurementFingerprint }).from(t.siteVersions).where(eq(t.siteVersions.id, pub.versionId));
+  const evidence = (await tx.select().from(t.measurementEvidence).where(and(byBrand(t.measurementEvidence, a), eq(t.measurementEvidence.siteId, siteId), eq(t.measurementEvidence.status, 'VERIFIED'))).orderBy(desc(t.measurementEvidence.recordedAt)))
+    .find(e => e.publicationId === pub.id && e.measurementFingerprint === sv.measurementFingerprint) ?? null;
+  return { publicationId: pub.id, fingerprint: sv.measurementFingerprint, evidence, verified: !!evidence };
+}
+/** DEMO: records SIMULATED evidence that the live publication's measurement is verified (PUBLISH_SITE). */
+export async function recordSimulatedMeasurement(tx: Transaction, a: BrandActor, input: { siteId?: unknown }) {
+  if (!a.capabilities.includes('PUBLISH_SITE')) throw new AppError('FORBIDDEN', 'Verifying site measurement needs the publish permission');
+  const siteId = idOf(input.siteId, 'Site');
+  const live = await liveMeasurement(tx, a, siteId);
+  if (!live) throw new AppError('CONFLICT', 'The site has no live publication to measure');
+  if (live.evidence) return { evidenceId: live.evidence.id, replayed: true };
+  const id = randomUUID();
+  await tx.insert(t.measurementEvidence).values({ id, workspaceId: a.workspaceId, brandId: a.brandId, siteId, publicationId: live.publicationId, measurementFingerprint: live.fingerprint, source: 'SIMULATED', status: 'VERIFIED', recordedBy: a.userId, recordedAt: new Date() });
+  return { evidenceId: id, replayed: false };
+}
+/** DEMO: the verification stops being valid (as if the tag stopped firing); nothing else changes. */
+export async function withdrawMeasurement(tx: Transaction, a: BrandActor, input: { evidenceId?: unknown }) {
+  if (!a.capabilities.includes('PUBLISH_SITE')) throw new AppError('FORBIDDEN', 'Changing site measurement needs the publish permission');
+  const [e] = await tx.select().from(t.measurementEvidence).where(and(byBrand(t.measurementEvidence, a), eq(t.measurementEvidence.id, idOf(input.evidenceId, 'Evidence'))));
+  if (!e) throw new AppError('NOT_FOUND', 'Evidence not available');
+  if (e.status === 'WITHDRAWN') return { evidenceId: e.id, replayed: true };
+  await tx.update(t.measurementEvidence).set({ status: 'WITHDRAWN', withdrawnAt: new Date() }).where(eq(t.measurementEvidence.id, e.id));
+  return { evidenceId: e.id, replayed: false };
+}
+
+export type CampaignOperation = 'CREATE_PAUSED' | 'ACTIVATE' | 'PAUSE';
+const EFFECTS: Record<CampaignOperation, string> = {
+  CREATE_PAUSED: 'Se crea la campaña EN PAUSA en la cuenta indicada. No se activa ni gasta: activar es otra autorización.',
+  ACTIVATE: 'Se ACTIVA la campaña creada: desde ese momento puede empezar a gastar con el presupuesto indicado. Es la segunda autorización, distinta de la de creación.',
+  PAUSE: 'Se PAUSA la campaña: deja de entregar anuncios. Lo ya gastado no se recupera y la campaña no se borra.',
+};
+/**
+ * The confirmation a person with AUTHORIZE_SPEND sees before requesting an operation: account, brand, campaign and the
+ * exact approved version, destination, currency, budget and its rule, dates, time zone, effect, and whether the account
+ * is simulated. ACTIVATE is a second, independent authorization bound to what was created (same account and version);
+ * a lead campaign needs verified measurement of the live destination. PAUSE needs no amount confirmation. The screen's
+ * fingerprint must be echoed back, so a stale screen can never be confirmed.
+ */
+export async function authorizationScreen(tx: Transaction, a: BrandActor, input: { campaignId?: unknown; linkId?: unknown; operation?: unknown }) {
+  const operation: CampaignOperation = input.operation === 'ACTIVATE' || input.operation === 'PAUSE' ? input.operation : 'CREATE_PAUSED';
   const [c] = await tx.select().from(t.campaigns).where(and(byBrand(t.campaigns, a), eq(t.campaigns.id, idOf(input.campaignId, 'Campaign'))));
   if (!c) throw new AppError('NOT_FOUND', 'Campaign not available');
   if (!c.approvedVersionId) throw new AppError('CONFLICT', 'Approve a version before requesting its creation');
   const [v] = await tx.select().from(t.campaignVersions).where(eq(t.campaignVersions.id, c.approvedVersionId));
   const content = v.content as CampaignContent;
-  const blocking = (await checksFor(tx, a, content, v.manifest)).filter(i => !NON_BLOCKING_CAMPAIGN.has(i.code));
-  if (blocking.length) throw new AppError('CONFLICT', `This version cannot be sent yet: ${blocking.map(i => i.message).join(' ')}`);
-  const link = (await brandConnections(tx, a)).ads.find(l => l.linkId === input.linkId);
+  const delivery = await deliveryState(tx, a, c.id);
+  let linkId = input.linkId;
+  if (operation === 'CREATE_PAUSED') {
+    if (delivery.state !== 'NOT_CREATED') throw new AppError('CONFLICT', 'This campaign was already created');
+    const blocking = (await checksFor(tx, a, content, v.manifest)).filter(i => !NON_BLOCKING_CAMPAIGN.has(i.code));
+    if (blocking.length) throw new AppError('CONFLICT', `This version cannot be sent yet: ${blocking.map(i => i.message).join(' ')}`);
+  } else {
+    if (delivery.state === 'NOT_CREATED') throw new AppError('CONFLICT', 'Create the campaign in pause first');
+    const [created] = await tx.select().from(t.operationAuthorizations).where(eq(t.operationAuthorizations.id, delivery.created!.authorizationId));
+    // Bound to what exists in the account: the same account and the version that was created.
+    linkId = created.linkId;
+    if (operation === 'ACTIVATE') {
+      if (delivery.state === 'ACTIVE') throw new AppError('CONFLICT', 'This campaign is already active');
+      if (created.subjectVersionId !== c.approvedVersionId) throw new AppError('CONFLICT', 'The approved version changed after the campaign was created: what is in the account is not what is approved');
+      const m = await campaignMeasurement(tx, a, c.id);
+      if (m.required && !m.verifiedForLivePublication) throw new AppError('CONFLICT', 'A lead campaign needs verified measurement of its live destination before it can be activated');
+    }
+    if (operation === 'PAUSE' && delivery.state !== 'ACTIVE') throw new AppError('CONFLICT', 'Only an active campaign can be paused');
+  }
+  if (delivery.open && delivery.continuable !== operation) throw new AppError('CONFLICT', 'Another operation on this campaign is still open');
+  const link = (await brandConnections(tx, a)).ads.find(l => l.linkId === linkId);
   if (!link || link.provider !== c.provider) throw new AppError('NOT_FOUND', 'Linked account not available');
   if (link.status !== 'ACTIVE') throw new AppError('CONFLICT', 'Reconnect the account before requesting an operation');
   const [brand] = await tx.select({ name: t.brands.name }).from(t.brands).where(and(eq(t.brands.workspaceId, a.workspaceId), eq(t.brands.id, a.brandId)));
-  const summary = { accountLabel: link.account, destination: content.destination!.url, currency: content.budget.currency, budget: { kind: content.budget.type === 'DAILY' ? 'DAILY_AVERAGE' : 'LIFETIME_TOTAL', amountMinor: minorUnits(content.budget.amount) }, startsOn: content.schedule.startDate, endsOn: content.schedule.endDate, timeZone: content.schedule.timezone };
-  const screen = { operation: 'CREATE_PAUSED', provider: c.provider, simulated: link.simulated, brand: brand?.name ?? '', campaign: c.name, campaignId: c.id, versionId: v.id, sequence: v.sequence, contentFingerprint: v.fingerprint, linkId: link.linkId, budgetRule: budgetRule(content), plannedMinor: plannedMinor(content), summary, effect: 'Se crea la campaña EN PAUSA en la cuenta indicada. No se activa ni gasta: activar es otra autorización que no está disponible en esta fase.' };
+  const summary = { accountLabel: link.account, destination: content.destination!.url, currency: content.budget.currency, budget: operation === 'PAUSE' ? null : { kind: content.budget.type === 'DAILY' ? 'DAILY_AVERAGE' : 'LIFETIME_TOTAL', amountMinor: minorUnits(content.budget.amount) }, startsOn: content.schedule.startDate, endsOn: content.schedule.endDate, timeZone: content.schedule.timezone };
+  const measurement = c.objective === 'LEADS' ? await campaignMeasurement(tx, a, c.id) : null;
+  const screen = { operation, provider: c.provider, objective: c.objective, simulated: link.simulated, brand: brand?.name ?? '', campaign: c.name, campaignId: c.id, versionId: v.id, sequence: v.sequence, contentFingerprint: v.fingerprint, linkId: link.linkId, budgetRule: operation === 'PAUSE' ? 'Pausar no confirma importes: reduce el gasto.' : budgetRule(content), plannedMinor: plannedMinor(content), summary, effect: EFFECTS[operation], measurement: measurement ? { verified: measurement.verifiedForLivePublication, simulated: true } : null };
   return { ...screen, screenFingerprint: contentFingerprint(screen) };
 }
 

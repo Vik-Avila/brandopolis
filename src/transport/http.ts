@@ -504,7 +504,7 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
         // ADR-0032 · sites (team). Publishing renders and writes the immutable snapshot between the two phases.
         // Block 8 · campaigns, simulated connections, Canva and cycle review. DEMO only (simulator): 404 in PILOT. Spend,
         // scope, 409 and idempotency are enforced in the engine and ExternalOperations; creation reaches PAUSED only.
-        if(path.startsWith('/api/campaigns/')||path.startsWith('/api/connections/')||path.startsWith('/api/canva/')||path==='/api/cycle-review/save'){
+        if(path.startsWith('/api/campaigns/')||path.startsWith('/api/connections/')||path.startsWith('/api/canva/')||path.startsWith('/api/cycle-review/')){
           if(pilot)return send(res,404,{code:'NOT_FOUND'});
           const action=path.slice(path.indexOf('/',5)+1);
           if(path.startsWith('/api/campaigns/')){
@@ -513,10 +513,14 @@ export function createApp(engine:Engine,assets?:(path:string)=>{content:string|B
             if(ops[action])return send(res,action==='request'?201:200,await ops[action](token,input));
           }
           if(path==='/api/connections/simulated')return send(res,201,await engine.connectSimulated(token,input));
+          if(path==='/api/campaigns/measurement-verify'||path==='/api/campaigns/measurement-withdraw')return send(res,200,await engine.measurementCommand(token,path.endsWith('verify')?'verify':'withdraw',input));
           if(path==='/api/connections/status')return send(res,200,await engine.connectionStatus(token,input));
           if(path==='/api/canva/send')return send(res,201,await engine.canvaSend(token,input));
+          if(path==='/api/canva/link')return send(res,201,await engine.canvaLink(token,input));
           if(path==='/api/canva/retrieve')return send(res,200,await engine.canvaRetrieve(token,input));
           if(path==='/api/cycle-review/save')return send(res,201,await engine.cycleReviewSave(token,input));
+          if(path==='/api/cycle-review/experiment-proposal')return send(res,200,await engine.cycleExperimentProposal(token,input));
+          if(path==='/api/cycle-review/experiment')return send(res,201,await engine.cycleExperiment(token,input));
         }
         if(path==='/api/sites/publish'){const r=await engine.publishSite(token,input,async plan=>{const built=await buildSiteFiles(await engine.siteRenderPlan(plan,plan.versionId),loadExportFile,{baseUrl:`${siteConfig().publicScheme}://${plan.host}`,noindex:false});await writeSnapshot(snapshotDir(plan.workspaceId,plan.brandId,plan.siteId,plan.versionId),built.files);});return send(res,'replayed' in r&&r.replayed?200:201,r);}
         if(path.startsWith('/api/sites/')){const action=path.slice('/api/sites/'.length);if(['create','draft','propose','submit','decide','new-draft','domain-add','domain-check','domain-remove'].includes(action)){const r=await engine.sitesCommand(token,action as 'create',input,resolveTxtRecords);return send(res,action==='create'||action==='domain-add'?(r.replayed?200:201):200,r);}}

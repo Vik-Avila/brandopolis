@@ -17,7 +17,7 @@ export const LIMITS = { headline: 30, description: 90, headlines: 15, descriptio
 export type CampaignContent = {
   provider: CampaignProvider;
   name: string;
-  objective: 'SEARCH' | 'TRAFFIC';
+  objective: 'SEARCH' | 'TRAFFIC' | 'LEADS';
   offer: { offerId: string; offerVersionId: string; name: string } | null;
   destination: { kind: 'SITE'; siteId: string; url: string } | { kind: 'URL'; url: string } | null;
   adDeliverable: { deliverableId: string; versionId: string } | null;
@@ -42,7 +42,8 @@ export const minorUnits = (a: string) => { const [i, d = ''] = a.split('.'); ret
 export const httpsUrl = (v: unknown) => { const s = typeof v === 'string' ? v.trim() : ''; if (!s) return ''; if (!/^https:\/\/[^\s"'<>]{3,300}$/.test(s)) throw new AppError('INVALID', 'The destination must be an https:// address'); try { new URL(s); } catch { throw new AppError('INVALID', 'The destination must be an https:// address'); } return s; };
 
 /** Normalises a campaign version's content for its provider. Only the fields that provider supports survive. */
-export function normalizeCampaign(raw: unknown, provider: CampaignProvider): CampaignContent {
+/** `objective` comes from the campaign (chosen at creation): Google is SEARCH; Meta is TRAFFIC or LEADS (lead capture). */
+export function normalizeCampaign(raw: unknown, provider: CampaignProvider, objective?: 'SEARCH' | 'TRAFFIC' | 'LEADS'): CampaignContent {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new AppError('INVALID', 'Invalid campaign');
   const r = raw as Record<string, unknown>;
   const o = (r.offer ?? null) as Record<string, unknown> | null, d = (r.destination ?? null) as Record<string, unknown> | null;
@@ -56,7 +57,7 @@ export function normalizeCampaign(raw: unknown, provider: CampaignProvider): Cam
   const age = (v: unknown) => (Number.isInteger(v) && (v as number) >= 18 && (v as number) <= 65 ? v as number : null);
   const google = provider === 'GOOGLE_ADS';
   return {
-    provider, name: text(r.name, 120, 'Campaign name'), objective: google ? 'SEARCH' : 'TRAFFIC', offer, destination,
+    provider, name: text(r.name, 120, 'Campaign name'), objective: google ? 'SEARCH' : objective === 'LEADS' ? 'LEADS' : 'TRAFFIC', offer, destination,
     adDeliverable: ad && ref(ad.deliverableId) && ref(ad.versionId) ? { deliverableId: ref(ad.deliverableId)!, versionId: ref(ad.versionId)! } : null,
     search: google ? {
       keywords: (Array.isArray(s.keywords) ? s.keywords : []).slice(0, LIMITS.keywords).map(k => { const x = (k ?? {}) as Record<string, unknown>; return { text: text(x.text, LIMITS.keyword, 'Keyword'), match: (MATCH_TYPES as readonly string[]).includes(String(x.match)) ? x.match as typeof MATCH_TYPES[number] : 'PHRASE' }; }).filter(k => k.text),
@@ -96,6 +97,7 @@ export function campaignChecks(c: CampaignContent, ctx: { today: string; offerAp
     else if (!c.social.imageAlt) out.push({ code: 'IMAGE', message: 'Describe la imagen para quien no puede verla.' });
     if (c.audience.ageMin && c.audience.ageMax && c.audience.ageMin > c.audience.ageMax) out.push({ code: 'AUDIENCE', message: 'La edad mínima es mayor que la máxima.' });
   }
+  if (c.objective === 'LEADS' && c.destination && c.destination.kind !== 'SITE') out.push({ code: 'DESTINATION', message: 'Una campaña de captación lleva a un sitio publicado en Brandopolis, cuya medición pueda verificarse.' });
   if (!c.audience.geo.length) out.push({ code: 'GEO', message: 'Indica al menos una ubicación.' });
   if (!c.budget.amount || minorUnits(c.budget.amount) <= 0) out.push({ code: 'BUDGET', message: 'Indica un presupuesto mayor que cero.' });
   if (!c.schedule.startDate) out.push({ code: 'DATES', message: 'Indica la fecha de inicio.' });

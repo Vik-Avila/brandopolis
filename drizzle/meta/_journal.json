@@ -225,6 +225,13 @@
       "when": 1791769934993,
       "tag": "0031_campaigns_canva_cycle",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1791776643817,
+      "tag": "0032_measurement_validation_links",
+      "breakpoints": true
     }
   ]
 }

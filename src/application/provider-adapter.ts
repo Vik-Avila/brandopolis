@@ -46,7 +46,7 @@ export type CampaignStatus = { status: 'PAUSED' | 'ENABLED' | 'REMOVED'; reviewS
 export type Fault = 'TIMEOUT_AFTER_SEND' | 'REJECT' | 'DELAYED_VISIBILITY' | 'NO_HISTORY' | 'RATE_LIMIT' | 'PERMISSION_DENIED';
 /** Optional persistence so separate processes (worker and web server in DEMO) share one simulated provider. */
 export type SimulatorStore = { load(): SimulatorSnapshot | null; save(snapshot: SimulatorSnapshot): void };
-export type SimulatorSnapshot = { seq: number; faults: Record<string, Fault[]>; created: Record<string, { providerIds: Record<string, string>; at: string; hidden: boolean }> };
+export type SimulatorSnapshot = { seq: number; faults: Record<string, Fault[]>; created: Record<string, { providerIds: Record<string, string>; at: string; hidden: boolean }>; statuses?: Record<string, 'PAUSED' | 'ENABLED'> };
 
 /**
  * Deterministic simulator. Faults are armed per step key. TIMEOUT_AFTER_SEND creates the resource but returns
@@ -62,6 +62,8 @@ export class SimulatedProvider implements ProviderAdapter {
   readonly calls: StepRequest[] = [];
   accounts: { id: string; label: string }[] = [{ id: '123-456', label: 'Cuenta de prueba' }];
   private seq = 0;
+  /** Simulated delivery status per created campaign id: created PAUSED; ACTIVATE / PAUSE steps change it. */
+  private statuses = new Map<string, 'PAUSED' | 'ENABLED'>();
   private revokedAttemptCredentials = new Map<string, 'REVOKED' | 'EXPIRED'>();
   /** Test hook: the provider side stops accepting the credential issued for one attempt. */
   revokeAttemptCredential(attemptId: string, reason: 'REVOKED' | 'EXPIRED' = 'REVOKED') { this.revokedAttemptCredentials.set(attemptId, reason); }
@@ -72,8 +74,9 @@ export class SimulatedProvider implements ProviderAdapter {
     this.seq = snap.seq;
     this.faults = new Map(Object.entries(snap.faults).map(([k, v]) => [k, new Set(v)]));
     this.created = new Map(Object.entries(snap.created).map(([k, v]) => [k, { providerIds: v.providerIds, at: new Date(v.at), hidden: v.hidden }]));
+    this.statuses = new Map(Object.entries(snap.statuses ?? {}));
   }
-  private save() { this.store?.save({ seq: this.seq, faults: Object.fromEntries([...this.faults].map(([k, v]) => [k, [...v]])), created: Object.fromEntries([...this.created].map(([k, v]) => [k, { ...v, at: v.at.toISOString() }])) }); }
+  private save() { this.store?.save({ seq: this.seq, faults: Object.fromEntries([...this.faults].map(([k, v]) => [k, [...v]])), created: Object.fromEntries([...this.created].map(([k, v]) => [k, { ...v, at: v.at.toISOString() }])), statuses: Object.fromEntries(this.statuses) }); }
   arm(stepKey: string, ...faults: Fault[]) { this.load(); this.faults.set(stepKey, new Set(faults)); this.save(); }
   /** Arms faults for one remote tag only (one step of one job), e.g. a DEMO scenario chosen for one campaign. */
   armTag(remoteTag: string, ...faults: Fault[]) { this.arm(`tag:${remoteTag}`, ...faults); }
@@ -90,6 +93,10 @@ export class SimulatedProvider implements ProviderAdapter {
     if (this.created.has(request.remoteTag)) return { kind: 'REJECTED', code: 'DUPLICATE_NAME' };
     const providerIds = { [request.stepKey]: `sim-${++this.seq}` };
     this.created.set(request.remoteTag, { providerIds, at: this.clock(), hidden: this.has(request, 'DELAYED_VISIBILITY') });
+    // ACTIVATE / PAUSE act on the campaign created earlier (its id arrives as a parent id).
+    const target = request.parentIds.campaign;
+    if (request.stepKey === 'campaign') this.statuses.set(providerIds.campaign, 'PAUSED');
+    if ((request.stepKey === 'activate' || request.stepKey === 'pause') && target) this.statuses.set(target, request.stepKey === 'activate' ? 'ENABLED' : 'PAUSED');
     this.save();
     if (this.has(request, 'TIMEOUT_AFTER_SEND')) return { kind: 'AMBIGUOUS', code: 'DEADLINE_EXCEEDED' };
     return { kind: 'SUCCESS', providerIds };
@@ -98,8 +105,11 @@ export class SimulatedProvider implements ProviderAdapter {
     this.load();
     const ids = new Set(Object.values(providerIds));
     if (![...this.created.values()].some(r => Object.values(r.providerIds).some(id => ids.has(id)))) return null;
-    const day = this.clock().toISOString().slice(0, 10);
-    return { status: 'PAUSED', reviewStatus: 'UNDER_REVIEW', periodStart: day, periodEnd: day, currency, spendMinor: 0, impressions: 0, clicks: 0, providerConversions: 0 };
+    const day = this.clock().toISOString().slice(0, 10), status = (providerIds.campaign && this.statuses.get(providerIds.campaign)) || 'PAUSED';
+    // Synthetic figures for an ENABLED simulated campaign; the caller stores them as SIMULATED, never as real data.
+    return status === 'ENABLED'
+      ? { status, reviewStatus: 'APPROVED', periodStart: day, periodEnd: day, currency, spendMinor: 9600, impressions: 1200, clicks: 48, providerConversions: 3 }
+      : { status, reviewStatus: 'UNDER_REVIEW', periodStart: day, periodEnd: day, currency, spendMinor: 0, impressions: 0, clicks: 0, providerConversions: 0 };
   }
   async listAccounts() { return this.accounts; }
   async confirmAttemptCredentialUnusable(_provider: string, attemptId: string) {

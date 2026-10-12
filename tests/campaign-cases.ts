@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import type { KitAssetInfo } from '../src/domain/kit-assets.js';
 import { and, eq } from 'drizzle-orm';
 import type { connect } from '../src/persistence/database.js';
 import { Engine } from '../src/application/engine.js';
-import { ExternalOperations } from '../src/application/external-operations.js';
+import { DEFAULT_EXTERNAL_CONFIG, ExternalOperations, type ExternalConfig } from '../src/application/external-operations.js';
 import { SimulatedProvider } from '../src/application/provider-adapter.js';
 import { SimulatedCanva } from '../src/application/canva-adapter.js';
 import { createVault } from '../src/application/credential-vault.js';
@@ -16,9 +17,12 @@ const future = (days: number) => new Date(Date.now() + days * 86400000).toISOStr
 
 /** Block 8 · campaigns in pause through the ADR-0031 queue (simulator), Canva (CNV-001/002), results and cycle review. */
 export function campaignCases(connection: () => ReturnType<typeof connect>) {
-  const setup = async () => {
-    const db = connection().db, adapter = new SimulatedProvider(), canva = new SimulatedCanva();
-    const ops = new ExternalOperations(db, createVault(randomBytes(32), 't1'), adapter);
+  const setup = async (config: Partial<ExternalConfig> = {}) => {
+    let now = Date.now();
+    const clock = () => new Date(now++), advance = (ms: number) => { now += ms; }; // monotonic, like real time
+    const hooks: { beforeNetworkWrite?: (attemptId: string) => Promise<void> | void } = {};
+    const db = connection().db, adapter = new SimulatedProvider(clock), canva = new SimulatedCanva();
+    const ops = new ExternalOperations(db, createVault(randomBytes(32), 't1'), adapter, { ...DEFAULT_EXTERNAL_CONFIG, ...config }, clock, hooks);
     const engine = new Engine(db).useExternal({ ops, adapter, canva, simulated: true }), who = await seedIdentity(db);
     const brand = await engine.createBrand(who.token, 'Café Ñandú');
     const offerContent = (name: string) => ({ name, kind: 'SERVICE', audience: { customerDecisionVersionId: null, segment: 'Cafeterías' }, need: 'Café de especialidad', outcome: 'Café constante', benefits: ['Entrega semanal'], differentiators: [], conditions: '', proofIds: [], sourceDecisionVersionIds: [], hypothesisIds: [], price: null });
@@ -34,6 +38,24 @@ export function campaignCases(connection: () => ReturnType<typeof connect>) {
     const read = async (token = who.token) => engine.campaigns(token, brand.id);
     const google = (offer: { offerId: string; offerVersionId: string; name: string }, over: Record<string, unknown> = {}) => ({ name: 'Búsqueda café', offer, destination: { kind: 'URL', url: 'https://cafe-nandu.mx/cafeterias' }, search: { keywords: [{ text: 'café para cafeterías', match: 'PHRASE' }], headlines: ['Café de origen', 'Entrega semanal', 'Prueba sin costo'], descriptions: ['Café de especialidad para tu barra.', 'Pedidos fijos cada semana.'] }, audience: { geo: ['Ciudad de México'] }, budget: { type: 'DAILY', amount: '150', currency: 'MXN' }, schedule: { startDate: future(2), endDate: future(31) }, ...over });
     /** Create → draft → review → approve; returns the campaign and its approved version. */
+    const approvedCampaignFor = async (provider: 'GOOGLE_ADS' | 'META_ADS', content: Record<string, unknown>, objective?: string) => {
+      const created = await cmd('create', { provider, objective, name: String(content.name ?? 'Campaña'), idempotencyKey: randomUUID() }) as { campaignId: string };
+      let c = (await read()).campaigns.find(z => z.id === created.campaignId)!;
+      await cmd('draft', { campaignId: c.id, expectedRevision: c.revision, content });
+      c = (await read()).campaigns.find(z => z.id === created.campaignId)!;
+      const sub = await cmd('submit', { campaignId: c.id, expectedRevision: c.revision }) as { versionId: string; fingerprint: string };
+      await cmd('decide', { campaignId: c.id, versionId: sub.versionId, fingerprint: sub.fingerprint, decision: 'APPROVE', criterion: 'Revisado con el equipo', idempotencyKey: randomUUID() });
+      return { campaignId: c.id, versionId: sub.versionId };
+    };
+    /** A site with a live publication (rows as the publisher leaves them), to be a lead campaign destination. */
+    const liveSite = async () => {
+      const siteId = randomUUID(), versionId = randomUUID(), now = new Date();
+      await db.insert(t.sites).values({ id: siteId, workspaceId: who.workspaceId, brandId: brand.id, name: 'Sitio', slug: `sitio-${randomUUID().slice(0, 8)}`, goal: 'LEADS', status: 'ACTIVE', revision: 0, createdBy: who.userId, idempotencyKey: randomUUID(), createdAt: now, updatedAt: now });
+      await db.insert(t.siteVersions).values({ id: versionId, workspaceId: who.workspaceId, brandId: brand.id, siteId, sequence: 1, status: 'APPROVED', content: {}, fingerprint: 'f'.repeat(64), measurementFingerprint: 'm'.repeat(64), manifest: {}, provenance: 'MANUAL', createdBy: who.userId, createdAt: now, decidedAt: now });
+      await db.insert(t.sitePublications).values({ id: randomUUID(), workspaceId: who.workspaceId, brandId: brand.id, siteId, versionId, status: 'PUBLISHED', host: 'x.localhost:3999', fingerprint: 'f'.repeat(64), publishedBy: who.userId, idempotencyKey: randomUUID(), createdAt: now, completedAt: now });
+      await db.update(t.sites).set({ approvedVersionId: versionId, publishedVersionId: versionId }).where(eq(t.sites.id, siteId));
+      return { siteId, versionId };
+    };
     const approvedCampaign = async (content?: Record<string, unknown>) => {
       const offer = await approvedOffer();
       const created = await cmd('create', { provider: 'GOOGLE_ADS', name: 'Búsqueda café', idempotencyKey: randomUUID() }) as { campaignId: string };
@@ -44,15 +66,17 @@ export function campaignCases(connection: () => ReturnType<typeof connect>) {
       await cmd('decide', { campaignId: c.id, versionId: sub.versionId, fingerprint: sub.fingerprint, decision: 'APPROVE', criterion: 'Revisado con el equipo', idempotencyKey: randomUUID() });
       return { campaignId: c.id, versionId: sub.versionId, offer };
     };
-    const connect = async () => engine.connectSimulated(who.token, { brandId: brand.id, provider: 'GOOGLE_ADS' }) as Promise<{ connectionId: string; linkId: string }>;
-    const request = async (campaignId: string, linkId: string, scenario = 'NORMAL', idempotencyKey = randomUUID()) => {
-      const screen = await engine.campaignScreen(who.token, { brandId: brand.id, campaignId, linkId });
-      return engine.campaignRequest(who.token, { brandId: brand.id, campaignId, linkId, screenFingerprint: screen.screenFingerprint, scenario, idempotencyKey });
+    const connect = async (provider: 'GOOGLE_ADS' | 'META_ADS' = 'GOOGLE_ADS') => engine.connectSimulated(who.token, { brandId: brand.id, provider }) as Promise<{ connectionId: string; linkId: string }>;
+    const request = async (campaignId: string, linkId: string, scenario = 'NORMAL', idempotencyKey = randomUUID(), operation = 'CREATE_PAUSED') => {
+      const screen = await engine.campaignScreen(who.token, { brandId: brand.id, campaignId, linkId, operation });
+      return engine.campaignRequest(who.token, { brandId: brand.id, campaignId, linkId, operation, screenFingerprint: screen.screenFingerprint, scenario, idempotencyKey });
     };
     const worker = await ops.registerWorker('test-host', process.pid);
     const work = async () => { const results: string[] = []; for (let i = 0; i < 5; i++) { const claim = await ops.claimNext(worker, brand.id); if (!claim) break; results.push(await ops.runJob(worker, claim)); } return results; };
     const job = async (jobId: string) => (await read()).campaigns.flatMap(c => c.operations).find(o => o.jobId === jobId)!;
-    return { db, engine, ops, adapter, who, brand, cmd, read, google, approvedOffer, approvedCampaign, connect, request, work, job };
+    /** A valid raster image of the kit (metadata as the kit inspector leaves it) for Meta ads. */
+    const kitImage = async () => (await engine.registerKitAsset(who.token, brand.id, { id: randomUUID(), role: 'REFERENCE', originalName: 'taza.png', info: { format: 'PNG', kind: 'RASTER', mediaType: 'image/png', width: 1080, height: 1080, alpha: false, previewable: true } as KitAssetInfo, bytes: 1000, sha256: createHash('sha256').update(randomUUID()).digest('hex'), storageKey: `${who.workspaceId}/${brand.id}/kit/${randomUUID()}` })).assetId as string;
+    return { db, engine, ops, adapter, who, brand, cmd, read, google, approvedOffer, approvedCampaign, approvedCampaignFor, liveSite, connect, request, work, job, hooks, advance, kitImage };
   };
 
   describe('Block 8 · campaigns, Canva and cycle review (simulator)', () => {
@@ -305,6 +329,212 @@ export function campaignCases(connection: () => ReturnType<typeof connect>) {
       const second = await x.engine.canvaSend(x.who.token, { brandId: x.brand.id, deliverableId: d.deliverableId, idempotencyKey: randomUUID() }) as { designId: string };
       await expect(x.engine.canvaRetrieve(member.token, { brandId: x.brand.id, designId: second.designId })).rejects.toMatchObject({ code: 'CONFLICT' });
       expect(await x.db.select().from(t.canvaDesigns).where(and(eq(t.canvaDesigns.id, second.designId), eq(t.canvaDesigns.status, 'CREATED')))).toHaveLength(1);
+    });
+
+    it('Google and Meta, full local path: creation in pause → second, independent authorization → simulated activation → status → pause without amount confirmation; operations are bound to the created account and version', async () => {
+      for (const provider of ['GOOGLE_ADS', 'META_ADS'] as const) {
+        const x = await setup();
+        const offer = await x.approvedOffer();
+        const content = provider === 'GOOGLE_ADS' ? x.google(offer) : { ...x.google(offer), search: undefined, social: { primaryText: 'Café de origen para tu barra', headline: 'Café semanal', imageAssetId: await x.kitImage(), imageAlt: 'Una taza de café' } };
+        const a = provider === 'GOOGLE_ADS' ? await x.approvedCampaign() : await x.approvedCampaignFor('META_ADS', content);
+        const { linkId } = await x.connect(provider);
+        const create = await x.request(a.campaignId, linkId);
+        await x.work();
+        expect((await x.job(create.jobId)).status).toBe('SUCCEEDED');
+        expect((await x.read()).campaigns.find(c => c.id === a.campaignId)!.delivery).toBe('PAUSED');
+        // Second authorization: its own screen, fingerprint, authorization and job; AUTHORIZE_SPEND; same account.
+        const screen = await x.engine.campaignScreen(x.who.token, { brandId: x.brand.id, campaignId: a.campaignId, linkId: 'otro', operation: 'ACTIVATE' });
+        expect(screen).toMatchObject({ operation: 'ACTIVATE', linkId, sequence: 1, summary: { budget: { kind: 'DAILY_AVERAGE' } } });
+        expect(screen.effect).toContain('segunda autorización');
+        const member = await seedIdentity(x.db, 'MEMBER', x.who.workspaceId);
+        await x.db.insert(t.assignments).values({ workspaceId: x.who.workspaceId, brandId: x.brand.id, userId: member.userId });
+        await expect(x.engine.campaignRequest(member.token, { brandId: x.brand.id, campaignId: a.campaignId, linkId, operation: 'ACTIVATE', screenFingerprint: screen.screenFingerprint, idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+        const act = await x.request(a.campaignId, linkId, 'NORMAL', randomUUID(), 'ACTIVATE');
+        expect(act.authorizationId).not.toBe(create.authorizationId);
+        expect(act.jobId).not.toBe(create.jobId);
+        await x.work();
+        const activation = await x.job(act.jobId);
+        expect(activation).toMatchObject({ operation: 'ACTIVATE', status: 'SUCCEEDED', steps: [{ key: 'activate', status: 'SUCCEEDED' }] });
+        expect((await x.read()).campaigns.find(c => c.id === a.campaignId)!.delivery).toBe('ACTIVE');
+        const reading = await x.engine.campaignReadStatus(x.who.token, { brandId: x.brand.id, campaignId: a.campaignId });
+        expect(reading).toMatchObject({ simulated: true, reading: { status: 'ENABLED', providerConversions: 3 } });
+        await expect(x.request(a.campaignId, linkId, 'NORMAL', randomUUID(), 'ACTIVATE')).rejects.toMatchObject({ code: 'CONFLICT' }); // already active
+        // Pause: AUTHORIZE_SPEND, no amount (budget null), its own authorization.
+        const pauseScreen = await x.engine.campaignScreen(x.who.token, { brandId: x.brand.id, campaignId: a.campaignId, linkId, operation: 'PAUSE' });
+        expect(pauseScreen.summary.budget).toBeNull();
+        const pause = await x.request(a.campaignId, linkId, 'NORMAL', randomUUID(), 'PAUSE');
+        await x.work();
+        expect((await x.job(pause.jobId)).status).toBe('SUCCEEDED');
+        expect((await x.read()).campaigns.find(c => c.id === a.campaignId)!.delivery).toBe('PAUSED');
+        expect((await x.engine.campaignReadStatus(x.who.token, { brandId: x.brand.id, campaignId: a.campaignId })).reading).toMatchObject({ status: 'PAUSED', spendMinor: 0 });
+        expect(x.adapter.calls.map(cl => cl.stepKey).filter(k => k === 'activate' || k === 'pause')).toEqual(['activate', 'pause']);
+        expect(x.adapter.calls.filter(cl => cl.stepKey === 'activate')[0].parentIds.campaign).toMatch(/^sim-/); // acts on what was created
+      }
+    });
+
+    it('activation is bound to what was created: a newer approved version blocks it; a lead campaign needs verified measurement of its live destination, checked again right before sending', async () => {
+      const x = await setup();
+      const a = await x.approvedCampaign();
+      const { linkId } = await x.connect();
+      await x.request(a.campaignId, linkId); await x.work();
+      let c = (await x.read()).campaigns.find(z => z.id === a.campaignId)!;
+      await x.cmd('new-draft', { campaignId: c.id, expectedRevision: c.revision });
+      c = (await x.read()).campaigns.find(z => z.id === a.campaignId)!;
+      const sub = await x.cmd('submit', { campaignId: c.id, expectedRevision: c.revision }) as { versionId: string; fingerprint: string };
+      await x.cmd('decide', { campaignId: c.id, versionId: sub.versionId, fingerprint: sub.fingerprint, decision: 'APPROVE', criterion: 'Versión dos aprobada', idempotencyKey: randomUUID() });
+      await expect(x.engine.campaignScreen(x.who.token, { brandId: x.brand.id, campaignId: a.campaignId, linkId, operation: 'ACTIVATE' })).rejects.toMatchObject({ code: 'CONFLICT', message: expect.stringContaining('approved version changed') });
+      // Lead capture (Meta): destination must be a live site; activation needs SIMULATED verified measurement.
+      const site = await x.liveSite();
+      const offer = await x.approvedOffer('Cotización para cafeterías');
+      const leads = await x.approvedCampaignFor('META_ADS', { ...x.google(offer), search: undefined, destination: { kind: 'SITE', siteId: site.siteId }, social: { primaryText: 'Pide tu cotización', headline: 'Cotiza tu café', imageAssetId: await x.kitImage(), imageAlt: 'Una taza de café' } }, 'LEADS');
+      const meta = await x.connect('META_ADS');
+      await x.request(leads.campaignId, meta.linkId); await x.work();
+      await expect(x.engine.campaignScreen(x.who.token, { brandId: x.brand.id, campaignId: leads.campaignId, linkId: meta.linkId, operation: 'ACTIVATE' })).rejects.toMatchObject({ code: 'CONFLICT', message: expect.stringContaining('verified measurement') });
+      const ev = await x.engine.measurementCommand(x.who.token, 'verify', { brandId: x.brand.id, siteId: site.siteId }) as { evidenceId: string };
+      expect((await x.read()).campaigns.find(z => z.id === leads.campaignId)!.measurement).toMatchObject({ verified: true, source: 'SIMULATED' });
+      const act = await x.request(leads.campaignId, meta.linkId, 'NORMAL', randomUUID(), 'ACTIVATE');
+      // Measurement stops being valid after authorizing and before sending: nothing is sent.
+      await x.engine.measurementCommand(x.who.token, 'withdraw', { brandId: x.brand.id, evidenceId: ev.evidenceId });
+      const sent = x.adapter.calls.length;
+      await x.work();
+      expect(await x.job(act.jobId)).toMatchObject({ status: 'FAILED', blockedReason: 'MEASUREMENT_NOT_VERIFIED' });
+      expect(x.adapter.calls.length).toBe(sent);
+      // Verified again: a new authorization activates it.
+      await x.engine.measurementCommand(x.who.token, 'verify', { brandId: x.brand.id, siteId: site.siteId });
+      const again = await x.request(leads.campaignId, meta.linkId, 'NORMAL', randomUUID(), 'ACTIVATE');
+      await x.work();
+      expect((await x.job(again.jobId)).status).toBe('SUCCEEDED');
+      // A site that publishes another version has another measurement fingerprint: the old evidence does not cover it.
+      await expect(x.engine.campaignsCommand(x.who.token, 'create', { brandId: x.brand.id, provider: 'GOOGLE_ADS', objective: 'LEADS', name: 'x', idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'INVALID' });
+    });
+
+    it('EXT-008 / EXT-017 · cancelling or revoking during an attempt stops the next steps, keeps what may have happened, says what is pending; a late answer is recorded without reactivating anything; without access nothing is checked or inferred', async () => {
+      // Cancel while the first step is in flight: that step completes, nothing else is sent.
+      let x = await setup();
+      let a = await x.approvedCampaign();
+      let conn = await x.connect();
+      let r = await x.request(a.campaignId, conn.linkId);
+      let cancelled: Record<string, unknown> | null = null;
+      x.hooks.beforeNetworkWrite = async () => { x.hooks.beforeNetworkWrite = undefined; cancelled = await x.engine.campaignCancel(x.who.token, { brandId: x.brand.id, authorizationId: r.authorizationId }); };
+      await x.work();
+      expect(cancelled).toMatchObject({ status: 'CANCELLED', inFlight: true });
+      let j = await x.job(r.jobId);
+      expect(j.status).toBe('PARTIAL');
+      expect(j.authorization!.status).toBe('CANCELLED');
+      expect(j.steps.map(s => s.status)).toEqual(['SUCCEEDED', 'PENDING', 'PENDING', 'PENDING', 'PENDING']);
+      expect(x.adapter.calls).toHaveLength(1);
+      // Cancel while the answer is lost: the step stays pending verification; finding it later links it, never requeues.
+      x = await setup(); a = await x.approvedCampaign(); conn = await x.connect();
+      r = await x.request(a.campaignId, conn.linkId, 'LOST_RESPONSE');
+      await x.work();
+      expect((await x.engine.campaignCancel(x.who.token, { brandId: x.brand.id, authorizationId: r.authorizationId }))).toMatchObject({ inFlight: true });
+      expect((await x.engine.campaignReconcile(x.who.token, { brandId: x.brand.id, jobId: r.jobId })).results).toEqual([{ step: 'campaign', resolution: 'FOUND' }]);
+      expect(await x.work()).toEqual([]);
+      j = await x.job(r.jobId);
+      expect(j.status).toBe('PARTIAL');
+      expect(j.steps.filter(s => s.status === 'PENDING').map(s => s.key)).toEqual(['ad_group', 'keywords', 'ad']);
+      // Access revoked during an attempt: the attempt's result is kept, the following steps are not sent.
+      x = await setup(); a = await x.approvedCampaign(); conn = await x.connect();
+      r = await x.request(a.campaignId, conn.linkId, 'LOST_RESPONSE');
+      x.hooks.beforeNetworkWrite = async () => { if (x.adapter.calls.length === 1) await x.engine.connectionStatus(x.who.token, { brandId: x.brand.id, connectionId: conn.connectionId, status: 'EXPIRED' }); };
+      await x.work();
+      j = await x.job(r.jobId);
+      expect(j.steps.map(s => s.status)).toEqual(['SUCCEEDED', 'NEEDS_CHECK', 'PENDING', 'PENDING', 'PENDING']);
+      // Without valid access the provider is not queried and nothing is inferred.
+      expect((await x.engine.campaignReconcile(x.who.token, { brandId: x.brand.id, jobId: r.jobId })).results).toEqual([{ step: 'campaign', resolution: 'ACCESS_UNAVAILABLE' }]);
+      expect((await x.job(r.jobId)).steps[1].status).toBe('NEEDS_CHECK');
+      await x.engine.connectionStatus(x.who.token, { brandId: x.brand.id, connectionId: conn.connectionId, status: 'ACTIVE' });
+      expect((await x.engine.campaignReconcile(x.who.token, { brandId: x.brand.id, jobId: r.jobId })).results).toEqual([{ step: 'campaign', resolution: 'FOUND' }]);
+    });
+
+    it('EXT-014 · the authorization expires with steps done and others pending: PARTIAL, authorization EXPIRED; only a new authorization continues what is missing, nothing is repeated', async () => {
+      const x = await setup({ authorizationTtlMs: 60_000 });
+      const a = await x.approvedCampaign();
+      const conn = await x.connect();
+      const r = await x.request(a.campaignId, conn.linkId);
+      x.hooks.beforeNetworkWrite = () => { if (x.adapter.calls.length === 2) x.advance(61_000); }; // the third attempt starts and then misses its deadline
+      await x.work();
+      x.hooks.beforeNetworkWrite = undefined;
+      const j = await x.job(r.jobId);
+      expect(j).toMatchObject({ status: 'PARTIAL', authorization: { status: 'EXPIRED' } });
+      expect(j.steps.filter(s => s.status === 'SUCCEEDED').map(s => s.key)).toEqual(['budget', 'campaign']);
+      const again = await x.request(a.campaignId, conn.linkId);
+      expect(again.jobId).toBe(r.jobId); // continues the same job
+      await x.work();
+      expect((await x.job(r.jobId)).status).toBe('SUCCEEDED');
+      expect(['budget', 'campaign', 'ad_group', 'keywords', 'ad'].map(k => x.adapter.calls.filter(cl => cl.stepKey === k).length)).toEqual([1, 1, 1, 1, 1]);
+    });
+
+    it('RES-002 · conversions attributed by Google and Meta are shown per provider and never added to each other or counted as people or opportunities (synthetic provider data)', async () => {
+      const x = await setup();
+      const g = await x.approvedCampaign();
+      const offer = await x.approvedOffer('Segunda oferta');
+      const m = await x.approvedCampaignFor('META_ADS', { ...x.google(offer), search: undefined, social: { primaryText: 'Texto', headline: 'Titular', imageAssetId: await x.kitImage(), imageAlt: 'Una taza' } });
+      const row = (campaignId: string, conversions: number) => ({ id: randomUUID(), workspaceId: x.who.workspaceId, brandId: x.brand.id, campaignId, jobId: null, source: 'PROVIDER', providerStatus: 'ENABLED', reviewStatus: 'APPROVED', periodStart: '2026-10-01', periodEnd: '2026-10-10', currency: 'MXN', spendMinor: 50000, impressions: 1000, clicks: 40, providerConversions: conversions, recordedAt: new Date() });
+      await x.db.insert(t.campaignMetrics).values([row(g.campaignId, 5), row(m.campaignId, 4)]);
+      const form = await x.engine.clientsCommand(x.who.token, 'form', { brandId: x.brand.id, name: 'Formulario', idempotencyKey: randomUUID() }) as { publicId: string };
+      for (const name of ['Ana', 'Luis', 'Eva']) await x.engine.submitLeadForm({ form: form.publicId, submissionId: randomUUID(), name, email: `${name.toLowerCase()}@example.com`, need: 'Precios', consent: { contactPurpose: true } });
+      const r = await x.engine.results(x.who.token, x.brand.id);
+      const attributed = r.campaigns.flatMap(c => c.metrics.filter(z => z.id.startsWith('attributed_')));
+      expect(attributed.map(z => [z.label, z.value, z.kind])).toEqual([['Conversiones atribuidas por Google Ads', 5, 'PROVIDER'], ['Conversiones atribuidas por Meta Ads', 4, 'PROVIDER']]);
+      expect(r.operations.find(z => z.id === 'new_opportunities')!.value).toBe(3);
+      const all = [...r.marketing, ...r.operations, ...r.sales, ...r.campaigns.flatMap(c => c.metrics)];
+      expect(all.some(z => z.value === 9 || z.value === 12)).toBe(false); // never 5+4, never 5+4+3
+      expect(all.find(z => z.id === `roas_${g.campaignId}`)).toMatchObject({ available: false }); // no revenue: no ROAS even with spend
+    });
+
+    it('cycle review → Validation: a revisable proposal; a person creates (or links) the experiment in the existing cycle, once; sources, period, campaign and version are kept; nothing is approved or changed', async () => {
+      const x = await setup();
+      const a = await x.approvedCampaign();
+      const hypothesis = await x.engine.captureContext(x.who.token, x.brand.id, 'hypothesis', { statement: 'Las cafeterías responden a la búsqueda' });
+      const ctx = await x.engine.context(x.who.token, x.brand.id), q = ctx.questions.find(z => z.module === 'Priority Experiment')!;
+      await x.engine.prepareQuestion(x.who.token, x.brand.id, q.id, null);
+      const priority = await x.engine.commitDecision(x.who.token, { brandId: x.brand.id, questionId: q.id, selectedOption: 'Probar la búsqueda', rationale: 'Criterio humano', expectedActiveVersion: null, sourceRecommendationId: null, idempotencyKey: randomUUID(), actorUserId: x.who.userId });
+      const draft = await x.engine.cycleReview(x.who.token, x.brand.id);
+      const suggestion = draft.suggestions.items.find(i => i.campaignId === a.campaignId)!;
+      const saved = await x.engine.cycleReviewSave(x.who.token, { brandId: x.brand.id, periodStart: '2026-09-11', periodEnd: '2026-10-11', learnings: 'Sin datos reales', proposals: [{ text: suggestion.text, origin: 'BRANDO', campaignId: a.campaignId }, { text: 'Revisar el formulario', origin: 'PERSON' }], decision: 'RETEST', criterion: 'Volvemos a probar con medición', idempotencyKey: randomUUID() });
+      const before = { decisions: (await x.db.select().from(t.versions).where(eq(t.versions.brandId, x.brand.id))).length, learnings: (await x.db.select().from(t.learnings).where(eq(t.learnings.brandId, x.brand.id))).length };
+      const proposal = await x.engine.cycleExperimentProposal(x.who.token, { brandId: x.brand.id, reviewId: saved.reviewId, proposalIndex: 0 });
+      expect(proposal).toMatchObject({ linked: null, sources: { campaignId: a.campaignId, campaignVersionId: a.versionId, periodStart: '2026-09-11' } });
+      expect(proposal.draft.intendedSignal).toContain('utm_campaign=');
+      expect(await x.db.select().from(t.experiments).where(eq(t.experiments.brandId, x.brand.id))).toHaveLength(0); // proposing creates nothing
+      const input = { brandId: x.brand.id, reviewId: saved.reviewId, proposalIndex: 0, mode: 'CREATE', hypothesisId: hypothesis.id, decisionId: priority.decisionId, successCriteria: 'Una oportunidad con la referencia' };
+      const [r1, r2] = await Promise.all([x.engine.cycleExperiment(x.who.token, input), x.engine.cycleExperiment(x.who.token, input)].map(p => p.catch(e => e)));
+      const ok = [r1, r2].filter(z => z && z.experimentId);
+      expect(new Set(ok.map(z => z.experimentId)).size).toBe(1);
+      expect(await x.engine.cycleExperiment(x.who.token, input)).toMatchObject({ experimentId: ok[0].experimentId, replayed: true });
+      const experiments = await x.db.select().from(t.experiments).where(eq(t.experiments.brandId, x.brand.id));
+      expect(experiments).toHaveLength(1);
+      expect(experiments[0].payload).toMatchObject({ status: 'PLANNED', hypothesisId: hypothesis.id });
+      expect((experiments[0].payload as { limitations: string[] }).limitations.join(' ')).toContain('Origen: revisión del ciclo del 2026-09-11 al 2026-10-11');
+      const [link] = await x.db.select().from(t.cycleReviewExperiments).where(eq(t.cycleReviewExperiments.reviewId, saved.reviewId));
+      expect(link).toMatchObject({ mode: 'CREATED', campaignId: a.campaignId, campaignVersionId: a.versionId, proposalIndex: 0 });
+      // The second proposal is linked to the existing experiment instead.
+      expect(await x.engine.cycleExperiment(x.who.token, { brandId: x.brand.id, reviewId: saved.reviewId, proposalIndex: 1, mode: 'LINK', experimentId: experiments[0].id })).toMatchObject({ mode: 'LINKED', replayed: false });
+      expect({ decisions: (await x.db.select().from(t.versions).where(eq(t.versions.brandId, x.brand.id))).length, learnings: (await x.db.select().from(t.learnings).where(eq(t.learnings.brandId, x.brand.id))).length }).toEqual(before);
+      const outsider = await seedIdentity(x.db);
+      await expect(x.engine.cycleExperimentProposal(outsider.token, { brandId: x.brand.id, reviewId: saved.reviewId, proposalIndex: 0 })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    });
+
+    it('Canva · link an existing design (provider confirms it), withdrawn access blocks sending and retrieving, another brand never sees the design', async () => {
+      const x = await setup();
+      const brief = { type: 'DESIGN_BRIEF', name: 'Cartel', offerId: null, sourceDecisionVersionIds: [], body: { for: 'CANVA', piece: 'Cartel', format: 'A3', audience: '', message: 'Café', mustInclude: '', avoid: '', dueDate: null } };
+      const d = await x.engine.deliverableCommand(x.who.token, 'create', { brandId: x.brand.id, content: brief, idempotencyKey: randomUUID() }) as { deliverableId: string };
+      const sub = await x.engine.deliverableCommand(x.who.token, 'submit', { brandId: x.brand.id, deliverableId: d.deliverableId, expectedRevision: 0 }) as { versionId: string; fingerprint: string };
+      await x.engine.deliverableCommand(x.who.token, 'decide', { brandId: x.brand.id, deliverableId: d.deliverableId, versionId: sub.versionId, fingerprint: sub.fingerprint, decision: 'APPROVE', criterion: 'Brief aprobado', idempotencyKey: randomUUID() });
+      const canva = await x.engine.connectSimulated(x.who.token, { brandId: x.brand.id, provider: 'CANVA' }) as { connectionId: string };
+      await expect(x.engine.canvaLink(x.who.token, { brandId: x.brand.id, deliverableId: d.deliverableId, designRef: 'no-existe-123', idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      const linked = await x.engine.canvaLink(x.who.token, { brandId: x.brand.id, deliverableId: d.deliverableId, designRef: 'sim-design-existing-1', idempotencyKey: randomUUID() }) as { designId: string };
+      expect((await x.read()).designs.find(z => z.id === linked.designId)).toMatchObject({ designRef: 'sim-design-existing-1', status: 'CREATED' });
+      expect((await x.read()).canvaCapabilities.find(z => z.key === 'LINK_DESIGN')!.state).toBe('SIMULATED');
+      // Withdrawn access: neither sending nor retrieving works until the person reconnects.
+      await x.engine.connectionStatus(x.who.token, { brandId: x.brand.id, connectionId: canva.connectionId, status: 'EXPIRED' });
+      await expect(x.engine.canvaSend(x.who.token, { brandId: x.brand.id, deliverableId: d.deliverableId, idempotencyKey: randomUUID() })).rejects.toMatchObject({ code: 'CONFLICT' });
+      await expect(x.engine.canvaRetrieve(x.who.token, { brandId: x.brand.id, designId: linked.designId })).rejects.toMatchObject({ code: 'CONFLICT' });
+      await x.engine.connectionStatus(x.who.token, { brandId: x.brand.id, connectionId: canva.connectionId, status: 'ACTIVE' });
+      const other = await x.engine.createBrand(x.who.token, 'Otra marca');
+      await expect(x.engine.canvaRetrieve(x.who.token, { brandId: other.id, designId: linked.designId })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      expect(await x.engine.canvaRetrieve(x.who.token, { brandId: x.brand.id, designId: linked.designId })).toMatchObject({ replayed: false });
     });
   });
 }

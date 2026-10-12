@@ -5,7 +5,8 @@ import { readFileSync } from 'node:fs';
 // proposes (incorporated by the person) → complete and save → review and approve → confirm the exact screen and
 // request creation in pause with a «lost response» scenario → pending verification → check with the provider →
 // created in pause → read status (simulated) → Resultados keeps planned budget, spend, simulator and ROAS apart →
-// cycle review saved → Canva: approved brief sent, design retrieved into a new draft. Needs the isolated app (3001)
+// second authorization → simulated activation → pause → cycle review saved → Canva: approved brief sent, design
+// retrieved into a new draft. Needs the isolated app (3001)
 // and `pnpm external:worker --isolated`. Nothing reaches Google, Meta or Canva.
 async function signIn(page: Page, token: string) {
   await page.getByLabel('Token de sesión local').fill(token);
@@ -79,13 +80,13 @@ test('block 8: campaign created in pause through the simulator, uncertain step c
   // The exact confirmation screen; a simulator scenario: the response is lost after the campaign is created.
   await area.getByRole('button', { name: 'Solicitar la creación en pausa' }).click();
   const screen = area.locator('.campaign-screen');
-  await expect(screen).toContainText('Crear la campaña en pausa');
+  await expect(screen).toContainText('Operación'); await expect(screen).toContainText('Crear en pausa');
   await expect(screen).toContainText('Cuenta simulada (sin conexión real)');
   await expect(screen).toContainText('no es un tope total');
   await expect(screen).toContainText('No se activa ni gasta');
   await screen.getByLabel('Escenario del simulador').selectOption('LOST_RESPONSE');
   await screen.getByRole('button', { name: 'Autorizar y solicitar la creación en pausa' }).click();
-  await expect(page.locator('#notice')).toContainText('Solicitud en la cola del simulador');
+  await expect(page.locator('#notice')).toContainText('La creación en pausa está en la cola del simulador');
   const operation = area.locator('.campaign-operation').first();
   await expect(operation).toContainText('Pendiente de comprobación', { timeout: 30000 });
   await expect(operation).toContainText('Se perdió la respuesta: pudo haberse creado.');
@@ -94,8 +95,23 @@ test('block 8: campaign created in pause through the simulator, uncertain step c
   await expect(area.locator('.campaign-operation').first()).toContainText('Creada en pausa', { timeout: 30000 });
   await area.locator('.campaign-operation').first().getByRole('button', { name: 'Leer estado en el proveedor' }).click();
   await expect(page.locator('#notice')).toContainText('en pausa, sin gasto');
-  await expect(area.locator('.campaign-states')).toContainText('proveedor (simulado): en pausa');
-  await expect(area).toContainText('Activar la campaña y gastar es otra autorización');
+  await expect(area.locator('.campaign-states').last()).toContainText('proveedor (simulado): en pausa');
+  // Second, independent authorization: simulated activation; then a pause (no amount to confirm).
+  await expect(area.locator('.campaign-card').first()).toContainText('En pausa en la cuenta');
+  await area.getByRole('button', { name: 'Solicitar la activación (segunda autorización)' }).click();
+  const activation = area.locator('.campaign-screen');
+  await expect(activation).toContainText('Activar (segunda autorización)');
+  await expect(activation).toContainText('puede empezar a gastar');
+  await activation.getByRole('button', { name: 'Autorizar y solicitar la activación' }).click();
+  await expect(page.locator('#notice')).toContainText('La activación está en la cola del simulador');
+  await expect(area.locator('.campaign-card').first()).toContainText('Activa en la cuenta', { timeout: 30000 });
+  await area.locator('.campaign-operation').first().getByRole('button', { name: 'Leer estado en el proveedor' }).click();
+  await expect(page.locator('#notice')).toContainText('activa, con cifras simuladas');
+  await area.getByRole('button', { name: 'Solicitar la pausa' }).click();
+  await expect(area.locator('.campaign-screen')).toContainText('Pausar no confirma importes');
+  await area.locator('.campaign-screen').getByRole('button', { name: 'Autorizar y solicitar la pausa' }).click();
+  await expect(area.locator('.campaign-card').first()).toContainText('En pausa en la cuenta', { timeout: 30000 });
+  await expect(area).toContainText('En esta DEMO todo ocurre en el simulador');
 
   // Resultados: sources apart, no ROAS; cycle review saved without changing anything else.
   await openNav(page); await page.locator('#results').click();

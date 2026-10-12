@@ -13,6 +13,7 @@ import * as t from '../persistence/schema.js';
 import { grantedCapabilities, type BrandActor } from './brand-access.js';
 import type { Vault } from './credential-vault.js';
 import type { ProviderAdapter } from './provider-adapter.js';
+import { campaignMeasurement } from './campaigns.js';
 
 export type ExternalConfig = {
   leaseMs: number;               // worker lease length
@@ -313,7 +314,10 @@ export class ExternalOperations {
         expectedFingerprint: await this.currentContentFingerprint(tx, job.workspaceId, job.brandId, auth.subjectKind, auth.subjectId, auth.contentFingerprint),
         connection: { status: connection.status, linkedToBrand: !link.unlinkedAt && link.brandId === job.brandId },
         actorHoldsSpend: await this.actorHoldsSpend(tx, job.workspaceId, job.brandId, auth.actorUserId),
-        brandClosing: false
+        brandClosing: false,
+        // Activating a lead campaign needs measurement verified for the LIVE publication of its destination, re-read
+        // here right before the attempt (ADR-0031 point 3, ADR-0032 «Vigencia de la medición»).
+        measurement: job.subjectKind === 'CAMPAIGN' && job.operation === 'ACTIVATE' ? await campaignMeasurement(tx, { workspaceId: job.workspaceId, brandId: job.brandId }, job.subjectId) : undefined
       });
       // A worker without the lease, or fenced as terminated, changes nothing and sends nothing.
       if (blockers.includes('LEASE_NOT_HELD') || blockers.includes('LEASE_EXPIRED') || blockers.includes('WORKER_TERMINATED')) return { kind: 'LEASE_LOST' as const };
@@ -336,7 +340,9 @@ export class ExternalOperations {
       await tx.insert(t.externalAttempts).values(attempt);
       await tx.update(t.externalSteps).set({ status: 'DISPATCHING', updatedAt: now }).where(eq(t.externalSteps.id, next.id));
       await tx.update(t.externalJobs).set({ status: 'RUNNING', blockedReason: null, leaseUntil: new Date(now.getTime() + this.config.leaseMs), updatedAt: now }).where(eq(t.externalJobs.id, job.id));
-      const parentIds = Object.assign({}, ...steps.filter(s => s.status === 'SUCCEEDED').map(s => s.providerIds));
+      // Ids created earlier for the same campaign (creation in pause) are the parents of ACTIVATE / PAUSE steps.
+      const earlier = job.operation === 'CREATE_PAUSED' ? [] : await tx.select({ providerIds: t.externalSteps.providerIds }).from(t.externalSteps).innerJoin(t.externalJobs, eq(t.externalJobs.id, t.externalSteps.jobId)).where(and(eq(t.externalJobs.workspaceId, job.workspaceId), eq(t.externalJobs.brandId, job.brandId), eq(t.externalJobs.subjectKind, job.subjectKind), eq(t.externalJobs.subjectId, job.subjectId), eq(t.externalJobs.operation, 'CREATE_PAUSED'), eq(t.externalJobs.status, 'SUCCEEDED')));
+      const parentIds = Object.assign({}, ...earlier.map(s => s.providerIds), ...steps.filter(s => s.status === 'SUCCEEDED').map(s => s.providerIds));
       const secret = this.requireVault().open(connection.credentialCiphertext ?? '', connection.credentialKeyId ?? '', this.aad(connection.workspaceId, connection.id));
       return { kind: 'STARTED' as const, attempt, step: next, provider: connection.provider, operation: job.operation, parentIds, secret, externalAccountId: link.externalAccountId };
     });
@@ -418,6 +424,8 @@ export class ExternalOperations {
     const [auth] = await tx.select().from(t.operationAuthorizations).where(eq(t.operationAuthorizations.id, job.authorizationId));
     const usable = auth.status === 'RESERVED' && auth.expiresAt > this.clock();
     let status = jobStatusFromSteps(await this.effectiveStatuses(tx, jobId), usable);
+    // A person cancelled before anything was created: that is a cancellation, not an expiry.
+    if (status === 'EXPIRED' && auth.status === 'CANCELLED') status = 'CANCELLED';
     // Runnable but nobody holds the lease (e.g. resolved by a late answer after a relay): back to the queue.
     if (status === 'RUNNING' && !job.claimedBy) status = 'QUEUED';
     await tx.update(t.externalJobs).set({ status, updatedAt: this.clock() }).where(eq(t.externalJobs.id, jobId));
@@ -460,8 +468,11 @@ export class ExternalOperations {
       const [auth] = await tx.select().from(t.operationAuthorizations).where(eq(t.operationAuthorizations.id, job.authorizationId));
       const [link] = await tx.select().from(t.connectionBrandLinks).where(eq(t.connectionBrandLinks.id, auth.linkId));
       const [connection] = await tx.select().from(t.connections).where(and(eq(t.connections.workspaceId, job.workspaceId), eq(t.connections.id, link.connectionId)));
-      const secret = this.requireVault().open(connection.credentialCiphertext ?? '', connection.credentialKeyId ?? '', this.aad(connection.workspaceId, connection.id));
       const steps = await tx.select().from(t.externalSteps).where(and(eq(t.externalSteps.jobId, jobId), eq(t.externalSteps.status, 'NEEDS_CHECK')));
+      // Without valid access nothing can be checked: the steps stay pending and the person is told to reconnect.
+      // Nothing is inferred (never «not created», never «cancelled») from a lookup that could not be made.
+      if (connection.status !== 'ACTIVE' || link.unlinkedAt) return { accessUnavailable: steps.map(st => st.stepKey) };
+      const secret = this.requireVault().open(connection.credentialCiphertext ?? '', connection.credentialKeyId ?? '', this.aad(connection.workspaceId, connection.id));
       const items = [];
       for (const step of steps) {
         const [attempt] = await tx.select().from(t.externalAttempts).where(eq(t.externalAttempts.stepId, step.id)).orderBy(desc(t.externalAttempts.attemptNumber)).limit(1);
@@ -470,7 +481,8 @@ export class ExternalOperations {
       return { provider: connection.provider, secret, items };
     });
     if (!plan) return [];
-    const results: { step: string; resolution: RemoteResolution['type'] }[] = [];
+    if ('accessUnavailable' in plan) return plan.accessUnavailable!.map(step => ({ step, resolution: 'ACCESS_UNAVAILABLE' as const }));
+    const results: { step: string; resolution: RemoteResolution['type'] | 'ACCESS_UNAVAILABLE' }[] = [];
     for (const { step, attempt, evidence } of plan.items) {
       // Network (read-only), no transaction open.
       let write: { kind: OutcomeKind; providerIds: Record<string, string>; evidence: Record<string, unknown> | null; status: StepStatus } | null = null;

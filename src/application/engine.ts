@@ -19,9 +19,9 @@ import { changeCapability, grantedCapabilities, listCapabilityGrants, readWorkPr
 import { ExternalOperations } from './external-operations.js';
 import type { ProviderAdapter, Fault } from './provider-adapter.js';
 import type { CanvaAdapter } from './canva-adapter.js';
-import { authorizationScreen, createCampaign, decideCampaign, newCampaignDraft, proposeCampaign, readCampaigns, recordCampaignReading, saveCampaignDraft, setSimulatedConnectionStatus, SIMULATED_ACCOUNT, SIMULATED_SCOPE, submitCampaign } from './campaigns.js';
+import { authorizationScreen, recordSimulatedMeasurement, withdrawMeasurement, createCampaign, decideCampaign, newCampaignDraft, proposeCampaign, readCampaigns, recordCampaignReading, saveCampaignDraft, setSimulatedConnectionStatus, SIMULATED_ACCOUNT, SIMULATED_SCOPE, submitCampaign } from './campaigns.js';
 import { canvaRecordDesign, canvaRecordRetrieval, canvaRetrievePlan, canvaSendPlan, readCanvaDesigns } from './canva-designs.js';
-import { cycleReviewDraft, saveCycleReview } from './cycle-reviews.js';
+import { cycleReviewDraft, experimentProposal, recordExperimentLink, saveCycleReview } from './cycle-reviews.js';
 import { actionStatus, addAction, addObjective, createPlan, createSnapshot, decideSnapshot, readPlan, readSharedPlan, updateAction, updateObjective, updatePlan } from './marketing-plan.js';
 import { IdentityDirectionsStore, directionValues, identityPacket, validIdentityProposal } from '../domain/brando-identity.js';
 import { MarketingAssistance, marketingPacket, proposalContent, type MarketingPacket } from '../domain/brando-marketing.js';
@@ -229,17 +229,20 @@ export class Engine {
     if(scenario&&!scenarios[scenario])throw new AppError('INVALID','Unknown simulator scenario');
     if(typeof input.idempotencyKey!=='string'||!input.idempotencyKey||input.idempotencyKey.length>200)throw new AppError('INVALID','Invalid idempotency key');
     return this.withBrandActor(token,String(input.brandId??''),async(tx,actor)=>{
+      // A retry of the same request (same person and key) returns what it created, whatever happened since.
+      const [prior]=await tx.select().from(t.operationAuthorizations).where(and(eq(t.operationAuthorizations.workspaceId,actor.workspaceId),eq(t.operationAuthorizations.brandId,actor.brandId),eq(t.operationAuthorizations.actorUserId,actor.userId),eq(t.operationAuthorizations.idempotencyKey,String(input.idempotencyKey))));
+      if(prior){if(prior.subjectId!==input.campaignId)throw new AppError('CONFLICT','Idempotency key already used for another campaign');const [l]=await tx.select({scopes:t.connections.scopes}).from(t.connectionBrandLinks).innerJoin(t.connections,eq(t.connections.id,t.connectionBrandLinks.connectionId)).where(eq(t.connectionBrandLinks.id,prior.linkId));return {authorizationId:prior.id,jobId:prior.reservedJobId as string,replayed:true,simulated:(l?.scopes as string[]|undefined)?.includes(SIMULATED_SCOPE)??false,operation:prior.operation};}
       const screen=await authorizationScreen(tx,actor,input);
       if(input.screenFingerprint!==screen.screenFingerprint)throw new AppError('CONFLICT','What you confirmed has changed: review the summary again');
       if(scenario&&!screen.simulated)throw new AppError('INVALID','Scenarios exist only for simulated accounts');
-      const auth=await ext.ops.authorize(tx,actor,{linkId:screen.linkId,operation:'CREATE_PAUSED',subject:{kind:'CAMPAIGN',id:screen.campaignId,versionId:screen.versionId},summary:screen.summary,contentFingerprint:screen.contentFingerprint,idempotencyKey:String(input.idempotencyKey)});
+      const auth=await ext.ops.authorize(tx,actor,{linkId:screen.linkId,operation:screen.operation,subject:{kind:'CAMPAIGN',id:screen.campaignId,versionId:screen.versionId},summary:screen.summary,contentFingerprint:screen.contentFingerprint,idempotencyKey:String(input.idempotencyKey)});
       const job=await ext.ops.enqueue(tx,actor,auth.id);
       if(scenario&&!job.replayed&&ext.adapter.armTag){
         const steps=await tx.select().from(t.externalSteps).where(eq(t.externalSteps.jobId,job.jobId)).orderBy(asc(t.externalSteps.ordinal));
         for(const [stepKey,faults] of scenarios[scenario]){const step=stepKey==='*'?steps[0]:steps.find(x=>x.stepKey===stepKey)??steps[0];ext.adapter.armTag(step.remoteTag,...faults);}
       }
-      if(!job.replayed)await this.audit(tx,actor,{operation:'CAMPAIGN_REQUEST_CREATE_PAUSED',idempotencyKey:String(input.idempotencyKey),newVersion:screen.versionId});
-      return {authorizationId:auth.id,jobId:job.jobId,replayed:job.replayed,simulated:screen.simulated};
+      if(!job.replayed)await this.audit(tx,actor,{operation:`CAMPAIGN_REQUEST_${screen.operation}`,idempotencyKey:String(input.idempotencyKey),newVersion:screen.versionId});
+      return {authorizationId:auth.id,jobId:job.jobId,replayed:job.replayed,simulated:screen.simulated,operation:screen.operation};
     },true);
   }
   /** Read-only check of uncertain steps with the provider (found → linked, never repeated; not found → still pending). */
@@ -263,7 +266,7 @@ export class Engine {
     const target=await this.withBrandActor(token,String(input.brandId??''),async(tx,actor)=>{
       const [c]=await tx.select().from(t.campaigns).where(and(eq(t.campaigns.workspaceId,actor.workspaceId),eq(t.campaigns.brandId,actor.brandId),eq(t.campaigns.id,String(input.campaignId??''))));
       if(!c)throw new AppError('NOT_FOUND','Campaign not available');
-      const [job]=await tx.select().from(t.externalJobs).where(and(eq(t.externalJobs.workspaceId,actor.workspaceId),eq(t.externalJobs.brandId,actor.brandId),eq(t.externalJobs.subjectKind,'CAMPAIGN'),eq(t.externalJobs.subjectId,c.id),eq(t.externalJobs.status,'SUCCEEDED'))).orderBy(desc(t.externalJobs.updatedAt)).limit(1);
+      const [job]=await tx.select().from(t.externalJobs).where(and(eq(t.externalJobs.workspaceId,actor.workspaceId),eq(t.externalJobs.brandId,actor.brandId),eq(t.externalJobs.subjectKind,'CAMPAIGN'),eq(t.externalJobs.subjectId,c.id),eq(t.externalJobs.operation,'CREATE_PAUSED'),eq(t.externalJobs.status,'SUCCEEDED'))).limit(1); // what exists in the account
       if(!job)throw new AppError('CONFLICT','The campaign has not been created yet');
       const [auth]=await tx.select().from(t.operationAuthorizations).where(eq(t.operationAuthorizations.id,job.authorizationId));
       return {campaignId:c.id,jobId:job.id,currency:String((auth.summary as {currency?:string}).currency??'MXN'),scope:{workspaceId:actor.workspaceId,brandId:actor.brandId}};
@@ -287,6 +290,12 @@ export class Engine {
       await this.audit(tx,actor,{operation:'CONNECTION_SIMULATED',idempotencyKey:randomUUID(),newVersion:conn.id});
       return {connectionId:conn.id,linkId:link?.id??null,provider,simulated:true};
     },true);
+  }
+  /** DEMO: simulated measurement verification of a live site publication (and its withdrawal), labelled SIMULATED. */
+  async measurementCommand(token:string,action:'verify'|'withdraw',input:Record<string,unknown>) {
+    const ext=this.requireExternal();
+    if(!ext.simulated)throw new AppError('UNAVAILABLE','Simulated measurement exists only in the DEMO');
+    return this.withBrandActor(token,String(input.brandId??''),async(tx,actor)=>{const r=action==='verify'?await recordSimulatedMeasurement(tx,actor,input):await withdrawMeasurement(tx,actor,input);if(!r.replayed)await this.audit(tx,actor,{operation:`MEASUREMENT_SIMULATED_${action.toUpperCase()}`,idempotencyKey:randomUUID(),newVersion:r.evidenceId});return r;},true);
   }
   async connectionStatus(token:string,input:Record<string,unknown>) {
     return this.withBrandActor(token,String(input.brandId??''),(tx,actor)=>setSimulatedConnectionStatus(tx,actor,input),true);
@@ -314,6 +323,16 @@ export class Engine {
     const created=await ext.canva.createDesign({title:first.plan.title,brief:first.plan.brief,assetCount:first.plan.assetCount,credential:''});
     return this.withBrandActor(token,brandId,async(tx,actor)=>{const r=await canvaRecordDesign(tx,actor,first.plan,created.designRef);if(!r.replayed)await this.audit(tx,actor,{operation:'CANVA_DESIGN_CREATE',idempotencyKey:first.plan.idempotencyKey,newVersion:r.designId});return {...r,editUrl:created.editUrl};});
   }
+  /** Canva: link an EXISTING design of the person to the approved brief (the provider confirms it exists). */
+  async canvaLink(token:string,input:Record<string,unknown>) {
+    const ext=this.requireExternal();
+    const brandId=String(input.brandId??''),designRef=typeof input.designRef==='string'?input.designRef.trim():'';
+    if(!/^[A-Za-z0-9_-]{6,80}$/.test(designRef))throw new AppError('INVALID','Write the design reference');
+    const first=await this.withBrandActor(token,brandId,(tx,actor)=>canvaSendPlan(tx,actor,input));
+    if('replay' in first)return first.replay;
+    if(!(await ext.canva.findDesign({designRef,credential:''})))throw new AppError('NOT_FOUND','That design is not available to your Canva account');
+    return this.withBrandActor(token,brandId,async(tx,actor)=>{const r=await canvaRecordDesign(tx,actor,first.plan,designRef);if(!r.replayed)await this.audit(tx,actor,{operation:'CANVA_DESIGN_LINK',idempotencyKey:first.plan.idempotencyKey,newVersion:r.designId});return r;});
+  }
   /** Canva: retrieve the design into a NEW draft version of the brief that needs review (CNV-001). */
   async canvaRetrieve(token:string,input:Record<string,unknown>) {
     const ext=this.requireExternal();
@@ -325,6 +344,28 @@ export class Engine {
   }
   async cycleReview(token:string,brandId:string) {
     return this.withBrandActor(token,brandId,(tx,actor)=>cycleReviewDraft(tx,actor));
+  }
+  /** A revisable experiment proposal from a review proposal (writes nothing). */
+  async cycleExperimentProposal(token:string,input:Record<string,unknown>) {
+    return this.withBrandActor(token,String(input.brandId??''),(tx,actor)=>experimentProposal(tx,actor,input));
+  }
+  /**
+   * The person creates a Validation experiment (existing PLANNED → RUNNING… cycle, existing idempotency) or links an
+   * existing one, from a review proposal. One link per proposal; a retry never creates a second experiment. Nothing
+   * else changes: no learning is approved, no strategy or plan is touched.
+   */
+  async cycleExperiment(token:string,input:Record<string,unknown>) {
+    const brandId=String(input.brandId??'');
+    const p=await this.withBrandActor(token,brandId,(tx,actor)=>experimentProposal(tx,actor,input));
+    if(p.linked)return {...p.linked,replayed:true};
+    let experimentId:string,mode:'CREATED'|'LINKED';
+    if(input.mode==='LINK'){experimentId=String(input.experimentId??'');mode='LINKED';}
+    else{
+      const text=(v:unknown,f:string)=>typeof v==='string'&&v.trim()?v.trim().slice(0,4000):f;
+      const created=await this.createLearningObject(token,brandId,'experiment',{hypothesisId:String(input.hypothesisId??''),intendedSignal:text(input.intendedSignal,p.draft.intendedSignal).slice(0,4000),method:text(input.method,p.draft.method),plannedPeriod:text(input.plannedPeriod,p.draft.plannedPeriod).slice(0,200),limitations:p.draft.limitations},String(input.decisionId??''),{objective:text(input.objective,p.draft.objective),successCriteria:text(input.successCriteria,p.draft.successCriteria)},`cycle:${p.reviewId}:${p.proposalIndex}`);
+      experimentId=String(created.id);mode='CREATED';
+    }
+    return this.withBrandActor(token,brandId,async(tx,actor)=>{const r=await recordExperimentLink(tx,actor,{reviewId:p.reviewId,proposalIndex:p.proposalIndex,experimentId,mode,campaignId:p.sources.campaignId,campaignVersionId:p.sources.campaignVersionId,periodStart:p.sources.periodStart,periodEnd:p.sources.periodEnd});if(!r.replayed)await this.audit(tx,actor,{operation:`CYCLE_EXPERIMENT_${mode}`,idempotencyKey:`cycle:${p.reviewId}:${p.proposalIndex}`,newVersion:experimentId});return r;});
   }
   async cycleReviewSave(token:string,input:Record<string,unknown>) {
     return this.withBrandActor(token,String(input.brandId??''),async(tx,actor)=>{const r=await saveCycleReview(tx,actor,input);if(!r.replayed)await this.audit(tx,actor,{operation:'CYCLE_REVIEW',idempotencyKey:String(input.idempotencyKey),newVersion:r.reviewId,rationale:String(input.criterion??'')});return r;});
@@ -1450,7 +1491,7 @@ export class Engine {
         // before decisions; the self reference of versions is satisfied because the whole chain goes in one statement.
         // Phase 4 rows of this Brand (append-only tables allow it only inside this registered deletion). Workspace
         // connections are NOT deleted here: only this Brand's links to them (a credential may serve other brands).
-        for(const table of [t.cycleReviews,t.canvaDesigns,t.campaignMetrics,t.campaignApprovals,t.campaignVersions,t.campaigns,t.sitePreviewSessions,t.sitePreviewCodes,t.siteDomains,t.sitePublications,t.siteApprovals,t.siteVersions,t.sites,t.clientOpportunityEvents,t.clientInteractions,t.clientOpportunities,t.leadForms,t.clientSegments,t.portalApprovals,t.portalComments,t.portalShares,t.brandGuests,t.brandInvitations,t.brandSetupDrafts,t.brandKitPublications,t.brandKitApprovals,t.brandKitVersions,t.brandKits,t.kitAssets,t.deliverablePublications,t.deliverableApprovals,t.deliverableVersions,t.deliverables,t.planProgressUpdates,t.planSnapshotApprovals,t.planSnapshots,t.planChanges,t.planActions,t.planObjectives,t.marketingPlans,t.offerApprovals,t.offerVersions,t.offers,t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
+        for(const table of [t.cycleReviewExperiments,t.measurementEvidence,t.cycleReviews,t.canvaDesigns,t.campaignMetrics,t.campaignApprovals,t.campaignVersions,t.campaigns,t.sitePreviewSessions,t.sitePreviewCodes,t.siteDomains,t.sitePublications,t.siteApprovals,t.siteVersions,t.sites,t.clientOpportunityEvents,t.clientInteractions,t.clientOpportunities,t.leadForms,t.clientSegments,t.portalApprovals,t.portalComments,t.portalShares,t.brandGuests,t.brandInvitations,t.brandSetupDrafts,t.brandKitPublications,t.brandKitApprovals,t.brandKitVersions,t.brandKits,t.kitAssets,t.deliverablePublications,t.deliverableApprovals,t.deliverableVersions,t.deliverables,t.planProgressUpdates,t.planSnapshotApprovals,t.planSnapshots,t.planChanges,t.planActions,t.planObjectives,t.marketingPlans,t.offerApprovals,t.offerVersions,t.offers,t.externalAttemptOutcomes,t.externalAttempts,t.externalStepReleases,t.externalSteps,t.externalJobs,t.operationAuthorizations,t.connectionBrandLinks,t.brandCapabilities,t.brandWorkPriorities] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));
         for(const table of [t.audits,t.telemetry,t.idempotency,t.reviewReceipts,t.reviews,t.impacts,t.dependencies,t.learningSignals,t.signals,t.learnings,t.experiments,t.analyses,t.documentClaims,t.documentExtractions,t.sourceDocuments,t.versions,t.decisions,t.recommendations,t.questions,t.userInputs,t.evidence,t.hypotheses,t.openQuestions,t.brandProfiles,t.assignments] as const)
           await tx.delete(table).where(and(eq(table.workspaceId,ws),eq(table.brandId,b)));
