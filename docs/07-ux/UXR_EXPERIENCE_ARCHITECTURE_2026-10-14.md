@@ -71,3 +71,14 @@ Label failed/disconnected inference, preserve text and drafts; present manual ed
 08 · Results + interpretation, actual vs simulated metrics.
 
 Create acceptance mockups of at least 01, 02, 04, 05 and one mobile state before freezing exact navigation. Mockups are not evidence of runtime functionality.
+
+
+## Actualización de aprobación visual del fundador · 2026-10-14
+
+**Aprobado a nivel conceptual:** los mockups compartidos de UX Reinvention como dirección para construir la interfaz real; el fundador manifiesta una preferencia ligera por la segunda alternativa. Esto **no** constituye una aceptación al píxel, ni aprobación de avatares humanos, cambio de logo/paleta, ni validación de pantallas implementadas. Antes de fijar el diseño final, comparar con capturas del sistema actual que el propietario compartirá después, aplicar el método de cuestionar/eliminar/simplificar/acelerar/automatizar y someter a revisión los cambios materiales.
+
+**Regla de Brando:** conservar la gema geométrica esmeralda canónica con acentos dorados; jamás sustituirla por rostro o mascota humana. Puede ganar legibilidad y presencia mediante escala moderada, iluminación, orientación o microanimaciones de estado (reposo, escuchando, consultando, respuesta), sin cambiar su geometría y siempre subordinada al logotipo institucional. Respetar preferencias de movimiento reducido, accesibilidad y densidad móvil.
+
+**Hipótesis, experimentos, señales y aprendizajes:** su motor y contratos son estratégicamente importantes, especialmente para aprender qué funciona y revisar supuestos. No eliminar las entidades, sus estados ni sus vínculos con decisiones. En la UX inicial evitar exponer su complejidad metodológica; abrirlas **cuando la intención lo requiera**, con nombres naturales como «Comprobar una idea», «Qué descubrimos» o «Validar resultados», y permitir acceso avanzado directo. Una hipótesis no pasa a hecho por un texto generado; cualquier cambio de estado o aprendizaje aceptado requiere el proceso y la autoridad humana existentes.
+
+**Siguiente gate:** inspección de las capturas actuales y revisión de un prototipo aplicado al código real de F4, sin empezar por reconstruir módulos. Documentar qué se conserva, qué se transforma y qué queda accesible en nivel avanzado. No describir esta preferencia visual como cierre de F4 ni como autorización de despliegue.
